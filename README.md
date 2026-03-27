@@ -29,8 +29,9 @@ graph TD
 
 ## 🚀 ESTRUTURA DE DIRETÓRIOS
 
-- `/app-coliseu`: Código fonte Next.js (Dashboard do Aluno).
-- `README.md`: Guia de visão geral e padrões de engenharia.
+- `src/`: Código fonte Next.js (Dashboard do Aluno, Perfil, Treinos).
+- `docs/`: Documentação técnica (SOPs, Playbooks, Schemas).
+- `Design/`: Ativos de marca e ícones do Coliseu Levels.
 
 ---
 **Versão do Sistema:** 2.0.2  
