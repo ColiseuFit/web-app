@@ -158,100 +158,24 @@ export default async function TreinosPage() {
           </p>
         </div>
 
-        <ActivityDashboard />
-
-        {/* ── TIMELINE (Histórico) ── */}
-        <h2 className="font-display" style={{ fontSize: "16px", marginBottom: "16px", letterSpacing: "0.05em", color: "var(--text)", textTransform: "uppercase", display: "flex", alignItems: "center", gap: "8px" }}>
-          <span className="material-symbols-outlined" style={{ fontSize: "18px", color: "var(--red)" }}>history</span>
-          Atividades Recentes
-        </h2>
-        
-        <div style={{ display: "flex", flexDirection: "column", gap: "16px", position: "relative" }}>
-          {/* Vertical line connecting timeline items */}
-          <div style={{ position: "absolute", left: "19px", top: "20px", bottom: "20px", width: "2px", background: "var(--border-glow)", zIndex: 0 }} />
-          {wodHistory.map((wod, i) => (
-            <div
-              key={wod.id}
-              style={{
-                display: "flex",
-                gap: "16px",
-                position: "relative",
-                zIndex: 1
-              }}
-            >
-              {/* Timeline Node */}
-              <div style={{ 
-                width: "40px", 
-                height: "40px", 
-                borderRadius: "50%", 
-                background: i === 0 ? "var(--red)" : "var(--surface-lowest)", 
-                border: i === 0 ? "2px solid var(--red-glow)" : "2px solid var(--border-glow)",
-                display: "flex", 
-                alignItems: "center", 
-                justifyContent: "center",
-                flexShrink: 0,
-                marginTop: "4px"
-              }}>
-                <span className="material-symbols-outlined" style={{ fontSize: "20px", color: i === 0 ? "#FFF" : "var(--text-muted)" }}>
-                  fitness_center
-                </span>
-              </div>
-
-              {/* Activity Card */}
-              <div style={{
-                flex: 1,
-                background: "var(--surface-lowest)",
-                border: "1px solid var(--border-glow)",
-                padding: "16px",
-                borderRadius: "4px"
-              }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "8px" }}>
-                  <div>
-                    <h3 className="font-display" style={{ fontSize: "16px", letterSpacing: "0.05em", color: "var(--text)", textTransform: "uppercase" }}>
-                      WOD: {wod.title}
-                    </h3>
-                    <p style={{ fontSize: "11px", color: "var(--text-dim)", marginTop: "2px" }}>
-                      Coach {wod.coach_name}
-                    </p>
-                  </div>
-                  {wod.is_pr && (
-                    <span
-                      style={{
-                        background: "rgba(227, 27, 35, 0.1)",
-                        color: "var(--red)",
-                        padding: "4px 8px",
-                        borderRadius: "2px",
-                        fontSize: "9px",
-                        fontWeight: 800,
-                        letterSpacing: "0.1em",
-                      }}
-                    >
-                      PR
-                    </span>
-                  )}
-                </div>
-
-                {/* Tags / XP */}
-                <div style={{ display: "flex", gap: "12px", marginTop: "12px", paddingTop: "12px", borderTop: "1px dashed var(--border-glow)" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                    <span className="material-symbols-outlined" style={{ fontSize: "14px", color: "var(--text-dim)" }}>calendar_today</span>
-                    <span style={{ fontSize: "10px", color: "var(--text-dim)" }}>
-                      {new Date(wod.date).toLocaleDateString("pt-BR", { day: '2-digit', month: 'short' }).toUpperCase()}
-                    </span>
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                    <span className="material-symbols-outlined" style={{ fontSize: "14px", color: "var(--text-dim)" }}>star</span>
-                    <span style={{ fontSize: "10px", fontWeight: 700, color: "var(--text-dim)" }}>+{wod.xp_earned} XP</span>
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                    <span className="material-symbols-outlined" style={{ fontSize: "14px", color: "var(--text-dim)" }}>timer</span>
-                    <span style={{ fontSize: "10px", fontWeight: 700, color: "var(--text-dim)" }}>1h 00m</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+        <ActivityDashboard 
+          history={wodHistory.map(wod => ({
+            id: wod.id,
+            date: new Date(wod.date).toLocaleDateString("pt-BR", { day: '2-digit', month: 'short' }).toUpperCase(),
+            title: wod.title,
+            description: wod.description,
+            typeTag: wod.tag,
+            coach: wod.coach_name,
+            xp: wod.xp_earned,
+            result: wod.result,
+            isExcellence: wod.is_pr,
+            metrics: [
+              { label: "XP", value: wod.xp_earned, unit: "pts" },
+              { label: "SESSÃO", value: "60", unit: "min" }
+            ],
+            achievements: wod.is_pr ? [{ id: `pr-${wod.id}`, type: "pr", icon: "star", color: "red" }] : []
+          }))} 
+        />
 
         {/* Empty state hint */}
         <p
@@ -266,7 +190,7 @@ export default async function TreinosPage() {
             textTransform: "uppercase",
           }}
         >
-          ● Sincronizado via WOD Engine
+          ● Histórico Sincronizado via WOD Engine
         </p>
       </main>
 

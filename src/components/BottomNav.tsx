@@ -24,6 +24,12 @@ export default function BottomNav() {
       active: pathname.includes("/treinos"),
     },
     {
+      href: "/progresso",
+      icon: "trending_up",
+      label: "PROGRESSO",
+      active: pathname.includes("/progresso"),
+    },
+    {
       href: "/clube",
       icon: "groups", // or emoji_events / leaderboard
       label: "CLUBE",

@@ -1,15 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { ActivityFeedCard } from "@/components/activity/ActivityFeedCard";
 
 /**
  * Componente AnimatedNumber
  * Realiza uma interpolação suave (tween) de um valor numérico de 0 até o alvo.
- * Utiliza requestAnimationFrame para garantir 60fps e performance de elite.
- * 
- * @param {number | string} value - O valor final a ser exibido.
- * @param {number} [duration=1000] - Duração da animação em ms.
- * @param {string} [className=""] - Classes CSS adicionais.
  */
 function AnimatedNumber({ value, duration = 1000, className = "" }: { value: number | string, duration?: number, className?: string }) {
     const [displayValue, setDisplayValue] = useState(0);
@@ -29,7 +25,6 @@ function AnimatedNumber({ value, duration = 1000, className = "" }: { value: num
             if (!startTimestamp) startTimestamp = timestamp;
             const progress = Math.min((timestamp - startTimestamp) / duration, 1);
             
-            // Easing: easeOutCubic para um movimento mais natural
             const easeOutCubic = 1 - Math.pow(1 - progress, 3);
             setDisplayValue(Math.floor(easeOutCubic * (end - start) + start));
             
@@ -44,61 +39,66 @@ function AnimatedNumber({ value, duration = 1000, className = "" }: { value: num
 
     return (
         <span className={className}>
-            {isString ? value.replace(/[0-9.]+/, displayValue.toLocaleString()) : displayValue.toLocaleString()}
+            {isString ? value.toString().replace(/[0-9.]+/, displayValue.toLocaleString()) : displayValue.toLocaleString()}
         </span>
     );
 }
 
 /**
  * ActivityDashboard (V1.2 - Iron Monolith)
- * Dashboard de performance do aluno. Focado em visualização de dados brutalista e retenção (Streaks).
- * 
- * Funcionalidades principais:
- * 1. Battle Matrix: Heatmap de consistência (7 colunas para dias da semana).
- * 2. Arsenal de Guerra: Agregador de volume de movimentos específicos.
- * 3. Volumetria: Gráfico de tendência (Linha/Barra) com morphing suave.
- * 4. Protocolo de Fogo: Gamificação de frequência com lógica de "Descanso Protegido".
  */
-export default function ActivityDashboard() {
+export default function ActivityDashboard({ history = [] }: { history?: any[] }) {
   const [activePeriod, setActivePeriod] = useState("Mês");
-  const [chartType, setChartType] = useState("line"); // 'line' ou 'bar' para o gráfico de volumetria
-  const [isBroken, setIsBroken] = useState(false); // Estado de demonstração: simula quebra de streak (fogo apagado)
+  const [isBroken, setIsBroken] = useState(false);
   const activePeriodLow = activePeriod.toLowerCase();
 
-  /** 
-   * MOCK DATA LOGIC
-   * Em produção, isso será substituído por chamadas ao Supabase.
-   * A estrutura de 'value' segue o contrato: -2 (Futuro), -1 (Descanso), 0 (Vazio), 1 (Treino), 2 (PR/Recorde).
-   */
+  // MOCK de atividades para preencher o dash se o histórico estiver vazio
+  const mockActivities: any[] = [
+    {
+      id: "act-1",
+      date: "HOJE, 26 MAR",
+      title: "WOD: FRANTIC THURSDAY",
+      description: "Intervalado de alta intensidade com foco em Double Unders e Box Jumps. Sensação térmica de 40 graus na caixa. Mantive o RX.",
+      hashtags: ["ColiseuClube", "NuncaPareDeLutar", "DoubleUnder"],
+      typeTag: "AMRAP",
+      coach: "Tito",
+      xp: 450,
+      result: "8 Rounds + 12 Reps",
+      metrics: [
+        { label: "Tempo", value: "14:22", unit: "min" },
+        { label: "Reps", value: "480" },
+        { label: "RPE", value: "9", unit: "/10" }
+      ],
+      achievements: [
+        { id: "s-1", type: "seal", icon: "bolt", color: "volt" },
+        { id: "s-2", type: "pr", icon: "star", color: "red" }
+      ],
+      isExcellence: true
+    }
+  ];
+
+  // Feed Unificado: Prop History + Mocks (priorizando prop)
+  const unifiedFeed = history.length > 0 ? history : [...mockActivities];
+
   let chartData: { label: string; value: number }[] = [];
   
   if (activePeriodLow === "semana") {
     chartData = [
-      { label: "D", value: -1 }, // Descanso Protegido
-      { label: "S", value: 1 }, 
-      { label: "T", value: 1 },
-      { label: "Q", value: 2 }, // PR (Destaque visual)
-      { label: "Q", value: 1 }, // Registro de Hoje
-      { label: "S", value: -2 }, // Datas futuras (tracejado)
-      { label: "S", value: -2 },
+      { label: "D", value: -1 }, { label: "S", value: 1 }, { label: "T", value: 1 },
+      { label: "Q", value: 2 }, { label: "Q", value: 1 }, { label: "S", value: -2 }, { label: "S", value: -2 }
     ];
   } else if (activePeriodLow === "ano") {
-    // Agregado mensal: o 'value' aqui representa o total de treinos para visualização nas caixas informativas
     chartData = [
         { label: "JAN", value: 22 }, { label: "FEV", value: 24 }, { label: "MAR", value: 18 },
         { label: "ABR", value: 0 }, { label: "MAI", value: 0 }, { label: "JUN", value: 0 },
         { label: "JUL", value: 0 }, { label: "AGO", value: 0 }, { label: "SET", value: 0 },
-        { label: "OUT", value: 0 }, { label: "NOV", value: 0 }, { label: "DEZ", value: 0 },
+        { label: "OUT", value: 0 }, { label: "NOV", value: 0 }, { label: "DEZ", value: 0 }
     ];
   } else if (activePeriodLow === "tudo") {
     chartData = [
-      { label: "2023", value: 210 },
-      { label: "2024", value: 245 },
-      { label: "2025", value: 282 },
-      { label: "2026", value: 142 }
+      { label: "2023", value: 210 }, { label: "2024", value: 245 }, { label: "2025", value: 282 }, { label: "2026", value: 142 }
     ];
   } else {
-    // Mês (Padrão): Simulação de 31 dias para Março/2026
     chartData = Array.from({ length: 31 }, (_, i) => ({
         label: `${i + 1}`,
         value: i === 2 || i === 7 || i === 12 || i === 25 ? 2 : (i % 3 === 0 ? 1 : 0)
@@ -106,12 +106,16 @@ export default function ActivityDashboard() {
   }
 
   return (
-    // 'key={activePeriod}' força o re-mount para disparar as animações de entrada (staggered entry)
-    <div key={activePeriod} className="animate-in">
+    <div key={activePeriod} className="activity-dashboard-root">
+      {/* ── GLOBAL ANIMATIONS ── */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        .activity-dashboard-root { animation: fadeInNRC 0.8s cubic-bezier(0.16, 1, 0.3, 1); }
+        .stagger-item { animation: staggeredInNRC 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
+        @keyframes fadeInNRC { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes staggeredInNRC { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+      `}} />
       
-      {/* ── HEADER: STATUS DE FOGO (STREAK) ── 
-          Indica a consistência ininterrupta. Se houver falha (isBroken), o visual muda para ❄️ (Gelo).
-      */}
+      {/* ── HEADER: STATUS DE FOGO ── */}
       <div 
         onClick={() => setIsBroken(!isBroken)}
         style={{ 
@@ -155,24 +159,6 @@ export default function ActivityDashboard() {
         </div>
       </div>
 
-      {/* DEFINIÇÕES DE ANIMAÇÃO (CSS-in-JS) */}
-      <style jsx>{`
-        .animate-in {
-            animation: fadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes staggeredIn {
-            from { opacity: 0; transform: scale(0.9); }
-            to { opacity: 1; transform: scale(1); }
-        }
-        .stagger-item {
-            animation: staggeredIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
-        }
-      `}</style>
-
       {/* ── FILTROS DE PERÍODO ── */}
       <div style={{ display: "flex", gap: "8px", marginBottom: "24px", overflowX: "auto", paddingBottom: "4px", scrollbarWidth: "none" }}>
         {["Semana", "Mês", "Ano", "Tudo"].map((period) => {
@@ -201,15 +187,11 @@ export default function ActivityDashboard() {
         })}
       </div>
 
-      {/* ── MATRIZ DE BATALHA (HEATMAP) ── 
-          Visualização de frequência estilo GitHub, adaptada para 7 dias da semana.
-          Estratégia: Staggered entry (animação por delay) para efeito de "preenchimento progressivo".
-      */}
+      {/* ── MATRIZ DE BATALHA ── */}
       <div style={{ marginBottom: "24px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
             <span style={{ fontSize: "10px", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase" }}>Frequência ({activePeriod})</span>
         </div>
-        
         <div style={{ background: "var(--surface-lowest)", border: "1px solid var(--border-glow)", borderRadius: "4px", padding: "20px" }}>
             <div style={{ 
                 display: "grid", 
@@ -217,7 +199,7 @@ export default function ActivityDashboard() {
                 gap: "6px"
               }}>
                 {chartData.map((data, i) => {
-                  const isTrained = data.value > 0 || data.value === 1 || data.value === 2;
+                  const isTrained = data.value > 0;
                   const isPR = data.value === 2;
                   return (
                     <div key={i} className="stagger-item" style={{ 
@@ -230,7 +212,6 @@ export default function ActivityDashboard() {
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      transition: "background 0.3s ease",
                       position: 'relative'
                     }}>
                       <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column' }}>
@@ -249,59 +230,7 @@ export default function ActivityDashboard() {
         </div>
       </div>
 
-      {/* ── ESTATÍSTICAS DO PERÍODO ── */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "32px" }}>
-        {[
-            { label: "Treinos", value: activePeriodLow === "semana" ? 3 : activePeriodLow === "mês" ? 14 : activePeriodLow === "ano" ? 142 : 315 },
-            { label: "XP Conquistado", value: activePeriodLow === "semana" ? 450 : activePeriodLow === "mês" ? 2100 : activePeriodLow === "ano" ? 18400 : 42100 },
-            { label: "Recordes (PRs)", value: activePeriodLow === "semana" ? 1 : activePeriodLow === "mês" ? 4 : activePeriodLow === "ano" ? 24 : 58 },
-            { label: "Horas Ativas", value: activePeriodLow === "semana" ? 3 : activePeriodLow === "mês" ? 12 : activePeriodLow === "ano" ? 120 : 280 }
-        ].map((stat, i) => (
-            <div key={i} className="stagger-item" style={{ animationDelay: `${0.2 + i * 0.1}s`, background: "var(--surface-lowest)", border: "1px solid var(--border-glow)", padding: "16px", borderRadius: "4px" }}>
-                <div style={{ fontSize: "10px", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", marginBottom: "4px" }}>{stat.label}</div>
-                <div className="font-display" style={{ fontSize: "28px", color: "var(--text)" }}>
-                    <AnimatedNumber value={stat.value} />
-                </div>
-            </div>
-        ))}
-      </div>
-
-      {/* ── VOLUMETRIA DE TREINO ── 
-          Gráfico dinâmico que alterna entre Linha (Tendência) e Barra (Volume por Ponto).
-      */}
-      <div style={{ marginBottom: "32px" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
-          <div style={{ fontSize: "12px", color: "var(--text)", fontWeight: 700 }}>Volumetria de Treino</div>
-          
-          {/* TOGGLE DE VISUALIZAÇÃO (REF: 47b7b875 / 7e51c494) */}
-          <div style={{ display: "flex", background: "rgba(255,255,255,0.05)", borderRadius: "4px", padding: "2px" }}>
-                <button onClick={() => setChartType("line")} style={{ padding: "4px 8px", background: chartType === "line" ? "var(--red)" : "transparent", border: "none", borderRadius: "2px", cursor: "pointer" }}>
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><path d="M3 18l6-6 4 4 8-8" /></svg>
-                </button>
-                <button onClick={() => setChartType("bar")} style={{ padding: "4px 8px", background: chartType === "bar" ? "var(--red)" : "transparent", border: "none", borderRadius: "2px", cursor: "pointer" }}>
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><path d="M18 20V10M12 20V4M6 20V14" /></svg>
-                </button>
-          </div>
-        </div>
-        
-        <div style={{ background: "var(--surface-lowest)", border: "1px solid var(--border-glow)", borderRadius: "4px", padding: "20px", height: "140px", position: "relative" }}>
-          <svg width="100%" height="100%" viewBox="0 0 400 100" preserveAspectRatio="none" style={{ transition: "0.5s" }}>
-            <defs>
-              <linearGradient id="g-v" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stopColor="var(--red)" stopOpacity="0.3" /><stop offset="100%" stopColor="var(--red)" stopOpacity="0" /></linearGradient>
-              <linearGradient id="g-b" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stopColor="var(--red)" stopOpacity="0.8" /><stop offset="100%" stopColor="var(--red)" stopOpacity="0.2" /></linearGradient>
-            </defs>
-            {chartType === "line" ? (
-                <path d={activePeriodLow === "semana" ? "M0,80 L80,70 L160,40 L240,60 L320,20 L400,30" : "M0,90 L40,85 L80,60 L120,70 L160,30 L200,40 L240,20 L280,35 L320,10 L400,15"} fill="url(#g-v)" stroke="var(--red)" strokeWidth="2" style={{ transition: "0.5s ease" }} />
-            ) : (
-                [80, 70, 40, 60, 20, 30].map((v, i) => <rect key={i} x={i * 66 + 10} y={v} width="30" height={100 - v} fill="url(#g-b)" rx="2" className="stagger-item" style={{ animationDelay: `${i * 0.05}s` }} />)
-            )}
-          </svg>
-        </div>
-      </div>
-
-      {/* ── ARSENAL DE GUERRA ── 
-          Unidades de movimento acumuladas. Proporciona escala visual para o esforço bruto.
-      */}
+      {/* ── ARSENAL DE GUERRA ── */}
       <div style={{ marginBottom: "40px" }}>
         <div style={{ fontSize: "10px", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", marginBottom: "12px" }}>Arsenal de Guerra</div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "8px" }}>
@@ -323,6 +252,39 @@ export default function ActivityDashboard() {
           ))}
         </div>
       </div>
+
+      {/* ── TIMELINE: ATIVIDADES RECENTES ── */}
+      <div style={{ marginBottom: "60px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "20px" }}>
+          <h3 style={{ fontSize: "10px", fontWeight: 900, color: "var(--text-muted)", letterSpacing: "0.2em", textTransform: "uppercase" }}>
+            Atividades Recentes
+          </h3>
+          <div style={{ flex: 1, height: "1px", background: "linear-gradient(90deg, rgba(255,255,255,0.05), transparent)" }} />
+        </div>
+
+        <div>
+          {unifiedFeed.map((act, i) => (
+             <ActivityFeedCard key={act.id || i} {...act} />
+          ))}
+        </div>
+
+        <button style={{
+          width: "100%",
+          padding: "16px",
+          background: "transparent",
+          border: "1px solid var(--border-glow)",
+          color: "var(--text-muted)",
+          fontSize: "9px",
+          fontWeight: 800,
+          textTransform: "uppercase",
+          letterSpacing: "0.15em",
+          borderRadius: "4px",
+          cursor: "pointer"
+        }}>
+          Ver Mais Atividades
+        </button>
+      </div>
+
     </div>
   );
 }

@@ -3,7 +3,13 @@
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 
-import { checkInSchema, cancelCheckInSchema } from "@/lib/validations/security_schemas";
+import {
+  checkInSchema,
+  cancelCheckInSchema,
+  personalRecordSchema,
+  updateTargetSchema,
+  goalSchema,
+} from "@/lib/validations/security_schemas";
 
 /**
  * Realiza o check-in do aluno no WOD do dia.
@@ -124,8 +130,119 @@ export async function cancelCheckIn(wodId: string) {
     .update({ xp_balance: newXP })
     .eq("id", user.id);
 
-  revalidatePath("/dashboard");
+ revalidatePath("/dashboard");
   revalidatePath("/profile");
 
+  return { success: true };
+}
+
+/**
+ * Registra ou atualiza um Recorde Pessoal (PR) do aluno.
+ */
+export async function upsertPersonalRecord(formData: any) {
+  const validation = personalRecordSchema.safeParse(formData);
+  if (!validation.success) {
+    return { error: "Dados inválidos: " + validation.error.message };
+  }
+
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Não autenticado" };
+
+  const { error } = await supabase
+    .from("personal_records")
+    .upsert({
+      student_id: user.id,
+      ...validation.data,
+      date: validation.data.date || new Date().toISOString().split("T")[0],
+    }, { onConflict: "student_id,movement_key" }); // Assumindo chave única por movimento/estudante para simplificar
+
+  if (error) return { error: error.message };
+  
+  revalidatePath("/progresso");
+  return { success: true };
+}
+
+/**
+ * Atualiza a meta de frequência semanal do aluno.
+ */
+export async function updateWeeklyTarget(weekly_target: number) {
+  const validation = updateTargetSchema.safeParse({ weekly_target });
+  if (!validation.success) return { error: "Meta inválida" };
+
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Não autenticado" };
+
+  const { error } = await supabase
+    .from("student_settings")
+    .upsert({
+      student_id: user.id,
+      weekly_frequency_target: validation.data.weekly_target,
+    });
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/progresso");
+  return { success: true };
+}
+
+/**
+ * Gerencia Objetivos Pessoais (Criação e Toggle).
+ */
+export async function createGoal(title: string) {
+  const validation = goalSchema.safeParse({ title });
+  if (!validation.success) return { error: "Título inválido" };
+
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Não autenticado" };
+
+  const { data, error } = await supabase
+    .from("student_goals")
+    .insert({ student_id: user.id, title: validation.data.title })
+    .select()
+    .single();
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/progresso");
+  return { success: true, data };
+}
+
+export async function toggleGoalStatus(goalId: string, currentStatus: boolean) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Não autenticado" };
+
+  const { error } = await supabase
+    .from("student_goals")
+    .update({ 
+      is_completed: !currentStatus,
+      completed_at: !currentStatus ? new Date().toISOString() : null 
+    })
+    .eq("id", goalId)
+    .eq("student_id", user.id);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/progresso");
+  return { success: true };
+}
+
+export async function deleteGoal(goalId: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Não autenticado" };
+
+  const { error } = await supabase
+    .from("student_goals")
+    .delete()
+    .eq("id", goalId)
+    .eq("student_id", user.id);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/progresso");
   return { success: true };
 }

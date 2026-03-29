@@ -4,6 +4,7 @@ import Link from "next/link";
 import StudentHeader from "@/components/StudentHeader";
 import BottomNav from "@/components/BottomNav";
 import LevelCard from "@/components/LevelCard";
+import DashboardStyles from "@/components/DashboardStyles";
 
 /**
  * Página de Perfil (Athletic Identity) do Aluno.
@@ -74,6 +75,7 @@ export default async function ProfilePage() {
 
   return (
     <div style={{ backgroundColor: "var(--bg)", color: "var(--text)", minHeight: "100vh", paddingBottom: "100px" }}>
+      <DashboardStyles />
       <StudentHeader />
 
       <main style={{ maxWidth: "480px", margin: "0 auto", padding: "0 20px" }}>
@@ -232,19 +234,81 @@ export default async function ProfilePage() {
           </div>
         </section>
 
-        {/* ── CONQUISTAS (ACHIEVEMENTS) NRC-STYLE ── */}
+        {/* ── MURAL DE CONQUISTAS (ACHIEVEMENTS & BENCHMARKS) ── */}
         <section style={{ marginBottom: "40px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "24px" }}>
-            <h2 className="font-display" style={{ fontSize: "16px", letterSpacing: "0.05em" }}>CONQUISTAS</h2>
-            <div style={{ flex: 1, height: "1px", background: "linear-gradient(90deg, var(--red), transparent)" }} />
+            <h2 className="font-display" style={{ fontSize: "16px", letterSpacing: "0.05em" }}>MURAL DE CONQUISTAS</h2>
+            <div style={{ flex: 1, height: "1px", background: "linear-gradient(90deg, var(--volt), transparent)" }} />
           </div>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+            {/* Seção de Benchmarks (Shields) */}
+            <div style={{ 
+              display: "grid", 
+              gridTemplateColumns: "repeat(3, 1fr)", 
+              gap: "12px", 
+              marginBottom: "12px" 
+            }}>
+              {[
+                { id: "du", title: "DOUBLE UNDERS", completed: true, icon: "bolt" },
+                { id: "pu", title: "PULL UPS", completed: true, icon: "shield" },
+                { id: "hspu", title: "HSPU", completed: false, icon: "diamond" },
+              ].map((bm) => (
+                <div key={bm.id} style={{
+                  background: "var(--surface-lowest)",
+                  border: "1px solid var(--border-glow)",
+                  padding: "20px 10px",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "12px",
+                  borderRadius: "4px",
+                  opacity: bm.completed ? 1 : 0.2,
+                  filter: bm.completed ? "none" : "grayscale(100%)",
+                  position: "relative"
+                }}>
+                  <div style={{
+                    width: "42px",
+                    height: "48px",
+                    clipPath: "polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)",
+                    background: bm.completed ? "rgba(225, 255, 0, 0.1)" : "transparent",
+                    border: `1px solid ${bm.completed ? "var(--volt)" : "var(--text-dim)"}`,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}>
+                    <span className="material-symbols-outlined" style={{ 
+                      fontSize: "20px", 
+                      color: bm.completed ? "var(--volt)" : "var(--text-dim)",
+                      fontVariationSettings: "'FILL' 1"
+                    }}>
+                      {bm.icon}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: "8px", fontWeight: 900, color: "var(--text)", textAlign: "center", letterSpacing: "0.1em" }}>
+                    {bm.title}
+                  </div>
+                  {bm.completed && (
+                    <div style={{
+                      position: "absolute",
+                      width: "30px",
+                      height: "30px",
+                      background: "var(--volt)",
+                      filter: "blur(15px)",
+                      opacity: 0.2,
+                      zIndex: -1
+                    }} />
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Conquistas Gerais */}
             {[
-              { icon: "diamond", color: "#FFF", label: "FUNDADOR", desc: "Membro Fundador do Coliseu Clube" },
-              { icon: "shield", color: "var(--red)", label: "HERO WOD", desc: "Sobreviveu ao Murph RX" },
-              { icon: "bolt", color: "var(--lvl-green)", label: "100 TREINOS", desc: "Atingiu a marca de 100 WODs" },
-              { icon: "local_fire_department", color: "#FF9800", label: "STREAK X10", desc: "10 dias seguidos de treinos" },
+              { icon: "star", color: "var(--red)", label: "FUNDADOR", desc: "Membro Fundador do Coliseu Clube" },
+              { icon: "military_tech", color: "#FFD700", label: "SOBREVIVENTE", desc: "Completou o Murph em modo RX" },
+              { icon: "workspace_premium", color: "var(--volt)", label: "TOP 10% XP", desc: "Entre os atletas mais ativos do mês" },
             ].map((achievement, i) => (
               <div key={i} style={{ 
                 background: "var(--surface-lowest)", 
@@ -252,52 +316,52 @@ export default async function ProfilePage() {
                 border: "1px solid var(--border-glow)",
                 display: "flex",
                 alignItems: "center",
-                gap: "20px"
+                gap: "20px",
+                borderRadius: "4px"
               }}>
                 <div style={{
-                  width: "48px",
-                  height: "56px",
-                  clipPath: "polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)",
+                  width: "40px",
+                  height: "40px",
+                  borderRadius: "50%",
                   background: "var(--bg)",
                   border: `1px solid ${achievement.color}`,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  position: "relative",
-                  boxShadow: `inset 0 0 10px ${achievement.color}40`,
-                  flexShrink: 0
+                  flexShrink: 0,
+                  boxShadow: `0 0 10px ${achievement.color}20`
                 }}>
-                   <span className="material-symbols-outlined" style={{ 
-                    fontSize: "24px", 
-                    color: achievement.color,
-                  }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: "20px", color: achievement.color }}>
                     {achievement.icon}
                   </span>
                 </div>
                 
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: "14px", fontWeight: 800, color: "var(--text)", textTransform: "uppercase", marginBottom: "4px" }}>{achievement.label}</div>
-                  <div style={{ fontSize: "11px", color: "var(--text-dim)" }}>{achievement.desc}</div>
+                  <div style={{ fontSize: "12px", fontWeight: 800, color: "white", textTransform: "uppercase", marginBottom: "2px" }}>{achievement.label}</div>
+                  <div style={{ fontSize: "10px", color: "var(--text-dim)" }}>{achievement.desc}</div>
                 </div>
               </div>
             ))}
           </div>
           
-          <button style={{ 
-            width: "100%", 
-            background: "transparent", 
-            border: "1px solid var(--border-glow)", 
-            padding: "16px", 
-            marginTop: "16px", 
-            fontSize: "10px", 
-            fontWeight: 800, 
-            letterSpacing: "0.1em",
-            color: "var(--text-muted)",
-            textTransform: "uppercase",
-            cursor: "pointer",
-            borderRadius: "2px"
-          }}>
-            VER TODOS OS SELOS
+          <button 
+            className="btn-outline-hover"
+            style={{ 
+              width: "100%", 
+              background: "transparent", 
+              border: "1px solid var(--border-glow)", 
+              padding: "16px", 
+              marginTop: "16px", 
+              fontSize: "9px", 
+              fontWeight: 800, 
+              letterSpacing: "0.15em",
+              color: "var(--text-muted)",
+              textTransform: "uppercase",
+              cursor: "pointer",
+              borderRadius: "4px"
+            }}
+          >
+            VER TODAS AS CONQUISTAS
           </button>
         </section>
 
