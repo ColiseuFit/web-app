@@ -22,19 +22,20 @@ export default async function ProfilePage() {
     redirect("/login");
   }
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", user.id)
-    .single();
-
-  const { data: latestEvaluation } = await supabase
-    .from("physical_evaluations")
-    .select("*")
-    .eq("student_id", user.id)
-    .order("evaluation_date", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  // 1. Data Fetching
+  const [
+    { data: profile },
+    { data: latestEvaluation },
+    { data: checkInsCount },
+    { data: prs },
+    { data: benchmarks }
+  ] = await Promise.all([
+    supabase.from("profiles").select("*").eq("id", user.id).single(),
+    supabase.from("physical_evaluations").select("*").eq("student_id", user.id).order("evaluation_date", { ascending: false }).limit(1).maybeSingle(),
+    supabase.from("check_ins").select("id", { count: "exact", head: true }).eq("student_id", user.id),
+    supabase.from("personal_records").select("*").eq("student_id", user.id).order("date", { ascending: false }).limit(4),
+    supabase.from("student_benchmarks").select("*").eq("student_id", user.id)
+  ]);
 
   // Cálculo de massa magra se houver dados
   const leanMass = (latestEvaluation?.weight && latestEvaluation?.body_fat_percentage)
@@ -43,9 +44,7 @@ export default async function ProfilePage() {
 
   /**
    * Identidade Visual do Nível (Coliseu Levels) no Perfil
-   * 
    * @technical O mapeamento converte strings de nível em tokens de cor,
-   * ícones e efeitos de destaque (Glow) para níveis de elite.
    */
   const getLevelInfo = (lvl: string) => {
     const l = lvl?.toLowerCase() || "";
@@ -58,20 +57,33 @@ export default async function ProfilePage() {
   };
 
   /**
-   * DADOS MOCK - V1.2 (TESTE)
-   * Centralização dos dados para facilitar o desenvolvimento da UI.
+   * LÓGICA DE PROGRESSÃO DATA-DRIVEN
+   * Substitui os mocks por dados reais e cálculos baseados em XP.
    */
-  const MOCK_STATS = {
-    xp_actual: 12450,
-    xp_next_level: 15000,
-    trainings_count: 142,
-    current_streak: 12,
-    total_xp_goal: 15000, // Alvo para o próximo nível (L3)
+  const xpActual = profile?.xp_balance || 0;
+  
+  // Lógica temporária de escalonamento (5k por nível)
+  const calculateGoal = (xp: number) => {
+    if (xp < 5000) return 5000;
+    if (xp < 10000) return 10000;
+    if (xp < 15000) return 15000;
+    if (xp < 20000) return 20000;
+    return xp + 5000;
   };
 
-  const level = getLevelInfo(profile?.level || "verde"); // Forçando verde para teste de L2 -> L3
-  const xpProgress = (MOCK_STATS.xp_actual / MOCK_STATS.total_xp_goal) * 100;
-  const xpRemaining = MOCK_STATS.total_xp_goal - MOCK_STATS.xp_actual;
+  const totalXpGoal = calculateGoal(xpActual);
+  const xpProgress = (xpActual / totalXpGoal) * 100;
+  const xpRemaining = totalXpGoal - xpActual;
+  
+  const stats = {
+    xp_actual: xpActual,
+    xp_next_level: totalXpGoal,
+    trainings_count: checkInsCount || 0,
+    current_streak: 0, // Mockado até implementação matemática de streaks
+    total_xp_goal: totalXpGoal,
+  };
+
+  const level = getLevelInfo(profile?.level || "branco");
 
   return (
     <div style={{ backgroundColor: "var(--bg)", color: "var(--text)", minHeight: "100vh", paddingBottom: "100px" }}>
@@ -105,7 +117,7 @@ export default async function ProfilePage() {
           {/* LEVEL CARD CLIENT COMPONENT (V1.2) */}
           <LevelCard 
             level={level} 
-            mockStats={MOCK_STATS} 
+            stats={stats} 
             xpProgress={xpProgress} 
             xpRemaining={xpRemaining} 
           />
@@ -126,9 +138,9 @@ export default async function ProfilePage() {
           marginBottom: "48px",
         }}>
           {[
-            { label: "XP TOTAL", value: MOCK_STATS.xp_actual.toLocaleString("pt-BR"), color: "var(--red)" },
-            { label: "TREINOS", value: MOCK_STATS.trainings_count.toString(), color: "var(--text)" },
-            { label: "DAYS STREAK", value: MOCK_STATS.current_streak.toString(), color: "var(--text)" },
+            { label: "XP TOTAL", value: stats.xp_actual.toLocaleString("pt-BR"), color: "var(--red)" },
+            { label: "TREINOS", value: stats.trainings_count.toString(), color: "var(--text)" },
+            { label: "DAYS STREAK", value: stats.current_streak.toString(), color: "var(--text)" },
           ].map((stat, i) => (
             <div key={i} style={{ background: "var(--surface-lowest)", padding: "20px 10px", textAlign: "center" }}>
               <div style={{ 
@@ -203,34 +215,35 @@ export default async function ProfilePage() {
             <div style={{ flex: 1, height: "1px", background: "linear-gradient(90deg, var(--red), transparent)" }} />
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
-            {[
-              { label: "BACK SQUAT", value: "140 KG" },
-              { label: "DEADLIFT", value: "185 KG" },
-              { label: "CLEAN & JERK", value: "95 KG" },
-              { label: "SNATCH", value: "72 KG" },
-            ].map((pr, i) => (
-              <div key={i} style={{ 
-                background: "var(--surface-lowest)", 
-                padding: "20px", 
-                borderTop: "1px solid var(--border-glow)",
-                position: "relative",
-                overflow: "hidden",
-              }}>
-                <div style={{ fontSize: "9px", fontWeight: 700, color: "var(--text-muted)", marginBottom: "6px", letterSpacing: "0.05em" }}>{pr.label}</div>
-                <div style={{ fontFamily: "var(--font-display, 'Outfit', sans-serif)", fontSize: "20px", fontWeight: 900 }}>{pr.value}</div>
-                <span className="material-symbols-outlined" style={{ 
-                  position: "absolute", 
-                  right: "10px", 
-                  bottom: "10px", 
-                  opacity: 0.1, 
-                  color: "var(--red)",
-                  fontSize: "16px"
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+            {prs && prs.length > 0 ? (
+              prs.map((pr, i) => (
+                <div key={i} style={{ 
+                  background: "var(--surface-lowest)", 
+                  padding: "20px", 
+                  borderTop: "1px solid var(--border-glow)",
+                  position: "relative",
+                  overflow: "hidden",
                 }}>
-                  trending_up
-                </span>
+                  <div style={{ fontSize: "9px", fontWeight: 700, color: "var(--text-muted)", marginBottom: "6px", letterSpacing: "0.05em", textTransform: "uppercase" }}>{pr.movement_name}</div>
+                  <div style={{ fontFamily: "var(--font-display, 'Outfit', sans-serif)", fontSize: "20px", fontWeight: 900 }}>{pr.value} <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>{pr.unit}</span></div>
+                  <span className="material-symbols-outlined" style={{ 
+                    position: "absolute", 
+                    right: "10px", 
+                    bottom: "10px", 
+                    opacity: 0.1, 
+                    color: "var(--red)",
+                    fontSize: "16px"
+                  }}>
+                    trending_up
+                  </span>
+                </div>
+              ))
+            ) : (
+              <div style={{ gridColumn: "span 2", padding: "24px", textAlign: "center", border: "1px dashed var(--border-glow)", fontSize: "12px", color: "var(--text-muted)" }}>
+                NENHUM RECORDE REGISTRADO
               </div>
-            ))}
+            )}
           </div>
         </section>
 
@@ -250,58 +263,63 @@ export default async function ProfilePage() {
               marginBottom: "12px" 
             }}>
               {[
-                { id: "du", title: "DOUBLE UNDERS", completed: true, icon: "bolt" },
-                { id: "pu", title: "PULL UPS", completed: true, icon: "shield" },
-                { id: "hspu", title: "HSPU", completed: false, icon: "diamond" },
-              ].map((bm) => (
-                <div key={bm.id} style={{
-                  background: "var(--surface-lowest)",
-                  border: "1px solid var(--border-glow)",
-                  padding: "20px 10px",
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: "12px",
-                  borderRadius: "4px",
-                  opacity: bm.completed ? 1 : 0.2,
-                  filter: bm.completed ? "none" : "grayscale(100%)",
-                  position: "relative"
-                }}>
-                  <div style={{
-                    width: "42px",
-                    height: "48px",
-                    clipPath: "polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)",
-                    background: bm.completed ? "rgba(225, 255, 0, 0.1)" : "transparent",
-                    border: `1px solid ${bm.completed ? "var(--volt)" : "var(--text-dim)"}`,
+                { id: "du", title: "DOUBLE UNDERS", icon: "bolt" },
+                { id: "pu", title: "PULL UPS", icon: "shield" },
+                { id: "hspu", title: "HSPU", icon: "diamond" },
+              ].map((bm_meta) => {
+                const bmInstance = benchmarks?.find(b => b.benchmark_id === bm_meta.id);
+                const completed = !!bmInstance;
+                
+                return (
+                  <div key={bm_meta.id} style={{
+                    background: "var(--surface-lowest)",
+                    border: "1px solid var(--border-glow)",
+                    padding: "20px 10px",
                     display: "flex",
+                    flexDirection: "column",
                     alignItems: "center",
                     justifyContent: "center",
+                    gap: "12px",
+                    borderRadius: "4px",
+                    opacity: completed ? 1 : 0.2,
+                    filter: completed ? "none" : "grayscale(100%)",
+                    position: "relative"
                   }}>
-                    <span className="material-symbols-outlined" style={{ 
-                      fontSize: "20px", 
-                      color: bm.completed ? "var(--volt)" : "var(--text-dim)",
-                      fontVariationSettings: "'FILL' 1"
-                    }}>
-                      {bm.icon}
-                    </span>
-                  </div>
-                  <div style={{ fontSize: "8px", fontWeight: 900, color: "var(--text)", textAlign: "center", letterSpacing: "0.1em" }}>
-                    {bm.title}
-                  </div>
-                  {bm.completed && (
                     <div style={{
-                      position: "absolute",
-                      width: "30px",
-                      height: "30px",
-                      background: "var(--volt)",
-                      filter: "blur(15px)",
-                      opacity: 0.2,
-                      zIndex: -1
-                    }} />
-                  )}
-                </div>
-              ))}
+                      width: "42px",
+                      height: "48px",
+                      clipPath: "polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)",
+                      background: completed ? "rgba(225, 255, 0, 0.1)" : "transparent",
+                      border: `1px solid ${completed ? "var(--volt)" : "var(--text-dim)"}`,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}>
+                      <span className="material-symbols-outlined" style={{ 
+                        fontSize: "20px", 
+                        color: completed ? "var(--volt)" : "var(--text-dim)",
+                        fontVariationSettings: "'FILL' 1"
+                      }}>
+                        {bm_meta.icon}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: "8px", fontWeight: 900, color: "var(--text)", textAlign: "center", letterSpacing: "0.1em" }}>
+                      {bm_meta.title}
+                    </div>
+                    {completed && (
+                      <div style={{
+                        position: "absolute",
+                        width: "30px",
+                        height: "30px",
+                        background: "var(--volt)",
+                        filter: "blur(15px)",
+                        opacity: 0.2,
+                        zIndex: -1
+                      }} />
+                    )}
+                  </div>
+                );
+              })}
             </div>
 
             {/* Conquistas Gerais */}

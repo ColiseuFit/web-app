@@ -14,7 +14,7 @@ interface LevelInfo {
 
 import LevelBadge from "./LevelBadge";
 
-interface MockStats {
+interface AthleteStats {
   xp_actual: number;
   xp_next_level: number;
   total_xp_goal: number;
@@ -22,7 +22,7 @@ interface MockStats {
 
 interface LevelCardProps {
   level: LevelInfo;
-  mockStats: MockStats;
+  stats: AthleteStats;
   xpProgress: number;
   xpRemaining: number;
 }
@@ -32,7 +32,7 @@ interface LevelCardProps {
  * Componente central da aba Atleta, exibindo o status atual e progresso de XP.
  * 
  * @param level Objeto de configuração do nível (cor, ícone, prefixo).
- * @param mockStats Dados temporários para simulação de progresso (XP, Treinos).
+ * @param stats Dados reais de progresso (XP, Treinos).
  * @param xpProgress Porcentagem de preenchimento da barra de progresso.
  * @param xpRemaining Valor absoluto necessário para o próximo nível.
  * 
@@ -40,7 +40,7 @@ interface LevelCardProps {
  * - Utiliza Framer Motion ou transições CSS para animação da barra de XP.
  * - Integra o LevelBadge para manter a consistência do modal interativo.
  */
-export default function LevelCard({ level, mockStats, xpProgress, xpRemaining }: LevelCardProps) {
+export default function LevelCard({ level, stats, xpProgress, xpRemaining }: LevelCardProps) {
   return (
     <div style={{ 
       background: (level.color === "var(--lvl-black)" || level.color === "#C5A059") ? "var(--bg)" : level.color, 
@@ -84,7 +84,7 @@ export default function LevelCard({ level, mockStats, xpProgress, xpRemaining }:
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: "8px" }}>
           <span style={{ fontSize: "10px", fontWeight: 700, color: level.textColor, opacity: 0.8, letterSpacing: "0.15em", marginBottom: "4px" }}>XP ACUMULADO</span>
           <span style={{ fontFamily: "var(--font-display)", fontSize: "32px", fontWeight: 900, color: level.textColor, lineHeight: 1 }}>
-            {mockStats.xp_actual.toLocaleString("pt-BR")}
+            {stats.xp_actual.toLocaleString("pt-BR")}
           </span>
         </div>
 
