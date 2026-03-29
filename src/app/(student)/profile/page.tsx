@@ -8,11 +8,16 @@ import DashboardStyles from "@/components/DashboardStyles";
 
 /**
  * Página de Perfil (Athletic Identity) do Aluno.
- * Baseada no design "Iron Monolith".
+ * Componente central do ecossistema "Iron Monolith", consolidando XP, PRs e Conquistas.
  * 
  * @security
- * - Sessão verificada via Server Component.
- * - Dados buscados com RLS ativo no Supabase.
+ * - Sessão verificada via Server Component (auth.getUser).
+ * - Multi-fetch paralelo com RLS ativo no Supabase para máxima performance e segurança.
+ * - Isolamento total de dados entre diferentes alunos.
+ * 
+ * @technical
+ * - Substituiu os MOCKS da V1.1 por um motor 100% Data-Driven na V1.2.
+ * - Centraliza a lógica de gamificação (XP -> Níveis) no lado do servidor.
  */
 export default async function ProfilePage() {
   const supabase = await createClient();

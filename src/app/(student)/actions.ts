@@ -138,6 +138,14 @@ export async function cancelCheckIn(wodId: string) {
 
 /**
  * Registra ou atualiza um Recorde Pessoal (PR) do aluno.
+ * 
+ * @security
+ * - Valida input via `personalRecordSchema` (Zod).
+ * - Restringe a operação ao `student_id` do usuário autenticado.
+ * - Utiliza compressão de conflito (UPSERT) para evitar duplicidade de movimentos.
+ * 
+ * @param {any} formData - Objeto contendo `movement_id`, `value`, `unit` e `date`.
+ * @returns {Promise<{success?: boolean, error?: string}>}
  */
 export async function upsertPersonalRecord(formData: any) {
   const validation = personalRecordSchema.safeParse(formData);
@@ -155,16 +163,25 @@ export async function upsertPersonalRecord(formData: any) {
       student_id: user.id,
       ...validation.data,
       date: validation.data.date || new Date().toISOString().split("T")[0],
-    }, { onConflict: "student_id,movement_key" }); // Assumindo chave única por movimento/estudante para simplificar
+    }, { onConflict: "student_id,movement_id" });
 
   if (error) return { error: error.message };
   
   revalidatePath("/progresso");
+  revalidatePath("/profile");
   return { success: true };
 }
 
 /**
  * Atualiza a meta de frequência semanal do aluno.
+ * Persiste a configuração na tabela `student_settings`.
+ * 
+ * @security
+ * - Valida se o target está entre 1 e 7.
+ * - Garante isolamento por `auth.uid()`.
+ * 
+ * @param {number} weekly_target - Quantidade de dias meta (1-7).
+ * @returns {Promise<{success?: boolean, error?: string}>}
  */
 export async function updateWeeklyTarget(weekly_target: number) {
   const validation = updateTargetSchema.safeParse({ weekly_target });
@@ -179,7 +196,7 @@ export async function updateWeeklyTarget(weekly_target: number) {
     .upsert({
       student_id: user.id,
       weekly_frequency_target: validation.data.weekly_target,
-    });
+    }, { onConflict: "student_id" });
 
   if (error) return { error: error.message };
 
@@ -188,7 +205,10 @@ export async function updateWeeklyTarget(weekly_target: number) {
 }
 
 /**
- * Gerencia Objetivos Pessoais (Criação e Toggle).
+ * Cria um novo objetivo (meta) pessoal para o aluno.
+ * 
+ * @param {string} title - Descrição curta do objetivo (ex: "Fazer meu primeiro Muscle-up").
+ * @returns {Promise<{success: boolean, data?: any, error?: string}>}
  */
 export async function createGoal(title: string) {
   const validation = goalSchema.safeParse({ title });
@@ -210,6 +230,13 @@ export async function createGoal(title: string) {
   return { success: true, data };
 }
 
+/**
+ * Alterna o status de conclusão de um objetivo.
+ * 
+ * @param {string} goalId - UUID do objetivo.
+ * @param {boolean} currentStatus - Status atual antes do toggle.
+ * @returns {Promise<{success?: boolean, error?: string}>}
+ */
 export async function toggleGoalStatus(goalId: string, currentStatus: boolean) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -230,6 +257,12 @@ export async function toggleGoalStatus(goalId: string, currentStatus: boolean) {
   return { success: true };
 }
 
+/**
+ * Remove permanentemente um objetivo pessoal.
+ * 
+ * @param {string} goalId - UUID do objetivo.
+ * @returns {Promise<{success?: boolean, error?: string}>}
+ */
 export async function deleteGoal(goalId: string) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();

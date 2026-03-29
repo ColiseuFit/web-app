@@ -37,8 +37,17 @@ interface ProgressDashboardClientProps {
 }
 
 /**
- * ProgressDashboardClient - The interactive heart of the Progress module.
- * Fully connected to Server Actions for database persistence.
+ * ProgressDashboardClient - O coração interativo do módulo de Progresso.
+ * 
+ * @security
+ * - Todas as mutações são realizadas via Server Actions (`actions.ts`).
+ * - Validação de dados via schemas Zod antes da persistência.
+ * - Isolamento de tenant garantido pela autenticação do Supabase.
+ * 
+ * @technical
+ * - Implementa **Optimistic UI** para a mudança de metas semanais (vibrante e instantâneo).
+ * - Componente unificado que orquestra Gauges de Progresso, Matriz de PRs e Lista de Objetivos.
+ * - Centraliza o estado local para evitar múltiplas viagens ao servidor durante interações rápidas.
  */
 export default function ProgressDashboardClient({
   initialPrs,
