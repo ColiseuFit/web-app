@@ -69,32 +69,8 @@ export default function ActivityDashboard({ history = [] }: { history?: Activity
   const activePeriodLow = activePeriod.toLowerCase();
 
   // MOCK de atividades para preencher o dash se o histórico estiver vazio
-  const mockActivities: ActivityItem[] = [
-    {
-      id: "act-1",
-      date: "HOJE, 26 MAR",
-      title: "WOD: FRANTIC THURSDAY",
-      description: "Intervalado de alta intensidade com foco em Double Unders e Box Jumps. Sensação térmica de 40 graus na caixa. Mantive o RX.",
-      hashtags: ["ColiseuClube", "EvoluaSuaPerformance", "DoubleUnder"],
-      typeTag: "AMRAP",
-      coach: "Tito",
-      xp: 450,
-      result: "8 Rounds + 12 Reps",
-      metrics: [
-        { label: "Tempo", value: "14:22", unit: "min" },
-        { label: "Reps", value: "480" },
-        { label: "RPE", value: "9", unit: "/10" }
-      ],
-      achievements: [
-        { id: "s-1", type: "seal", icon: "bolt", color: "volt" },
-        { id: "s-2", type: "pr", icon: "star", color: "red" }
-      ],
-      isExcellence: true
-    }
-  ];
-
-  // Feed Unificado: Prop History + Mocks (priorizando prop)
-  const unifiedFeed = history.length > 0 ? history : [...mockActivities];
+  // Feed Unificado usa estritamente o histórico passado pelo banco
+  const unifiedFeed = history;
 
   let chartData: { label: string; value: number }[] = [];
   

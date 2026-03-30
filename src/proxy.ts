@@ -39,12 +39,15 @@ export async function proxy(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
 
   const isAuthPage = request.nextUrl.pathname.startsWith("/login");
-  const isPublicPath = isAuthPage || request.nextUrl.pathname === "/";
+  const isAdminPortal = request.nextUrl.pathname.startsWith("/admin-portal");
+  const isPublicPath = isAuthPage || isAdminPortal || request.nextUrl.pathname === "/";
 
   // Redirect to login if user is not authenticated
   if (!user && !isPublicPath) {
     const url = request.nextUrl.clone();
-    url.pathname = "/login";
+    // If it's an admin route, go to admin portal. Otherwise student portal.
+    const isAdminRoute = request.nextUrl.pathname.startsWith("/admin");
+    url.pathname = isAdminRoute ? "/admin-portal" : "/login";
     return NextResponse.redirect(url);
   }
 

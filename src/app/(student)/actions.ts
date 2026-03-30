@@ -116,7 +116,7 @@ export async function cancelCheckIn(wodId: string) {
  * 
  * @security
  * - Valida input via `personalRecordSchema` (Zod).
- * - Restringe a operação ao `student_id` do usuário autenticado.
+ * - Restringe o acesso ao `student_id` do usuário autenticado.
  * - Utiliza compressão de conflito (UPSERT) para evitar duplicidade de movimentos.
  * 
  * @param {any} formData - Objeto contendo `movement_id`, `value`, `unit` e `date`.

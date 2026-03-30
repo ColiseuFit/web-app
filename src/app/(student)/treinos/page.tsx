@@ -37,69 +37,51 @@ export default async function TreinosPage() {
 
   const displayName = profile?.display_name || profile?.full_name || "Atleta";
 
-  // Mock WOD history – will be replaced by real data from `wods` table
-  const wodHistory = [
-    {
-      id: "1",
-      date: new Date().toISOString(), // Hoje
-      tag: "AMRAP",
-      title: "Hell's Kitchen #47",
-      description: "Amrap 12' - 10 Burpees, 15 Wall Balls, 20 Double Unders",
-      result: "Score: 4 rounds + 12 reps",
-      score: "4+12",
-      coach_name: "Marcos",
-      is_pr: false,
-      xp_earned: 50,
-    },
-    {
-      id: "2",
-      date: new Date(Date.now() - 86400000).toISOString(), // Ontem
-      tag: "Força",
-      title: "Back Squat 5x5",
-      description: "Trabalho de força, 85% do PR. 5 séries de 5 repetições.",
-      result: "Carga Final: 120kg",
-      score: "120kg",
-      coach_name: "Sarah",
-      is_pr: true,
-      xp_earned: 75,
-    },
-    {
-      id: "3",
-      date: "2026-03-24T10:00:00Z",
-      tag: "LPO",
-      title: "Snatch Complex",
-      description: "1 Squat Snatch + 2 Hang Power Snatch (Every 2 mins for 10 mins)",
-      result: "Carga Máxima: 80kg",
-      score: "80kg",
-      coach_name: "Tiago",
-      is_pr: false,
-      xp_earned: 60,
-    },
-    {
-      id: "4",
-      date: "2026-03-22T15:00:00Z",
-      tag: "Gymnastics",
-      title: "Hero WOD 'Murph'",
-      description: "Treino em homenagem ao tenente Michael P. Murphy. (Com Colete 10kg)",
-      result: "Tempo: 38:45 min",
-      score: "38:45",
-      coach_name: "Lukas",
-      is_pr: true,
-      xp_earned: 150,
-    },
-    {
-      id: "5",
-      date: "2026-03-21T09:30:00Z",
-      tag: "Skill",
-      title: "Bar Muscle Up Clinical",
-      description: "Trabalho técnico de transição e eficiência no kipping.",
-      result: "Progresso: 3 unbroken",
-      score: "3 Unbroken",
-      coach_name: "Marcos",
-      is_pr: false,
-      xp_earned: 30,
-    },
-  ];
+  const { data: checkins } = await supabase
+    .from("check_ins")
+    .select(`
+      id,
+      created_at,
+      wods (
+        id,
+        title,
+        wod_content,
+        type_tag,
+        date,
+        time_cap
+      )
+    `)
+    .eq("student_id", user.id)
+    .order("created_at", { ascending: false });
+
+  // Map database results to the Timeline props
+  const wodHistory = (checkins || []).map((checkin: any) => {
+    const wod = checkin.wods;
+    if (!wod) return null;
+    
+    // Convert to Date to format correctly
+    const wodDate = new Date(wod.date + "T00:00:00Z");
+    const formattedDate = !isNaN(wodDate.getTime()) 
+      ? wodDate.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" }).toUpperCase()
+      : "DATA";
+
+    return {
+      id: checkin.id,
+      date: formattedDate,
+      title: wod.title || "Treino do Dia",
+      description: wod.wod_content ? wod.wod_content.slice(0, 100) + (wod.wod_content.length > 100 ? "..." : "") : "Treino programado pelo coach.",
+      typeTag: wod.type_tag || "WOD",
+      coach: "Coliseu",
+      xp: 50, // XP base por check-in (sistema futuro)
+      result: "Realizado",
+      isExcellence: false,
+      metrics: [
+        { label: "TIME CAP", value: wod.time_cap ? String(wod.time_cap) : "--", unit: "min" },
+        { label: "XP", value: "50", unit: "pts" }
+      ],
+      achievements: []
+    };
+  }).filter(Boolean);
 
   return (
     <div
@@ -156,40 +138,70 @@ export default async function TreinosPage() {
           </p>
         </div>
 
-        <ActivityDashboard 
-          history={wodHistory.map(wod => ({
-            id: wod.id,
-            date: new Date(wod.date).toLocaleDateString("pt-BR", { day: '2-digit', month: 'short' }).toUpperCase(),
-            title: wod.title,
-            description: wod.description,
-            typeTag: wod.tag,
-            coach: wod.coach_name,
-            xp: wod.xp_earned,
-            result: wod.result,
-            isExcellence: wod.is_pr,
-            metrics: [
-              { label: "XP", value: wod.xp_earned, unit: "pts" },
-              { label: "SESSÃO", value: "60", unit: "min" }
-            ],
-            achievements: wod.is_pr ? [{ id: `pr-${wod.id}`, type: "pr", icon: "star", color: "red" }] : []
-          }))} 
-        />
+        {/* Dynamic Empty State & Sync Badge */}
+        {wodHistory.length === 0 ? (
+          <div style={{ textAlign: "center", padding: "60px 20px" }}>
+             <p style={{ fontSize: "14px", fontWeight: 800, color: "var(--text)", textTransform: "uppercase", letterSpacing: "0.1em" }}>
+               Nenhuma atividade registrada
+             </p>
+             <p style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "8px", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+               Seu histórico de treinos aparecerá aqui após o primeiro check-in.
+             </p>
+          </div>
+        ) : (
+          <ActivityDashboard history={wodHistory as any} />
+        )}
 
-        {/* Empty state hint */}
-        <p
-          style={{
-            textAlign: "center",
-            marginTop: "32px",
-            fontSize: "9px",
-            fontWeight: 700,
-            letterSpacing: "0.2em",
-            color: "var(--text-muted)",
-            opacity: 0.3,
-            textTransform: "uppercase",
+        {/* ── SYNC FOOTER ── */}
+        <div 
+          style={{ 
+            display: "flex", 
+            alignItems: "center", 
+            justifyContent: "center", 
+            gap: "10px", 
+            marginTop: "60px",
+            paddingBottom: "20px"
           }}
         >
-          ● Histórico Sincronizado via WOD Engine
-        </p>
+          {/* Pulsing Sync Indicator */}
+          <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div style={{ 
+              width: "6px", 
+              height: "6px", 
+              background: "#00FF41", 
+              borderRadius: "50%",
+              boxShadow: "0 0 10px rgba(0, 255, 65, 0.5)"
+            }} />
+            <div style={{ 
+              position: "absolute",
+              width: "12px", 
+              height: "12px", 
+              border: "1px solid #00FF41", 
+              borderRadius: "50%",
+              animation: "pulse-sync 2s infinite cubic-bezier(0.4, 0, 0.6, 1)"
+            }} />
+          </div>
+
+          <p
+            style={{
+              fontSize: "10px",
+              fontWeight: 800,
+              letterSpacing: "0.2em",
+              color: "var(--text-muted)",
+              textTransform: "uppercase",
+              opacity: 0.6
+            }}
+          >
+            Conexão Ativa • WOD Engine Sync
+          </p>
+
+          <style dangerouslySetInnerHTML={{ __html: `
+            @keyframes pulse-sync {
+              0% { transform: scale(0.8); opacity: 0.8; }
+              100% { transform: scale(2.5); opacity: 0; }
+            }
+          `}} />
+        </div>
       </main>
 
       <BottomNav />

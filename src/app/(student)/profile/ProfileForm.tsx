@@ -153,7 +153,7 @@ export default function ProfileForm({ user, profile }: { user: any, profile: any
             <input 
               type="text" 
               name="display_name" 
-              defaultValue={profile?.display_name || ""} 
+              defaultValue={profile?.display_name || profile?.full_name || ""} 
               placeholder="Ex: JOÃO SILVA" 
               style={{
                 width: "100%",
@@ -259,7 +259,7 @@ export default function ProfileForm({ user, profile }: { user: any, profile: any
               <input 
                 type="text" 
                 name="first_name" 
-                defaultValue={profile?.first_name || ""} 
+                defaultValue={profile?.first_name || (profile?.full_name ? profile.full_name.split(' ')[0] : "")} 
                 placeholder="Ex: JOÃO" 
                 style={{
                   width: "100%",
@@ -290,7 +290,7 @@ export default function ProfileForm({ user, profile }: { user: any, profile: any
               <input 
                 type="text" 
                 name="last_name" 
-                defaultValue={profile?.last_name || ""} 
+                defaultValue={profile?.last_name || (profile?.full_name ? profile.full_name.split(' ').slice(1).join(' ') : "")} 
                 placeholder="Ex: DA SILVA" 
                 style={{
                   width: "100%",

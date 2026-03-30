@@ -7,10 +7,19 @@ Bem-vindo à "Monolito de Ferro", a infraestrutura digital de elite do Coliseu. 
 ## 📚 ÍNDICE DE DOCUMENTAÇÃO E PLAYBOOKS
 
 A documentação segue o protocolo "Legacy Proof", garantindo manutenibilidade:
+
+### 🏛️ Módulo Admin
+- [PLAYBOOK: Admin Hub (Painel Geral)](docs/PLAYBOOKS/ADMIN_HUB.md) - KPIs, matrículas recentes e fluxo de acesso.
+- [PLAYBOOK: WOD Engine (Builder de Treinos)](docs/PLAYBOOKS/ADMIN_WOD_ENGINE.md) - Builder split-screen, Benchmark Library e sincronia com timeline do aluno.
+- [PLAYBOOK: Gestão de Alunos](docs/PLAYBOOKS/ADMIN_STUDENT_MANAGEMENT.md) - Matrícula, RLS Bypass, edição em Drawer e segurança de exclusão.
+
+### 🏃 Módulo Aluno
 - [PLAYBOOK: Dashboard do Aluno](docs/PLAYBOOKS/STUDENT_DASHBOARD.md) - Guia operacional do App do Aluno.
 - [PLAYBOOK: Autenticação & Login](docs/PLAYBOOKS/AUTH-LOGIN.md) - Fluxo de acesso e operacional do carrossel.
 - [PLAYBOOK: Estratégia de Ícones](docs/PLAYBOOKS/UI_ICON_STRATEGY.md) - Padrão de conformidade Lucide-React (Zero Font symbols).
 - [PLAYBOOK: Identidade do Atleta](docs/PLAYBOOKS/USER_IDENTITY_SYSTEM.md) - Lógica de Nomes e Dual Badge.
+
+### 📐 Arquitetura & Design
 - [GUIA: Iron Monolith Architecture](docs/PLAYBOOKS/IRON_MONOLITH_GUIDE.md) - Filosofia visual, tokens CSS e estética brutalista.
 - [ARCHITECTURE: Iron Engine](docs/ARCHITECTURE/ACTIVITY_ENGINE.md) - Engenharia de dados, gamificação (XP/PRs) e arquitetura Server/Client.
 
@@ -18,15 +27,19 @@ A documentação segue o protocolo "Legacy Proof", garantindo manutenibilidade:
 
 O projeto segue um padrão de engenharia focado em performance, isolamento de dados e interatividade em tempo real:
 
-`mermaid
+```mermaid
 graph TD
-    A[Next.js App Router] -->|Server Actions| B[Supabase Auth]
+    A[Next.js App Router] -->|Server Actions + Zod| B[Supabase Auth]
     A -->|Promise.all / Parallel Queries| C[Supabase Postgres]
     C -->|RLS Enforced| D[Profiles & PRs]
-    C -->|RLS Enforced| E[Physical Evaluations & Benchmarks]
+    C -->|RLS Enforced| E[WODs & Benchmarks]
     C -->|RLS Enforced| F[Check-ins & Goals]
     A -->|Bucket Storage| G[Athlete Photos]
-`
+    H[Coach: WOD Builder] -->|upsertWod Action| E
+    E -->|Inner Join + Revalidate| I[Aluno: Activity Timeline]
+    J[Admin: Criação de Aluno] -->|RLS Bypass: Service Role| B
+    J -->|RLS Bypass: Service Role| D
+```
 
 ### Princípios Inegociáveis (A Doutrina do Código):
 1. **Isolamento de Tenant (RLS):** Garantido por políticas granulares no banco de dados. Nunca cruzar dados sem bypass explícito (service_role).
@@ -44,5 +57,5 @@ graph TD
 - public/levels/: Ativos de marca oficiais para a subida de níveis Coliseu.
 
 ---
-**Versão do Sistema:** 2.1.0 (The Iron Monolith Unification)  
+**Versão do Sistema:** 2.2.0 (WOD Engine + Admin CRM Completo)  
 **Equipe:** Antigravity AI & Coliseu Engineering

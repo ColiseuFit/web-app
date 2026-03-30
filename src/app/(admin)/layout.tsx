@@ -1,27 +1,23 @@
-import { createClient } from "@/lib/supabase/server";
-import { redirect } from "next/navigation";
+import AdminStyles from "@/components/admin/AdminStyles";
+import type { Metadata } from "next";
 
-export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+/**
+ * Root Admin Layout: Provides the Clean Operational theme tokens to all admin routes.
+ */
+export const metadata: Metadata = {
+  title: {
+    template: "%s | Coliseu Admin",
+    default: "Gestão | Coliseu Admin",
+  },
+  description: "Painel de Gestão Operacional da Coliseu.",
+  robots: { index: false, follow: false },
+};
 
-  if (!user) {
-    redirect("/login");
-  }
-
-  const { data: roleData, error } = await supabase
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", user.id)
-    .single();
-
-  if (error) {
-    console.error("Erro ao buscar role:", error);
-  }
-
-  if (!roleData || (roleData.role !== "admin" && roleData.role !== "reception")) {
-    redirect("/dashboard");
-  }
-
-  return <>{children}</>;
+export default function RootAdminLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <>
+      <AdminStyles />
+      {children}
+    </>
+  );
 }

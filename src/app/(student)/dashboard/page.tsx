@@ -101,18 +101,18 @@ export default async function AppDashboard({ searchParams }: PageProps) {
 
   const displayName = profile?.display_name || profile?.full_name || "Atleta";
 
-  const getLevelInfo = (lvl: string) => {
-    const l = lvl?.toLowerCase() || "";
-    if (l.includes("preto") || l.includes("elite") || l.includes("casca"))
-      return { id: "L5", color: "#C5A059", label: "L5 - ELITE", textColor: "#000", icon: "/levels/icone-coliseu-levels-elite.svg", description: "O topo da pirâmide. Atletas de alto rendimento, força bruta e ginásticos inabaláveis." };
-    if (l.includes("vermelho") || l.includes("rx")) 
-      return { id: "L4", color: "var(--red)", label: "L4 - RX", textColor: "#FFF", icon: "/levels/icone-coliseu-levels-rx.svg", description: "O Padrão Ouro. Execução fiel de todos os WODs oficiais do Open/Games." };
-    if (l.includes("azul")) 
-      return { id: "L3", color: "var(--lvl-blue)", label: "L3 - INTERMEDIÁRIO", textColor: "#FFF", icon: "/levels/icone-coliseu-levels-intermediario.svg", description: "Transição para movimentos ininterruptos e domínio parcial de habilidades ginásticas." };
-    if (l.includes("verde")) 
-      return { id: "L2", color: "var(--lvl-green)", label: "L2 - SCALE", textColor: "#000", icon: "/levels/icone-coliseu-levels-scale.svg", description: "Capacidade de adaptar movimentos complexos e aumento da carga de trabalho." };
-    if (l.includes("branco")) 
-      return { id: "L1", color: "var(--lvl-white)", label: "L1 - INICIANTE", textColor: "#000", icon: "/levels/icone-coliseu-levels-iniciante.svg", description: "Domínio dos padrões básicos de movimento e construção de base aeróbica sólida." };
+    const getLevelInfo = (lvl: string) => {
+      const l = lvl?.toLowerCase() || "";
+      if (l.includes("elite") || l.includes("preto") || l.includes("casca"))
+        return { id: "L5", color: "#C5A059", label: "L5 - ELITE", textColor: "#000", icon: "/levels/icone-coliseu-levels-elite.svg", description: "O topo da pirâmide. Atletas de alto rendimento, força bruta e ginásticos inabaláveis." };
+      if (l.includes("rx") || l.includes("vermelho")) 
+        return { id: "L4", color: "var(--red)", label: "L4 - RX", textColor: "#FFF", icon: "/levels/icone-coliseu-levels-rx.svg", description: "O Padrão Ouro. Execução fiel de todos os WODs oficiais do Open/Games." };
+      if (l.includes("intermediario") || l.includes("azul")) 
+        return { id: "L3", color: "var(--lvl-blue)", label: "L3 - INTERMEDIÁRIO", textColor: "#FFF", icon: "/levels/icone-coliseu-levels-intermediario.svg", description: "Transição para movimentos ininterruptos e domínio parcial de habilidades ginásticas." };
+      if (l.includes("scale") || l.includes("verde")) 
+        return { id: "L2", color: "var(--lvl-green)", label: "L2 - SCALE", textColor: "#000", icon: "/levels/icone-coliseu-levels-scale.svg", description: "Capacidade de adaptar movimentos complexos e aumento da carga de trabalho." };
+      if (l.includes("iniciante") || l.includes("branco")) 
+        return { id: "L1", color: "var(--lvl-white)", label: "L1 - INICIANTE", textColor: "#000", icon: "/levels/icone-coliseu-levels-iniciante.svg", description: "Domínio dos padrões básicos de movimento e construção de base aeróbica sólida." };
     return { id: "L1", color: "var(--surface-highest)", label: "INICIANTE", textColor: "#FFF", icon: "/levels/icone-coliseu-levels-iniciante.svg", description: "O início da jornada no Coliseu." };
   };
   const level = getLevelInfo(profile?.level);

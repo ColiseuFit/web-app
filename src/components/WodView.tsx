@@ -12,6 +12,9 @@ interface Wod {
   technique?: string;
   wod_content: string;
   tags?: string[];
+  type_tag?: string | null;
+  time_cap?: number | null;
+  result_type?: string | null;
 }
 
 interface WodViewProps {
@@ -92,16 +95,26 @@ export default function WodView({ wod, selectedDate, alreadyChecked, studentLeve
               <span style={{ color: "var(--red)" }}>{wod.title.split(" ").slice(1).join(" ")}</span>
             </h2>
 
-            {/* WOD SPECS BAR */}
-            <div style={{ display: "flex", gap: "12px", marginBottom: "32px" }}>
-                <div style={{ background: "rgba(255,255,255,0.05)", padding: "6px 12px", border: "1px solid var(--border-glow)" }}>
-                    <span style={{ fontSize: "8px", fontWeight: 800, color: "var(--text-muted)", display: "block", marginBottom: "2px" }}>MODALIDADE</span>
-                    <span style={{ fontSize: "11px", fontWeight: 900, color: "var(--text)" }}>AMRAP</span>
-                </div>
-                <div style={{ background: "rgba(255,255,255,0.05)", padding: "6px 12px", border: "1px solid var(--border-glow)" }}>
-                    <span style={{ fontSize: "8px", fontWeight: 800, color: "var(--text-muted)", display: "block", marginBottom: "2px" }}>TIME CAP</span>
-                    <span style={{ fontSize: "11px", fontWeight: 900, color: "var(--red)" }}>15 MIN</span>
-                </div>
+            {/* WOD SPECS BAR — dados reais do banco (type_tag, time_cap, result_type) */}
+            <div style={{ display: "flex", gap: "12px", marginBottom: "32px", flexWrap: "wrap" }}>
+                {wod.type_tag && (
+                  <div style={{ background: "rgba(255,255,255,0.05)", padding: "6px 12px", border: "1px solid var(--border-glow)" }}>
+                      <span style={{ fontSize: "8px", fontWeight: 800, color: "var(--text-muted)", display: "block", marginBottom: "2px" }}>MODALIDADE</span>
+                      <span style={{ fontSize: "11px", fontWeight: 900, color: "var(--text)" }}>{wod.type_tag.toUpperCase()}</span>
+                  </div>
+                )}
+                {wod.time_cap && wod.time_cap > 0 && (
+                  <div style={{ background: "rgba(255,255,255,0.05)", padding: "6px 12px", border: "1px solid var(--border-glow)" }}>
+                      <span style={{ fontSize: "8px", fontWeight: 800, color: "var(--text-muted)", display: "block", marginBottom: "2px" }}>TIME CAP</span>
+                      <span style={{ fontSize: "11px", fontWeight: 900, color: "var(--red)" }}>{wod.time_cap} MIN</span>
+                  </div>
+                )}
+                {wod.result_type && (
+                  <div style={{ background: "rgba(255,255,255,0.05)", padding: "6px 12px", border: "1px solid var(--border-glow)" }}>
+                      <span style={{ fontSize: "8px", fontWeight: 800, color: "var(--text-muted)", display: "block", marginBottom: "2px" }}>RESULTADO</span>
+                      <span style={{ fontSize: "11px", fontWeight: 900, color: "var(--text)" }}>{wod.result_type.toUpperCase()}</span>
+                  </div>
+                )}
             </div>
 
             {/* SELETOR DE PERFORMANCE - REFINADO */}

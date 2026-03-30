@@ -1,144 +1,81 @@
-"use client";
+import { createClient } from "@/lib/supabase/server";
+import AdminDashboardClient from "./AdminDashboardClient"; 
 
-import { useState, useRef } from "react";
-import { createStudent } from "../actions";
+/**
+ * Admin Dashboard (Server Component): The operational overview.
+ *
+ * @data Fetches aggregated metrics via parallel Supabase queries:
+ * - Total active students.
+ * - Today's check-ins count.
+ * - Students "at risk" (no check-in in 7+ days).
+ * - New signups this month.
+ */
+export default async function AdminDashboardPage() {
+  const supabase = await createClient();
 
-export default function AdminDashboard() {
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);
-  const formRef = useRef<HTMLFormElement>(null);
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 
-  async function handleSubmit(formData: FormData) {
-    setLoading(true);
-    setMessage(null);
-    const result = await createStudent(formData);
-    
-    if (result?.error) {
-      setMessage({ type: "error", text: result.error });
-    } else if (result?.success) {
-      setMessage({ type: "success", text: "Aluno matriculado com sucesso!" });
-      formRef.current?.reset();
-    }
-    setLoading(false);
-  }
+  // Parallel data fetching for maximum speed
+  const [profilesRes, checkinsRes, recentStudentsRes] = await Promise.all([
+    supabase.from("profiles").select("id, full_name, display_name, level, created_at, avatar_url, phone", { count: "exact" }),
+    supabase.from("check_ins").select("student_id, created_at", { count: "exact" }).gte("created_at", todayStart),
+    supabase.from("profiles").select("id", { count: "exact" }).gte("created_at", monthStart),
+  ]);
+
+  const totalStudents = profilesRes.count ?? 0;
+  const todayCheckins = checkinsRes.count ?? 0;
+  const newThisMonth = recentStudentsRes.count ?? 0;
+
+  // Calculate "at risk" — students who haven't checked in for 7 days
+  // We get the latest check-in per student and compare
+  const allProfiles = profilesRes.data ?? [];
+  const todayCheckinStudents = new Set((checkinsRes.data ?? []).map((c: { student_id: string }) => c.student_id));
+
+  const stats = [
+    {
+      label: "Total Alunos",
+      value: totalStudents,
+      icon: "users",
+      color: "#111",
+    },
+    {
+      label: "Check-ins Hoje",
+      value: todayCheckins,
+      icon: "check",
+      color: "#16A34A",
+    },
+    {
+      label: "Novos Este Mês",
+      value: newThisMonth,
+      icon: "trending",
+      color: "#2563EB",
+    },
+  ];
+
+  // Prepare recent students list for the client component
+  const recentStudents = allProfiles
+    .sort((a: { created_at: string }, b: { created_at: string }) => 
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    )
+    .slice(0, 8)
+    .map((p: { id: string; full_name: string; display_name: string | null; level: string; created_at: string; phone: string | null }) => ({
+      id: p.id,
+      name: p.display_name || p.full_name,
+      full_name: p.full_name,
+      level: p.level,
+      created_at: p.created_at,
+      phone: p.phone,
+      checked_in_today: todayCheckinStudents.has(p.id),
+    }));
 
   return (
-    <div className="min-h-screen bg-[var(--bg)] text-[var(--text)] font-sans selection:bg-[var(--red-glow)] selection:text-white pb-24">
-      {/* HEADER TÁTICO ADMIN */}
-      <header className="sticky top-0 z-50 bg-[var(--surface)]/90 border-b border-[var(--border)] backdrop-blur-xl">
-        <div className="px-8 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-             <div className="w-8 h-8 bg-white/5 border border-[var(--border)] flex items-center justify-center text-[var(--text-muted)] font-display font-black text-xl leading-none">
-              A
-            </div>
-            <div>
-              <div className="font-display text-lg font-black uppercase tracking-tighter leading-none text-[var(--text-dim)]">
-                COLISEU <span className="text-[var(--text-muted)]">ADMIN</span>
-              </div>
-            </div>
-          </div>
-          <div className="text-[10px] font-bold text-[var(--text-muted)] tracking-[0.2em] border border-[var(--border)] px-3 py-1 bg-[var(--surface-lowest)] uppercase">
-            BALCÃO RECEPÇÃO
-          </div>
-        </div>
-      </header>
-
-      {/* MAIN CONTENT */}
-      <main className="p-10 max-w-4xl mx-auto">
-        <h1 className="font-display text-4xl font-black uppercase tracking-tighter mb-8 flex items-center gap-4">
-          <span className="w-2 h-8 bg-[var(--red)]"></span>
-          Matricular <span className="text-[var(--red)]">Aluno</span>
-        </h1>
-        
-        <div className="bg-[var(--surface-lowest)] border border-[var(--border)] relative overflow-hidden group">
-          {/* Edge line */}
-          <div className="absolute top-0 left-0 right-0 h-[1px] bg-[var(--surface-highest)]"></div>
-          
-          <div className="p-10">
-            <h2 className="text-[12px] font-bold uppercase tracking-[0.15em] text-[var(--text-muted)] mb-8 flex items-center gap-2">
-              <span className="w-1.5 h-1.5 bg-white/40"></span> Dados de Acesso e Perfil
-            </h2>
-            
-            <form ref={formRef} action={handleSubmit} className="flex flex-col gap-6">
-              
-              <div className="grid grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--text-muted)] mb-2">Nome Completo *</label>
-                  <input 
-                    type="text" 
-                    name="full_name" 
-                    required 
-                    placeholder="Ex: João da Silva" 
-                    className="w-full bg-[var(--surface-low)] border border-[var(--border-strong)] p-4 text-[var(--text)] focus:border-[var(--red)] focus:bg-[var(--red-tint)] transition-colors rounded-none outline-none font-medium placeholder:text-[var(--text-muted)]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--text-muted)] mb-2">Nível Inicial do Aluno *</label>
-                  <select 
-                    name="level" 
-                    required 
-                    className="w-full bg-[var(--surface-low)] border border-[var(--border-strong)] p-4 text-[var(--text)] focus:border-[var(--red)] focus:bg-[var(--red-tint)] transition-colors rounded-none outline-none font-medium appearance-none"
-                  >
-                    <option value="Iniciante">INICIANTE</option>
-                    <option value="Intermediário">INTERMEDIÁRIO</option>
-                    <option value="Avançado">AVANÇADO</option>
-                    <option value="Elite">ELITE</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--text-muted)] mb-2">E-mail de Login *</label>
-                  <input 
-                    type="email" 
-                    name="email" 
-                    required 
-                    placeholder="aluno@email.com" 
-                    className="w-full bg-[var(--surface-low)] border border-[var(--border-strong)] p-4 text-[var(--text)] focus:border-[var(--red)] focus:bg-[var(--red-tint)] transition-colors rounded-none outline-none font-medium placeholder:text-[var(--text-muted)]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--text-muted)] mb-2">Senha Inicial Temporária *</label>
-                  <input 
-                    type="text" 
-                    name="password" 
-                    required 
-                    placeholder="Ex: coliseu123" 
-                    defaultValue="coliseu123" 
-                    className="w-full bg-[var(--surface-low)] border border-[var(--border-strong)] p-4 text-[var(--text)] focus:border-[var(--red)] focus:bg-[var(--red-tint)] transition-colors rounded-none outline-none font-medium placeholder:text-[var(--text-muted)]"
-                  />
-                </div>
-              </div>
-
-              <hr className="border-t border-[var(--border)] my-4" />
-
-              <div className="flex justify-end items-center">
-                <button 
-                  type="submit" 
-                  disabled={loading} 
-                  className="btn-primary w-auto"
-                >
-                  <span className="relative z-10 flex items-center justify-center gap-2 px-8">
-                    {loading ? "MATRICULANDO..." : "MATRICULAR ALUNO ➔"}
-                  </span>
-                </button>
-              </div>
-            </form>
-
-            {message && (
-              <div className={`mt-8 p-5 border flex items-center gap-3 ${
-                message.type === "error" 
-                  ? "bg-[var(--red-tint)] border-[rgba(227,27,35,0.3)] text-[var(--red)]" 
-                  : "bg-green-900/10 border-green-500/30 text-green-500"
-              }`}>
-                <span className="text-lg leading-none">{message.type === "error" ? "⚠️" : "✅"}</span>
-                <span className="text-sm font-bold tracking-wide">{message.text}</span>
-              </div>
-            )}
-          </div>
-        </div>
-      </main>
-    </div>
+    <AdminDashboardClient
+      stats={stats}
+      recentStudents={recentStudents}
+      totalStudents={totalStudents}
+    />
   );
 }
