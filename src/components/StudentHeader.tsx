@@ -21,13 +21,13 @@ export default function StudentHeader() {
     }}>
       <div style={{ maxWidth: "480px", margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <Link href="/dashboard" style={{ textDecoration: "none", display: "flex", alignItems: "center" }}>
-          <Image 
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img 
             src="/logo-coliseu-white.svg" 
             alt="Coliseu" 
             width={120}
             height={18}
-            unoptimized
-            priority
+            loading="eager"
           />
         </Link>
         
