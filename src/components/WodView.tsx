@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { CheckCircle, CalendarDays, Edit3, Dumbbell } from "lucide-react";
 import CheckInButton from "./CheckInButton";
 
 interface Wod {
@@ -8,6 +9,7 @@ interface Wod {
   title: string;
   description: string;
   warm_up: string;
+  technique?: string;
   wod_content: string;
   tags?: string[];
 }
@@ -164,8 +166,20 @@ export default function WodView({ wod, selectedDate, alreadyChecked, studentLeve
                     <h3 style={{ fontSize: "9px", fontWeight: 700, letterSpacing: "0.3em", color: "var(--text-dim)", textTransform: "uppercase" }}>AQUECIMENTO</h3>
                     <div style={{ flex: 1, height: "1px", background: "linear-gradient(90deg, var(--border-glow), transparent)" }} />
                 </div>
-                <p style={{ fontSize: "14px", color: "var(--text-dim)", lineHeight: 1.6, paddingLeft: "4px" }}>
+                <p style={{ fontSize: "14px", color: "var(--text-dim)", lineHeight: 1.6, paddingLeft: "4px", whiteSpace: "pre-line" }}>
                     {wod.warm_up}
+                </p>
+              </div>
+            )}
+
+            {wod.technique && (
+              <div style={{ opacity: 0.9 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "12px" }}>
+                    <h3 style={{ fontSize: "9px", fontWeight: 700, letterSpacing: "0.3em", color: "var(--lvl-blue)", textTransform: "uppercase" }}>TÉCNICA / SKILL</h3>
+                    <div style={{ flex: 1, height: "1px", background: "linear-gradient(90deg, var(--lvl-blue), transparent)", opacity: 0.3 }} />
+                </div>
+                <p style={{ fontSize: "15px", fontWeight: 600, color: "var(--text)", lineHeight: 1.5, paddingLeft: "4px", whiteSpace: "pre-line" }}>
+                    {wod.technique}
                 </p>
               </div>
             )}
@@ -173,7 +187,7 @@ export default function WodView({ wod, selectedDate, alreadyChecked, studentLeve
             <div style={{ background: "rgba(227,27,35,0.02)", padding: "20px", border: "1px solid rgba(227,27,35,0.1)", position: "relative" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px" }}>
                   <h3 style={{ fontSize: "9px", fontWeight: 800, letterSpacing: "0.2em", color: activeLevelInfo?.color || "var(--red)", textTransform: "uppercase" }}>
-                    DETALHES DA LOUSA
+                    DETALHES DO WOD
                   </h3>
                   <div style={{ flex: 1, height: "1px", background: `linear-gradient(90deg, ${activeLevelInfo?.color || "var(--red)"}, transparent)`, opacity: 0.3 }} />
               </div>
@@ -185,29 +199,11 @@ export default function WodView({ wod, selectedDate, alreadyChecked, studentLeve
 
           {/* UNIFIED STATUS & ACTION BAR */}
           <div style={{ borderTop: "1px solid var(--border-glow)", background: "var(--surface-lowest)" }}>
-            {alreadyChecked ? (
-               <div style={{ display: "flex", flexDirection: "column" }}>
-                    <div style={{ padding: "16px 24px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--border-glow)" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                            <span className="material-symbols-outlined" style={{ color: "var(--lvl-green)", fontSize: "18px" }}>check_circle</span>
-                            <span style={{ fontSize: "10px", fontWeight: 800, color: "var(--lvl-green)", letterSpacing: "0.1em" }}>PRESENÇA CONFIRMADA</span>
-                        </div>
-                        <button style={{ background: "transparent", border: "none", color: "var(--text-muted)", fontSize: "9px", fontWeight: 700, textTransform: "uppercase", cursor: "pointer", textDecoration: "underline" }}>
-                            CANCELAR
-                        </button>
-                    </div>
-                    <button style={{ width: "100%", padding: "20px", background: "var(--surface)", color: "var(--text)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", gap: "10px", cursor: "pointer", transition: "all 0.2s" }}>
-                        <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>edit_calendar</span>
-                        <span style={{ fontSize: "11px", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.1em" }}>Alterar Horário de Treino</span>
-                    </button>
-               </div>
-            ) : (
-                <CheckInButton 
-                    wodId={wod.id} 
-                    date={selectedDate}
-                    alreadyChecked={alreadyChecked} 
-                />
-            )}
+            <CheckInButton 
+                wodId={wod.id} 
+                date={selectedDate}
+                alreadyChecked={alreadyChecked} 
+            />
           </div>
         </div>
       ) : (

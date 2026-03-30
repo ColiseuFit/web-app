@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { ProgressGauge } from "./ProgressGauge";
 import { PRMatrix } from "./PRMatrix";
 import { GoalsSection } from "./GoalsSection";
@@ -52,16 +53,19 @@ interface ProgressDashboardClientProps {
 export default function ProgressDashboardClient({
   initialPrs,
   initialGoals,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   studentName,
   targetFrequency,
   currentCheckIns,
   studentLevel
 }: ProgressDashboardClientProps) {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [prs, setPrs] = useState<PR[]>(initialPrs);
   const [goals, setGoals] = useState<Goal[]>(initialGoals);
   const [target, setTarget] = useState(targetFrequency);
   const [showPRModal, setShowPRModal] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const router = useRouter();
 
   // Handlers
   const handleUpdateTarget = async (newTarget: number) => {
@@ -119,10 +123,11 @@ export default function ProgressDashboardClient({
       {showPRModal && (
         <PRRegistrationModal 
           onClose={() => setShowPRModal(false)}
-          initialLevel={studentLevel as any}
+          initialLevel={studentLevel as "L1" | "L2" | "L3" | "L4" | "L5" | undefined}
           onSuccess={() => {
             setShowPRModal(false);
-            window.location.reload(); 
+            // Revalida os dados do servidor sem reload destrutivo
+            router.refresh();
           }}
         />
       )}
@@ -192,7 +197,7 @@ export default function ProgressDashboardClient({
       <section style={{ margin: "0 20px 24px", background: "var(--surface-lowest)", border: "1px solid var(--border-glow)", position: "relative", overflow: "hidden", borderRadius: "4px" }}>
         
         <div style={{ padding: "14px 20px", borderBottom: "1px solid var(--border-glow)", display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(255,255,255,0.02)" }}>
-          <span style={{ fontSize: "9px", fontWeight: 700, letterSpacing: "0.3em", color: "var(--text-muted)", textTransform: "uppercase" }}>ARSENAL DE MOVIMENTOS (PRS)</span>
+          <span style={{ fontSize: "9px", fontWeight: 700, letterSpacing: "0.3em", color: "var(--text-muted)", textTransform: "uppercase" }}>BIBLIOTECA DE MOVIMENTOS (PRS)</span>
         </div>
 
         <PRMatrix 

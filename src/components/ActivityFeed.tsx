@@ -43,7 +43,7 @@ const MOCK_EVENTS: FeedEvent[] = [
     id: "4",
     type: "level",
     user: "ANA COSTA",
-    content: "Subiu para a patente VERMELHO (RX)!",
+    content: "Subiu para o nível técnico VERMELHO (RX)!",
     time: "HÁ 5 HORAS",
     icon: "🎖️",
   },
@@ -53,7 +53,7 @@ export default function ActivityFeed() {
   return (
     <div style={{ marginTop: "40px", marginBottom: "120px" }}>
       <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "20px" }}>
-        <h2 className="font-display" style={{ fontSize: "16px", letterSpacing: "0.1em", textTransform: "uppercase" }}>RADAR DA ARENA</h2>
+        <h2 className="font-display" style={{ fontSize: "16px", letterSpacing: "0.1em", textTransform: "uppercase" }}>FEED DO COLISEU</h2>
         <div style={{ flex: 1, height: "1px", background: "linear-gradient(90deg, var(--red), transparent)" }} />
       </div>
 

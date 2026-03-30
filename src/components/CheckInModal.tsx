@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { X } from "lucide-react";
 import { performCheckIn } from "@/app/(student)/actions";
 import { hapticSelect, hapticConfirm } from "@/lib/haptic";
 import XpToast from "./XpToast";
@@ -20,7 +21,6 @@ interface CheckInModalProps {
 export default function CheckInModal({ wodId, date, onClose, onSuccess }: CheckInModalProps) {
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [showXpToast, setShowXpToast] = useState(false);
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
@@ -65,12 +65,12 @@ export default function CheckInModal({ wodId, date, onClose, onSuccess }: CheckI
     if (!selectedSlot) return;
     setLoading(true);
 
-    const result = await performCheckIn(wodId);
+    const result = await performCheckIn(wodId, selectedSlot);
     setLoading(false);
 
     if (result.success) {
-      hapticConfirm(); // Vibração de confirmação de sucesso
-      setShowXpToast(true);
+      hapticConfirm(); // Vibração de confirmação de sinalização
+      onSuccess();
     } else {
       alert(result.error);
     }
@@ -78,17 +78,6 @@ export default function CheckInModal({ wodId, date, onClose, onSuccess }: CheckI
 
   return (
     <>
-      {/* XP Toast flutuante pós-confirmação */}
-      {showXpToast && (
-        <XpToast
-          xp={100}
-          onComplete={() => {
-            setShowXpToast(false);
-            onSuccess();
-          }}
-        />
-      )}
-
       <div style={{
         position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
         backgroundColor: "rgba(0,0,0,0.85)", zIndex: 2000,
@@ -123,13 +112,13 @@ export default function CheckInModal({ wodId, date, onClose, onSuccess }: CheckI
                 display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer"
               }}
             >
-              <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>close</span>
+              <X size={18} />
             </button>
 
             <p style={{ fontSize: "8px", fontWeight: 800, color: "var(--red)", letterSpacing: "0.2em", textTransform: "uppercase", marginBottom: "6px" }}>
-              RESERVAR VAGA
+              SINALIZAR CHECK-IN
             </p>
-            <h2 className="font-display" style={{ fontSize: "22px", lineHeight: 1, letterSpacing: "-0.02em" }}>ESCOLHA SEU HORÁRIO</h2>
+            <h2 className="font-display" style={{ fontSize: "22px", lineHeight: 1, letterSpacing: "-0.02em" }}>TREINO DE HOJE</h2>
             <p style={{ 
               fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", 
               marginTop: "8px", textTransform: "capitalize", letterSpacing: "0.02em"

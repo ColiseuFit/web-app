@@ -7,13 +7,14 @@ import { ActivityFeedCard } from "@/components/activity/ActivityFeedCard";
  * Componente AnimatedNumber
  * Realiza uma interpolação suave (tween) de um valor numérico de 0 até o alvo.
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function AnimatedNumber({ value, duration = 1000, className = "" }: { value: number | string, duration?: number, className?: string }) {
     const [displayValue, setDisplayValue] = useState(0);
     const targetValue = typeof value === "string" ? parseFloat(value.replace(/[^0-9.]/g, "")) : value;
     const isString = typeof value === "string";
 
     useEffect(() => {
-        let start = 0;
+        const start = 0;
         const end = targetValue;
         if (start === end) {
             setDisplayValue(end);
@@ -47,19 +48,34 @@ function AnimatedNumber({ value, duration = 1000, className = "" }: { value: num
 /**
  * ActivityDashboard (V1.2 - Iron Monolith)
  */
-export default function ActivityDashboard({ history = [] }: { history?: any[] }) {
+interface ActivityItem {
+  id: string;
+  date: string;
+  title: string;
+  description: string;
+  hashtags?: string[];
+  typeTag?: string;
+  coach?: string;
+  xp?: number;
+  result?: string;
+  metrics: { label: string; value: string | number; unit?: string }[];
+  achievements?: { id: string; type: "seal" | "pr"; icon: string; color: string }[];
+  isExcellence?: boolean;
+}
+
+export default function ActivityDashboard({ history = [] }: { history?: ActivityItem[] }) {
   const [activePeriod, setActivePeriod] = useState("Mês");
   const [isBroken, setIsBroken] = useState(false);
   const activePeriodLow = activePeriod.toLowerCase();
 
   // MOCK de atividades para preencher o dash se o histórico estiver vazio
-  const mockActivities: any[] = [
+  const mockActivities: ActivityItem[] = [
     {
       id: "act-1",
       date: "HOJE, 26 MAR",
       title: "WOD: FRANTIC THURSDAY",
       description: "Intervalado de alta intensidade com foco em Double Unders e Box Jumps. Sensação térmica de 40 graus na caixa. Mantive o RX.",
-      hashtags: ["ColiseuClube", "NuncaPareDeLutar", "DoubleUnder"],
+      hashtags: ["ColiseuClube", "EvoluaSuaPerformance", "DoubleUnder"],
       typeTag: "AMRAP",
       coach: "Tito",
       xp: 450,
@@ -187,7 +203,7 @@ export default function ActivityDashboard({ history = [] }: { history?: any[] })
         })}
       </div>
 
-      {/* ── MATRIZ DE BATALHA ── */}
+      {/* ── MAPA DE CONSISTÊNCIA ── */}
       <div style={{ marginBottom: "24px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
             <span style={{ fontSize: "10px", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase" }}>Frequência ({activePeriod})</span>
@@ -230,9 +246,9 @@ export default function ActivityDashboard({ history = [] }: { history?: any[] })
         </div>
       </div>
 
-      {/* ── ARSENAL DE GUERRA ── */}
+      {/* ── BIBLIOTECA DE MOVIMENTOS ── */}
       <div style={{ marginBottom: "40px" }}>
-        <div style={{ fontSize: "10px", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", marginBottom: "12px" }}>Arsenal de Guerra</div>
+        <div style={{ fontSize: "10px", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", marginBottom: "12px" }}>Biblioteca de Movimentos</div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "8px" }}>
           {[
             { name: "Burpees", v: activePeriodLow === "semana" ? 120 : 480, icon: "🔥" },

@@ -8,6 +8,7 @@ interface ProgressGaugeProps {
   label: string;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export const ProgressGauge: React.FC<ProgressGaugeProps> = ({ current, target, label }) => {
   const radius = 75;
   const strokeWidth = 10;

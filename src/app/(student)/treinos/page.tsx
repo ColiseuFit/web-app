@@ -1,8 +1,13 @@
+import { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import StudentHeader from "@/components/StudentHeader";
 import BottomNav from "@/components/BottomNav";
 import ActivityDashboard from "./ActivityDashboard";
+
+export const metadata: Metadata = {
+  title: "Minhas Atividades",
+};
 
 /**
  * Página de Atividade (Timeline) do Aluno.
@@ -95,13 +100,6 @@ export default async function TreinosPage() {
       xp_earned: 30,
     },
   ];
-
-  const tagColors: Record<string, string> = {
-    "AMRAP": "var(--red)",
-    "For Time": "var(--text-muted)",
-    "EMOM": "rgba(255,200,0,0.7)",
-    "Hero WOD": "var(--red)",
-  };
 
   return (
     <div

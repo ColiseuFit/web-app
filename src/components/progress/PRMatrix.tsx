@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { Inbox } from "lucide-react";
 
 interface PRData {
   id: string;
@@ -134,7 +135,9 @@ export const PRMatrix: React.FC<PRMatrixProps> = ({ prs, onUpsert }) => {
           })
         ) : (
           <div style={{ gridColumn: "span 2", padding: "64px 0", textAlign: "center", border: "1px dashed var(--border-glow)", opacity: 0.3 }}>
-            <p className="material-symbols-outlined" style={{ fontSize: "28px", color: "var(--text-muted)", marginBottom: "16px" }}>inventory_2</p>
+            <div style={{ display: "flex", justifyContent: "center", marginBottom: "16px" }}>
+              <Inbox size={28} color="var(--text-muted)" />
+            </div>
             <p style={{ fontSize: "9px", color: "var(--text-muted)", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.4em" }}>SEM REGISTROS</p>
           </div>
         )}

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { X } from "lucide-react";
 import { hapticSelect } from "@/lib/haptic";
 import Link from "next/link";
 
@@ -14,10 +15,11 @@ interface LevelBadgeProps {
   };
   description: string;
   size?: number;
+  avatarUrl?: string | null;
 }
 
 /**
- * Componente de Identidade de Nível (Patente) do Aluno.
+ * Componente de Identidade de Nível do Aluno.
  * Exibe o selo de autoridade do atleta com micro-animações e interatividade.
  * 
  * @param level Objeto contendo as propriedades visuais do nível (cor, label, ícone).
@@ -29,7 +31,7 @@ interface LevelBadgeProps {
  * - Modal adaptativo (Glassmorphism) com desfoque de fundo profundo.
  * - Integração com haptic engine para feedback tátil em dispositivos móveis.
  */
-export default function LevelBadge({ level, description, size = 64 }: LevelBadgeProps) {
+export default function LevelBadge({ level, description, size = 64, avatarUrl }: LevelBadgeProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   const handleOpen = () => {
@@ -47,7 +49,7 @@ export default function LevelBadge({ level, description, size = 64 }: LevelBadge
     <>
       <div 
         onClick={handleOpen}
-        className={`level-icon-wrapper ${isElite ? "level-icon-contour-gold" : "level-icon-contour-glow"}`} 
+        className={`level-icon-wrapper ${avatarUrl ? "" : (isElite ? "level-icon-contour-gold" : "level-icon-contour-glow")}`} 
         style={{ 
           width: `${size}px`, 
           height: `${size}px`,
@@ -55,21 +57,60 @@ export default function LevelBadge({ level, description, size = 64 }: LevelBadge
           transition: "transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
           display: "flex",
           alignItems: "center",
-          justifyContent: "center"
+          justifyContent: "center",
+          position: "relative"
         }}
         onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.08) rotate(3deg)")}
         onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1) rotate(0deg)")}
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img 
-          src={level.icon} 
-          alt="Level Icon" 
-          style={{ 
-            width: "100%", height: "100%", objectFit: "contain",
-            filter: (level.color === "var(--lvl-white)" || level.color === "#ffffff" || level.color === "var(--lvl-green)") ? "invert(1)" : "none",
-            animation: "levelIconEntrance 1s cubic-bezier(0.16, 1, 0.3, 1) forwards"
-          }} 
-        />
+        {avatarUrl ? (
+          <div style={{ width: "100%", height: "100%", position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            {/* MOLDURA ORIGINAL DO NÍVEL (BASE) */}
+            <img 
+              src={level.icon} 
+              alt="" 
+              style={{ 
+                width: "100%", height: "100%", objectFit: "contain",
+                filter: "brightness(0.8)" // Deixa a moldura levemente mais escura para destacar a foto
+              }} 
+            />
+            
+            {/* FOTO DO ATLETA (OVERLAY MASCARADO) */}
+            <div style={{ 
+              position: "absolute",
+              width: "88%", // Reduzido para expor a borda do ícone base
+              height: "88%",
+              WebkitMaskImage: `url(${level.icon})`,
+              maskImage: `url(${level.icon})`,
+              WebkitMaskSize: "contain",
+              maskSize: "contain",
+              WebkitMaskPosition: "center",
+              maskPosition: "center",
+              WebkitMaskRepeat: "no-repeat",
+              maskRepeat: "no-repeat",
+              overflow: "hidden",
+              zIndex: 2
+            }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img 
+                src={avatarUrl} 
+                alt="Avatar" 
+                style={{ width: "100%", height: "100%", objectFit: "cover" }} 
+              />
+            </div>
+          </div>
+        ) : (
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img 
+            src={level.icon} 
+            alt="Level Icon" 
+            style={{ 
+              width: "100%", height: "100%", objectFit: "contain",
+              filter: (level.color === "var(--lvl-white)" || level.color === "#ffffff" || level.color === "var(--lvl-green)") ? "invert(1)" : "none",
+              animation: "levelIconEntrance 1s cubic-bezier(0.16, 1, 0.3, 1) forwards"
+            }} 
+          />
+        )}
       </div>
 
       {isOpen && (
@@ -109,7 +150,7 @@ export default function LevelBadge({ level, description, size = 64 }: LevelBadge
               onMouseOver={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.1)")}
               onMouseOut={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.03)")}
             >
-              <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>close</span>
+              <X size={18} />
             </button>
 
             {/* LARGE ICON */}
@@ -127,7 +168,7 @@ export default function LevelBadge({ level, description, size = 64 }: LevelBadge
 
             <div style={{ marginBottom: "24px" }}>
               <p style={{ fontSize: "9px", fontWeight: 800, color: level.color, letterSpacing: "0.25em", textTransform: "uppercase", marginBottom: "8px" }}>
-                  IDENTIDADE OPERACIONAL
+                  IDENTIDADE TÉCNICA
               </p>
               <h2 className="font-display" style={{ fontSize: "32px", lineHeight: 1, letterSpacing: "-0.01em" }}>{level.label}</h2>
             </div>

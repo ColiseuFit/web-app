@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Zap } from "lucide-react";
 
 interface XpToastProps {
   xp: number;
@@ -8,9 +9,19 @@ interface XpToastProps {
 }
 
 /**
- * Animação brutalista de ganho de XP.
- * Exibida logo após a confirmação de check-in.
- * Desaparece automaticamente em 2.5s.
+ * Toast de Recompensa de XP (Gamificação Ativa).
+ * Exibido como feedback imediato após sinalização de check-in bem-sucedida.
+ * 
+ * @param {number} xp - Quantidade de XP concedida para exibição proeminente.
+ * @param {() => void} onComplete - Callback opcional disparado após a conclusão da animação.
+ * 
+ * @animation
+ * - Entrada: Fade-in com escala (scale) e translação vertical (translateY) suavizada.
+ * - Ciclo de Vida: Exibição estática por 2.5s seguida de destruição do componente (unmount).
+ * 
+ * @technical
+ * - Posicionamento fixo de alta prioridade (Z-index 5000) para garantir visibilidade sobre modais.
+ * - Utiliza Lucide-React `Zap` para paridade visual com o sistema de níveis.
  */
 export default function XpToast({ xp, onComplete }: XpToastProps) {
   const [visible, setVisible] = useState(true);
@@ -55,9 +66,9 @@ export default function XpToast({ xp, onComplete }: XpToastProps) {
             +{xp} XP
           </div>
         </div>
-        <span className="material-symbols-outlined" style={{ fontSize: "32px", color: "var(--red)" }}>
-          bolt
-        </span>
+        <div style={{ color: "var(--red)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <Zap size={32} fill="var(--red)" />
+        </div>
       </div>
 
       <style jsx global>{`

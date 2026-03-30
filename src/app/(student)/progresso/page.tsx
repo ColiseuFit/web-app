@@ -1,9 +1,15 @@
+import { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import StudentHeader from "@/components/StudentHeader";
 import BottomNav from "@/components/BottomNav";
 import DashboardStyles from "@/components/DashboardStyles";
 import ProgressDashboardClient from "@/components/progress/ProgressDashboardClient";
+import RecentPRs from "@/components/progress/RecentPRs";
+
+export const metadata: Metadata = {
+  title: "Meu Progresso",
+};
 
 /**
  * Página de Progresso e Metas
@@ -79,6 +85,9 @@ export default async function ProgressPage() {
             MONITOR DE EVOLUÇÃO TÉCNICA
           </p>
         </section>
+
+        {/* ── RECORDES RECENTES (DESTAQUE) ── */}
+        <RecentPRs prs={(prs?.slice(0, 4) || []) as any[]} hideViewAll={true} />
 
         {/* SEÇÃO PRINCIPAL INTERATIVA (CLIENT WRAPPER) */}
         <ProgressDashboardClient 

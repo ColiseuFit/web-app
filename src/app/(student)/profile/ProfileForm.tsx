@@ -243,36 +243,70 @@ export default function ProfileForm({ user, profile }: { user: any, profile: any
             <h3 style={{ fontSize: "11px", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.1em", color: "#FFF" }}>DADOS PESSOAIS</h3>
           </div>
 
-          <div style={{ position: "relative" }}>
-            <label style={{ 
-              display: "block", 
-              fontSize: "9px", 
-              fontWeight: 700, 
-              textTransform: "uppercase", 
-              color: "rgba(255,255,255,0.25)", 
-              marginBottom: "10px", 
-              letterSpacing: "0.2em" 
-            }}>
-              Nome Completo
-            </label>
-            <input 
-              type="text" 
-              name="full_name" 
-              defaultValue={profile?.full_name || ""} 
-              placeholder="Ex: JOÃO DA SILVA OLIVEIRA" 
-              style={{
-                width: "100%",
-                background: "#050505",
-                border: "1px solid rgba(255,255,255,0.08)",
-                padding: "14px 16px",
-                color: "#FFFFFF",
-                fontSize: "14px",
-                fontFamily: "'Inter', sans-serif",
-                outline: "none",
-                borderRadius: 0,
-              }}
-            />
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+            <div style={{ position: "relative" }}>
+              <label style={{ 
+                display: "block", 
+                fontSize: "9px", 
+                fontWeight: 700, 
+                textTransform: "uppercase", 
+                color: "rgba(255,255,255,0.25)", 
+                marginBottom: "10px", 
+                letterSpacing: "0.2em" 
+              }}>
+                Primeiro Nome
+              </label>
+              <input 
+                type="text" 
+                name="first_name" 
+                defaultValue={profile?.first_name || ""} 
+                placeholder="Ex: JOÃO" 
+                style={{
+                  width: "100%",
+                  background: "#050505",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  padding: "14px 16px",
+                  color: "#FFFFFF",
+                  fontSize: "14px",
+                  fontFamily: "'Inter', sans-serif",
+                  outline: "none",
+                  borderRadius: 0,
+                }}
+              />
+            </div>
+
+            <div style={{ position: "relative" }}>
+              <label style={{ 
+                display: "block", 
+                fontSize: "9px", 
+                fontWeight: 700, 
+                textTransform: "uppercase", 
+                color: "rgba(255,255,255,0.25)", 
+                marginBottom: "10px", 
+                letterSpacing: "0.2em" 
+              }}>
+                Sobrenome
+              </label>
+              <input 
+                type="text" 
+                name="last_name" 
+                defaultValue={profile?.last_name || ""} 
+                placeholder="Ex: DA SILVA" 
+                style={{
+                  width: "100%",
+                  background: "#050505",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  padding: "14px 16px",
+                  color: "#FFFFFF",
+                  fontSize: "14px",
+                  fontFamily: "'Inter', sans-serif",
+                  outline: "none",
+                  borderRadius: 0,
+                }}
+              />
+            </div>
           </div>
+
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
             <div style={{ position: "relative" }}>

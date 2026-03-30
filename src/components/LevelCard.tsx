@@ -1,6 +1,8 @@
 "use client";
 
 import React from "react";
+import { Award } from "lucide-react";
+import LevelBadge from "./LevelBadge";
 
 interface LevelInfo {
   color: string;
@@ -11,8 +13,6 @@ interface LevelInfo {
   description?: string;
   id?: string;
 }
-
-import LevelBadge from "./LevelBadge";
 
 interface AthleteStats {
   xp_actual: number;
@@ -25,22 +25,25 @@ interface LevelCardProps {
   stats: AthleteStats;
   xpProgress: number;
   xpRemaining: number;
+  avatarUrl?: string;
 }
 
 /**
- * Card de Progressão de Nível (Profile Hero).
- * Componente central da aba Atleta, exibindo o status atual e progresso de XP.
+ * Card de Nível do Atleta (Brutalista / Iron Monolith).
+ * Componente central de gamificação que exibe o progresso de XP e o nível técnico.
  * 
- * @param level Objeto de configuração do nível (cor, ícone, prefixo).
- * @param stats Dados reais de progresso (XP, Treinos).
- * @param xpProgress Porcentagem de preenchimento da barra de progresso.
- * @param xpRemaining Valor absoluto necessário para o próximo nível.
+ * @param {number} currentXp - XP total acumulado pelo atleta.
+ * @param {number} nextLevelXp - XP necessário para atingir o próximo nível.
+ * @param {string} level - Identificador do nível (ex: L1, L2, RX).
+ * @param {string} category - Nome da categoria (ex: INICIANTE, SCALE, RX).
+ * @param {string} avatarUrl - URL da imagem de perfil do atleta para o Dual Badge.
  * 
- * @technical
- * - Utiliza Framer Motion ou transições CSS para animação da barra de XP.
- * - Integra o LevelBadge para manter a consistência do modal interativo.
+ * @design
+ * - Dual Badge: Implementa o padrão visual onde o ícone de nível e o avatar do atleta
+ *   são exibidos lado a lado em um layout de alta densidade visual.
+ * - Barra de Progresso: Representação linear do avanço radial entre níveis.
  */
-export default function LevelCard({ level, stats, xpProgress, xpRemaining }: LevelCardProps) {
+export default function LevelCard({ level, stats, xpProgress, xpRemaining, avatarUrl }: LevelCardProps) {
   return (
     <div style={{ 
       background: (level.color === "var(--lvl-black)" || level.color === "#C5A059") ? "var(--bg)" : level.color, 
@@ -53,27 +56,37 @@ export default function LevelCard({ level, stats, xpProgress, xpRemaining }: Lev
       transition: "all 0.5s cubic-bezier(0.16, 1, 0.3, 1)"
     }}>
       {/* Background Icon Watermark */}
-      <span className="material-symbols-outlined" style={{ 
+      <div style={{ 
         position: "absolute", 
         right: "-20px", 
         bottom: "-20px", 
-        fontSize: "140px", 
         color: level.textColor,
-        opacity: (level.color === "var(--lvl-black)" || level.color === "#C5A059") ? 0.05 : 0.15 
+        opacity: (level.color === "var(--lvl-black)" || level.color === "#C5A059") ? 0.05 : 0.15,
+        transform: "rotate(-15deg)"
       }}>
-        military_tech
-      </span>
+        <Award size={140} />
+      </div>
 
       <div style={{ position: "relative", zIndex: 1 }}>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: "24px" }}>
-          <LevelBadge 
-            level={level} 
-            description={level.description || ""} 
-            size={100} 
-          />
+          
+          {/* DUO DE BADGES (ATHLETIC IDENTITY) */}
+          <div style={{ display: "flex", gap: "12px", marginBottom: "16px" }}>
+            <LevelBadge 
+              level={level} 
+              description={level.description || ""} 
+              size={100} 
+            />
+            <LevelBadge 
+              level={level} 
+              description={level.description || ""} 
+              size={100}
+              avatarUrl={avatarUrl}
+            />
+          </div>
           
           <span style={{ fontSize: "10px", fontWeight: 800, color: level.textColor, letterSpacing: "0.2em", textTransform: "uppercase", opacity: 0.8 }}>
-            PATENTE ATUAL
+            NÍVEL ATUAL
           </span>
           
           <div style={{ fontFamily: "var(--font-display)", fontSize: "28px", fontWeight: 900, color: level.textColor, lineHeight: 1, marginTop: "6px", textAlign: "center" }}>

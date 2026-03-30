@@ -1,5 +1,6 @@
 "use client";
 
+import { Home, History, TrendingUp, Users, User } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -13,31 +14,31 @@ export default function BottomNav() {
   const navItems = [
     {
       href: "/dashboard",
-      icon: "home",
+      icon: Home,
       label: "INÍCIO",
       active: pathname === "/dashboard",
     },
     {
       href: "/treinos",
-      icon: "history", 
+      icon: History, 
       label: "ATIVIDADE",
       active: pathname.includes("/treinos"),
     },
     {
       href: "/progresso",
-      icon: "trending_up",
+      icon: TrendingUp,
       label: "PROGRESSO",
       active: pathname.includes("/progresso"),
     },
     {
       href: "/clube",
-      icon: "groups", // or emoji_events / leaderboard
+      icon: Users,
       label: "CLUBE",
       active: pathname.includes("/clube"),
     },
     {
       href: "/profile",
-      icon: "person",
+      icon: User,
       label: "ATLETA",
       active: pathname.includes("/profile"),
     },
@@ -66,6 +67,7 @@ export default function BottomNav() {
       >
         {navItems.map((item) => {
           const isActive = item.active;
+          const Icon = item.icon;
           
           return (
             <Link key={item.href} href={item.href} style={{ textDecoration: "none", flex: 1 }}>
@@ -73,8 +75,8 @@ export default function BottomNav() {
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
-                gap: "4px",
-                padding: "14px 0",
+                gap: "6px",
+                padding: "12px 0",
                 color: isActive ? "var(--red)" : "var(--text-muted)",
                 position: "relative",
                 transition: "var(--transition)",
@@ -92,16 +94,15 @@ export default function BottomNav() {
                   }} />
                 )}
                 
-                <span className="material-symbols-outlined" style={{ 
-                  fontSize: "24px",
-                  fontVariationSettings: isActive ? "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24" : "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24"
-                }}>
-                  {item.icon}
-                </span>
+                <Icon 
+                  size={20} 
+                  strokeWidth={isActive ? 2.5 : 2}
+                  style={{ opacity: isActive ? 1 : 0.7 }}
+                />
                 
                 <span style={{ 
                   fontSize: "8px", 
-                  fontWeight: 700, 
+                  fontWeight: 800, 
                   letterSpacing: "0.15em", 
                   textTransform: "uppercase",
                   fontFamily: "var(--font-display, 'Outfit', sans-serif)"

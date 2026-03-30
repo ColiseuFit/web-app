@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { CheckCircle, Edit3, Dumbbell } from "lucide-react";
 import CheckInModal from "./CheckInModal";
 import ConfirmModal from "./ConfirmModal";
 import { cancelCheckIn } from "@/app/(student)/actions";
@@ -54,10 +55,17 @@ export default function CheckInButton({ wodId, date, alreadyChecked }: CheckInBu
           padding: "16px 20px",
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <span className="material-symbols-outlined" style={{ color: "#4CAF50", fontSize: "20px" }}>check_circle</span>
-            <span style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "0.2em", color: "#4CAF50", textTransform: "uppercase" }}>
-              PRESENÇA CONFIRMADA
-            </span>
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <CheckCircle size={16} color="#4CAF50" />
+                <span style={{ fontSize: "10px", fontWeight: 800, letterSpacing: "0.15em", color: "#4CAF50", textTransform: "uppercase" }}>
+                  CHECK-IN REALIZADO
+                </span>
+              </div>
+              <span style={{ fontSize: "8px", fontWeight: 700, color: "var(--text-muted)", letterSpacing: "0.05em", marginTop: "2px" }}>
+                Aguardando validação do Coach para ganhar XP
+              </span>
+            </div>
           </div>
           
           <button
@@ -101,14 +109,14 @@ export default function CheckInButton({ wodId, date, alreadyChecked }: CheckInBu
             gap: "8px",
           }}
         >
-          <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>edit</span>
+          <Edit3 size={16} />
           ALTERAR HORÁRIO
         </button>
 
         {showConfirm && (
           <ConfirmModal
-            title="CANCELAR RESERVA?"
-            message="Você perderá sua vaga nesta turma. Tem certeza que deseja cancelar sua presença?"
+            title="CANCELAR CHECK-IN?"
+            message="Você perderá sua vaga nesta turma. Tem certeza que deseja cancelar sua sinalização?"
             confirmLabel="SIM, CANCELAR"
             cancelLabel="VOLTAR"
             onConfirm={handleCancel}
@@ -155,8 +163,8 @@ export default function CheckInButton({ wodId, date, alreadyChecked }: CheckInBu
           boxShadow: "0 0 30px rgba(227,27,35,0.3)",
         }}
       >
-        <span className="material-symbols-outlined" style={{ fontSize: "20px" }}>fitness_center</span>
-        RESERVAR TURMA
+        <Dumbbell size={20} />
+        FAZER CHECK-IN
       </button>
 
       {open && (

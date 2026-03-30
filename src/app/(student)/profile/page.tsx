@@ -1,10 +1,17 @@
+import { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import StudentHeader from "@/components/StudentHeader";
 import BottomNav from "@/components/BottomNav";
 import LevelCard from "@/components/LevelCard";
 import DashboardStyles from "@/components/DashboardStyles";
+import { Zap, Shield, Diamond, Star, Award, Medal, Trophy, TrendingUp } from "lucide-react";
+
+export const metadata: Metadata = {
+  title: "Meu Perfil",
+};
 
 /**
  * Página de Perfil (Athletic Identity) do Aluno.
@@ -77,6 +84,7 @@ export default async function ProfilePage() {
   };
 
   const totalXpGoal = calculateGoal(xpActual);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const xpProgress = (xpActual / totalXpGoal) * 100;
   const xpRemaining = totalXpGoal - xpActual;
   
@@ -98,39 +106,65 @@ export default async function ProfilePage() {
       <main style={{ maxWidth: "480px", margin: "0 auto", padding: "0 20px" }}>
         
         {/* ── HERO SECTION (NÍVEL DO ATLETA) ── */}
-        <section style={{ paddingTop: "20px", paddingBottom: "24px" }}>
-          {/* Header Compacto do Perfil */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
-            <div>
-              <h1 style={{ fontSize: "24px", fontWeight: 900, textTransform: "uppercase", fontFamily: "var(--font-display)", lineHeight: 1, marginBottom: "4px" }}>
-                {(profile?.display_name || profile?.full_name || "ATLETA").toUpperCase()}
-              </h1>
-              <p style={{ color: "var(--text-muted)", fontSize: "10px", fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase" }}>
-                #{(profile?.member_number || "000").toString().padStart(3, '0')} · COL. CLUBE
-              </p>
-            </div>
-            {profile?.avatar_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={profile.avatar_url} alt="Profile" style={{ width: "48px", height: "48px", borderRadius: "50%", border: "1px solid var(--border-glow)", objectFit: "cover", filter: "grayscale(100%)" }} />
-            ) : (
-              <div style={{ width: "48px", height: "48px", borderRadius: "50%", background: "var(--surface-lowest)", border: "1px solid var(--border-glow)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <span className="material-symbols-outlined" style={{ color: "var(--text-muted)", fontSize: "20px" }}>person</span>
-              </div>
-            )}
+        <section style={{ paddingTop: "20px", paddingBottom: "32px", display: "flex", flexDirection: "column", alignItems: "center" }}>
+          
+          {/* LEVEL CARD CLIENT COMPONENT (V1.2) - HERO PRINCIPAL */}
+          <div style={{ width: "100%" }}>
+            <LevelCard 
+              level={level} 
+              stats={stats} 
+              xpProgress={xpProgress} 
+              xpRemaining={xpRemaining} 
+              avatarUrl={profile?.avatar_url}
+            />
           </div>
 
-          {/* LEVEL CARD CLIENT COMPONENT (V1.2) */}
-          <LevelCard 
-            level={level} 
-            stats={stats} 
-            xpProgress={xpProgress} 
-            xpRemaining={xpRemaining} 
-          />
-          
-          <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "12px" }}>
-            <Link href="/profile/edit" style={{ fontSize: "9px", fontWeight: 700, color: "var(--text-muted)", letterSpacing: "0.1em", textDecoration: "none", borderBottom: "1px dotted var(--text-muted)", paddingBottom: "2px" }}>
-              EDITAR PERFIL
-            </Link>
+          {/* NOVO BLOCO DE IDENTIDADE (CENTRALIZADO & IMPOSTO) */}
+          <div style={{ textAlign: "center", marginTop: "32px", width: "100%" }}>
+            <h1 style={{ 
+              fontSize: "clamp(32px, 10vw, 42px)", 
+              fontWeight: 900, 
+              fontFamily: "var(--font-display)", 
+              lineHeight: 0.9, 
+              textTransform: "uppercase",
+              letterSpacing: "-0.02em",
+              color: "var(--text)"
+            }}>
+              {profile?.first_name || profile?.display_name?.split(' ')[0] || "ATLETA"}
+            </h1>
+            
+            <p style={{ 
+              fontSize: "14px", 
+              fontWeight: 800, 
+              color: "var(--text-muted)", 
+              textTransform: "uppercase", 
+              letterSpacing: "0.4em", 
+              marginTop: "8px",
+              opacity: 0.8
+            }}>
+              {profile?.last_name || profile?.display_name?.split(' ').slice(1).join(' ') || ""}
+            </p>
+
+            <div style={{ 
+              marginTop: "16px",
+              padding: "4px 12px",
+              background: "var(--surface-lowest)",
+              display: "inline-block",
+              border: "1px solid var(--border-glow)",
+              fontSize: "10px", 
+              fontWeight: 700, 
+              color: "var(--text-muted)", 
+              letterSpacing: "0.2em", 
+              textTransform: "uppercase" 
+            }}>
+              #{(profile?.member_number || "000").toString().padStart(3, '0')} · COL. CLUBE
+            </div>
+            
+            <div style={{ marginTop: "24px" }}>
+              <Link href="/profile/edit" style={{ fontSize: "9px", fontWeight: 700, color: "var(--text-muted)", letterSpacing: "0.15em", textDecoration: "none", borderBottom: "1px dotted var(--text-muted)", paddingBottom: "2px", opacity: 0.6 }}>
+                EDITAR PERFIL
+              </Link>
+            </div>
           </div>
         </section>
 
@@ -232,16 +266,16 @@ export default async function ProfilePage() {
                 }}>
                   <div style={{ fontSize: "9px", fontWeight: 700, color: "var(--text-muted)", marginBottom: "6px", letterSpacing: "0.05em", textTransform: "uppercase" }}>{pr.movement_name}</div>
                   <div style={{ fontFamily: "var(--font-display, 'Outfit', sans-serif)", fontSize: "20px", fontWeight: 900 }}>{pr.value} <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>{pr.unit}</span></div>
-                  <span className="material-symbols-outlined" style={{ 
+                  <div style={{ fontFamily: "var(--font-display, 'Outfit', sans-serif)", fontSize: "20px", fontWeight: 900 }}>{pr.value} <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>{pr.unit}</span></div>
+                  <div style={{ 
                     position: "absolute", 
                     right: "10px", 
                     bottom: "10px", 
                     opacity: 0.1, 
-                    color: "var(--red)",
-                    fontSize: "16px"
+                    color: "var(--red)" 
                   }}>
-                    trending_up
-                  </span>
+                    <TrendingUp size={16} />
+                  </div>
                 </div>
               ))
             ) : (
@@ -300,13 +334,16 @@ export default async function ProfilePage() {
                       alignItems: "center",
                       justifyContent: "center",
                     }}>
-                      <span className="material-symbols-outlined" style={{ 
-                        fontSize: "20px", 
+                      <div style={{ 
                         color: completed ? "var(--volt)" : "var(--text-dim)",
-                        fontVariationSettings: "'FILL' 1"
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center"
                       }}>
-                        {bm_meta.icon}
-                      </span>
+                        {bm_meta.id === "du" && <Zap size={20} fill={completed ? "var(--volt)" : "none"} />}
+                        {bm_meta.id === "pu" && <Shield size={20} fill={completed ? "var(--volt)" : "none"} />}
+                        {bm_meta.id === "hspu" && <Diamond size={20} fill={completed ? "var(--volt)" : "none"} />}
+                      </div>
                     </div>
                     <div style={{ fontSize: "8px", fontWeight: 900, color: "var(--text)", textAlign: "center", letterSpacing: "0.1em" }}>
                       {bm_meta.title}
@@ -329,9 +366,9 @@ export default async function ProfilePage() {
 
             {/* Conquistas Gerais */}
             {[
-              { icon: "star", color: "var(--red)", label: "FUNDADOR", desc: "Membro Fundador do Coliseu Clube" },
-              { icon: "military_tech", color: "#FFD700", label: "SOBREVIVENTE", desc: "Completou o Murph em modo RX" },
-              { icon: "workspace_premium", color: "var(--volt)", label: "TOP 10% XP", desc: "Entre os atletas mais ativos do mês" },
+              { icon: Star, color: "var(--red)", label: "FUNDADOR", desc: "Membro Fundador do Coliseu Clube" },
+              { icon: Award, color: "#FFD700", label: "PIONEIRO", desc: "Primeira turma de treinamento Coliseu" },
+              { icon: Medal, color: "var(--volt)", label: "TOP 10% XP", desc: "Entre os atletas mais ativos do mês" },
             ].map((achievement, i) => (
               <div key={i} style={{ 
                 background: "var(--surface-lowest)", 
@@ -354,9 +391,9 @@ export default async function ProfilePage() {
                   flexShrink: 0,
                   boxShadow: `0 0 10px ${achievement.color}20`
                 }}>
-                  <span className="material-symbols-outlined" style={{ fontSize: "20px", color: achievement.color }}>
-                    {achievement.icon}
-                  </span>
+                  <div style={{ color: achievement.color, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <achievement.icon size={20} />
+                  </div>
                 </div>
                 
                 <div style={{ flex: 1 }}>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { X, Lock, CheckCircle } from "lucide-react";
 import { upsertPersonalRecord } from "@/app/(student)/actions";
 import { hapticSelect, hapticConfirm } from "@/lib/haptic";
 
@@ -108,11 +109,13 @@ export default function PRRegistrationModal({ onClose, onSuccess, initialLevel }
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
             <div>
               <p style={{ fontSize: "9px", fontWeight: 800, color: "var(--red)", letterSpacing: "0.25em", textTransform: "uppercase", marginBottom: "4px" }}>
-                REGISTRO DE AUTORIDADE
+                REGISTRO DE PERFORMANCE
               </p>
               <h2 className="font-display" style={{ fontSize: "28px", lineHeight: 1, letterSpacing: "-0.02em" }}>ALCANÇAR MARCA</h2>
             </div>
-            <button onClick={onClose} className="material-symbols-outlined" style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: "24px" }}>close</button>
+            <button onClick={onClose} style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <X size={24} />
+            </button>
           </div>
         </div>
 
@@ -122,7 +125,7 @@ export default function PRRegistrationModal({ onClose, onSuccess, initialLevel }
             
             {/* MOVIMENTO */}
             <div>
-              <label style={{ fontSize: "9px", fontWeight: 700, color: "var(--text-muted)", letterSpacing: "0.1em", display: "block", marginBottom: "10px" }}>ESTRUTURA / MOVIMENTO</label>
+              <label style={{ fontSize: "9px", fontWeight: 700, color: "var(--text-muted)", letterSpacing: "0.1em", display: "block", marginBottom: "10px" }}>MOVIMENTO / EXERCÍCIO</label>
               <input 
                 value={movementName}
                 onChange={(e) => setMovementName(e.target.value)}
@@ -157,7 +160,7 @@ export default function PRRegistrationModal({ onClose, onSuccess, initialLevel }
                 <label style={{ fontSize: "9px", fontWeight: 700, color: "var(--text-muted)", letterSpacing: "0.1em", display: "block", marginBottom: "10px" }}>UNIDADE</label>
                 <select 
                   value={unit}
-                  onChange={(e) => setUnit(e.target.value as any)}
+                  onChange={(e) => setUnit(e.target.value as "kg" | "time" | "reps")}
                   style={{
                     width: "100%", background: "rgba(255,255,255,0.02)", border: "1px solid var(--border-glow)",
                     padding: "18px", color: "#fff", fontSize: "14px", fontWeight: 700, outline: "none",
@@ -173,7 +176,7 @@ export default function PRRegistrationModal({ onClose, onSuccess, initialLevel }
 
             {/* CATEGORIA */}
             <div>
-              <label style={{ fontSize: "9px", fontWeight: 700, color: "var(--text-muted)", letterSpacing: "0.1em", display: "block", marginBottom: "10px" }}>SISTEMA OPERACIONAL</label>
+              <label style={{ fontSize: "9px", fontWeight: 700, color: "var(--text-muted)", letterSpacing: "0.1em", display: "block", marginBottom: "10px" }}>CATEGORIA DO MOVIMENTO</label>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "6px" }}>
                 {(["lpo", "strength", "gymnastics", "benchmark"] as const).map((cat) => (
                   <button
@@ -193,16 +196,15 @@ export default function PRRegistrationModal({ onClose, onSuccess, initialLevel }
               </div>
             </div>
 
-            {/* PATENTES OFICIAIS (STRICT PROGRESSION) */}
             <div>
-              <label style={{ fontSize: "9px", fontWeight: 700, color: "var(--text-muted)", letterSpacing: "0.1em", textTransform: "uppercase", display: "block", marginBottom: "12px" }}>RESOLUÇÃO TÉCNICA (PATENTE)</label>
+              <label style={{ fontSize: "9px", fontWeight: 700, color: "var(--text-muted)", letterSpacing: "0.1em", textTransform: "uppercase", display: "block", marginBottom: "12px" }}>REQUISITO TÉCNICO (NÍVEL)</label>
               
               <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                 {(Object.keys(levelConfigs) as Array<keyof typeof levelConfigs>).map((lvl, index) => {
                   const config = levelConfigs[lvl];
                   const isSelected = level === lvl;
                   const isLocked = index > maxLevelIndex;
-                  const isCurrentPatent = lvl === (initialLevel || "L1");
+                  const isCurrentLevel = lvl === (initialLevel || "L1");
 
                   return (
                     <button
@@ -220,7 +222,7 @@ export default function PRRegistrationModal({ onClose, onSuccess, initialLevel }
                         display: "flex", alignItems: "center", justifyContent: "space-between",
                         padding: "0 16px", borderRadius: "4px",
                         transition: "all 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
-                        animation: isCurrentPatent && isSelected ? "patentPulse 3s infinite ease-in-out" : "none",
+                        animation: isCurrentLevel && isSelected ? "levelPulse 3s infinite ease-in-out" : "none",
                         position: "relative",
                         overflow: "hidden"
                       }}
@@ -241,9 +243,9 @@ export default function PRRegistrationModal({ onClose, onSuccess, initialLevel }
                       </div>
                       
                       {isLocked ? (
-                        <span className="material-symbols-outlined" style={{ fontSize: "18px", opacity: 0.5 }}>lock</span>
+                        <Lock size={18} style={{ opacity: 0.5 }} />
                       ) : isSelected ? (
-                        <span className="material-symbols-outlined" style={{ fontSize: "22px", color: config.color }}>verified</span>
+                        <CheckCircle size={22} color={config.color} />
                       ) : null}
 
                       {/* BG EFFECT ON ACTIVE */}
@@ -276,7 +278,7 @@ export default function PRRegistrationModal({ onClose, onSuccess, initialLevel }
               boxShadow: movementName && value ? "0 15px 40px rgba(227,27,35,0.25)" : "none"
             }}
           >
-            {loading ? "SINCRONIZANDO..." : "CONSOLIDAR RECORDE"}
+            {loading ? "SINCRONIZANDO..." : "REGISTRAR RECORDE"}
           </button>
         </div>
 
@@ -287,7 +289,7 @@ export default function PRRegistrationModal({ onClose, onSuccess, initialLevel }
           from { opacity: 0; transform: translateY(100%); }
           to { opacity: 1; transform: translateY(0); }
         }
-        @keyframes patentPulse {
+        @keyframes levelPulse {
           0%, 100% { transform: scale(1); }
           50% { transform: scale(1.01); border-color: #fff; }
         }

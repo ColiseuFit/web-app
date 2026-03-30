@@ -5,14 +5,16 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 
 /**
- * Authenticates a user using Supabase Email/Password provider.
+ * Autentica um usuário utilizando o provedor Email/Password do Supabase.
  * 
  * @security
- * - relies on Supabase Auth (GoTrue). User session is set via cookies.
- * - This action runs server-side to prevent credential leakage to the client.
- * - Validates input via Zod `loginSchema`.
+ * - Baseia-se no Supabase Auth (GoTrue). A sessão do usuário é gerenciada via cookies seguros.
+ * - Esta ação roda inteiramente no servidor para prevenir vazamento de credenciais.
+ * - Validação obrigatória via Zod `loginSchema` para sanitização de inputs.
  * 
- * @param {FormData} formData - The form data containing `email` and `password` fields.
+ * @param {FormData} formData - Dados brutos do formulário contendo `email` e `password`.
+ * @returns {Promise<{error: string} | void>} Retorna um objeto de erro ou redireciona para o dashboard em caso de sucesso.
+ * @throws {Redirect} Redireciona para /dashboard após autenticação bem-sucedida.
  */
 export async function login(formData: FormData) {
   const rawData = {
@@ -41,12 +43,14 @@ export async function login(formData: FormData) {
 }
 
 /**
- * Ends the user session and clears the Supabase Auth cookies.
+ * Encerra a sessão ativa do usuário e limpa os cookies de autenticação.
  * 
  * @security
- * - Assures that the session cookie is actively destroyed on the server.
+ * - Garante que o cookie de sessão seja destruído no lado do servidor.
+ * - Invalida o JWT no Supabase Auth.
  * 
- * @returns {Promise<void>} Redirects to the login page after clearing the session.
+ * @returns {Promise<void>} Redireciona para a página de login após o logout.
+ * @throws {Redirect} Redireciona para /login.
  */
 export async function logout() {
   const supabase = await createClient();

@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { Zap, Clock, Weight, Award, User } from "lucide-react";
 
 interface ActivityMetric {
   label: string;
@@ -32,7 +33,6 @@ interface ActivityFeedCardProps {
 /**
  * ActivityFeedCard (NRC-Style)
  * O "Card da Glória" do atleta Coliseu.
- * Mostra o esforço bruto (métricas) e as conquistas (escudos) de forma integrada.
  */
 export const ActivityFeedCard: React.FC<ActivityFeedCardProps> = ({ 
   date, 
@@ -47,7 +47,18 @@ export const ActivityFeedCard: React.FC<ActivityFeedCardProps> = ({
   result,
   typeTag
 }) => {
-  const voltColor = "#e1ff00"; // Neon Yellow/Green NRC reference
+  const voltColor = "#e1ff00";
+
+  // Mapeamento de ícones legado para Lucide
+  const getIcon = (iconName: string) => {
+    switch (iconName) {
+      case "bolt": return <Zap size={14} />;
+      case "timer": return <Clock size={14} />;
+      case "monitor_weight": return <Weight size={14} />;
+      case "workspace_premium": return <Award size={14} />;
+      default: return <Zap size={14} />;
+    }
+  };
 
   return (
     <div style={{
@@ -61,7 +72,7 @@ export const ActivityFeedCard: React.FC<ActivityFeedCardProps> = ({
       transition: "all 0.3s ease",
       boxShadow: isExcellence ? `0 0 40px ${voltColor}08` : "none"
     }}>
-      {/* ── TOP BADGES (TYPE & EXCELLENCE) ── */}
+      {/* ── TOP BADGES ── */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
         <div style={{ display: "flex", gap: "6px" }}>
           {typeTag && (
@@ -97,7 +108,7 @@ export const ActivityFeedCard: React.FC<ActivityFeedCardProps> = ({
         </span>
       </div>
 
-      {/* ── HEADER: TITLE & DESCRIPTION ── */}
+      {/* ── HEADER ── */}
       <div style={{ marginBottom: "20px" }}>
         <h4 style={{ fontSize: "16px", fontWeight: 900, color: "white", textTransform: "uppercase", marginBottom: "4px" }}>
           {title}
@@ -151,7 +162,7 @@ export const ActivityFeedCard: React.FC<ActivityFeedCardProps> = ({
         ))}
       </div>
 
-      {/* ── FOOTER: ACHIEVEMENTS, COACH & XP ── */}
+      {/* ── FOOTER ── */}
       {(achievements.length > 0 || coach || xp) && (
         <div style={{ 
           display: "flex", 
@@ -160,7 +171,6 @@ export const ActivityFeedCard: React.FC<ActivityFeedCardProps> = ({
           paddingTop: "16px", 
           borderTop: "1px solid rgba(255,255,255,0.03)" 
         }}>
-          {/* Achievements Container */}
           <div style={{ display: "flex", gap: "8px" }}>
             {achievements.map((ach) => (
               <div key={ach.id} style={{
@@ -178,23 +188,17 @@ export const ActivityFeedCard: React.FC<ActivityFeedCardProps> = ({
                   background: ach.color === "volt" ? `${voltColor}20` : "var(--red)20",
                   border: `1px solid ${ach.color === "volt" ? voltColor : "var(--red)"}`,
                 }} />
-                <span className="material-symbols-outlined" style={{ 
-                  fontSize: "14px", 
-                  color: ach.color === "volt" ? voltColor : "var(--red)", 
-                  zIndex: 1,
-                  fontVariationSettings: "'FILL' 1, 'wght' 400"
-                }}>
-                  {ach.icon}
-                </span>
+                <div style={{ color: ach.color === "volt" ? voltColor : "var(--red)", zIndex: 1, display: "flex" }}>
+                  {getIcon(ach.icon)}
+                </div>
               </div>
             ))}
           </div>
 
-          {/* Coach & XP metadata */}
           <div style={{ display: "flex", gap: "16px", alignItems: "center" }}>
             {coach && (
               <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                <span className="material-symbols-outlined" style={{ fontSize: "12px", color: "var(--text-dim)" }}>person</span>
+                <User size={12} color="var(--text-dim)" />
                 <span style={{ fontSize: "8px", fontWeight: 800, color: "var(--text-muted)", textTransform: "uppercase" }}>{coach}</span>
               </div>
             )}

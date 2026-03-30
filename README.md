@@ -1,4 +1,4 @@
-﻿# 🏛️ COLISEU CLUBE V2
+# 🏛️ COLISEU CLUBE V2
 
 Bem-vindo à "Monolito de Ferro", a infraestrutura digital de elite do Coliseu. Este repositório centraliza o dashboard do aluno, gestão administrativa e as fundações de dados da plataforma.
 
@@ -8,6 +8,9 @@ Bem-vindo à "Monolito de Ferro", a infraestrutura digital de elite do Coliseu. 
 
 A documentação segue o protocolo "Legacy Proof", garantindo manutenibilidade:
 - [PLAYBOOK: Dashboard do Aluno](docs/PLAYBOOKS/STUDENT_DASHBOARD.md) - Guia operacional do App do Aluno.
+- [PLAYBOOK: Autenticação & Login](docs/PLAYBOOKS/AUTH-LOGIN.md) - Fluxo de acesso e operacional do carrossel.
+- [PLAYBOOK: Estratégia de Ícones](docs/PLAYBOOKS/UI_ICON_STRATEGY.md) - Padrão de conformidade Lucide-React (Zero Font symbols).
+- [PLAYBOOK: Identidade do Atleta](docs/PLAYBOOKS/USER_IDENTITY_SYSTEM.md) - Lógica de Nomes e Dual Badge.
 - [GUIA: Iron Monolith Architecture](docs/PLAYBOOKS/IRON_MONOLITH_GUIDE.md) - Filosofia visual, tokens CSS e estética brutalista.
 - [ARCHITECTURE: Iron Engine](docs/ARCHITECTURE/ACTIVITY_ENGINE.md) - Engenharia de dados, gamificação (XP/PRs) e arquitetura Server/Client.
 

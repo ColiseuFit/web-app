@@ -12,20 +12,17 @@ import {
 } from "@/lib/validations/security_schemas";
 
 /**
- * Realiza o check-in do aluno no WOD do dia.
+ * Realiza a sinalização de presença (Check-in) do aluno.
+ * O XP só será creditado após a confirmação do Professor.
  * 
- * @security
- * - Validates `wodId` via Zod.
- * - Ensures user is authenticated.
- * - Prevents double check-ins.
- * 
- * @param {string} wodId - O ID do WOD em que o aluno está se inscrevendo.
+ * @param {string} wodId - UUID do WOD.
+ * @param {string} timeSlot - Horário selecionado (ex: "08:00").
  */
-export async function performCheckIn(wodId: string) {
+export async function performCheckIn(wodId: string, timeSlot?: string) {
   // 0. Validation
-  const validation = checkInSchema.safeParse({ wodId });
+  const validation = checkInSchema.safeParse({ wodId, timeSlot });
   if (!validation.success) {
-    return { error: "ID de treino inválido." };
+    return { error: "Dados de check-in inválidos." };
   }
 
   const supabase = await createClient();
@@ -47,33 +44,23 @@ export async function performCheckIn(wodId: string) {
     return { error: "Você já realizou o check-in para este treino." };
   }
 
-  // 2. Criar o Check-in
+  // 2. Criar a sinalização de Check-in (XP zerado até validação do Coach)
   const { error: checkinError } = await supabase
     .from("check_ins")
     .insert({
       student_id: user.id,
       wod_id: wodId,
+      time_slot: timeSlot,
       status: "checked",
-      score_xp: 100, // XP padrão por check-in
+      score_xp: 0, 
     });
 
   if (checkinError) {
-    return { error: "Erro ao registrar presença: " + checkinError.message };
+    return { error: "Erro ao sinalizar presença: " + checkinError.message };
   }
 
-  // 3. Atualizar XP no Perfil
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("xp_balance")
-    .eq("id", user.id)
-    .single();
-
-  const newXP = (profile?.xp_balance || 0) + 100;
-
-  await supabase
-    .from("profiles")
-    .update({ xp_balance: newXP })
-    .eq("id", user.id);
+  // O XP NÃO é incrementado aqui automaticamente conforme nova regra de negócio.
+  // A validação de XP será feita pelo Professor ao encerrar a aula.
 
   revalidatePath("/dashboard");
   revalidatePath("/treinos");
@@ -105,7 +92,7 @@ export async function cancelCheckIn(wodId: string) {
     return { error: "Usuário não autenticado." };
   }
 
-  // 1. Deletar o Check-in
+  // 1. Deleta o registro de sinalização
   const { error: deleteError } = await supabase
     .from("check_ins")
     .delete()
@@ -116,21 +103,9 @@ export async function cancelCheckIn(wodId: string) {
     return { error: "Erro ao cancelar check-in: " + deleteError.message };
   }
 
-  // 2. Estornar XP do Perfil (-100)
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("xp_balance")
-    .eq("id", user.id)
-    .single();
+  // Como o XP não foi dado na sinalização, não há necessidade de estorno aqui.
 
-  const newXP = Math.max(0, (profile?.xp_balance || 0) - 100);
-
-  await supabase
-    .from("profiles")
-    .update({ xp_balance: newXP })
-    .eq("id", user.id);
-
- revalidatePath("/dashboard");
+  revalidatePath("/dashboard");
   revalidatePath("/profile");
 
   return { success: true };
@@ -157,12 +132,15 @@ export async function upsertPersonalRecord(formData: any) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "Não autenticado" };
 
+  // Mapear movement_key para movement_id (compatibilidade schema DB)
+  const { movement_key, ...restData } = validation.data;
   const { error } = await supabase
     .from("personal_records")
     .upsert({
       student_id: user.id,
-      ...validation.data,
-      date: validation.data.date || new Date().toISOString().split("T")[0],
+      movement_id: movement_key,
+      ...restData,
+      date: restData.date || new Date().toISOString().split("T")[0],
     }, { onConflict: "student_id,movement_id" });
 
   if (error) return { error: error.message };

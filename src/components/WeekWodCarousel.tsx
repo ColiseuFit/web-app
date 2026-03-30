@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { hapticSelect } from "@/lib/haptic";
 import { useEffect, useRef } from "react";
 
@@ -51,7 +52,7 @@ export default function WeekWodCarousel({ wods, selectedDate }: WeekWodCarouselP
           boxShadow: "0 4px 12px rgba(0,0,0,0.5)"
         }}
       >
-        <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>chevron_left</span>
+        <ChevronLeft size={18} />
       </button>
 
       {/* Seta Direita */}
@@ -66,7 +67,7 @@ export default function WeekWodCarousel({ wods, selectedDate }: WeekWodCarouselP
           boxShadow: "0 4px 12px rgba(0,0,0,0.5)"
         }}
       >
-        <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>chevron_right</span>
+        <ChevronRight size={18} />
       </button>
 
       {/* Lista Rolável */}

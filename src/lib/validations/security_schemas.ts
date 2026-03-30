@@ -22,6 +22,7 @@ export const createStudentSchema = z.object({
 // 3. Schema para Check-in no WOD
 export const checkInSchema = z.object({
   wodId: z.string().uuid("ID do WOD inválido"),
+  timeSlot: z.string().min(4, "Horário inválido").optional(),
 });
 
 // 4. Schema para Cancelamento de Check-in

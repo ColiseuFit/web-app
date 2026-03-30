@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { Metadata } from "next";
 import Link from "next/link";
 import DashboardStyles from "@/components/DashboardStyles";
 import StudentHeader from "@/components/StudentHeader";
@@ -7,6 +8,11 @@ import BottomNav from "@/components/BottomNav";
 import WodView from "@/components/WodView";
 import WeekWodCarousel from "@/components/WeekWodCarousel";
 import LevelBadge from "@/components/LevelBadge";
+// import RecentPRs from "@/components/progress/RecentPRs"; (Removed: moving to Progress page)
+
+export const metadata: Metadata = {
+  title: "Início",
+};
 
 interface PageProps {
   searchParams: Promise<{ date?: string }>;
@@ -14,7 +20,7 @@ interface PageProps {
 
 /**
  * Página Principal do Aluno (Home).
- * Centraliza o WOD do dia (Lousa) e o acesso à reserva de turma.
+ * Centraliza o WOD do dia e o acesso à reserva de turma.
  * Suporta navegação por data via query param `?date=YYYY-MM-DD`.
  */
 export default async function AppDashboard({ searchParams }: PageProps) {
@@ -72,7 +78,7 @@ export default async function AppDashboard({ searchParams }: PageProps) {
   // Formatação do carrossel semanal
   const DAY_LABELS = ["SEG", "TER", "QUA", "QUI", "SEX", "SÁB"];
   const BENCHMARKS = ["FRAN", "CINDY", "MURPH", "KAREN", "DT", "GRACE", "HELEN", "ANNIE", "AMANDA", "BARBARA"];
-  const MOCK_TITLES = ["FRAN", "CINDY", "MURPH", "KAREN", "DT", "GRACE"];
+  
   const wodsByDate = Object.fromEntries((weekWods || []).map((w) => [w.date, w]));
   const carouselWods = weekDates.map((date, i) => {
     const found = wodsByDate[date];
@@ -81,25 +87,19 @@ export default async function AppDashboard({ searchParams }: PageProps) {
       dayLabel: DAY_LABELS[i],
       isToday: date === today,
       isRest: false,
-      title: found?.title || MOCK_TITLES[i],
-      tags: found?.tags || ["CROSSFIT", "BENCHMARK"],
+      title: found?.title || "PROGRAMAÇÃO...",
+      tags: found?.tags || ["CROSSFIT"],
     };
   });
 
-  // PR Badge Detection
   const selectedTitle = selectedWod?.title || carouselWods.find(w => w.date === selectedDate)?.title || "";
   const isBenchmark = BENCHMARKS.some(b => selectedTitle.toUpperCase().includes(b));
   const benchmarkName = BENCHMARKS.find(b => selectedTitle.toUpperCase().includes(b)) || "";
-  const MOCK_PRS: Record<string, string> = {
-    FRAN: "3:45", CINDY: "22 RDS", MURPH: "42:08", KAREN: "7:30",
-    DT: "14:22", GRACE: "2:15", HELEN: "10:30", ANNIE: "9:45"
-  };
-  const athletePR = isBenchmark && benchmarkName ? MOCK_PRS[benchmarkName] : null;
+  
+  // PRs reais do aluno (Temporarily disabled on home)
+  // const athletePRs = (recentPrs || []) as any[];
 
   const displayName = profile?.display_name || profile?.full_name || "Atleta";
-  const xp = profile?.xp_balance || 0;
-  const xpToNextLevel = 1000;
-  const xpProgress = Math.min((xp / xpToNextLevel) * 100, 100);
 
   const getLevelInfo = (lvl: string) => {
     const l = lvl?.toLowerCase() || "";
@@ -126,23 +126,63 @@ export default async function AppDashboard({ searchParams }: PageProps) {
 
       <main style={{ maxWidth: "480px", margin: "0 auto", position: "relative" }}>
         
-        {/* ── BOAS-VINDAS ── */}
-        <section style={{ padding: "32px 20px 24px" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-              <LevelBadge 
-                level={level} 
-                description={level.description} 
-                size={64} 
-              />
-              <div style={{ display: "flex", flexDirection: "column" }}>
-                <h1 className="font-display" style={{ fontSize: "clamp(24px, 6vw, 32px)", lineHeight: 1.1 }}>
-                  {displayName.toUpperCase()}
-                </h1>
-                <span style={{ fontSize: "10px", fontWeight: 800, letterSpacing: "0.15em", color: level.color, textTransform: "uppercase", marginTop: "4px" }}>
-                  {level.label}
-                </span>
-              </div>
+        {/* ── SEÇÃO DE BOAS-VINDAS (ESTILO PÔSTER) ── */}
+        <section style={{ padding: "40px 20px 32px", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
+          
+          {/* DUO DE BADGES CENTRALIZADOS */}
+          <div style={{ display: "flex", gap: "12px", marginBottom: "24px", animation: "levelIconEntrance 0.8s ease-out" }}>
+            <LevelBadge 
+              level={level} 
+              description={level.description} 
+              size={72} // Levemente maior para o pôster
+            />
+            <LevelBadge 
+              level={level} 
+              description={level.description} 
+              size={72} 
+              avatarUrl={profile?.avatar_url}
+            />
+          </div>
+
+          {/* IDENTIDADE DO ATLETA */}
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px" }}>
+            <h1 className="font-display" style={{ 
+              fontSize: "clamp(32px, 10vw, 42px)", 
+              lineHeight: 0.9,
+              letterSpacing: "-0.02em",
+              color: "#FFF",
+              textTransform: "uppercase"
+            }}>
+              {profile?.first_name ? profile.first_name.toUpperCase() : displayName.split(' ')[0].toUpperCase()}
+            </h1>
+            
+            <h2 style={{ 
+              fontSize: "14px", 
+              fontWeight: 700, 
+              color: "rgba(255,255,255,0.4)", 
+              textTransform: "uppercase",
+              letterSpacing: "0.2em",
+              marginBottom: "12px"
+            }}>
+              {profile?.last_name ? profile.last_name.toUpperCase() : displayName.split(' ').slice(1).join(' ').toUpperCase()}
+            </h2>
+
+            <div style={{ 
+              display: "inline-block",
+              padding: "4px 12px",
+              background: "rgba(255,255,255,0.03)",
+              border: `1px solid ${level.color}44`,
+              borderRadius: "4px"
+            }}>
+              <span style={{ 
+                fontSize: "10px", 
+                fontWeight: 900, 
+                letterSpacing: "0.15em", 
+                color: level.color, 
+                textTransform: "uppercase" 
+              }}>
+                {level.label}
+              </span>
             </div>
           </div>
         </section>
@@ -155,7 +195,7 @@ export default async function AppDashboard({ searchParams }: PageProps) {
 
           <div style={{ padding: "14px 24px", borderBottom: "1px solid var(--border-glow)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <span style={{ fontSize: "9px", fontWeight: 700, letterSpacing: "0.3em", color: "var(--text-dim)", textTransform: "uppercase" }}>LOUSA</span>
+                <span style={{ fontSize: "9px", fontWeight: 700, letterSpacing: "0.3em", color: "var(--text-dim)", textTransform: "uppercase" }}>WOD</span>
                 {selectedDate === today && (
                     <span style={{ fontSize: "8px", background: "var(--red)", color: "#fff", padding: "1px 4px", borderRadius: "2px", fontWeight: 900 }}>HOJE</span>
                 )}
@@ -169,6 +209,8 @@ export default async function AppDashboard({ searchParams }: PageProps) {
             studentLevel={profile?.level || "branco"}
           />
         </section>
+
+        {/* Recent PRs moved to Progress page as requested */}
 
         {alerts && alerts.length > 0 && selectedDate === today && (
           <div style={{ margin: "0 20px 16px", background: "rgba(255,193,7,0.05)", border: "1px solid rgba(255,193,7,0.2)", padding: "16px 20px", borderLeft: "3px solid #FFC107" }}>

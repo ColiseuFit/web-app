@@ -10,7 +10,8 @@ import { z } from "zod";
  */
 const profileSchema = z.object({
   display_name: z.string().min(3, "Nome de exibição deve ter pelo menos 3 caracteres").max(50),
-  full_name: z.string().min(3, "Nome completo é obrigatório").max(200),
+  first_name: z.string().min(2, "Primeiro nome é obrigatório").max(100),
+  last_name: z.string().min(2, "Sobrenome é obrigatório").max(100),
   bio: z.string().max(300).optional(),
   gender: z.enum(["Masculino", "Feminino"]).optional().or(z.literal("")),
   cpf: z.string().regex(/^\d{3}\.\d{3}\.\d{3}-\d{2}$|^\d{11}$/, "CPF inválido").optional().or(z.literal("")),
@@ -21,10 +22,18 @@ const profileSchema = z.object({
 /**
  * Atualiza os dados do perfil do aluno.
  * 
+ * @param {FormData} formData - Objeto FormData contendo campos: display_name, first_name, last_name, bio, gender, cpf, birth_date, avatar_url.
+ * @returns {Promise<{success?: boolean, error?: string}>} Objeto indicando sucesso ou a mensagem de erro da validação/persistência.
+ * 
  * @security
- * - Sessão verificada via Supabase Auth.
- * - Validação de dados via Zod.
- * - RLS ativo na tabela profiles garante que o usuário só edite seu próprio registro.
+ * - Sessão verificada via Supabase Auth (auth.getUser).
+ * - Validação estrita via Zod (profileSchema).
+ * - RLS (Row Level Security): Garante isolamento total, permitindo que o usuário edite apenas seu UID.
+ * 
+ * @technical
+ * - Unificação de Identidade: O sistema agora extrai `first_name` e `last_name` separadamente do formulário, 
+ *   mas persiste um campo calculado `full_name` para compatibilidade com buscas administrativas legadas.
+ * - Sanitização: Limpa espaços em branco e garante que strings vazias em campos opcionais sejam salvas como NULL.
  */
 export async function updateProfile(formData: FormData) {
   const supabase = await createClient();
@@ -35,7 +44,8 @@ export async function updateProfile(formData: FormData) {
   // Extração e validação dos dados
   const rawData = {
     display_name: formData.get("display_name"),
-    full_name: formData.get("full_name"),
+    first_name: formData.get("first_name"),
+    last_name: formData.get("last_name"),
     bio: formData.get("bio"),
     gender: formData.get("gender"),
     cpf: formData.get("cpf"),
@@ -52,7 +62,9 @@ export async function updateProfile(formData: FormData) {
 
   const updates = {
     display_name: validatedData.display_name,
-    full_name: validatedData.full_name,
+    first_name: validatedData.first_name,
+    last_name: validatedData.last_name,
+    full_name: `${validatedData.first_name} ${validatedData.last_name}`.trim(),
     bio: validatedData.bio,
     gender: validatedData.gender,
     cpf: validatedData.cpf,

@@ -1,10 +1,26 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { CheckCircle, AlertTriangle } from "lucide-react";
 
 /**
  * Toast Notification (Brutalista / Iron Monolith).
  * Exibe mensagens de feedback com alto impacto visual.
+ */
+/**
+ * Toast de Notificação (Brutalista / Iron Monolith).
+ * Sistema de feedback global para mensagens de sucesso e erros sistêmicos.
+ * 
+ * @param {string} message - Texto informativo a ser exibido ao usuário.
+ * @param {"success" | "error"} [type="success"] - Define a estética visual:
+ *   - `success`: Borda verde (var(--volt)) + ícone CheckCircle.
+ *   - `error`: Borda vermelha (var(--red)) + ícone AlertTriangle.
+ * @param {number} [duration=4000] - Tempo de exibição em ms antes do auto-close.
+ * @param {() => void} onClose - Callback disparado após a conclusão da animação de saída.
+ * 
+ * @animation
+ * - Entrada: Deslize vertical (translateY) com curva cubic-bezier suave de alta performance.
+ * - Ciclo de Vida: Transição de opacidade sincronizada com a remoção do DOM pelo componente pai.
  */
 export default function Toast({ message, type = "success", duration = 4000, onClose }: { 
   message: string; 
@@ -50,12 +66,14 @@ export default function Toast({ message, type = "success", duration = 4000, onCl
             : "0 10px 40px rgba(227,27,35,0.15)",
         }}
       >
-        <span className="material-symbols-outlined" style={{ 
-          fontSize: "24px", 
+        <div style={{ 
+          display: "flex", 
+          alignItems: "center", 
+          justifyContent: "center",
           color: type === "success" ? "#22c55e" : "var(--red)" 
         }}>
-          {type === "success" ? "task_alt" : "warning"}
-        </span>
+          {type === "success" ? <CheckCircle size={24} /> : <AlertTriangle size={24} />}
+        </div>
         <div style={{ flex: 1 }}>
           <p style={{ 
             fontSize: "12px", 

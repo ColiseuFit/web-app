@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { logout } from "@/app/(auth)/actions";
 
 /**
@@ -20,10 +21,12 @@ export default function StudentHeader() {
     }}>
       <div style={{ maxWidth: "480px", margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <Link href="/dashboard" style={{ textDecoration: "none", display: "flex", alignItems: "center" }}>
-          <img 
+          <Image 
             src="/logo-coliseu-white.svg" 
             alt="Coliseu" 
-            style={{ height: "18px", width: "auto" }} 
+            width={120}
+            height={18}
+            priority
           />
         </Link>
         
