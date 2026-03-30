@@ -66,6 +66,16 @@ export const wodSchema = z.object({
   result_type: z.enum(["time", "reps", "load", "rounds"]).optional(),
 });
 
+// 9. Schema para Grade de Horários (Admin - Gestão de Turmas)
+export const classSlotSchema = z.object({
+  name: z.string().min(2, "Nome da modalidade obrigatório"),
+  day_of_week: z.number().int().min(0, "Dia inválido").max(6, "Dia inválido"),
+  time_start: z.string().regex(/^\d{2}:\d{2}$/, "Horário inválido (HH:MM)"),
+  duration_minutes: z.number().int().default(60),
+  capacity: z.number().int().min(1, "Mínimo 1 vaga").max(50, "Máximo 50 vagas").default(20),
+  coach_name: z.string().optional(),
+});
+
 export type LoginInput = z.infer<typeof loginSchema>;
 export type CreateStudentInput = z.infer<typeof createStudentSchema>;
 export type CheckInInput = z.infer<typeof checkInSchema>;
@@ -73,3 +83,4 @@ export type PersonalRecordInput = z.infer<typeof personalRecordSchema>;
 export type UpdateTargetInput = z.infer<typeof updateTargetSchema>;
 export type GoalInput = z.infer<typeof goalSchema>;
 export type WodInput = z.infer<typeof wodSchema>;
+export type ClassSlotInput = z.infer<typeof classSlotSchema>;

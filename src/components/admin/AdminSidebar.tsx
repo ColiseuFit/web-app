@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   Users,
   Dumbbell,
+  CalendarClock,
   LogOut,
   ChevronLeft,
   Settings,
@@ -23,6 +24,7 @@ const NAV_ITEMS = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/alunos", label: "Alunos", icon: Users },
   { href: "/admin/wods", label: "WODs", icon: Dumbbell },
+  { href: "/admin/turmas", label: "Turmas", icon: CalendarClock },
   { href: "/admin/settings", label: "Config", icon: Settings },
 ];
 
