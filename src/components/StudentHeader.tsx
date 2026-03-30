@@ -26,6 +26,7 @@ export default function StudentHeader() {
             alt="Coliseu" 
             width={120}
             height={18}
+            unoptimized
             priority
           />
         </Link>
