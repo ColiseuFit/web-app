@@ -3,6 +3,8 @@ import TurmasClient from "./TurmasClient";
 import { getCoaches } from "../professores/actions";
 import { getBoxSettings, getHolidays } from "./actions";
 
+import { getTodayDate } from "@/lib/date-utils";
+
 /**
  * Turmas Page (Server Component): Fetches the full class schedule grid.
  *
@@ -11,7 +13,7 @@ import { getBoxSettings, getHolidays } from "./actions";
  */
 export default async function TurmasPage() {
   const supabase = await createClient();
-  const todayStr = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
+  const todayStr = getTodayDate(); // YYYY-MM-DD em Fuso Local (America/Sao_Paulo)
 
   // 1. Fetch Class Slots (Template)
   const { data: slots, error: slotsError } = await supabase
@@ -21,12 +23,11 @@ export default async function TurmasPage() {
     .order("time_start", { ascending: true });
 
   // 2. Fetch Todays Occupancy (Check-ins)
-  // Logic: Count check_ins grouped by class_slot_id for current date
+  // Logic: Get check-ins linked to today's WOD instead of relying on created_at UTC parsing
   const { data: occupancy, error: occError } = await supabase
     .from("check_ins")
-    .select("class_slot_id")
-    .gte("created_at", `${todayStr}T00:00:00`)
-    .lte("created_at", `${todayStr}T23:59:59`);
+    .select("class_slot_id, wods!inner(date)")
+    .eq("wods.date", todayStr);
 
   // 3. Fetch all Enrollments (Fixed)
   // Logic: Count all class_enrollments grouped by slot

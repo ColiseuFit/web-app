@@ -520,7 +520,8 @@ export async function getSlotCheckins(slotId: string) {
   const ctx = await getAdminContext();
   if ("error" in ctx) return { error: ctx.error };
 
-  const today = new Date().toISOString().split("T")[0];
+  const { getTodayDate } = require("@/lib/date-utils");
+  const today = getTodayDate();
 
   const { data, error } = await ctx.adminClient
     .from("check_ins")
@@ -528,6 +529,7 @@ export async function getSlotCheckins(slotId: string) {
       id,
       created_at,
       student_id,
+      wods!inner(date),
       profiles:student_id (
         id,
         first_name,
@@ -538,8 +540,7 @@ export async function getSlotCheckins(slotId: string) {
       )
     `)
     .eq("class_slot_id", slotId)
-    .gte("created_at", `${today}T00:00:00`)
-    .lte("created_at", `${today}T23:59:59`)
+    .eq("wods.date", today)
     .order("created_at", { ascending: true });
 
   if (error) return { error: "Erro ao buscar check-ins: " + error.message };
