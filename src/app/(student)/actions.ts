@@ -237,6 +237,7 @@ export async function updateWeeklyTarget(weekly_target: number) {
  * - Persistência vinculada ao `auth.uid()`.
  * 
  * @param {string} title - Descrição do objetivo (ex: "Fazer meu primeiro Muscle-up").
+ */
 export async function createGoal(title: string): Promise<{ success: boolean; data?: { id: string; title: string }; error?: string }> {
   const validation = goalSchema.safeParse({ title });
   if (!validation.success) return { error: "Título inválido" };
