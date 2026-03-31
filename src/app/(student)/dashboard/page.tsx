@@ -45,7 +45,7 @@ export default async function AppDashboard({ searchParams }: PageProps) {
     { data: holiday }
   ] = await Promise.all([
     supabase.from("profiles").select("*").eq("id", user.id).single(),
-    supabase.from("wods").select("*").eq("date", selectedDate).maybeSingle(),
+    supabase.from("wods").select("*").eq("date", selectedDate).order("created_at", { ascending: false }).limit(1).maybeSingle(),
     supabase.from("wods").select("id, date, title, tags").in("date", getWeekDates()),
     supabase.from("box_holidays").select("*").eq("date", selectedDate).maybeSingle()
   ]);
