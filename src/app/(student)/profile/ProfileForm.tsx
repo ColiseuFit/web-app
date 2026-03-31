@@ -50,10 +50,8 @@ export default function ProfileForm({ user, profile }: { user: any, profile: any
     setLoading(true);
     setMessage(null);
     
-    // Anexa a URL do avatar caso exista
-    if (avatarUrl) {
-      formData.append("avatar_url", avatarUrl);
-    }
+    // Garante que o avatar_url seja enviado (mesmo se vazio para remoção)
+    formData.set("avatar_url", avatarUrl || "");
 
     const res = await updateProfile(formData);
     
@@ -108,25 +106,53 @@ export default function ProfileForm({ user, profile }: { user: any, profile: any
           style={{ display: "none" }}
         />
         
-        <button 
-          type="button" 
-          onClick={() => fileInputRef.current?.click()}
-          disabled={uploading}
-          style={{
-            background: "transparent",
-            border: "1px solid rgba(255,255,255,0.1)",
-            color: "rgba(255,255,255,0.5)",
-            padding: "8px 16px",
-            fontSize: "10px",
-            fontWeight: 700,
-            letterSpacing: "0.1em",
-            textTransform: "uppercase",
-            cursor: "pointer",
-            transition: "all 0.2s",
-          }}
-        >
-          {uploading ? "SINCRO..." : "ALTERAR FOTO"}
-        </button>
+        <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", justifyContent: "center" }}>
+          <button 
+            type="button" 
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+            style={{
+              background: "transparent",
+              border: "1px solid rgba(255,255,255,0.1)",
+              color: "rgba(255,255,255,0.7)",
+              padding: "8px 16px",
+              fontSize: "10px",
+              fontWeight: 700,
+              letterSpacing: "0.1em",
+              textTransform: "uppercase",
+              cursor: "pointer",
+              transition: "all 0.2s",
+            }}
+          >
+            {uploading ? "SINCRO..." : "ALTERAR FOTO"}
+          </button>
+
+          {avatarUrl && (
+            <button 
+              type="button" 
+              onClick={() => {
+                if (confirm("Deseja realmente remover sua foto de perfil?")) {
+                  setAvatarUrl("");
+                }
+              }}
+              disabled={uploading}
+              style={{
+                background: "transparent",
+                border: "1px solid rgba(227,27,35,0.2)",
+                color: "#E31B23",
+                padding: "8px 16px",
+                fontSize: "10px",
+                fontWeight: 700,
+                letterSpacing: "0.1em",
+                textTransform: "uppercase",
+                cursor: "pointer",
+                transition: "all 0.2s",
+              }}
+            >
+              REMOVER FOTO
+            </button>
+          )}
+        </div>
       </div>
 
       <form action={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "48px" }}>

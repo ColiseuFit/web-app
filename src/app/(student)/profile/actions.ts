@@ -85,7 +85,7 @@ export async function updateProfile(formData: FormData) {
     gender: validatedData.gender || null,
     cpf: validatedData.cpf || null,
     birth_date: validatedData.birth_date || null,
-    ...(validatedData.avatar_url && { avatar_url: validatedData.avatar_url }),
+    avatar_url: validatedData.avatar_url || null,
     updated_at: new Date().toISOString(),
   };
 
