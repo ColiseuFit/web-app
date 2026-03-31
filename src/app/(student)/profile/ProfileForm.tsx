@@ -3,6 +3,7 @@
 import { useState, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { updateProfile } from "./actions";
+import ConfirmModal from "@/components/ConfirmModal";
 
 export default function ProfileForm({ user, profile }: { user: any, profile: any }) {
   const supabase = createClient();
@@ -12,6 +13,7 @@ export default function ProfileForm({ user, profile }: { user: any, profile: any
   
   const [avatarUrl, setAvatarUrl] = useState(profile?.avatar_url || "");
   const [uploading, setUploading] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Faz upload pro Storage e salva a URL pública temporariamente
@@ -130,11 +132,7 @@ export default function ProfileForm({ user, profile }: { user: any, profile: any
           {avatarUrl && (
             <button 
               type="button" 
-              onClick={() => {
-                if (confirm("Deseja realmente remover sua foto de perfil?")) {
-                  setAvatarUrl("");
-                }
-              }}
+              onClick={() => setShowDeleteConfirm(true)}
               disabled={uploading}
               style={{
                 background: "transparent",
@@ -153,6 +151,21 @@ export default function ProfileForm({ user, profile }: { user: any, profile: any
             </button>
           )}
         </div>
+
+        {showDeleteConfirm && (
+          <ConfirmModal
+            title="Remover Foto"
+            message="ESTA AÇÃO IRÁ EXCLUIR SUA FOTO DE PERFIL PERMANENTEMENTE DOS SERVIDORES. DESEJA CONTINUAR COM A EXCLUSÃO?"
+            confirmLabel="CONFIRMAR REMOÇÃO"
+            cancelLabel="VOLTAR"
+            onConfirm={() => {
+              setAvatarUrl("");
+              setShowDeleteConfirm(false);
+            }}
+            onCancel={() => setShowDeleteConfirm(false)}
+            isDanger={true}
+          />
+        )}
       </div>
 
       <form action={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "48px" }}>
