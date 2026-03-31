@@ -24,14 +24,15 @@ async function getAdminContext() {
     return { error: "Permissão insuficiente (Apenas Administradores)." };
   }
 
-  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    return { error: "Erro de configuração: Chave mestra não encontrada." };
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim().split(' ')[0];
+  if (!serviceRoleKey) {
+    return { error: "Erro de configuração: Chave mestra não encontrada no servidor." };
   }
-
-  const adminClient = createAdminClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY
-  );
+ 
+   const adminClient = createAdminClient(
+     process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    serviceRoleKey
+   );
 
   return { adminClient, user };
 }

@@ -103,9 +103,10 @@ export default function AlunosClient({ students }: { students: Student[] }) {
     const result = await updateStudent(selectedStudent.id, formData);
     if (result?.success) {
       setIsEditing(false);
-      setSelectedStudent(null);
+      // Let the modal stay open so the user sees it's saved.
+      // The revalidatePath will update the list in the background.
     } else {
-      alert(result.error);
+      alert(result.error || "Erro desconhecido ao salvar.");
     }
     setLoading(false);
   }
@@ -394,6 +395,11 @@ export default function AlunosClient({ students }: { students: Student[] }) {
                 <div style={{ width: "100%" }}>
                   {isEditing ? (
                     <form ref={editFormRef} action={handleUpdate} style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                        <label style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", color: "#666" }}>Nome Completo *</label>
+                        <input type="text" name="full_name" defaultValue={selectedStudent.full_name || ""} style={{ width: "100%", padding: 14, border: "3px solid #000", fontWeight: 800, outline: "none" }} required />
+                      </div>
+
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
                         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                           <label style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", color: "#666" }}>Nome de Exibição</label>

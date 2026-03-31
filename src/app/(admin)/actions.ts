@@ -51,14 +51,16 @@ export async function createStudent(formData: FormData) {
   }
 
   // Require Service Role Key para usar Auth Admin API
-  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    return { error: "Falta configurar SUPABASE_SERVICE_ROLE_KEY no .env.local" };
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim().split(' ')[0];
+  
+  if (!serviceRoleKey) {
+    return { error: "Erro de configuração: SUPABASE_SERVICE_ROLE_KEY não encontrada no servidor (Verifique o painel da Vercel)." };
   }
 
   // Create admin client bypassing RLS
   const supabaseAdmin = createAdminClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY,
+    serviceRoleKey,
     {
       auth: {
         autoRefreshToken: false,
@@ -132,22 +134,41 @@ export async function updateStudent(studentId: string, formData: FormData) {
     return { error: "Permissão insuficiente." };
   }
 
-  // Prep data for update
-  const updates = {
-    full_name: formData.get("full_name") as string,
-    display_name: formData.get("display_name") as string,
-    first_name: formData.get("first_name") as string,
-    last_name: formData.get("last_name") as string,
-    level: formData.get("level") as string,
-    phone: formData.get("phone") as string,
-    cpf: formData.get("cpf") as string,
-    birth_date: formData.get("birth_date") as string || null,
-    gender: formData.get("gender") as string,
-    bio: formData.get("bio") as string,
+  // Setup Admin Client for RLS bypass (Update other profiles)
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim().split(' ')[0];
+  if (!serviceRoleKey) {
+    return { error: "Erro de configuração: Chave mestra não encontrada no servidor." };
+  }
+  const supabaseAdmin = createAdminClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceRoleKey);
+
+  // Dynamic updates object to avoid overwriting missing fields with null
+  const fields = [
+    "full_name", "display_name", "first_name", "last_name", 
+    "level", "phone", "cpf", "gender", "bio"
+  ];
+  
+  const updates: any = {
     updated_at: new Date().toISOString(),
   };
 
-  const { error } = await supabase
+  fields.forEach(field => {
+    const value = formData.get(field);
+    if (value !== null) {
+      if (field === "birth_date") {
+        updates[field] = value || null;
+      } else {
+        updates[field] = value as string;
+      }
+    }
+  });
+
+  // Explicitly handle birth_date if present
+  const birthDate = formData.get("birth_date");
+  if (birthDate !== null) {
+    updates.birth_date = birthDate || null;
+  }
+
+  const { error } = await supabaseAdmin
     .from("profiles")
     .update(updates)
     .eq("id", studentId);
@@ -187,13 +208,14 @@ export async function deleteStudent(studentId: string) {
     return { error: "Apenas administradores podem excluir alunos." };
   }
 
-  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    return { error: "Erro de configuração: Chave mestra não encontrada." };
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim().split(' ')[0];
+  if (!serviceRoleKey) {
+    return { error: "Erro de configuração: Chave mestra não encontrada no servidor." };
   }
 
   const supabaseAdmin = createAdminClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY
+    serviceRoleKey
   );
 
   // 1. Delete from Auth (this will trigger cascade deletion in profiles if configured, 
@@ -329,6 +351,13 @@ export async function upsertPhysicalEvaluation(data: any) {
     return { error: "Dados inválidos: " + validation.error.issues[0].message };
   }
 
+  // Setup Admin Client for RLS bypass and configuration stability
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim().split(' ')[0];
+  if (!serviceRoleKey) {
+    return { error: "Erro de configuração: Chave mestra não encontrada no servidor." };
+  }
+  const supabaseAdmin = createAdminClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceRoleKey);
+
   const payload = {
     ...validation.data,
     evaluator_id: currentUser.id,
@@ -337,9 +366,9 @@ export async function upsertPhysicalEvaluation(data: any) {
 
   let res;
   if (payload.id) {
-    res = await supabase.from("physical_evaluations").update(payload).eq("id", payload.id);
+    res = await supabaseAdmin.from("physical_evaluations").update(payload).eq("id", payload.id);
   } else {
-    res = await supabase.from("physical_evaluations").insert(payload);
+    res = await supabaseAdmin.from("physical_evaluations").insert(payload);
   }
 
   if (res.error) {

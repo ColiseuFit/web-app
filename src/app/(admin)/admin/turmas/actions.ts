@@ -49,13 +49,14 @@ export async function upsertClassSlot(formData: FormData, slotId?: string | null
     return { error: "Dados inválidos: " + validation.error.issues[0].message };
   }
 
-  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    return { error: "Erro de configuração: Chave mestra não encontrada." };
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim().split(' ')[0];
+  if (!serviceRoleKey) {
+    return { error: "Erro de configuração: Chave mestra não encontrada no servidor." };
   }
 
   const supabaseAdmin = createAdminClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY
+    serviceRoleKey
   );
 
   const payload = {
@@ -111,13 +112,14 @@ export async function toggleClassSlot(slotId: string, isActive: boolean) {
     return { error: "Apenas administradores podem desativar turmas." };
   }
 
-  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    return { error: "Erro de configuração: Chave mestra não encontrada." };
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim().split(' ')[0];
+  if (!serviceRoleKey) {
+    return { error: "Erro de configuração: Chave mestra não encontrada no servidor." };
   }
 
   const supabaseAdmin = createAdminClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY
+    serviceRoleKey
   );
 
   const { error } = await supabaseAdmin
@@ -160,13 +162,14 @@ export async function deleteClassSlot(slotId: string) {
     return { error: "Apenas administradores podem remover turmas." };
   }
 
-  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    return { error: "Erro de configuração: Chave mestra não encontrada." };
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim().split(' ')[0];
+  if (!serviceRoleKey) {
+    return { error: "Erro de configuração: Chave mestra não encontrada no servidor." };
   }
 
   const supabaseAdmin = createAdminClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY
+    serviceRoleKey
   );
 
   const { error } = await supabaseAdmin
@@ -209,13 +212,14 @@ export async function bulkUpdateClassSlots(timeStart: string, updates: { capacit
     return { error: "Apenas administradores podem fazer edições em massa." };
   }
 
-  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    return { error: "Erro de configuração: Chave mestra não encontrada." };
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim().split(' ')[0];
+  if (!serviceRoleKey) {
+    return { error: "Erro de configuração: Chave mestra não encontrada no servidor." };
   }
 
   const supabaseAdmin = createAdminClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY
+    serviceRoleKey
   );
 
   const { error } = await supabaseAdmin
@@ -271,13 +275,14 @@ export async function bulkCreateClassSlots(
 
   if (!days.length) return { error: "Selecione ao menos um dia." };
 
-  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    return { error: "Erro de configuração: Chave mestra não encontrada." };
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim().split(' ')[0];
+  if (!serviceRoleKey) {
+    return { error: "Erro de configuração: Chave mestra não encontrada no servidor." };
   }
 
   const supabaseAdmin = createAdminClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY
+    serviceRoleKey
   );
 
   const payloads = days.map((day) => ({
@@ -327,13 +332,14 @@ async function getAdminContext() {
     return { error: "Permissão insuficiente." };
   }
 
-  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    return { error: "Erro de configuração: Chave mestra não encontrada." };
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim().split(' ')[0];
+  if (!serviceRoleKey) {
+    return { error: "Erro de configuração: Chave mestra não encontrada no servidor." };
   }
 
   const adminClient = createAdminClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY
+    serviceRoleKey
   );
 
   return { adminClient, user };
