@@ -183,26 +183,45 @@ export default function PhysicalEvaluationForm({
     }));
   };
 
+  const formatOnBlur = (field: string, value: any, category?: string, decimals = 2) => {
+    const parsed = parseFloat(value?.toString() || "");
+    if (isNaN(parsed)) return;
+    
+    const formatted = parseFloat(parsed.toFixed(decimals));
+    if (category) {
+      handleNestedChange(category, field, formatted);
+    } else {
+      handleInputChange(field, formatted);
+    }
+  };
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     
-    // Parse numeric values
+    // Helper to safely parse and round numbers
+    const safeRound = (val: any, decimals = 2) => {
+      const parsed = parseFloat(val?.toString() || "0");
+      if (isNaN(parsed)) return 0;
+      return parseFloat(parsed.toFixed(decimals));
+    };
+
+    // Parse numeric values and ensure they don't have excessive decimal places for the DB
     const payload = {
       ...formData,
-      weight: formData.weight ? parseFloat(formData.weight.toString()) : undefined,
-      height: formData.height ? parseFloat(formData.height.toString()) : undefined,
+      weight: formData.weight ? safeRound(formData.weight) : undefined,
+      height: formData.height ? safeRound(formData.height) : undefined,
       body_fat_percentage: calculatedResults.bodyFat > 0 && formData.protocol !== "Bioimpedância" 
-        ? calculatedResults.bodyFat 
-        : (formData.body_fat_percentage ? parseFloat(formData.body_fat_percentage.toString()) : undefined),
-      measurements: Object.fromEntries(Object.entries(formData.measurements).map(([k, v]) => [k, v ? parseFloat(v as string) : 0])),
-      skinfolds: Object.fromEntries(Object.entries(formData.skinfolds).map(([k, v]) => [k, v ? parseFloat(v as string) : 0])),
-      bone_diameters: Object.fromEntries(Object.entries(formData.bone_diameters).map(([k, v]) => [k, v ? parseFloat(v as string) : 0])),
-      waist_hip_ratio: formData.waist_hip_ratio,
+        ? safeRound(calculatedResults.bodyFat, 1) // BF usually 1 decimal
+        : (formData.body_fat_percentage ? safeRound(formData.body_fat_percentage, 1) : undefined),
+      measurements: Object.fromEntries(Object.entries(formData.measurements).map(([k, v]) => [k, safeRound(v)])),
+      skinfolds: Object.fromEntries(Object.entries(formData.skinfolds).map(([k, v]) => [k, safeRound(v)])),
+      bone_diameters: Object.fromEntries(Object.entries(formData.bone_diameters).map(([k, v]) => [k, safeRound(v)])),
+      waist_hip_ratio: safeRound(formData.waist_hip_ratio),
       lean_mass_components: {
-        fat_mass: calculatedResults.fatMass,
-        lean_mass: calculatedResults.leanMass,
-        bmi: calculatedResults.bmi,
+        fat_mass: safeRound(calculatedResults.fatMass),
+        lean_mass: safeRound(calculatedResults.leanMass),
+        bmi: safeRound(calculatedResults.bmi),
         age_at_evaluation: calculatedResults.age
       }
     };
@@ -290,10 +309,10 @@ export default function PhysicalEvaluationForm({
                     type="number" step="0.1" 
                     value={formData.weight} 
                     onChange={e => handleInputChange("weight", e.target.value)} 
-                    placeholder="00.0"
+                    onBlur={() => formatOnBlur("weight", formData.weight)}
+                    placeholder="70.0"
                     style={{ width: "100%", padding: "10px 12px", border: "2px solid #EEE", fontWeight: 800, fontSize: 16, outline: "none" }}
                     onFocus={(e) => (e.currentTarget.style.borderColor = "#000")}
-                    onBlur={(e) => (e.currentTarget.style.borderColor = "#EEE")}
                   />
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -302,10 +321,10 @@ export default function PhysicalEvaluationForm({
                     type="number" step="0.01" 
                     value={formData.height} 
                     onChange={e => handleInputChange("height", e.target.value)} 
+                    onBlur={() => formatOnBlur("height", formData.height)}
                     placeholder="1.70"
                     style={{ width: "100%", padding: "10px 12px", border: "2px solid #EEE", fontWeight: 800, fontSize: 16, outline: "none" }}
                     onFocus={(e) => (e.currentTarget.style.borderColor = "#000")}
-                    onBlur={(e) => (e.currentTarget.style.borderColor = "#EEE")}
                   />
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -314,10 +333,10 @@ export default function PhysicalEvaluationForm({
                     type="number" step="0.1" 
                     value={formData.body_fat_percentage} 
                     onChange={e => handleInputChange("body_fat_percentage", e.target.value)} 
+                    onBlur={() => formatOnBlur("body_fat_percentage", formData.body_fat_percentage, undefined, 1)}
                     placeholder="0%"
                     style={{ width: "100%", padding: "10px 12px", border: "2px solid #EEE", fontWeight: 800, fontSize: 16, outline: "none" }}
                     onFocus={(e) => (e.currentTarget.style.borderColor = "#000")}
-                    onBlur={(e) => (e.currentTarget.style.borderColor = "#EEE")}
                   />
                 </div>
               </div>
@@ -412,6 +431,7 @@ export default function PhysicalEvaluationForm({
                       type="number" step="0.1" 
                       value={(formData.measurements as any)[field.key]} 
                       onChange={e => handleNestedChange("measurements", field.key, e.target.value)} 
+                      onBlur={() => formatOnBlur(field.key, (formData.measurements as any)[field.key], "measurements")}
                       style={{ 
                         width: "100%", 
                         textAlign: "left", 
@@ -422,7 +442,6 @@ export default function PhysicalEvaluationForm({
                         color: field.key.includes("arm_flexed") ? "#000" : "inherit"
                       }}
                       onFocus={(e) => (e.currentTarget.style.borderColor = "#000")}
-                      onBlur={(e) => (e.currentTarget.style.borderColor = "#EEE")}
                     />
                   </div>
                 ))}
@@ -447,9 +466,9 @@ export default function PhysicalEvaluationForm({
                       type="number" step="0.1" 
                       value={(formData.measurements as any)[field.key]} 
                       onChange={e => handleNestedChange("measurements", field.key, e.target.value)} 
+                      onBlur={() => formatOnBlur(field.key, (formData.measurements as any)[field.key], "measurements")}
                       style={{ width: "100%", textAlign: "left", padding: "6px 8px", border: "2px solid #EEE", fontWeight: 800, outline: "none" }}
                       onFocus={(e) => (e.currentTarget.style.borderColor = "#000")}
-                      onBlur={(e) => (e.currentTarget.style.borderColor = "#EEE")}
                     />
                   </div>
                 ))}
@@ -483,9 +502,9 @@ export default function PhysicalEvaluationForm({
                       type="number" step="0.1" 
                       value={(formData.skinfolds as any)[field.key]} 
                       onChange={e => handleNestedChange("skinfolds", field.key, e.target.value)} 
+                      onBlur={() => formatOnBlur(field.key, (formData.skinfolds as any)[field.key], "skinfolds")}
                       style={{ width: "100%", textAlign: "left", padding: "6px 8px", border: "2px solid #EEE", fontWeight: 800, outline: "none" }}
                       onFocus={(e) => (e.currentTarget.style.borderColor = "#000")}
-                      onBlur={(e) => (e.currentTarget.style.borderColor = "#EEE")}
                     />
                   </div>
                 ))}
@@ -510,9 +529,9 @@ export default function PhysicalEvaluationForm({
                       type="number" step="0.1" 
                       value={(formData.bone_diameters as any)[field.key]} 
                       onChange={e => handleNestedChange("bone_diameters", field.key, e.target.value)} 
+                      onBlur={() => formatOnBlur(field.key, (formData.bone_diameters as any)[field.key], "bone_diameters")}
                       style={{ width: "100%", textAlign: "left", padding: "6px 8px", border: "2px solid #EEE", fontWeight: 800, outline: "none" }}
                       onFocus={(e) => (e.currentTarget.style.borderColor = "#000")}
-                      onBlur={(e) => (e.currentTarget.style.borderColor = "#EEE")}
                     />
                   </div>
                 ))}

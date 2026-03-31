@@ -18,7 +18,8 @@ export interface Skinfolds {
  */
 export function calculateBMI(weight: number, height: number): number | null {
   if (!weight || !height || height <= 0) return null;
-  return parseFloat((weight / (height * height)).toFixed(2));
+  const bmi = weight / (height * height);
+  return isFinite(bmi) ? parseFloat(bmi.toFixed(2)) : null;
 }
 
 /**
@@ -34,9 +35,11 @@ export function calculateDensityPollock7(skinfolds: Skinfolds, age: number, gend
   const sum7 = subscapular + triceps + chest + midaxillary + suprailiac + abdominal + thigh;
 
   if (gender === 'male') {
-    return 1.112 - (0.00043499 * sum7) + (0.00000055 * Math.pow(sum7, 2)) - (0.00028826 * age);
+    const res = 1.112 - (0.00043499 * sum7) + (0.00000055 * Math.pow(sum7, 2)) - (0.00028826 * age);
+    return isFinite(res) ? res : null;
   } else {
-    return 1.097 - (0.00046971 * sum7) + (0.00000056 * Math.pow(sum7, 2)) - (0.00012828 * age);
+    const res = 1.097 - (0.00046971 * sum7) + (0.00000056 * Math.pow(sum7, 2)) - (0.00012828 * age);
+    return isFinite(res) ? res : null;
   }
 }
 
@@ -48,12 +51,14 @@ export function calculateDensityPollock3(skinfolds: Skinfolds, age: number, gend
     const { chest, abdominal, thigh } = skinfolds;
     if (!chest || !abdominal || !thigh || !age) return null;
     const sum3 = chest + abdominal + thigh;
-    return 1.10938 - (0.0008267 * sum3) + (0.0000016 * Math.pow(sum3, 2)) - (0.0002574 * age);
+    const res = 1.10938 - (0.0008267 * sum3) + (0.0000016 * Math.pow(sum3, 2)) - (0.0002574 * age);
+    return isFinite(res) ? res : null;
   } else {
     const { triceps, suprailiac, thigh } = skinfolds;
     if (!triceps || !suprailiac || !thigh || !age) return null;
     const sum3 = triceps + suprailiac + thigh;
-    return 1.0994921 - (0.0009929 * sum3) + (0.0000023 * Math.pow(sum3, 2)) - (0.0001392 * age);
+    const res = 1.0994921 - (0.0009929 * sum3) + (0.0000023 * Math.pow(sum3, 2)) - (0.0001392 * age);
+    return isFinite(res) ? res : null;
   }
 }
 
@@ -65,12 +70,14 @@ export function calculateDensityGuedes(skinfolds: Skinfolds, gender: 'male' | 'f
     const { triceps, suprailiac, abdominal } = skinfolds;
     if (!triceps || !suprailiac || !abdominal) return null;
     const sum3 = triceps + suprailiac + abdominal;
-    return 1.17136 - (0.06706 * Math.log10(sum3));
+    const res = 1.17136 - (0.06706 * Math.log10(sum3));
+    return isFinite(res) ? res : null;
   } else {
     const { subscapular, suprailiac, thigh } = skinfolds;
     if (!subscapular || !suprailiac || !thigh) return null;
     const sum3 = subscapular + suprailiac + thigh;
-    return 1.16650 - (0.07063 * Math.log10(sum3));
+    const res = 1.16650 - (0.07063 * Math.log10(sum3));
+    return isFinite(res) ? res : null;
   }
 }
 
@@ -78,7 +85,9 @@ export function calculateDensityGuedes(skinfolds: Skinfolds, gender: 'male' | 'f
  * Converts Body Density to Body Fat Percentage using Siri equation
  */
 export function calculateBF(density: number): number {
-  return parseFloat(((4.95 / density - 4.5) * 100).toFixed(2));
+  if (!density || density <= 0) return 0;
+  const bf = ((4.95 / density - 4.5) * 100);
+  return isFinite(bf) ? parseFloat(Math.max(0, bf).toFixed(2)) : 0;
 }
 
 /**
