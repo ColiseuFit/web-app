@@ -31,10 +31,11 @@ export default function PhysicalEvaluationForm({
     measurements: initialData?.measurements || {
       neck: "", shoulder: "", chest: "", waist: "", abdomen: "", hip: "",
       thigh_right: "", thigh_left: "", calf_right: "", calf_left: "",
-      arm_right: "", arm_left: "", forearm_right: "", forearm_left: ""
+      arm_right: "", arm_left: "", arm_flexed_right: "", arm_flexed_left: "", 
+      forearm_right: "", forearm_left: ""
     },
     skinfolds: initialData?.skinfolds || {
-      subscapular: "", triceps: "", chest: "", midaxillary: "",
+      subscapular: "", triceps: "", biceps: "", chest: "", midaxillary: "",
       suprailiac: "", abdominal: "", thigh: ""
     },
     bone_diameters: initialData?.bone_diameters || {
@@ -385,6 +386,8 @@ export default function PhysicalEvaluationForm({
                   { key: "hip", label: "QUADRIL" },
                   { key: "arm_right", label: "BRAÇO RELAX. DIR." },
                   { key: "arm_left", label: "BRAÇO RELAX. ESQ." },
+                  { key: "arm_flexed_right", label: "BRAÇO CONTR. DIR." },
+                  { key: "arm_flexed_left", label: "BRAÇO CONTR. ESQ." },
                   { key: "forearm_right", label: "ANTEBRAÇO DIR." },
                   { key: "forearm_left", label: "ANTEBRAÇO ESQ." }
                 ].map(field => (
@@ -443,6 +446,7 @@ export default function PhysicalEvaluationForm({
                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "12px 24px" }}>
                 {[
                   { key: "triceps", label: "TRÍCEPS" },
+                  { key: "biceps", label: "BÍCEPS" },
                   { key: "subscapular", label: "SUBESCAPULAR" },
                   { key: "chest", label: "PEITORAL" },
                   { key: "midaxillary", label: "AXILAR MÉDIA" },
@@ -489,6 +493,33 @@ export default function PhysicalEvaluationForm({
                     />
                   </div>
                 ))}
+              </div>
+            </div>
+
+            {/* DASHBOARD DE RESULTADOS (DUPLICADO PARA UX) */}
+            <div style={{ 
+              background: "#000", 
+              padding: "32px", 
+              border: "4px solid #E31B23",
+              display: "grid",
+              gridTemplateColumns: "repeat(4, 1fr)",
+              gap: 16
+            }}>
+              <div style={{ borderRight: "1px solid #333" }}>
+                <span style={{ fontSize: 9, fontWeight: 900, color: "#999", textTransform: "uppercase" }}>Prot. {formData.protocol.split(' ')[0]}</span>
+                <div style={{ fontSize: 24, fontWeight: 900, color: "#FFF" }}>{calculatedResults.bodyFat.toFixed(1)}%</div>
+              </div>
+              <div style={{ borderRight: "1px solid #333" }}>
+                <span style={{ fontSize: 9, fontWeight: 900, color: "#999", textTransform: "uppercase" }}>Gordura (kg)</span>
+                <div style={{ fontSize: 24, fontWeight: 900, color: "#E31B23" }}>{calculatedResults.fatMass.toFixed(1)}kg</div>
+              </div>
+              <div style={{ borderRight: "1px solid #333" }}>
+                <span style={{ fontSize: 9, fontWeight: 900, color: "#999", textTransform: "uppercase" }}>Massa Magra</span>
+                <div style={{ fontSize: 24, fontWeight: 900, color: "#FFF" }}>{calculatedResults.leanMass.toFixed(1)}kg</div>
+              </div>
+              <div>
+                <span style={{ fontSize: 9, fontWeight: 900, color: "#999", textTransform: "uppercase" }}>Peso Total</span>
+                <div style={{ fontSize: 24, fontWeight: 900, color: "#FFF" }}>{parseFloat(formData.weight.toString() || "0").toFixed(1)}kg</div>
               </div>
             </div>
           </div>

@@ -311,6 +311,8 @@ export default function EvaluationDetailsClient({
                 { key: "hip", label: "QUADRIL" },
                 { key: "arm_right", label: "BRAÇO RELAXADO DIR." },
                 { key: "arm_left", label: "BRAÇO RELAXADO ESQ." },
+                { key: "arm_flexed_right", label: "BRAÇO CONTR. DIR." },
+                { key: "arm_flexed_left", label: "BRAÇO CONTR. ESQ." },
                 { key: "forearm_right", label: "ANTEBRAÇO DIR." },
                 { key: "forearm_left", label: "ANTEBRAÇO ESQ." },
                 { key: "thigh_right", label: "COXA DIR." },
@@ -349,6 +351,7 @@ export default function EvaluationDetailsClient({
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginBottom: "32px" }}>
               {[
                 { key: "triceps", label: "TRÍCEPS" },
+                { key: "biceps", label: "BÍCEPS" },
                 { key: "subscapular", label: "SUBESCAPULAR" },
                 { key: "chest", label: "PEITORAL" },
                 { key: "midaxillary", label: "AXILAR MÉDIA" },
