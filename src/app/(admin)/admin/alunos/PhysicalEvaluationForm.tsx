@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { X, Save, Activity, Ruler, Target, Camera, FileText, Upload, Trash2, CheckCircle2, User, ImageIcon, Info, HeartPulse } from "lucide-react";
-import { upsertPhysicalEvaluation, uploadEvaluationPhoto } from "../../actions";
+import { upsertPhysicalEvaluation, uploadEvaluationPhoto, getStudentBiometricsInfo } from "../../actions";
+import { calculateBMI, calculateBodyComposition, calculateAge } from "../../../../lib/physique-utils";
 
 interface PhysicalEvaluationFormProps {
   studentId: string;
@@ -49,6 +50,75 @@ export default function PhysicalEvaluationForm({
     photos: initialData?.photos || [],
     waist_hip_ratio: initialData?.waist_hip_ratio || null
   });
+
+  const [studentMeta, setStudentMeta] = useState<{ gender: string | null; birth_date: string | null } | null>(null);
+  const [calculatedResults, setCalculatedResults] = useState({
+    bmi: 0,
+    bodyFat: 0,
+    fatMass: 0,
+    leanMass: 0,
+    age: 0
+  });
+
+  // Carregar dados meta do aluno (Gênero e Nascimento) para os cálculos
+  useEffect(() => {
+    async function fetchMeta() {
+      if (!studentId) return;
+      const info = await getStudentBiometricsInfo(studentId);
+      setStudentMeta(info);
+    }
+    fetchMeta();
+  }, [studentId]);
+
+  // Cálculo Automático de Biometria (IMC, %G, Massa Magra/Gorda)
+  useEffect(() => {
+    const weightVal = parseFloat(formData.weight.toString()) || 0;
+    const heightVal = parseFloat(formData.height.toString()) || 0;
+    
+    let bmi = 0;
+    if (weightVal > 0 && heightVal > 0) {
+      bmi = calculateBMI(weightVal, heightVal) || 0;
+    }
+
+    let bodyFat = 0;
+    let fatMass = 0;
+    let leanMass = 0;
+    let age = 0;
+
+    if (studentMeta?.birth_date) {
+      age = calculateAge(studentMeta.birth_date);
+    }
+
+    // 1. Tentar calcular via Protocolo de Dobras
+    if (weightVal > 0 && studentMeta?.gender) {
+      const result = calculateBodyComposition(
+        weightVal,
+        heightVal,
+        formData.skinfolds,
+        age,
+        studentMeta.gender as "male" | "female",
+        formData.protocol
+      );
+
+      if (result.bf !== null && result.bf > 0) {
+        bodyFat = result.bf;
+        fatMass = result.fatMass || 0;
+        leanMass = result.leanMass || 0;
+      }
+    }
+
+    // 2. Se o protocolo não deu resultado (dobras vazias), mas o Coach digitou o % manual
+    // Ou se o protocolo selecionado for Bioimpedância
+    if (bodyFat === 0 && formData.body_fat_percentage) {
+      bodyFat = parseFloat(formData.body_fat_percentage.toString()) || 0;
+      if (bodyFat > 0 && weightVal > 0) {
+        fatMass = parseFloat(((weightVal * bodyFat) / 100).toFixed(2));
+        leanMass = parseFloat((weightVal - fatMass).toFixed(2));
+      }
+    }
+
+    setCalculatedResults({ bmi, bodyFat, fatMass, leanMass, age });
+  }, [formData.weight, formData.height, formData.skinfolds, formData.protocol, formData.body_fat_percentage, studentMeta]);
 
   // Cálculo Automático de Relação Cintura-Quadril (WHR)
   useEffect(() => {
@@ -121,11 +191,19 @@ export default function PhysicalEvaluationForm({
       ...formData,
       weight: formData.weight ? parseFloat(formData.weight.toString()) : undefined,
       height: formData.height ? parseFloat(formData.height.toString()) : undefined,
-      body_fat_percentage: formData.body_fat_percentage ? parseFloat(formData.body_fat_percentage.toString()) : undefined,
+      body_fat_percentage: calculatedResults.bodyFat > 0 && formData.protocol !== "Bioimpedância" 
+        ? calculatedResults.bodyFat 
+        : (formData.body_fat_percentage ? parseFloat(formData.body_fat_percentage.toString()) : undefined),
       measurements: Object.fromEntries(Object.entries(formData.measurements).map(([k, v]) => [k, v ? parseFloat(v as string) : 0])),
       skinfolds: Object.fromEntries(Object.entries(formData.skinfolds).map(([k, v]) => [k, v ? parseFloat(v as string) : 0])),
       bone_diameters: Object.fromEntries(Object.entries(formData.bone_diameters).map(([k, v]) => [k, v ? parseFloat(v as string) : 0])),
-      waist_hip_ratio: formData.waist_hip_ratio
+      waist_hip_ratio: formData.waist_hip_ratio,
+      lean_mass_components: {
+        fat_mass: calculatedResults.fatMass,
+        lean_mass: calculatedResults.leanMass,
+        bmi: calculatedResults.bmi,
+        age_at_evaluation: calculatedResults.age
+      }
     };
 
     const result = await upsertPhysicalEvaluation(payload);
@@ -257,6 +335,34 @@ export default function PhysicalEvaluationForm({
                  onFocus={(e) => (e.currentTarget.style.borderColor = "#E31B23")}
                  onBlur={(e) => (e.currentTarget.style.borderColor = "#000")}
                 />
+              </div>
+
+              {/* DASHBOARD DE RESULTADOS AUTOMÁTICOS */}
+              <div style={{ 
+                marginTop: 32, 
+                background: "#000", 
+                padding: "32px", 
+                border: "4px solid #E31B23",
+                display: "grid",
+                gridTemplateColumns: "repeat(4, 1fr)",
+                gap: 16
+              }}>
+                <div style={{ borderRight: "1px solid #333" }}>
+                  <span style={{ fontSize: 9, fontWeight: 900, color: "#999", textTransform: "uppercase" }}>IMC Atual</span>
+                  <div style={{ fontSize: 24, fontWeight: 900, color: "#FFF" }}>{calculatedResults.bmi.toFixed(1)}</div>
+                </div>
+                <div style={{ borderRight: "1px solid #333" }}>
+                  <span style={{ fontSize: 9, fontWeight: 900, color: "#999", textTransform: "uppercase" }}>Gordura Corporal</span>
+                  <div style={{ fontSize: 24, fontWeight: 900, color: "#E31B23" }}>{calculatedResults.bodyFat.toFixed(1)}%</div>
+                </div>
+                <div style={{ borderRight: "1px solid #333" }}>
+                  <span style={{ fontSize: 9, fontWeight: 900, color: "#999", textTransform: "uppercase" }}>Massa Magra</span>
+                  <div style={{ fontSize: 24, fontWeight: 900, color: "#FFF" }}>{calculatedResults.leanMass.toFixed(1)}kg</div>
+                </div>
+                <div>
+                  <span style={{ fontSize: 9, fontWeight: 900, color: "#999", textTransform: "uppercase" }}>Massa Gorda</span>
+                  <div style={{ fontSize: 24, fontWeight: 900, color: "#FFF" }}>{calculatedResults.fatMass.toFixed(1)}kg</div>
+                </div>
               </div>
           </div>
         )}

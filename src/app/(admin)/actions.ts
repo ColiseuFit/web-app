@@ -144,7 +144,7 @@ export async function updateStudent(studentId: string, formData: FormData) {
   // Dynamic updates object to avoid overwriting missing fields with null
   const fields = [
     "full_name", "display_name", "first_name", "last_name", 
-    "level", "phone", "cpf", "gender", "bio"
+    "level", "phone", "cpf", "gender", "bio", "birth_date"
   ];
   
   const updates: any = {
@@ -181,6 +181,27 @@ export async function updateStudent(studentId: string, formData: FormData) {
   revalidatePath("/profile/evaluations");
 
   return { success: true };
+}
+
+/**
+ * Fetches basic biometrics metadata for a student.
+ * 
+ * @param {string} studentId - The student identifier.
+ * @returns {Promise<{ gender: string | null; birth_date: string | null } | null>}
+ */
+export async function getStudentBiometricsInfo(studentId: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("gender, birth_date")
+    .eq("id", studentId)
+    .single();
+
+  if (error || !data) return null;
+  return {
+    gender: data.gender,
+    birth_date: data.birth_date
+  };
 }
 
 /**
