@@ -118,17 +118,12 @@ export default async function AppDashboard({ searchParams }: PageProps) {
         {/* ── HEADER DE IDENTIDADE ── */}
         <section style={{ padding: "40px 20px 32px", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
           
-          {/* DUO DE BADGES CENTRALIZADOS */}
-          <div style={{ display: "flex", gap: "12px", marginBottom: "24px", animation: "levelIconEntrance 0.8s ease-out" }}>
+          {/* IDENTIDADE CENTRALIZADA */}
+          <div style={{ marginBottom: "24px", animation: "levelIconEntrance 0.8s ease-out" }}>
             <LevelBadge 
               level={level} 
               description={level.description} 
-              size={72} // Levemente maior para o pôster
-            />
-            <LevelBadge 
-              level={level} 
-              description={level.description} 
-              size={72} 
+              size={84} 
               avatarUrl={profile?.avatar_url}
             />
           </div>
