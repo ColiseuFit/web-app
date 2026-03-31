@@ -238,7 +238,7 @@ export async function updateWeeklyTarget(weekly_target: number) {
  * 
  * @param {string} title - Descrição do objetivo (ex: "Fazer meu primeiro Muscle-up").
  */
-export async function createGoal(title: string): Promise<{ success?: boolean; data?: { id: string; title: string }; error?: string }> {
+export async function createGoal(title: string): Promise<{ success?: boolean; data?: { id: string; title: string; is_completed: boolean }; error?: string }> {
   const validation = goalSchema.safeParse({ title });
   if (!validation.success) return { error: "Título inválido" };
 

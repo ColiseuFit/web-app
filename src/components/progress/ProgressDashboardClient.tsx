@@ -109,7 +109,7 @@ export default function ProgressDashboardClient({
         alert("Erro ao criar meta: " + result.error);
       } else if (result?.data) {
         // Adding with real ID from server to avoid UUID mismatch on immediate toggle
-        setGoals(prev => [...prev, result.data]);
+        setGoals(prev => [...prev, result.data as Goal]);
       }
     });
   };
