@@ -147,26 +147,32 @@ export default function PhysicalEvaluationForm({
     formDataUpload.append("file", file);
     formDataUpload.append("studentId", studentId);
 
-    const result = await uploadEvaluationPhoto(formDataUpload);
-    if (result.success && result.url) {
-      setFormData(prev => {
-        // Se já existe uma foto para este label, substitui. Senão adiciona.
-        const existingIndex = prev.photos.findIndex((p: any) => p.label === label);
-        const newPhoto = { url: result.url, label, path: result.path };
-        const newPhotos = [...prev.photos];
-        
-        if (existingIndex >= 0) {
-          newPhotos[existingIndex] = newPhoto;
-        } else {
-          newPhotos.push(newPhoto);
-        }
-        
-        return { ...prev, photos: newPhotos };
-      });
-    } else {
-      alert(result.error || "Erro no upload");
+    try {
+      const result = await uploadEvaluationPhoto(formDataUpload);
+      if (result.success && result.url) {
+        setFormData(prev => {
+          // Se já existe uma foto para este label, substitui. Senão adiciona.
+          const existingIndex = prev.photos.findIndex((p: any) => p.label === label);
+          const newPhoto = { url: result.url, label, path: result.path };
+          const newPhotos = [...prev.photos];
+          
+          if (existingIndex >= 0) {
+            newPhotos[existingIndex] = newPhoto;
+          } else {
+            newPhotos.push(newPhoto);
+          }
+          
+          return { ...prev, photos: newPhotos };
+        });
+      } else {
+        alert(result.error || "Erro no upload");
+      }
+    } catch (err) {
+      console.error("Upload handler critical error:", err);
+      alert("Erro crítico ao processar o upload.");
+    } finally {
+      setUploadingPos(null);
     }
-    setUploadingPos(null);
   };
 
   const removePhoto = (index: number) => {

@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { Search, Plus, Phone, X, UserPlus, ChevronDown, Pencil, Trash2, User, Mail, Calendar, CreditCard, Info, Activity } from "lucide-react";
-import { createStudent, updateStudent, deleteStudent, getStudentEvaluations, deletePhysicalEvaluation } from "../../actions";
+import { Search, Plus, Phone, X, UserPlus, ChevronDown, Pencil, Trash2, User, Mail, Calendar, CreditCard, Info, Activity, ShieldCheck, Lock, Mail as MailIcon } from "lucide-react";
+import { createStudent, updateStudent, deleteStudent, getStudentEvaluations, deletePhysicalEvaluation, updateStudentAuth } from "../../actions";
 import PhysicalEvaluationForm from "./PhysicalEvaluationForm";
 
 /**
@@ -62,7 +62,7 @@ export default function AlunosClient({ students }: { students: Student[] }) {
   const [message, setMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);
   
   // Evaluation States
-  const [drawerView, setDrawerView] = useState<"profile" | "evaluations" | "eval-form">("profile");
+  const [drawerView, setDrawerView] = useState<"profile" | "evaluations" | "eval-form" | "security">("profile");
   const [evaluations, setEvaluations] = useState<any[]>([]);
   const [loadingEvals, setLoadingEvals] = useState(false);
   const [selectedEval, setSelectedEval] = useState<any | null>(null);
@@ -140,6 +140,19 @@ export default function AlunosClient({ students }: { students: Student[] }) {
     if (res.success) {
       if (selectedStudent) fetchEvaluations(selectedStudent.id);
     }
+  }
+
+  async function handleUpdateAuth(formData: FormData) {
+    if (!selectedStudent) return;
+    setLoading(true);
+    const result = await updateStudentAuth(selectedStudent.id, formData);
+    if (result?.success) {
+      alert("Credenciais atualizadas com sucesso!");
+      setDrawerView("profile");
+    } else {
+      alert(result.error || "Erro ao atualizar credenciais.");
+    }
+    setLoading(false);
   }
 
   const handleOpenDrawer = (student: Student) => {
@@ -368,18 +381,30 @@ export default function AlunosClient({ students }: { students: Student[] }) {
                   transition: "all 0.1s"
                 }}
               >
-                PERFIL DO ATLETA
+                PERFIL
               </button>
               <button 
                 onClick={switchToEvaluations} 
                 style={{ 
                   flex: 1, padding: "20px", fontSize: 12, fontWeight: 900, textTransform: "uppercase",
-                  background: drawerView !== "profile" ? "#FFF" : "transparent",
+                  background: drawerView === "evaluations" || drawerView === "eval-form" ? "#FFF" : "transparent",
+                  color: "#000", border: "none", cursor: "pointer",
+                  borderRight: "4px solid #000",
+                  transition: "all 0.1s"
+                }}
+              >
+                AVALIAÇÕES
+              </button>
+              <button 
+                onClick={() => setDrawerView("security")} 
+                style={{ 
+                  flex: 1, padding: "20px", fontSize: 12, fontWeight: 900, textTransform: "uppercase",
+                  background: drawerView === "security" ? "#FFF" : "transparent",
                   color: "#000", border: "none", cursor: "pointer",
                   transition: "all 0.1s"
                 }}
               >
-                AVALIAÇÕES FÍSICAS
+                SEGURANÇA
               </button>
             </div>
 
@@ -560,6 +585,56 @@ export default function AlunosClient({ students }: { students: Student[] }) {
                   onClose={() => setDrawerView("evaluations")}
                   onSuccess={() => { setDrawerView("evaluations"); fetchEvaluations(selectedStudent.id); }}
                 />
+              )}
+
+              {drawerView === "security" && (
+                <div style={{ maxWidth: 600, margin: "0 auto", width: "100%" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 32 }}>
+                    <ShieldCheck size={24} style={{ color: "var(--admin-primary)" }} />
+                    <h3 style={{ fontSize: 20, fontWeight: 900, textTransform: "uppercase", margin: 0 }}>Gestão de Acesso</h3>
+                  </div>
+
+                  <form action={handleUpdateAuth} style={{ display: "flex", flexDirection: "column", gap: 32 }}>
+                    <div className="admin-card" style={{ padding: 24, border: "3px solid #000" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+                        <MailIcon size={16} />
+                        <span style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase" }}>Alterar E-mail de Login</span>
+                      </div>
+                      <input 
+                        type="email" 
+                        name="email" 
+                        placeholder="Novo e-mail (Obrigatório para login)" 
+                        style={{ width: "100%", padding: 14, border: "2px solid #000", fontWeight: 700 }}
+                      />
+                      <p style={{ fontSize: 11, color: "#666", marginTop: 8 }}>Muda o endereço usado pelo atleta para entrar no Coliseu.</p>
+                    </div>
+
+                    <div className="admin-card" style={{ padding: 24, border: "3px solid #000" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+                        <Lock size={16} />
+                        <span style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase" }}>Resetar Senha</span>
+                      </div>
+                      <input 
+                        type="text" 
+                        name="password" 
+                        placeholder="Nova senha (Min 8 caracteres)" 
+                        style={{ width: "100%", padding: 14, border: "2px solid #000", fontWeight: 700 }}
+                      />
+                      <p style={{ fontSize: 11, color: "#666", marginTop: 8 }}>Cuidado: A nova senha terá efeito imediato e deslogará sessões antigas se configurado.</p>
+                    </div>
+
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 16 }}>
+                      <button 
+                        type="submit" 
+                        disabled={loading} 
+                        className="admin-btn admin-btn-primary" 
+                        style={{ height: 64, fontSize: 14 }}
+                      >
+                        {loading ? "ATUALIZANDO CREDENCIAIS..." : "CONFIRMAR ALTERAÇÕES DE SEGURANÇA"}
+                      </button>
+                    </div>
+                  </form>
+                </div>
               )}
             </div>
           </div>

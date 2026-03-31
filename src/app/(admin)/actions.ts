@@ -249,6 +249,59 @@ export async function deleteStudent(studentId: string) {
 }
 
 /**
+ * Updates a student's authentication credentials (email/password).
+ * 
+ * @security
+ * - Role Requirement: ONLY 'admin'.
+ * - RLS Bypass: Uses `SUPABASE_SERVICE_ROLE_KEY` to update the Auth system directly.
+ * - Impact: Changing the email updates the login identifier.
+ * 
+ * @param {string} studentId - The UUID of the athlete.
+ * @param {FormData} formData - Data containing 'email' or 'password'.
+ * @returns {Promise<{ success?: boolean; error?: string }>} Operation status.
+ */
+export async function updateStudentAuth(studentId: string, formData: FormData) {
+  const supabase = await createClient();
+  const { data: { user: currentUser } } = await supabase.auth.getUser();
+  if (!currentUser) return { error: "Sessão expirada." };
+
+  // Only admin can manage credentials
+  const { data: roleData } = await supabase.from("user_roles").select("role").eq("user_id", currentUser.id).single();
+  if (!roleData || roleData.role !== "admin") {
+    return { error: "Apenas administradores podem gerenciar acessos." };
+  }
+
+  const email = formData.get("email") as string;
+  const password = formData.get("password") as string;
+
+  if (!email && !password) return { error: "Nenhuma alteração fornecida." };
+
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim().split(' ')[0];
+  if (!serviceRoleKey) {
+    return { error: "Erro de configuração: Chave mestra não encontrada." };
+  }
+
+  const supabaseAdmin = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    serviceRoleKey
+  );
+
+  const updates: any = {};
+  if (email) updates.email = email;
+  if (password) updates.password = password;
+
+  const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(studentId, updates);
+  
+  if (authError) {
+    console.error("[updateStudentAuth] Auth Error:", authError);
+    return { error: "Erro no servidor de autenticação: " + authError.message };
+  }
+
+  revalidatePath("/admin/alunos");
+  return { success: true };
+}
+
+/**
  * Creates or updates a WOD (Workout of the Day) for a specific date.
  * 
  * @security
@@ -472,33 +525,39 @@ export async function uploadEvaluationPhoto(formData: FormData) {
   const fileExt = file.name.split(".").pop();
   const filePath = `${studentId}/${Date.now()}.${fileExt}`;
 
-  // 1. Storage Upload (Converting File to ArrayBuffer for server-side compatibility)
-  const arrayBuffer = await file.arrayBuffer();
-  const { error: uploadError } = await supabase.storage
-    .from("physical-evaluations")
-    .upload(filePath, arrayBuffer, {
-      contentType: file.type,
-      upsert: true
-    });
+  try {
+    // 1. Storage Upload (Converted to Uint8Array for maximum compatibility in Server Actions)
+    const arrayBuffer = await file.arrayBuffer();
+    const { error: uploadError } = await supabase.storage
+      .from("physical-evaluations")
+      .upload(filePath, new Uint8Array(arrayBuffer), {
+        contentType: file.type || 'image/jpeg',
+        upsert: true
+      });
 
-  if (uploadError) {
-    console.error("[uploadEvaluationPhoto] Storage Error:", uploadError);
-    return { error: "Falha no servidor de arquivos: " + uploadError.message };
+    if (uploadError) {
+      console.error("[uploadEvaluationPhoto] Storage Error:", uploadError);
+      return { error: "Falha ao salvar no servidor de arquivos (Bucket ou Permissão): " + uploadError.message };
+    }
+
+    // 2. Immediate Signed URL generation (1 year expiration)
+    const { data: signedData, error: signedError } = await supabase.storage
+      .from("physical-evaluations")
+      .createSignedUrl(filePath, 31536000); 
+
+    if (signedError) {
+      console.error("[uploadEvaluationPhoto] Signed URL Error:", signedError);
+      return { error: "Arquivo salvo, mas erro ao gerar link: " + signedError.message };
+    }
+
+    return { 
+      success: true, 
+      url: signedData.signedUrl, 
+      path: filePath 
+    };
+  } catch (err: any) {
+    console.error("[uploadEvaluationPhoto] Unexpected Error:", err);
+    return { error: "Erro inesperado no servidor: " + err.message };
   }
-
-  // 2. Immediate Signed URL generation (1 year expiration)
-  const { data: signedData, error: signedError } = await supabase.storage
-    .from("physical-evaluations")
-    .createSignedUrl(filePath, 31536000); 
-
-  if (signedError) {
-    return { error: "Arquivos salvos, mas falha ao gerar link de acesso: " + signedError.message };
-  }
-
-  return { 
-    success: true, 
-    url: signedData.signedUrl, 
-    path: filePath 
-  };
 }
 

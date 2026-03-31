@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { updatePasswordSchema } from "@/lib/validations/security_schemas";
 
 /**
  * Esquema de validação para o perfil do aluno.
@@ -102,5 +103,39 @@ export async function updateProfile(formData: FormData) {
   revalidatePath("/profile");
   revalidatePath("/profile/edit");
   
+  return { success: true };
+}
+
+/**
+ * Atualiza a senha do usuário logado.
+ * 
+ * @param {FormData} formData - Contém os campos: password (nova senha) e confirm_password.
+ * @returns {Promise<{success?: boolean, error?: string}>} Resultado da operação.
+ * 
+ * @security
+ * - Verifica sessão via auth.getUser().
+ * - Validação via Zod (updatePasswordSchema).
+ * - Utiliza auth.updateUser() diretamente no contexto do usuário autenticado.
+ */
+export async function updatePassword(formData: FormData) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Sessão expirada." };
+
+  const password = formData.get("password") as string;
+  const confirmPassword = formData.get("confirm_password") as string;
+
+  const validation = updatePasswordSchema.safeParse({ password, confirm_password: confirmPassword });
+  if (!validation.success) {
+    return { error: validation.error.issues[0].message };
+  }
+
+  const { error: authError } = await supabase.auth.updateUser({ password });
+  
+  if (authError) {
+    console.error("[updatePassword] Auth Error:", authError);
+    return { error: "Erro ao atualizar senha: " + authError.message };
+  }
+
   return { success: true };
 }

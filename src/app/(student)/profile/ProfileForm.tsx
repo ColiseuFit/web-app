@@ -2,8 +2,9 @@
 
 import { useState, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { updateProfile } from "./actions";
+import { updateProfile, updatePassword } from "./actions";
 import ConfirmModal from "@/components/ConfirmModal";
+import { Lock, ShieldCheck } from "lucide-react";
 
 export default function ProfileForm({ user, profile }: { user: any, profile: any }) {
   const supabase = createClient();
@@ -14,7 +15,12 @@ export default function ProfileForm({ user, profile }: { user: any, profile: any
   const [avatarUrl, setAvatarUrl] = useState(profile?.avatar_url || "");
   const [uploading, setUploading] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  
+  const [passLoading, setPassLoading] = useState(false);
+  const [passMessage, setPassMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const passFormRef = useRef<HTMLFormElement>(null);
 
   // Faz upload pro Storage e salva a URL pública temporariamente
   async function uploadAvatar(event: React.ChangeEvent<HTMLInputElement>) {
@@ -63,6 +69,19 @@ export default function ProfileForm({ user, profile }: { user: any, profile: any
       setMessage({ type: "success", text: "Perfil atualizado com sucesso!" });
     }
     setLoading(false);
+  }
+
+  async function handlePassSubmit(formData: FormData) {
+    setPassLoading(true);
+    setPassMessage(null);
+    const res = await updatePassword(formData);
+    if (res?.error) {
+      setPassMessage({ type: "error", text: res.error });
+    } else {
+      setPassMessage({ type: "success", text: "Senha atualizada com sucesso!" });
+      passFormRef.current?.reset();
+    }
+    setPassLoading(false);
   }
 
   return (
@@ -449,6 +468,118 @@ export default function ProfileForm({ user, profile }: { user: any, profile: any
           {loading ? "PROCESSANDO..." : "SALVAR ALTERAÇÕES"}
         </button>
       </form>
+
+      {/* ── SENHA E SEGURANÇA ── */}
+      <div style={{ marginTop: "64px", borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: "48px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "32px" }}>
+          <div style={{ width: "4px", height: "16px", background: "#E31B23" }} />
+          <h3 style={{ fontSize: "11px", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.1em", color: "#FFF" }}>SEGURANÇA DA CONTA</h3>
+        </div>
+
+        <form ref={passFormRef} action={handlePassSubmit} style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+          <p style={{ fontSize: "12px", color: "var(--text-dim)", lineHeight: "1.6", marginBottom: "8px" }}>
+            Mantenha sua conta protegida. A nova senha deve ter no mínimo 8 caracteres.
+          </p>
+
+          <div style={{ position: "relative" }}>
+            <label style={{ 
+              display: "block", 
+              fontSize: "9px", 
+              fontWeight: 700, 
+              textTransform: "uppercase", 
+              color: "rgba(255,255,255,0.25)", 
+              marginBottom: "10px", 
+              letterSpacing: "0.2em" 
+            }}>
+              Nova Senha
+            </label>
+            <div style={{ position: "relative" }}>
+              <Lock size={14} style={{ position: "absolute", left: "16px", top: "50%", transform: "translateY(-50%)", color: "rgba(255,255,255,0.2)" }} />
+              <input 
+                type="password" 
+                name="password" 
+                placeholder="********" 
+                required
+                style={{
+                  width: "100%",
+                  background: "#050505",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  padding: "14px 16px 14px 44px",
+                  color: "#FFFFFF",
+                  fontSize: "14px",
+                  outline: "none",
+                }}
+              />
+            </div>
+          </div>
+
+          <div style={{ position: "relative" }}>
+            <label style={{ 
+              display: "block", 
+              fontSize: "9px", 
+              fontWeight: 700, 
+              textTransform: "uppercase", 
+              color: "rgba(255,255,255,0.25)", 
+              marginBottom: "10px", 
+              letterSpacing: "0.2em" 
+            }}>
+              Confirmar Nova Senha
+            </label>
+            <div style={{ position: "relative" }}>
+              <ShieldCheck size={14} style={{ position: "absolute", left: "16px", top: "50%", transform: "translateY(-50%)", color: "rgba(255,255,255,0.2)" }} />
+              <input 
+                type="password" 
+                name="confirm_password" 
+                placeholder="********" 
+                required
+                style={{
+                  width: "100%",
+                  background: "#050505",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  padding: "14px 16px 14px 44px",
+                  color: "#FFFFFF",
+                  fontSize: "14px",
+                  outline: "none",
+                }}
+              />
+            </div>
+          </div>
+
+          {passMessage && (
+            <div style={{
+              padding: "14px",
+              background: passMessage.type === "error" ? "rgba(227,27,35,0.1)" : "rgba(255,255,255,0.03)",
+              border: `1px solid ${passMessage.type === "error" ? "rgba(227,27,35,0.2)" : "rgba(255,255,255,0.1)"}`,
+              color: passMessage.type === "error" ? "#E31B23" : "#FFFFFF",
+              fontSize: "12px",
+              fontWeight: 600,
+              textAlign: "center",
+              textTransform: "uppercase",
+            }}>
+              {passMessage.text}
+            </div>
+          )}
+
+          <button 
+            type="submit" 
+            disabled={passLoading} 
+            style={{ 
+              background: "transparent",
+              color: "#FFFFFF",
+              border: "1px solid rgba(255,255,255,0.15)",
+              padding: "16px",
+              fontSize: "10px",
+              fontWeight: 800,
+              textTransform: "uppercase",
+              letterSpacing: "0.2em",
+              cursor: "pointer",
+              transition: "all 0.2s",
+            }}
+          >
+            {passLoading ? "ATUALIZANDO..." : "REDEFINIR SENHA"}
+          </button>
+        </form>
+      </div>
     </div>
   );
 }

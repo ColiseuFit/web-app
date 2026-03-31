@@ -96,6 +96,23 @@ export const physicalEvaluationSchema = z.object({
   notes: z.string().optional().nullable(),
 });
 
+// 11. Schema para Atualização de Credenciais (Admin)
+export const updateAuthSchema = z.object({
+  email: z.string().email("E-mail inválido").optional(),
+  password: z.string().min(8, "A senha deve ter pelo menos 8 caracteres").optional(),
+}).refine(data => data.email || data.password, {
+  message: "Pelo menos um campo deve ser preenchido",
+});
+
+// 12. Schema para Troca de Senha (Aluno)
+export const updatePasswordSchema = z.object({
+  password: z.string().min(8, "A senha deve ter pelo menos 8 caracteres"),
+  confirm_password: z.string().min(8, "Confirmação de senha obrigatória"),
+}).refine(data => data.password === data.confirm_password, {
+  message: "As senhas não coincidem",
+  path: ["confirm_password"],
+});
+
 export type LoginInput = z.infer<typeof loginSchema>;
 export type CreateStudentInput = z.infer<typeof createStudentSchema>;
 export type CheckInInput = z.infer<typeof checkInSchema>;
@@ -105,3 +122,5 @@ export type GoalInput = z.infer<typeof goalSchema>;
 export type WodInput = z.infer<typeof wodSchema>;
 export type ClassSlotInput = z.infer<typeof classSlotSchema>;
 export type PhysicalEvaluationInput = z.infer<typeof physicalEvaluationSchema>;
+export type UpdateAuthInput = z.infer<typeof updateAuthSchema>;
+export type UpdatePasswordInput = z.infer<typeof updatePasswordSchema>;
