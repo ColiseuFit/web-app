@@ -470,13 +470,16 @@ export async function uploadEvaluationPhoto(formData: FormData) {
   if (!studentId) return { error: "ID do aluno é obrigatório para o armazenamento." };
 
   const fileExt = file.name.split(".").pop();
-  const fileName = `${studentId}/${Date.now()}.${fileExt}`;
-  const filePath = `${fileName}`;
+  const filePath = `${studentId}/${Date.now()}.${fileExt}`;
 
-  // 1. Storage Upload
+  // 1. Storage Upload (Converting File to ArrayBuffer for server-side compatibility)
+  const arrayBuffer = await file.arrayBuffer();
   const { error: uploadError } = await supabase.storage
     .from("physical-evaluations")
-    .upload(filePath, file);
+    .upload(filePath, arrayBuffer, {
+      contentType: file.type,
+      upsert: true
+    });
 
   if (uploadError) {
     console.error("[uploadEvaluationPhoto] Storage Error:", uploadError);

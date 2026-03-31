@@ -70,8 +70,21 @@ export default function LevelCard({ level, stats, xpProgress, xpRemaining, avata
       <div style={{ position: "relative", zIndex: 1 }}>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: "24px" }}>
           
-          {/* IDENTIDADE UNIFICADA (LEVEL + AVATAR) */}
-          <div style={{ marginBottom: "20px" }}>
+          {/* IDENTIDADE DUAL (LEVEL + AVATAR) */}
+          <div style={{ 
+            marginBottom: "20px",
+            display: "flex",
+            gap: "12px",
+            justifyContent: "center"
+          }}>
+            {/* ÍCONE DE RANKING */}
+            <LevelBadge 
+              level={level} 
+              description={level.description || ""} 
+              size={100} 
+            />
+
+            {/* FOTO DO ATLETA */}
             <LevelBadge 
               level={level} 
               description={level.description || ""} 

@@ -118,8 +118,22 @@ export default async function AppDashboard({ searchParams }: PageProps) {
         {/* ── HEADER DE IDENTIDADE ── */}
         <section style={{ padding: "40px 20px 32px", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
           
-          {/* IDENTIDADE CENTRALIZADA */}
-          <div style={{ marginBottom: "24px", animation: "levelIconEntrance 0.8s ease-out" }}>
+          {/* IDENTIDADE CENTRALIZADA - DUAL BADGE */}
+          <div style={{ 
+            marginBottom: "24px", 
+            animation: "levelIconEntrance 0.8s ease-out",
+            display: "flex",
+            gap: "16px",
+            justifyContent: "center"
+          }}>
+            {/* ÍCONE DE RANKING */}
+            <LevelBadge 
+              level={level} 
+              description={level.description} 
+              size={84} 
+            />
+
+            {/* FOTO DO ATLETA */}
             <LevelBadge 
               level={level} 
               description={level.description} 

@@ -386,18 +386,41 @@ export default function PhysicalEvaluationForm({
                   { key: "hip", label: "QUADRIL" },
                   { key: "arm_right", label: "BRAÇO RELAX. DIR." },
                   { key: "arm_left", label: "BRAÇO RELAX. ESQ." },
-                  { key: "arm_flexed_right", label: "BRAÇO CONTR. DIR." },
-                  { key: "arm_flexed_left", label: "BRAÇO CONTR. ESQ." },
+                  { key: "arm_flexed_right", label: "BÍCEPS CONTR. DIR." },
+                  { key: "arm_flexed_left", label: "BÍCEPS CONTR. ESQ." },
                   { key: "forearm_right", label: "ANTEBRAÇO DIR." },
                   { key: "forearm_left", label: "ANTEBRAÇO ESQ." }
                 ].map(field => (
-                  <div key={field.key} style={{ display: "flex", flexDirection: "column", borderBottom: "1px solid #EEE", paddingBottom: 4 }}>
-                    <label style={{ fontSize: 10, fontWeight: 800, color: "#666", marginBottom: 4 }}>{field.label}</label>
+                  <div key={field.key} style={{ 
+                    display: "flex", 
+                    flexDirection: "column", 
+                    borderBottom: "1px solid #EEE", 
+                    padding: field.key.includes("arm_flexed") ? "4px 8px 8px 8px" : "0 0 4px 0",
+                    background: field.key.includes("arm_flexed") ? "rgba(227,27,35,0.03)" : "transparent",
+                    border: field.key.includes("arm_flexed") ? "1px solid rgba(227,27,35,0.1)" : "none",
+                    borderRadius: "4px"
+                  }}>
+                    <label style={{ 
+                      fontSize: 10, 
+                      fontWeight: 800, 
+                      color: field.key.includes("arm_flexed") ? "var(--red)" : "#666", 
+                      marginBottom: 4 
+                    }}>
+                      {field.label}
+                    </label>
                     <input 
                       type="number" step="0.1" 
                       value={(formData.measurements as any)[field.key]} 
                       onChange={e => handleNestedChange("measurements", field.key, e.target.value)} 
-                      style={{ width: "100%", textAlign: "left", padding: "6px 8px", border: "2px solid #EEE", fontWeight: 800, outline: "none" }}
+                      style={{ 
+                        width: "100%", 
+                        textAlign: "left", 
+                        padding: "6px 8px", 
+                        border: "2px solid #EEE", 
+                        fontWeight: 800, 
+                        outline: "none",
+                        color: field.key.includes("arm_flexed") ? "#000" : "inherit"
+                      }}
                       onFocus={(e) => (e.currentTarget.style.borderColor = "#000")}
                       onBlur={(e) => (e.currentTarget.style.borderColor = "#EEE")}
                     />
@@ -496,30 +519,59 @@ export default function PhysicalEvaluationForm({
               </div>
             </div>
 
-            {/* DASHBOARD DE RESULTADOS (DUPLICADO PARA UX) */}
+            {/* DASHBOARD DE RESULTADOS PREMIUM */}
             <div style={{ 
               background: "#000", 
-              padding: "32px", 
+              padding: "40px", 
               border: "4px solid #E31B23",
               display: "grid",
-              gridTemplateColumns: "repeat(4, 1fr)",
-              gap: 16
+              gridTemplateColumns: "repeat(2, 1fr)",
+              gap: "32px",
+              position: "relative",
+              overflow: "hidden"
             }}>
-              <div style={{ borderRight: "1px solid #333" }}>
-                <span style={{ fontSize: 9, fontWeight: 900, color: "#999", textTransform: "uppercase" }}>Prot. {formData.protocol.split(' ')[0]}</span>
-                <div style={{ fontSize: 24, fontWeight: 900, color: "#FFF" }}>{calculatedResults.bodyFat.toFixed(1)}%</div>
+              {/* Background Glow */}
+              <div style={{ position: "absolute", right: "-10%", top: "-10%", width: "40%", height: "40%", background: "rgba(227,27,35,0.1)", filter: "blur(40px)", borderRadius: "50%" }} />
+
+              <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+                <div>
+                  <span style={{ fontSize: 10, fontWeight: 900, color: "#999", textTransform: "uppercase", letterSpacing: "0.2em", display: "block", marginBottom: 8 }}>
+                    ESTIMATIVA {formData.protocol.toUpperCase()}
+                  </span>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+                    <div style={{ fontSize: 64, fontFamily: "var(--font-display)", fontWeight: 900, color: "#E31B23", lineHeight: 1 }}>
+                      {calculatedResults.bodyFat > 0 ? calculatedResults.bodyFat.toFixed(1) : "--.-"}
+                    </div>
+                    <span style={{ fontSize: 24, fontWeight: 900, color: "#E31B23" }}>%BF</span>
+                  </div>
+                </div>
+
+                <div style={{ padding: "12px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "#999", marginBottom: 4 }}>DADOS DO PROTOCOLO:</div>
+                  <div style={{ fontSize: 13, fontWeight: 900, color: "#FFF" }}>
+                    {calculatedResults.bodyFat > 0 ? "✓ DADOS COMPLETOS" : "⚠ INSIRA AS DOBRAS PARA CALCULAR"}
+                  </div>
+                </div>
               </div>
-              <div style={{ borderRight: "1px solid #333" }}>
-                <span style={{ fontSize: 9, fontWeight: 900, color: "#999", textTransform: "uppercase" }}>Gordura (kg)</span>
-                <div style={{ fontSize: 24, fontWeight: 900, color: "#E31B23" }}>{calculatedResults.fatMass.toFixed(1)}kg</div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 16 }}>
+                <div style={{ padding: "16px", borderLeft: "4px solid #FFF", background: "rgba(255,255,255,0.02)" }}>
+                   <span style={{ fontSize: 9, fontWeight: 900, color: "#999", textTransform: "uppercase", letterSpacing: "0.1em" }}>MASSA MAGRA</span>
+                   <div style={{ fontSize: 28, fontWeight: 900, color: "#FFF" }}>
+                     {calculatedResults.leanMass > 0 ? `${calculatedResults.leanMass.toFixed(1)}kg` : "--.-"}
+                   </div>
+                </div>
+                <div style={{ padding: "16px", borderLeft: "4px solid #E31B23", background: "rgba(255,10,10,0.02)" }}>
+                   <span style={{ fontSize: 9, fontWeight: 900, color: "#999", textTransform: "uppercase", letterSpacing: "0.1em" }}>MASSA GORDA</span>
+                   <div style={{ fontSize: 28, fontWeight: 900, color: "#E31B23" }}>
+                     {calculatedResults.fatMass > 0 ? `${calculatedResults.fatMass.toFixed(1)}kg` : "--.-"}
+                   </div>
+                </div>
               </div>
-              <div style={{ borderRight: "1px solid #333" }}>
-                <span style={{ fontSize: 9, fontWeight: 900, color: "#999", textTransform: "uppercase" }}>Massa Magra</span>
-                <div style={{ fontSize: 24, fontWeight: 900, color: "#FFF" }}>{calculatedResults.leanMass.toFixed(1)}kg</div>
-              </div>
-              <div>
-                <span style={{ fontSize: 9, fontWeight: 900, color: "#999", textTransform: "uppercase" }}>Peso Total</span>
-                <div style={{ fontSize: 24, fontWeight: 900, color: "#FFF" }}>{parseFloat(formData.weight.toString() || "0").toFixed(1)}kg</div>
+
+              {/* Watermark */}
+              <div style={{ position: "absolute", right: 20, bottom: -10, fontSize: 80, fontWeight: 900, opacity: 0.05, color: "#FFF", pointerEvents: "none" }}>
+                RESULT
               </div>
             </div>
           </div>

@@ -5,6 +5,7 @@
 export interface Skinfolds {
   subscapular?: number;
   triceps?: number;
+  biceps?: number;
   chest?: number;
   midaxillary?: number;
   suprailiac?: number;
