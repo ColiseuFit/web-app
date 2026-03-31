@@ -22,6 +22,7 @@ interface WodViewProps {
   selectedDate: string;
   alreadyChecked: boolean;
   studentLevel: string;
+  holiday: any;
 }
 
 /**
@@ -37,7 +38,7 @@ interface WodViewProps {
  * - Mapeamento de níveis centralizado para garantir cores e contrastes acessíveis.
  * - Suporte a 'VERSÃO: ELITE' com branding Silk Gold diferenciado.
  */
-export default function WodView({ wod, selectedDate, alreadyChecked, studentLevel }: WodViewProps) {
+export default function WodView({ wod, selectedDate, alreadyChecked, studentLevel, holiday }: WodViewProps) {
   // Mapeamento de níveis (L1 a L5)
   const LEVELS = [
     { id: "L1", label: "INICIANTE", color: "var(--lvl-white)", textColor: "#FFF", btnTextColor: "#000" },
@@ -216,12 +217,13 @@ export default function WodView({ wod, selectedDate, alreadyChecked, studentLeve
                 wodId={wod.id} 
                 date={selectedDate}
                 alreadyChecked={alreadyChecked} 
+                holiday={holiday}
             />
           </div>
         </div>
       ) : (
         <div style={{ padding: "64px 24px", textAlign: "center", opacity: 0.5 }}>
-          <p style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", letterSpacing: "0.2em" }}>PROGRAMAÇÃO SENDO FORJADA...</p>
+          <p style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", letterSpacing: "0.2em" }}>TREINO NÃO DISPONÍVEL</p>
         </div>
       )}
 

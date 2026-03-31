@@ -10,6 +10,7 @@ import {
   LogOut,
   ChevronLeft,
   Settings,
+  Contact,
 } from "lucide-react";
 
 /**
@@ -23,6 +24,7 @@ import {
 const NAV_ITEMS = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/alunos", label: "Alunos", icon: Users },
+  { href: "/admin/professores", label: "Professores", icon: Contact },
   { href: "/admin/wods", label: "WODs", icon: Dumbbell },
   { href: "/admin/turmas", label: "Turmas", icon: CalendarClock },
   { href: "/admin/settings", label: "Config", icon: Settings },
@@ -40,7 +42,7 @@ export default function AdminSidebar() {
     <aside
       style={{
         width: 240,
-        minHeight: "100vh",
+        minHeight: "100%", // Preenche toda a altura do shell pai
         borderRight: "3px solid #000",
         background: "#FFF",
         display: "flex",

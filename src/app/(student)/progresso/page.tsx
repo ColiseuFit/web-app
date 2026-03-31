@@ -14,6 +14,17 @@ export const metadata: Metadata = {
 /**
  * Página de Progresso e Metas
  * Centraliza o Monitor de Compromisso, Recordes (PRs) e Objetivos Técnicos.
+ * 
+ * @security
+ * - Sessão validada no servidor.
+ * - RLS ativo para tabelas `personal_records`, `student_settings` e `student_goals`.
+ * 
+ * @technical
+ * - Time Logic: Calcula o início da semana (Segunda-feira) em UTC para o monitor de frequência.
+ * - Data Composition: Agrega dados de 5 tabelas diferentes via `Promise.all` para renderização atômica.
+ * - Interactive: Delega interatividade (PRs, Metas) para o `ProgressDashboardClient`.
+ * 
+ * @returns {Promise<JSX.Element>} Dashboard de progresso técnico do atleta.
  */
 export default async function ProgressPage() {
   const supabase = await createClient();

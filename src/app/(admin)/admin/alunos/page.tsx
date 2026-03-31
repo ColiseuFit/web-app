@@ -10,14 +10,21 @@ import AlunosClient from "./AlunosClient";
 export default async function AlunosPage() {
   const supabase = await createClient();
 
-  const { data: profiles, error } = await supabase
+  const { data: allProfilesRes, error } = await supabase
     .from("profiles")
-    .select("id, full_name, display_name, first_name, last_name, level, phone, avatar_url, created_at, xp_balance, bio, cpf, birth_date, gender")
+    .select("*, user_roles(role)")
     .order("created_at", { ascending: false });
 
   if (error) {
-    console.error("[AlunosPage] Erro ao buscar perfis:", error);
+    console.error("[AlunosPage] Erro ao buscar perfis:", error.message);
   }
+
+  // Filter students: those who have no role OR have the 'student' role.
+  // Explicitly exclude coaches and admins.
+  const profiles = (allProfilesRes ?? []).filter((p: any) => {
+    const role = p.user_roles?.role;
+    return role !== "admin" && role !== "coach";
+  });
 
   const students = (profiles ?? []).map((p: any) => ({
     id: p.id,

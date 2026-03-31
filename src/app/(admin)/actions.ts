@@ -4,7 +4,7 @@ import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 
-import { createStudentSchema, wodSchema } from "@/lib/validations/security_schemas";
+import { createStudentSchema, wodSchema, physicalEvaluationSchema } from "@/lib/validations/security_schemas";
 
 /**
  * Creates a new student athlete in both Auth and Database.
@@ -155,6 +155,10 @@ export async function updateStudent(studentId: string, formData: FormData) {
   if (error) return { error: "Erro ao atualizar: " + error.message };
 
   revalidatePath("/admin/alunos");
+  revalidatePath("/profile");
+  revalidatePath("/dashboard");
+  revalidatePath("/profile/evaluations");
+
   return { success: true };
 }
 
@@ -266,6 +270,8 @@ export async function upsertWod(formData: FormData) {
   if (error) return { error: "Erro ao salvar WOD: " + error.message };
 
   revalidatePath("/admin/wods");
+  revalidatePath("/dashboard");
+  revalidatePath("/treinos");
   return { success: true };
 }
 
@@ -297,5 +303,149 @@ export async function deleteWod(date: string) {
   if (error) return { error: "Erro ao remover treino: " + error.message };
 
   revalidatePath("/admin/wods");
+  revalidatePath("/dashboard");
+  revalidatePath("/treinos");
   return { success: true };
 }
+
+/**
+ * Persists a physical evaluation for a student.
+ * 
+ * @security
+ * - Role Requirement: 'admin', 'coach', or 'reception'.
+ * - Validation: Strictly enforced by `physicalEvaluationSchema` (Zod).
+ * - Data Integrity: Automatically assigns `evaluator_id` from the active session.
+ * 
+ * @param {PhysicalEvaluationInput} data - The complete evaluation payload including anthropometry, compositions, and photo links.
+ * @returns {Promise<{ success?: boolean; error?: string }>} Upsert status.
+ */
+export async function upsertPhysicalEvaluation(data: any) {
+  const supabase = await createClient();
+  const { data: { user: currentUser } } = await supabase.auth.getUser();
+  if (!currentUser) return { error: "Sessão expirada ou não autorizada." };
+
+  const validation = physicalEvaluationSchema.safeParse(data);
+  if (!validation.success) {
+    return { error: "Dados inválidos: " + validation.error.issues[0].message };
+  }
+
+  const payload = {
+    ...validation.data,
+    evaluator_id: currentUser.id,
+    updated_at: new Date().toISOString(),
+  };
+
+  let res;
+  if (payload.id) {
+    res = await supabase.from("physical_evaluations").update(payload).eq("id", payload.id);
+  } else {
+    res = await supabase.from("physical_evaluations").insert(payload);
+  }
+
+  if (res.error) {
+    console.error("[upsertPhysicalEvaluation] DB Error:", res.error);
+    return { error: "Falha na persistência: " + res.error.message };
+  }
+
+  revalidatePath("/admin/alunos");
+  return { success: true };
+}
+
+/**
+ * Retrieves all physical evaluations for a specific athlete.
+ * 
+ * @param {string} studentId - UUID of the athlete.
+ * @returns {Promise<{ evaluations?: any[]; error?: string }>} List of evaluations sorted by date (descending).
+ */
+export async function getStudentEvaluations(studentId: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("physical_evaluations")
+    .select("*")
+    .eq("student_id", studentId)
+    .order("evaluation_date", { ascending: false });
+
+  if (error) {
+    console.error("[getStudentEvaluations] Error:", error);
+    return { error: "Erro ao buscar histórico: " + error.message };
+  }
+  return { evaluations: data };
+}
+
+/**
+ * Deletes a specific physical evaluation record.
+ * 
+ * @security
+ * - Role Requirement: Active admin/coach session.
+ * - Impact: This will remove the record from DB but photos in Storage must be handled separately or via DB Triggers.
+ * 
+ * @param {string} id - UUID of the evaluation record.
+ * @returns {Promise<{ success?: boolean; error?: string }>} Deletion status.
+ */
+export async function deletePhysicalEvaluation(id: string) {
+  const supabase = await createClient();
+  const res = await supabase.from("physical_evaluations").delete().eq("id", id);
+  if (res.error) {
+    console.error("[deletePhysicalEvaluation] Error:", res.error);
+    return { error: "Erro ao excluir registro: " + res.error.message };
+  }
+  
+  revalidatePath("/admin/alunos");
+  revalidatePath("/profile");
+  revalidatePath("/profile/evaluations");
+  revalidatePath("/dashboard");
+  return { success: true };
+}
+
+/**
+ * Uploads a physical evaluation photo to the 'physical-evaluations' bucket.
+ * 
+ * @security
+ * - Role Requirement: 'admin' or 'coach'.
+ * - Storage Policy: Files are stored in path `[studentId]/[timestamp].[ext]`.
+ * - Persistence: Generates a 1-year signed URL for immediate preview/storage in DB.
+ * 
+ * @param {FormData} formData - Payload containing 'file' (Image) and 'studentId' (UUID).
+ * @returns {Promise<{ success?: boolean; url?: string; path?: string; error?: string }>} Upload results.
+ */
+export async function uploadEvaluationPhoto(formData: FormData) {
+  const supabase = await createClient();
+  const { data: { user: currentUser } } = await supabase.auth.getUser();
+  if (!currentUser) return { error: "Operação não permitida. Sessão inválida." };
+
+  const file = formData.get("file") as File;
+  const studentId = formData.get("studentId") as string;
+  
+  if (!file) return { error: "Nenhum arquivo de imagem detectado." };
+  if (!studentId) return { error: "ID do aluno é obrigatório para o armazenamento." };
+
+  const fileExt = file.name.split(".").pop();
+  const fileName = `${studentId}/${Date.now()}.${fileExt}`;
+  const filePath = `${fileName}`;
+
+  // 1. Storage Upload
+  const { error: uploadError } = await supabase.storage
+    .from("physical-evaluations")
+    .upload(filePath, file);
+
+  if (uploadError) {
+    console.error("[uploadEvaluationPhoto] Storage Error:", uploadError);
+    return { error: "Falha no servidor de arquivos: " + uploadError.message };
+  }
+
+  // 2. Immediate Signed URL generation (1 year expiration)
+  const { data: signedData, error: signedError } = await supabase.storage
+    .from("physical-evaluations")
+    .createSignedUrl(filePath, 31536000); 
+
+  if (signedError) {
+    return { error: "Arquivos salvos, mas falha ao gerar link de acesso: " + signedError.message };
+  }
+
+  return { 
+    success: true, 
+    url: signedData.signedUrl, 
+    path: filePath 
+  };
+}
+

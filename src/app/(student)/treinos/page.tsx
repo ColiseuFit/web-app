@@ -11,13 +11,18 @@ export const metadata: Metadata = {
 
 /**
  * Página de Atividade (Timeline) do Aluno.
+ * Consome dados de check-ins e WODs para construir uma linha do tempo histórica.
  *
  * @security
- * - Unauthenticated users are redirected to `/login`.
- * - Data is fetched server-side using the authenticated session.
+ * - Sessão validada no servidor (Server Component).
+ * - RLS garante que o aluno veja apenas seus próprios check-ins.
+ * 
+ * @technical
+ * - Data Transformation: Converte o `date` de string (ISO) para objeto Date UTC para evitar shifts de timezone.
+ * - Performance: Utiliza multi-fetch se necessário (atualmente single query complexa com join).
+ * - UI: Utiliza `ActivityDashboard` para renderizar a lista de cards brutalistas.
  *
- * @param {Object} props - Component props containing searchParams.
- * @returns {Promise<JSX.Element>} Rendered page with the Activity Timeline.
+ * @returns {Promise<JSX.Element>} Timeline de atividades do atleta.
  */
 export default async function TreinosPage() {
   const supabase = await createClient();
@@ -62,7 +67,7 @@ export default async function TreinosPage() {
     // Convert to Date to format correctly
     const wodDate = new Date(wod.date + "T00:00:00Z");
     const formattedDate = !isNaN(wodDate.getTime()) 
-      ? wodDate.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" }).toUpperCase()
+      ? wodDate.toLocaleDateString("pt-BR", { day: "2-digit", month: "short", timeZone: "UTC" }).toUpperCase()
       : "DATA";
 
     return {

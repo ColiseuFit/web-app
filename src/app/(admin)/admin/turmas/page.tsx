@@ -1,5 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import TurmasClient from "./TurmasClient";
+import { getCoaches } from "../professores/actions";
+import { getBoxSettings, getHolidays } from "./actions";
 
 /**
  * Turmas Page (Server Component): Fetches the full class schedule grid.
@@ -37,6 +39,17 @@ export default async function TurmasPage() {
     .from("wods")
     .select("id, type_tag")
     .eq("date", todayStr);
+    
+  // 5. Fetch Coaches (using the dedicated action to bypass RLS)
+  const { data: coachesData } = await getCoaches();
+  const coaches = coachesData?.map(d => ({
+    id: d.profile.id,
+    full_name: d.profile.full_name
+  })) || [];
+  
+  // 6. Fetch Global Rules & Holidays
+  const { data: settings } = await getBoxSettings();
+  const { data: holidays } = await getHolidays();
 
   if (slotsError) {
     return (
@@ -69,6 +82,9 @@ export default async function TurmasPage() {
       occupancy={occupancyMap}
       enrollmentCounts={enrollmentMap}
       wods={todayWods || []}
+      coaches={coaches || []}
+      initialSettings={settings || {}}
+      initialHolidays={holidays || []}
     />
   );
 }

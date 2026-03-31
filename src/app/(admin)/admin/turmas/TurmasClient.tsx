@@ -14,7 +14,6 @@ import {
   Check,
   Save,
   Zap,
-  Activity,
   Edit3,
   Search,
   UserPlus,
@@ -23,7 +22,9 @@ import {
   LayoutGrid,
   Settings,
   ShieldCheck,
+  Award,
 } from "lucide-react";
+import CloseClassModal from "./CloseClassModal";
 import {
   upsertClassSlot,
   toggleClassSlot,
@@ -35,17 +36,34 @@ import {
   getSlotEnrollments,
   enrollStudent,
   unenrollStudent,
+  searchStudentsWithEnrollments,
+  getSlotWaitlist,
+  addToWaitlist,
+  removeFromWaitlist,
+  getSlotSubstitutions,
+  addSubstitution,
+  getBoxSettings,
+  updateBoxSettings,
+  getHolidays,
+  addHoliday,
+  removeHoliday,
+  triggerWaitlistPromotion,
 } from "./actions";
 
 /**
- * TurmasClient: Weekly schedule grid management interface.
- *
+ * TurmasClient: Heavyweight dashboard for weekly schedule management.
+ * 
  * @architecture
- * - Pure Client Component receiving sorted slot data from the Server Component.
- * - Renders a visual weekly grid matching the Coliseu schedule format.
- * - Provides a slide-out drawer for CRUD operations on individual slots.
- * - NEW: Real-time Checkins mode for Today's occupancy tracking.
- * - NEW: Bulk actions for shift-wide updates.
+ * - Navigation: Three-tab system (Grid, Configuration, Students).
+ * - State Management: Single complex State for Drawer (upsert/view) + Mode switching (Setup/Live).
+ * - Performance: Server -> Client data handoff with memoized sorting.
+ * - Security: Uses context-aware Server Actions with Zod validation.
+ *
+ * @key_features
+ * 1. Grid Visualizer: Canonical Coliseu weekly schedule.
+ * 2. Slot Configurator: Capacity, Coach, and Time-slot CRUD.
+ * 3. Enrollment CRM: Fixed student assignments (matrículas) vs Live check-ins.
+ * 4. Bulk Engine: Shift-wide updates for holiday scheduling.
  */
 
 // ── Shared Styles ──
@@ -103,6 +121,9 @@ interface Props {
   occupancy: Record<string, number>;
   wods: { id: string; type_tag: string }[];
   enrollmentCounts?: Record<string, number>;
+  coaches: { id: string; full_name: string | null }[];
+  initialSettings?: any;
+  initialHolidays?: any[];
 }
 
 /** Day labels mapping (0=Dom → 6=Sáb) */
@@ -136,15 +157,25 @@ function formatTime(timeStr: string): string {
   return timeStr?.slice(0, 5) || "—";
 }
 
-export default function TurmasClient({ initialSlots, occupancy, wods, enrollmentCounts }: Props) {
+export default function TurmasClient({ 
+  initialSlots, 
+  occupancy, 
+  wods, 
+  enrollmentCounts,
+  coaches = [],
+  initialSettings = {},
+  initialHolidays = [],
+}: Props) {
   const [slots] = useState<ClassSlot[]>(initialSlots);
   const [isPending, startTransition] = useTransition();
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [editingSlot, setEditingSlot] = useState<ClassSlot | null>(null);
   const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null);
   
-  // ── Navigation ──
-  const [activeTab, setActiveTab] = useState<"grid" | "config" | "students">("grid");
+
+  // ── DRAWER STATE ──
+  // Manages the multi-functional right-side panel.
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [editingSlot, setEditingSlot] = useState<ClassSlot | null>(null);
+  const [activeTab, setActiveTab] = useState<"grid" | "settings">("grid");
   const [mode, setMode] = useState<"setup" | "live">("setup");
   const todayDay = new Date().getDay(); // 0-6
 
@@ -157,6 +188,13 @@ export default function TurmasClient({ initialSlots, occupancy, wods, enrollment
   const [formDuration, setFormDuration] = useState(60);
   const [isBulk, setIsBulk] = useState(false);
 
+  // ── Settings & Holidays state ──
+  const [settings, setSettings] = useState<Record<string, string>>(initialSettings || {});
+  const [holidays, setHolidays] = useState<any[]>(initialHolidays || []);
+  const [newHolidayDate, setNewHolidayDate] = useState("");
+  const [newHolidayDesc, setNewHolidayDesc] = useState("");
+  const [closingSlot, setClosingSlot] = useState<ClassSlot | null>(null);
+
   // ── Enrollment and Check-in state ──
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
   const [checkins, setCheckins] = useState<any[]>([]); // Using any for checkins for now
@@ -166,20 +204,69 @@ export default function TurmasClient({ initialSlots, occupancy, wods, enrollment
   const [searchLoading, setSearchLoading] = useState(false);
   const searchTimeout = useRef<NodeJS.Timeout | null>(null);
 
+  const [waitlist, setWaitlist] = useState<any[]>([]);
+  const [waitlistLoading, setWaitlistLoading] = useState(false);
+  const [substituteCoachId, setSubstituteCoachId] = useState<string | null>(null);
+  const [substitutionNotes, setSubstitutionNotes] = useState("");
+
   function showToast(msg: string, type: "success" | "error") {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3000);
   }
 
   /**
-   * Loads enrollments and check-ins for a slot.
+   * getCurrentWeekDates: Helper to get YYYY-MM-DD for each day in current week (Seg-Dom)
+   */
+  const currentWeekDates = (() => {
+    const dates: Record<number, string> = {};
+    const now = new Date();
+    
+    // Calculate Monday of current week in local time
+    const day = now.getDay();
+    const diff = (day === 0 ? -6 : 1 - day); 
+    const monday = new Date(now);
+    monday.setDate(now.getDate() + diff);
+
+    for (let i = 0; i < 7; i++) {
+        const d = new Date(monday);
+        d.setDate(monday.getDate() + i);
+        const dow = (i + 1) % 7; 
+        
+        // Use local date string (YYYY-MM-DD format)
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const dayOfMonth = String(d.getDate()).padStart(2, '0');
+        dates[dow] = `${year}-${month}-${dayOfMonth}`;
+    }
+    return dates;
+  })();
+
+  /**
+   * handleOpenSlot: Activates the Drawer for a specific slot.
+   * Auto-fetches live data (Check-ins and Enrollments) for the context.
+   * 
+   * @param {ClassSlot} slot - The target slot object.
    */
   const loadSlotDetails = useCallback(async (slot: ClassSlot) => {
     setEnrollmentsLoading(true);
+    setWaitlistLoading(true);
     
     // Fetch Enrollments (Fixed)
     const enrollRes = await getSlotEnrollments(slot.id);
     if (enrollRes.data) setEnrollments(enrollRes.data as unknown as Enrollment[]);
+
+    // Fetch Waitlist
+    const waitRes = await getSlotWaitlist(slot.id);
+    if (waitRes.data) setWaitlist(waitRes.data);
+
+    // Fetch Substitutions for today
+    const todayStr = new Date().toISOString().split("T")[0];
+    const subRes = await getSlotSubstitutions(todayStr);
+    if (subRes.data) {
+      const existingSub = subRes.data.find((s: any) => s.class_slot_id === slot.id);
+      setSubstituteCoachId(existingSub?.substitute_coach_id || null);
+      setSubstitutionNotes(existingSub?.notes || "");
+    }
 
     // Fetch Check-ins (Today only)
     if (slot.day_of_week === todayDay) {
@@ -190,7 +277,107 @@ export default function TurmasClient({ initialSlots, occupancy, wods, enrollment
     }
 
     setEnrollmentsLoading(false);
+    setWaitlistLoading(false);
   }, [todayDay]);
+
+  /**
+   * handleSaveSettings: Persists box operation rules.
+   */
+  const handleSaveSettings = async () => {
+    startTransition(async () => {
+      const res = await updateBoxSettings(settings);
+      if (res.error) showToast(res.error, "error");
+      else showToast("Configurações atualizadas com sucesso!", "success");
+    });
+  };
+
+  /**
+   * handleAddHoliday: Adds a new box-wide closure.
+   */
+  const handleAddHoliday = async () => {
+    if (!newHolidayDate || !newHolidayDesc) {
+      showToast("Preencha a data e descrição.", "error");
+      return;
+    }
+    startTransition(async () => {
+      const res = await addHoliday(newHolidayDate, newHolidayDesc);
+      if (res.error) {
+        showToast(res.error, "error");
+      } else {
+        showToast("Feriado adicionado!", "success");
+        setNewHolidayDate("");
+        setNewHolidayDesc("");
+        // Optimistic update
+        const updated = await getHolidays();
+        if (updated.data) setHolidays(updated.data);
+      }
+    });
+  };
+
+  /**
+   * handleRemoveHoliday: Deletes a holiday.
+   */
+  const handleRemoveHoliday = async (id: string) => {
+    startTransition(async () => {
+      const res = await removeHoliday(id);
+      if (res.error) {
+        showToast(res.error, "error");
+      } else {
+        showToast("Feriado removido.", "success");
+        setHolidays(prev => prev.filter(h => h.id !== id));
+      }
+    });
+  };
+
+  /**
+   * handleWaitlistAdd/Remove/Promote
+   */
+  const handleWaitlistAdd = async (slotId: string, studentId: string) => {
+    startTransition(async () => {
+      const res = await addToWaitlist(slotId, studentId);
+      if (res.error) showToast(res.error, "error");
+      else {
+        showToast("Adicionado à lista de espera!", "success");
+        setSearchQuery("");
+        if (editingSlot) loadSlotDetails(editingSlot);
+      }
+    });
+  };
+
+  const handleWaitlistRemove = async (waitlistId: string) => {
+    startTransition(async () => {
+      const res = await removeFromWaitlist(waitlistId);
+      if (res.error) showToast(res.error, "error");
+      else {
+        showToast("Removido da lista de espera.", "success");
+        if (editingSlot) loadSlotDetails(editingSlot);
+      }
+    });
+  };
+
+  const handleManualPromote = async (slotId: string) => {
+    startTransition(async () => {
+      const res = await triggerWaitlistPromotion(slotId);
+      if (res.error) showToast(res.error, "error");
+      else {
+        showToast("Aluno promovido com sucesso!", "success");
+        if (editingSlot) loadSlotDetails(editingSlot);
+      }
+    });
+  };
+
+  /**
+   * handleSubstitutionSave
+   */
+  const handleSubstitutionSave = async () => {
+    if (!editingSlot) return;
+    const todayStr = new Date().toISOString().split("T")[0];
+    startTransition(async () => {
+      const res = await addSubstitution(editingSlot.id, substituteCoachId, todayStr, substitutionNotes);
+      if (res.error) showToast(res.error, "error");
+      else showToast("Substituição salva!", "success");
+    });
+  };
 
   /**
    * Handles student search with debounce.
@@ -214,6 +401,7 @@ export default function TurmasClient({ initialSlots, occupancy, wods, enrollment
     return () => { if (searchTimeout.current) clearTimeout(searchTimeout.current); };
   }, [searchQuery, enrollments]);
 
+
   /**
    * Enrolls a student and refreshes the list.
    */
@@ -235,15 +423,19 @@ export default function TurmasClient({ initialSlots, occupancy, wods, enrollment
   /**
    * Unenrolls a student and refreshes the list.
    */
-  async function handleUnenroll(enrollmentId: string, slotId: string) {
-    if (!editingSlot) return;
+  /**
+   * Unenrolls a student and refreshes relevant data.
+   */
+  async function handleUnenroll(enrollmentId: string, slotId?: string) {
     startTransition(async () => {
       const result = await unenrollStudent(enrollmentId);
       if (result.error) {
         showToast(result.error, "error");
       } else {
-        showToast("Matrícula removida.", "success");
-        await loadSlotDetails(editingSlot);
+        // If we are in the drawer, refresh details
+        if (editingSlot && editingSlot.id === slotId) {
+          await loadSlotDetails(editingSlot);
+        }
       }
     });
   }
@@ -408,91 +600,47 @@ export default function TurmasClient({ initialSlots, occupancy, wods, enrollment
         </div>
       )}
 
-      {/* ── SUB-NAVIGATION TABS ── */}
-      <div 
-        style={{ 
-          display: "flex", 
-          gap: 12, 
-          marginBottom: 40,
-          borderBottom: "3px solid #000",
-          paddingBottom: "16px"
-        }}
-      >
-        <button
-          onClick={() => setActiveTab("grid")}
-          style={{
-            padding: "12px 24px",
-            fontSize: 14,
-            fontWeight: 900,
-            background: activeTab === "grid" ? "#000" : "#FFF",
-            color: activeTab === "grid" ? "#FFF" : "#000",
-            border: "3px solid #000",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-            transition: "all 0.1s"
-          }}
-        >
-          <LayoutGrid size={18} />
-          GRADE DE HORÁRIOS
-        </button>
-        <button
-          onClick={() => setActiveTab("config")}
-          style={{
-            padding: "12px 24px",
-            fontSize: 14,
-            fontWeight: 900,
-            background: activeTab === "config" ? "#000" : "#FFF",
-            color: activeTab === "config" ? "#FFF" : "#000",
-            border: "3px solid #000",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-            transition: "all 0.1s"
-          }}
-        >
-          <Settings size={18} />
-          GESTÃO / CONFIGURAÇÃO
-        </button>
-        <button
-          onClick={() => setActiveTab("students")}
-          style={{
-            padding: "12px 24px",
-            fontSize: 14,
-            fontWeight: 900,
-            background: activeTab === "students" ? "#000" : "#FFF",
-            color: activeTab === "students" ? "#FFF" : "#000",
-            border: "3px solid #000",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-            transition: "all 0.1s"
-          }}
-        >
-          <Users size={18} />
-          ALUNOS / MATRÍCULAS
-        </button>
-      </div>
-
       {/* ── HEADER ── */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 32 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 32, borderBottom: "4px solid #000", paddingBottom: 16 }}>
         <div>
-          <h1 style={{ fontSize: 32, fontWeight: 900, letterSpacing: "-0.04em", margin: "0 0 4px", textTransform: "uppercase" }}>
-            {activeTab === 'grid' ? "Grade Semanal" : activeTab === 'config' ? "Configuração de Turmas" : "Controle de Matrículas"}
+          <h1 style={{ fontSize: 32, fontWeight: 900, letterSpacing: "-0.04em", margin: "0 0 16px", textTransform: "uppercase" }}>
+            Gestão de Box
           </h1>
-          <p style={{ fontSize: 14, color: "#666", fontWeight: 600, margin: 0 }}>
-             {activeTab === 'grid' 
-               ? "Visualize e monitore a ocupação em tempo real." 
-               : activeTab === 'config' 
-                 ? "Configure horários, coaches e capacidades estruturais." 
-                 : "Gerencie alunos matriculados e consulte check-ins."}
-          </p>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              onClick={() => setActiveTab("grid")}
+              style={{
+                padding: "8px 16px",
+                fontSize: 12,
+                fontWeight: 800,
+                background: activeTab === "grid" ? "#000" : "#E5E7EB",
+                color: activeTab === "grid" ? "#FFF" : "#666",
+                border: "none",
+                cursor: "pointer",
+                borderRadius: 4
+              }}
+            >
+              GRADE DE AULAS
+            </button>
+            <button
+              onClick={() => setActiveTab("settings")}
+              style={{
+                padding: "8px 16px",
+                fontSize: 12,
+                fontWeight: 800,
+                background: activeTab === "settings" ? "#000" : "#E5E7EB",
+                color: activeTab === "settings" ? "#FFF" : "#666",
+                border: "none",
+                cursor: "pointer",
+                borderRadius: 4
+              }}
+            >
+              CONFIGURAÇÕES E DATAS
+            </button>
+          </div>
         </div>
         
-        {activeTab === 'grid' && (
+        {activeTab === "grid" && (
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
             <div 
               style={{ 
@@ -531,8 +679,7 @@ export default function TurmasClient({ initialSlots, occupancy, wods, enrollment
                   gap: 6
                 }}
               >
-                <Activity size={14} />
-                AO VIVO
+                CHECK-INS
               </button>
             </div>
             
@@ -596,9 +743,6 @@ export default function TurmasClient({ initialSlots, occupancy, wods, enrollment
                   <CalendarClock size={16} style={{ display: "inline", marginRight: 8, verticalAlign: "text-bottom" }} />
                   GRADE SEMANAL
                 </h2>
-                <span style={{ fontSize: 12, color: "#666", fontWeight: 600 }}>
-                  Cada treino tem duração de 1 hora
-                </span>
               </div>
 
               <div style={{ overflowX: "auto" }}>
@@ -609,11 +753,32 @@ export default function TurmasClient({ initialSlots, occupancy, wods, enrollment
                         <Clock size={14} style={{ marginRight: 4, verticalAlign: "text-bottom" }} />
                         HORA
                       </th>
-                      {ACTIVE_DAYS.map((day) => (
-                        <th key={day} style={{ textAlign: "center", letterSpacing: "0.08em" }}>
-                          {DAY_SHORT[day]}
-                        </th>
-                      ))}
+                      {ACTIVE_DAYS.map((day) => {
+                        const dateStr = currentWeekDates[day];
+                        const holiday = holidays.find(h => h.date === dateStr);
+                        return (
+                          <th key={day} style={{ textAlign: "center", letterSpacing: "0.08em", padding: "12px 8px" }}>
+                            <div style={{ fontSize: 13, fontWeight: 900 }}>{DAY_SHORT[day]}</div>
+                            <div style={{ fontSize: 10, fontWeight: 700, color: "#666", marginTop: 2 }}>
+                              {dateStr.split("-").reverse().slice(0, 2).join("/")}
+                            </div>
+                            {holiday && (
+                              <div style={{
+                                marginTop: 6,
+                                background: "#DC2626",
+                                color: "#FFF",
+                                fontSize: 9,
+                                fontWeight: 900,
+                                padding: "2px 4px",
+                                borderRadius: 2,
+                                display: "inline-block"
+                              }}>
+                                BLOQUEADO
+                              </div>
+                            )}
+                          </th>
+                        );
+                      })}
                     </tr>
                   </thead>
                   <tbody>
@@ -631,25 +796,26 @@ export default function TurmasClient({ initialSlots, occupancy, wods, enrollment
                           {time}
                         </td>
                         {ACTIVE_DAYS.map((day) => {
+                          const dateStr = currentWeekDates[day];
+                          const holiday = holidays.find(h => h.date === dateStr);
                           const slot = slotMap.get(`${day}-${time}`);
+                          
                           if (!slot) {
                             return (
-                              <td key={day} style={{ textAlign: "center" }}>
-                                <span style={{ color: "#DDD", fontSize: 18 }}>—</span>
-                              </td>
+                              <td key={`${day}-${time}`} style={{ background: holiday ? "rgba(239, 68, 68, 0.05)" : "transparent" }} />
                             );
                           }
 
                           const currentOcc = occupancy[slot.id] || 0;
                           const enrollmentCount = (enrollmentCounts && enrollmentCounts[slot.id]) || 0;
                           const isToday = day === todayDay;
-                          const hasWod = wods.some(w => w.type_tag?.toLowerCase() === slot.name.toLowerCase());
+                          const matchingWod = wods.find(w => w.type_tag?.toLowerCase() === slot.name.toLowerCase());
+                          const hasWod = !!matchingWod;
                           const occupancyRatio = slot.capacity > 0 ? enrollmentCount / slot.capacity : 0;
 
                           return (
                             <td key={day} style={{ textAlign: "center", padding: "8px 4px" }}>
                               <div
-                                onClick={() => openDrawer(slot)}
                                 style={{
                                   display: "inline-flex",
                                   flexDirection: "column",
@@ -678,8 +844,21 @@ export default function TurmasClient({ initialSlots, occupancy, wods, enrollment
                                 }}
                               >
                                 {mode === 'live' && isToday && hasWod && (
-                                  <div style={{ position: "absolute", top: -6, right: -6, background: "#000", color: "#FFF", borderRadius: "50%", width: 14, height: 14, display: "flex", alignItems: "center", justifyItems: "center", fontSize: 8 }}>
-                                     <Zap size={8} fill="currentColor" />
+                                  <div style={{ 
+                                    position: "absolute", 
+                                    top: -10, 
+                                    left: "50%", 
+                                    transform: "translateX(-50%)", 
+                                    background: "#000", 
+                                    color: "#FFF", 
+                                    padding: "2px 8px", 
+                                    fontSize: 9, 
+                                    fontWeight: 900,
+                                    whiteSpace: "nowrap",
+                                    border: "2px solid #FFF",
+                                    zIndex: 5
+                                  }}>
+                                     WOD: {matchingWod?.type_tag || "PROGRAMADO"}
                                   </div>
                                 )}
 
@@ -691,9 +870,39 @@ export default function TurmasClient({ initialSlots, occupancy, wods, enrollment
                                       {enrollmentCount}/{slot.capacity} <span style={{ fontSize: 8, opacity: 0.5 }}>MATR.</span>
                                     </span>
                                     {isToday && (
-                                      <span style={{ fontSize: 9, fontWeight: 800, color: "#2563EB", display: "flex", alignItems: "center", gap: 2 }}>
-                                        <Activity size={8} /> {currentOcc} CHECKINS
-                                      </span>
+                                      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+                                        <span style={{ fontSize: 9, fontWeight: 800, color: "#2563EB", display: "flex", alignItems: "center", gap: 2 }}>
+                                          {currentOcc} CHECKINS
+                                        </span>
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setClosingSlot(slot);
+                                          }}
+                                          onMouseEnter={(e) => {
+                                            e.currentTarget.style.scale = "1.05";
+                                          }}
+                                          onMouseLeave={(e) => {
+                                            e.currentTarget.style.scale = "1";
+                                          }}
+                                          style={{
+                                            marginTop: 2,
+                                            background: "#000",
+                                            color: "#FFF",
+                                            border: "none",
+                                            padding: "4px 8px",
+                                            fontSize: 9,
+                                            fontWeight: 900,
+                                            cursor: "pointer",
+                                            display: "flex",
+                                            alignItems: "center",
+                                            gap: 4,
+                                            transition: "transform 0.1s"
+                                          }}
+                                        >
+                                          <ShieldCheck size={10} /> FECHAR AULA
+                                        </button>
+                                      </div>
                                     )}
                                   </div>
                                 ) : (
@@ -724,159 +933,215 @@ export default function TurmasClient({ initialSlots, occupancy, wods, enrollment
               </div>
             </div>
 
-            {/* ── INACTIVE SLOTS ── */}
-            {inactiveSlots.length > 0 && (
-              <div className="admin-card" style={{ borderStyle: "dashed", marginBottom: 32 }}>
-                <h3 style={{ fontSize: 14, fontWeight: 800, margin: "0 0 12px", textTransform: "uppercase" }}>
-                  HORÁRIOS DESATIVADOS ({inactiveSlots.length})
-                </h3>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                  {inactiveSlots.map((slot) => (
-                    <div
-                      key={slot.id}
-                      style={{
-                        padding: "8px 16px",
-                        border: "1px solid #CCC",
-                        fontSize: 12,
-                        fontWeight: 700,
-                        color: "#999",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 8,
-                        cursor: "pointer",
-                      }}
-                      onClick={() => openDrawer(slot)}
-                    >
-                      {DAY_SHORT[slot.day_of_week]} {formatTime(slot.time_start)}
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleToggle(slot);
-                        }}
-                        style={{
-                          background: "none",
-                          border: "none",
-                          cursor: "pointer",
-                          color: "#16A34A",
-                          padding: 0,
-                        }}
-                        title="Reativar"
-                      >
-                        <ToggleRight size={16} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
+      {/* ── INACTIVE SLOTS ── */}
+      {inactiveSlots.length > 0 && (
+        <div className="admin-card" style={{ borderStyle: "dashed", marginBottom: 32 }}>
+          <h3 style={{ fontSize: 14, fontWeight: 800, margin: "0 0 12px", textTransform: "uppercase" }}>
+            HORÁRIOS DESATIVADOS ({inactiveSlots.length})
+          </h3>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            {inactiveSlots.map((slot) => (
+              <div
+                key={slot.id}
+                style={{
+                  padding: "8px 16px",
+                  border: "1px solid #CCC",
+                  fontSize: 12,
+                  fontWeight: 700,
+                  color: "#999",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  cursor: "pointer",
+                }}
+                onClick={() => openDrawer(slot)}
+              >
+                {DAY_SHORT[slot.day_of_week]} {formatTime(slot.time_start)}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleToggle(slot);
+                  }}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    color: "#16A34A",
+                    padding: 0,
+                  }}
+                  title="Reativar"
+                >
+                  <ToggleRight size={16} />
+                </button>
               </div>
-            )}
+            ))}
+          </div>
+        </div>
+      )}
           </div>
         )}
 
-        {/* ── GESTÃO / CONFIGURAÇÃO VIEW ── */}
-        {activeTab === "config" && (
-          <div className="animate-in fade-in duration-500">
-            <div className="admin-card" style={{ marginBottom: 32 }}>
-              <div style={{ padding: 40, textAlign: "center" }}>
-                <Settings size={48} style={{ marginBottom: 16, opacity: 0.2 }} />
-                <h3 style={{ fontSize: 18, fontWeight: 900, marginBottom: 8 }}>CONFIGURAÇÃO ESTRUTURAL</h3>
-                <p style={{ color: "#666", fontSize: 14, maxWidth: 400, margin: "0 auto" }}>
-                  Gerencie a grade completa em formato de lista, realize edições em massa e configure regras globais de turmas.
-                </p>
-                <div style={{ marginTop: 32, display: "flex", justifyContent: "center", gap: 16 }}>
-                  <button className="admin-btn admin-btn-primary" onClick={() => { setMode("setup"); openDrawer(); }}>
-                    <Plus size={18} /> CRIAR NOVO HORÁRIO
+      {activeTab === "settings" && (
+        <div className="animate-in fade-in duration-500">
+          <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
+            
+            {/* ── OPERATION RULES ── */}
+            <div className="admin-card">
+              <h2 style={{ fontSize: 18, fontWeight: 900, marginBottom: 16, textTransform: "uppercase", display: "flex", alignItems: "center", gap: 8 }}>
+                <Settings size={20} />
+                Regras de Operação
+              </h2>
+              <div style={{ display: "flex", flexDirection: "column", gap: 24, maxWidth: 450 }}>
+                <div>
+                  <label style={labelStyle}>Ocupação Máxima Padrão</label>
+                  <input
+                    type="number"
+                    className="admin-input"
+                    value={settings.default_capacity || "20"}
+                    onChange={(e) => setSettings(prev => ({ ...prev, default_capacity: e.target.value }))}
+                    style={{ background: "#F9FAFB", border: "2px solid #000" }}
+                    min="1"
+                  />
+                </div>
+                <div>
+                  <label style={labelStyle}>Janela de Cancelamento (Horas)</label>
+                  <input
+                    type="number"
+                    className="admin-input"
+                    value={settings.cancellation_window_hours || "2"}
+                    onChange={(e) => setSettings(prev => ({ ...prev, cancellation_window_hours: e.target.value }))}
+                    style={{ background: "#F9FAFB", border: "2px solid #000" }}
+                    min="0"
+                  />
+                  <span style={{ fontSize: 11, color: "#666", display: "block", marginTop: 4 }}>
+                    O check-in não será retornado se faltar menos de X horas para a aula.
+                  </span>
+                </div>
+
+                {/* ── PERFORMANCE RULES (XP) ── */}
+                <div style={{ padding: 20, background: "#FFFBEB", border: "2px solid #F59E0B", marginTop: 8 }}>
+                  <h3 style={{ fontSize: 13, fontWeight: 900, marginBottom: 12, textTransform: "uppercase", display: "flex", alignItems: "center", gap: 8, color: "#B45309" }}>
+                    <Award size={16} />
+                    Regras de Desempenho (XP)
+                  </h3>
+                  <label style={{ ...labelStyle, color: "#B45309" }}>XP Base por Aula Concluída</label>
+                  <div style={{ position: "relative" }}>
+                    <input
+                      type="number"
+                      className="admin-input"
+                      value={settings.xp_per_class || "10"}
+                      onChange={(e) => setSettings(prev => ({ ...prev, xp_per_class: e.target.value }))}
+                      style={{ background: "#FFF", border: "2px solid #F59E0B", paddingLeft: 44 }}
+                      min="0"
+                    />
+                    <Zap size={18} style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: "#F59E0B" }} />
+                  </div>
+                  <span style={{ fontSize: 10, color: "#B45309", display: "block", marginTop: 6, fontWeight: 700 }}>
+                    Este valor será creditado ao aluno quando a aula for FECHADA pelo sistema.
+                  </span>
+                </div>
+
+                <button 
+                  className="admin-btn admin-btn-primary" 
+                  style={{ marginTop: 8, height: 52, justifyContent: "center" }}
+                  onClick={handleSaveSettings}
+                  disabled={isPending}
+                >
+                  {isPending ? "SALVANDO..." : <><Save size={18} /> Salvar Regras</>}
+                </button>
+              </div>
+            </div>
+
+            {/* ── HOLIDAY MANAGER ── */}
+            <div className="admin-card">
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24 }}>
+                <h2 style={{ fontSize: 18, fontWeight: 900, textTransform: "uppercase", display: "flex", alignItems: "center", gap: 8, margin: 0 }}>
+                  <CalendarClock size={20} />
+                  Feriados e Bloqueios
+                </h2>
+                <div style={{ fontSize: 11, fontWeight: 800, background: "#000", color: "#FFF", padding: "4px 8px" }}>
+                  AGENDA BLOQUEADA nestas datas
+                </div>
+              </div>
+
+              {/* Add Holiday Form */}
+              <div style={{ display: "grid", gridTemplateColumns: "200px 1fr auto", gap: 16, marginBottom: 32, padding: 20, background: "#F9FAFB", border: "2px dashed #000" }}>
+                <div>
+                  <label style={labelStyle}>Data do Evento</label>
+                  <input 
+                    type="date" 
+                    className="admin-input" 
+                    value={newHolidayDate}
+                    onChange={(e) => setNewHolidayDate(e.target.value)}
+                    style={{ border: "2px solid #000" }} 
+                  />
+                </div>
+                <div>
+                  <label style={labelStyle}>Descrição / Motivo</label>
+                  <input 
+                    type="text" 
+                    className="admin-input" 
+                    placeholder="Ex: Natal, Reforma, Feriado Local..."
+                    value={newHolidayDesc}
+                    onChange={(e) => setNewHolidayDesc(e.target.value)}
+                    style={{ border: "2px solid #000" }} 
+                  />
+                </div>
+                <div style={{ alignSelf: "flex-end" }}>
+                  <button 
+                    className="admin-btn admin-btn-primary" 
+                    style={{ height: 48, paddingInline: 24 }}
+                    onClick={handleAddHoliday}
+                    disabled={isPending}
+                  >
+                    <Plus size={18} /> ADICIONAR
                   </button>
                 </div>
               </div>
-            </div>
-            
-            <div className="admin-card" style={{ padding: 0 }}>
-               <div style={{ padding: "20px 24px", borderBottom: "3px solid #000", background: "#FAFAFA" }}>
-                 <h3 style={{ fontSize: 14, fontWeight: 900, textTransform: "uppercase", margin: 0 }}>LISTA DE HORÁRIOS CONFIGURADOS</h3>
-               </div>
-               <div style={{ maxHeight: 600, overflowY: "auto" }}>
-                 {slots.sort((a,b) => {
-                    if (a.day_of_week !== b.day_of_week) return a.day_of_week - b.day_of_week;
-                    return a.time_start.localeCompare(b.time_start);
-                 }).map((slot, i) => (
-                   <div 
-                    key={slot.id} 
-                    style={{ 
-                      padding: "16px 24px", 
-                      display: "flex", 
-                      alignItems: "center", 
-                      justifyContent: "space-between",
-                      borderBottom: i < slots.length - 1 ? "1px solid #EEE" : "none",
-                      background: slot.is_active ? "#FFF" : "#F9FAFB"
-                    }}
-                   >
-                      <div style={{ display: "flex", alignItems: "center", gap: 32 }}>
-                        <div style={{ width: 80, fontWeight: 900, fontSize: 15 }}>{formatTime(slot.time_start)}</div>
-                        <div style={{ width: 120, fontWeight: 800, fontSize: 13, color: "#666", textTransform: "uppercase" }}>{DAY_LABELS[slot.day_of_week]}</div>
-                        <div style={{ width: 180 }}>
-                          <div style={{ fontWeight: 900, fontSize: 14 }}>{slot.name}</div>
-                          <div style={{ fontSize: 11, color: "#999" }}>{slot.coach_name || "Sem Coach"}</div>
-                        </div>
-                        <div style={{ fontSize: 12, fontWeight: 700, color: "#000" }}>
-                          Vagas: {slot.capacity}
-                        </div>
-                      </div>
-                      <div style={{ display: "flex", gap: 12 }}>
-                        <button 
-                          onClick={() => { setMode("setup"); openDrawer(slot); }} 
-                          className="admin-btn admin-btn-ghost"
-                          style={{ padding: 8, height: 40, width: 40, border: "2px solid #000" }}
-                        >
-                          <Edit3 size={16} />
-                        </button>
-                        <button 
-                          onClick={(e) => { e.stopPropagation(); handleToggle(slot); }} 
-                          className="admin-btn"
-                          style={{ 
-                            padding: 8, 
-                            height: 40, 
-                            width: 40, 
-                            background: slot.is_active ? "#16A34A" : "#FFF",
-                            color: slot.is_active ? "#FFF" : "#DC2626",
-                            border: "2px solid #000"
-                          }}
-                        >
-                           {slot.is_active ? <ToggleRight size={20} /> : <ToggleLeft size={20} />}
-                        </button>
-                      </div>
-                   </div>
-                 ))}
-               </div>
-            </div>
-          </div>
-        )}
 
-        {/* ── ALUNOS / MATRÍCULAS VIEW ── */}
-        {activeTab === "students" && (
-          <div className="animate-in fade-in duration-500">
-            <div className="admin-card" style={{ marginBottom: 32 }}>
-              <div style={{ padding: 40, textAlign: "center" }}>
-                <Users size={48} style={{ marginBottom: 16, opacity: 0.2 }} />
-                <h3 style={{ fontSize: 18, fontWeight: 900, marginBottom: 8 }}>CENTRAL DE MATRÍCULAS</h3>
-                <p style={{ color: "#666", fontSize: 14, maxWidth: 400, margin: "0 auto" }}>
-                  Gerencie as matrículas fixas de todos os alunos. Use a busca para localizar um perfil e ver em quais turmas ele está inserido.
-                </p>
-                
-                <div style={{ marginTop: 32, maxWidth: 600, marginInline: "auto" }}>
-                  <div style={{ position: "relative" }}>
-                    <input 
-                      type="text" 
-                      placeholder="Pesquisar aluno em toda a base..." 
-                      className="admin-input"
-                      style={{ paddingLeft: 44, height: 56 }}
-                    />
-                    <Search size={22} style={{ position: "absolute", left: 16, top: "50%", transform: "translateY(-50%)", color: "#000" }} />
+              {/* Holiday List */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                {holidays.length === 0 ? (
+                  <div style={{ padding: 40, textAlign: "center", border: "2px solid #EEE", borderRadius: 8, color: "#999", fontSize: 13 }}>
+                    Nenhum feriado ou bloqueio cadastrado.
                   </div>
-                </div>
+                ) : (
+                  holidays.map((h) => (
+                    <div 
+                      key={h.id} 
+                      style={{ 
+                        display: "flex", 
+                        alignItems: "center", 
+                        gap: 20, 
+                        padding: "16px 24px", 
+                        background: "#FFF", 
+                        border: "2px solid #000",
+                        boxShadow: "4px 4px 0px rgba(0,0,0,0.05)"
+                      }}
+                    >
+                      <div style={{ minWidth: 100, fontSize: 16, fontWeight: 900, fontFamily: "monospace" }}>
+                        {new Date(h.date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                      </div>
+                      <div style={{ flex: 1, fontSize: 14, fontWeight: 700, textTransform: "uppercase" }}>
+                        {h.description}
+                      </div>
+                      <button 
+                        className="admin-btn admin-btn-ghost" 
+                        style={{ color: "#DC2626", border: "none", padding: 8 }}
+                        onClick={() => handleRemoveHoliday(h.id)}
+                        disabled={isPending}
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           </div>
-        )}
+        </div>
+      )}
+
       </div>
 
       {/* ── MODAL OVERLAY ── */}
@@ -974,7 +1239,7 @@ export default function TurmasClient({ initialSlots, occupancy, wods, enrollment
                 {mode === "setup" && (
                   <>
                     {/* Modalidade (Full Width) */}
-                    <div style={{ gridColumn: "span 2" }}>
+                    <div style={{ marginBottom: 24 }}>
                       <label style={labelStyle}>MODALIDADE</label>
                       <input
                         type="text"
@@ -986,7 +1251,7 @@ export default function TurmasClient({ initialSlots, occupancy, wods, enrollment
                     </div>
 
                     {/* Dias da Semana (Full Width) */}
-                    <div style={{ gridColumn: "span 2" }}>
+                    <div style={{ marginBottom: 24 }}>
                       <label style={labelStyle}>
                         {editingSlot ? "DIA DA SEMANA" : "DIAS DA SEMANA"}
                       </label>
@@ -1035,53 +1300,60 @@ export default function TurmasClient({ initialSlots, occupancy, wods, enrollment
                       )}
                     </div>
 
-                    {/* Left Column Fields */}
-                    <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-                      <div>
-                        <label style={labelStyle}>HORÁRIO DE INÍCIO</label>
-                        <input
-                          type="time"
-                          value={formTime}
-                          onChange={(e) => setFormTime(e.target.value)}
-                          style={inputStyle}
-                        />
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
+                      {/* Left Column Fields */}
+                      <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+                        <div>
+                          <label style={labelStyle}>HORÁRIO DE INÍCIO</label>
+                          <input
+                            type="time"
+                            value={formTime}
+                            onChange={(e) => setFormTime(e.target.value)}
+                            style={inputStyle}
+                          />
+                        </div>
+                        <div>
+                          <label style={labelStyle}>DURAÇÃO (MINUTOS)</label>
+                          <input
+                            type="number"
+                            value={formDuration}
+                            onChange={(e) => setFormDuration(Number(e.target.value))}
+                            style={inputStyle}
+                            min={30}
+                            max={120}
+                            step={15}
+                          />
+                        </div>
                       </div>
-                      <div>
-                        <label style={labelStyle}>DURAÇÃO (MINUTOS)</label>
-                        <input
-                          type="number"
-                          value={formDuration}
-                          onChange={(e) => setFormDuration(Number(e.target.value))}
-                          style={inputStyle}
-                          min={30}
-                          max={120}
-                          step={15}
-                        />
-                      </div>
-                    </div>
 
-                    {/* Right Column Fields */}
-                    <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-                      <div>
-                        <label style={labelStyle}>CAPACIDADE (VAGAS)</label>
-                        <input
-                          type="number"
-                          value={formCapacity}
-                          onChange={(e) => setFormCapacity(Number(e.target.value))}
-                          style={inputStyle}
-                          min={1}
-                          max={100}
-                        />
-                      </div>
-                      <div>
-                        <label style={labelStyle}>COACH (OPCIONAL)</label>
-                        <input
-                          type="text"
-                          value={formCoach}
-                          onChange={(e) => setFormCoach(e.target.value)}
-                          style={inputStyle}
-                          placeholder="Nome do Coach"
-                        />
+                      {/* Right Column Fields */}
+                      <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+                        <div>
+                          <label style={labelStyle}>CAPACIDADE (VAGAS)</label>
+                          <input
+                            type="number"
+                            value={formCapacity}
+                            onChange={(e) => setFormCapacity(Number(e.target.value))}
+                            style={inputStyle}
+                            min={1}
+                            max={100}
+                          />
+                        </div>
+                        <div>
+                          <label style={labelStyle}>COACH (OPCIONAL)</label>
+                          <select
+                            value={formCoach}
+                            onChange={(e) => setFormCoach(e.target.value)}
+                            style={inputStyle}
+                          >
+                            <option value="">Nenhum</option>
+                            {coaches.map((c) => (
+                              <option key={c.id} value={c.full_name || ""}>
+                                {c.full_name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
                       </div>
                     </div>
 
@@ -1089,8 +1361,7 @@ export default function TurmasClient({ initialSlots, occupancy, wods, enrollment
                     {editingSlot && (
                       <div 
                         style={{ 
-                          gridColumn: "span 2",
-                          marginTop: 8, 
+                          marginTop: 24, 
                           padding: 20, 
                           background: "#F3F4F6", 
                           border: "3px solid #000",
@@ -1130,7 +1401,7 @@ export default function TurmasClient({ initialSlots, occupancy, wods, enrollment
                         border: "2px solid #000",
                         marginBottom: 8
                       }}>
-                        <div style={{ flex: 1 }}>
+                <div style={{ flex: 1 }}>
                           <span style={{ fontSize: 10, fontWeight: 800, color: "#666", textTransform: "uppercase", letterSpacing: "0.1em" }}>MODALIDADE</span>
                           <div style={{ fontSize: 14, fontWeight: 900 }}>{editingSlot.name}</div>
                         </div>
@@ -1142,7 +1413,7 @@ export default function TurmasClient({ initialSlots, occupancy, wods, enrollment
 
                       {/* Search */}
                       <div>
-                        <label style={labelStyle}>MATRICULAR ALUNO</label>
+                        <label style={labelStyle}>ADICIONAR ALUNO (MATRÍCULA OU ESPERA)</label>
                         <div style={{ position: "relative" }}>
                           <input
                             type="text"
@@ -1155,71 +1426,165 @@ export default function TurmasClient({ initialSlots, occupancy, wods, enrollment
                         </div>
                         
                         {searchResults.length > 0 && (
-                          <div style={{ border: "2px solid #000", borderTop: "none", background: "#FFF", maxHeight: 150, overflowY: "auto" }}>
-                            {searchResults.map(s => (
-                              <button key={s.id} onClick={() => handleEnroll(editingSlot.id, s.id)} style={{ width: "100%", padding: 12, textAlign: "left", border: "none", borderBottom: "1px solid #EEE", background: "#FFF", cursor: "pointer", display: "flex", justifyContent: "space-between" }}>
-                                <span style={{ fontWeight: 800, fontSize: 12 }}>{s.first_name} {s.last_name}</span>
-                                <Plus size={14} />
-                              </button>
-                            ))}
+                          <div style={{ border: "2px solid #000", borderTop: "none", background: "#FFF", maxHeight: 150, overflowY: "auto", boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)" }}>
+                            {searchResults.map(s => {
+                              const alreadyEnrolled = enrollments.some(en => en.student_id === s.id);
+                              const alreadyOnWaitlist = waitlist.some(w => w.student_id === s.id);
+                              
+                              return (
+                                <div key={s.id} style={{ padding: 12, borderBottom: "1px solid #EEE", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                                  <span style={{ fontWeight: 800, fontSize: 12 }}>{s.first_name} {s.last_name}</span>
+                                  <div style={{ display: "flex", gap: 8 }}>
+                                    {!alreadyEnrolled && (
+                                      <button 
+                                        onClick={() => handleEnroll(editingSlot.id, s.id)} 
+                                        className="admin-btn" 
+                                        style={{ padding: "4px 8px", fontSize: 10, background: "#000", color: "#FFF" }}
+                                      >
+                                        <UserPlus size={12} /> MATRICULAR
+                                      </button>
+                                    )}
+                                    {!alreadyOnWaitlist && !alreadyEnrolled && (
+                                      <button 
+                                        onClick={() => handleWaitlistAdd(editingSlot.id, s.id)} 
+                                        className="admin-btn admin-btn-ghost" 
+                                        style={{ padding: "4px 8px", fontSize: 10, border: "2px solid #000" }}
+                                      >
+                                        <Clock size={12} /> ESPERA
+                                      </button>
+                                    )}
+                                    {(alreadyEnrolled || alreadyOnWaitlist) && (
+                                      <span style={{ fontSize: 10, fontWeight: 900, color: "#10B981" }}>JÁ ADICIONADO</span>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
                           </div>
                         )}
                       </div>
 
                       {/* Enrollment List */}
                       <div>
-                        <label style={labelStyle}>MATRICULADOS ({enrollments.length})</label>
-                        <div style={{ border: "2px solid #000", maxHeight: 300, overflowY: "auto" }}>
-                          {enrollments.map((en, i) => (
-                            <div key={en.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: 10, borderBottom: i < enrollments.length-1 ? "1px solid #EEE" : "none" }}>
-                              <span style={{ fontSize: 10, fontWeight: 900, color: "#CCC", width: 15 }}>{i+1}</span>
-                              <div style={{ flex: 1, fontWeight: 700, fontSize: 12 }}>{en.profiles.first_name} {en.profiles.last_name}</div>
-                              <button onClick={() => handleUnenroll(en.id, editingSlot.id)} style={{ color: "#DC2626", background: "none", border: "none", cursor: "pointer" }}><UserMinus size={14} /></button>
-                            </div>
-                          ))}
+                        <label style={labelStyle}>MATRICULADOS ({enrollments.length}/{editingSlot.capacity})</label>
+                        <div style={{ border: "2px solid #000", maxHeight: 200, overflowY: "auto", background: "#FFF" }}>
+                          {enrollments.length === 0 ? (
+                            <div style={{ padding: 20, textAlign: "center", fontSize: 11, color: "#999" }}>Nenhum aluno matriculado.</div>
+                          ) : (
+                            enrollments.map((en, i) => (
+                              <div key={en.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: 10, borderBottom: i < enrollments.length-1 ? "1px solid #EEE" : "none" }}>
+                                <span style={{ fontSize: 10, fontWeight: 900, color: "#CCC", width: 15 }}>{i+1}</span>
+                                <div style={{ flex: 1, fontWeight: 700, fontSize: 12 }}>{en.profiles.first_name} {en.profiles.last_name}</div>
+                                <button onClick={() => handleUnenroll(en.id, editingSlot.id)} style={{ color: "#DC2626", background: "none", border: "none", cursor: "pointer" }}><UserMinus size={14} /></button>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Waitlist Section */}
+                      <div style={{ marginTop: 8 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                          <label style={{ ...labelStyle, marginBottom: 0 }}>LISTA DE ESPERA ({waitlist.length})</label>
+                          {waitlist.length > 0 && enrollments.length < editingSlot.capacity && (
+                            <button 
+                              onClick={() => handleManualPromote(editingSlot.id)}
+                              style={{ fontSize: 9, fontWeight: 900, background: "#10B981", color: "#FFF", border: "none", padding: "4px 8px", cursor: "pointer" }}
+                            >
+                              EFETIVAR ESPERA
+                            </button>
+                          )}
+                        </div>
+                        <div style={{ border: "2px solid #000", maxHeight: 150, overflowY: "auto", background: "#FFF" }}>
+                          {waitlist.length === 0 ? (
+                            <div style={{ padding: 20, textAlign: "center", fontSize: 11, color: "#999" }}>Fila vazia.</div>
+                          ) : (
+                            waitlist.map((w, i) => (
+                              <div key={w.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: 10, borderBottom: i < waitlist.length-1 ? "1px solid #EEE" : "none" }}>
+                                <span style={{ fontSize: 10, fontWeight: 900, color: "#CCC", width: 15 }}>{i+1}</span>
+                                <div style={{ flex: 1, fontWeight: 700, fontSize: 12 }}>{w.profiles.first_name} {w.profiles.last_name}</div>
+                                <button onClick={() => handleWaitlistRemove(w.id)} style={{ color: "#DC2626", background: "none", border: "none", cursor: "pointer" }}><X size={14} /></button>
+                              </div>
+                            ))
+                          )}
                         </div>
                       </div>
                     </div>
 
                     {/* Column 2: Live Activity Monitoring */}
                     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+                       {/* Substitution Section */}
+                       <div style={{
+                         padding: 24,
+                         background: "#FFFBEB",
+                         border: "3px solid #F59E0B",
+                         marginBottom: 0
+                       }}>
+                         <label style={{ ...labelStyle, color: "#B45309" }}>SUBSTITUIÇÃO DE COACH (HOJE)</label>
+                         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                           <select
+                             value={substituteCoachId || ""}
+                             onChange={(e) => setSubstituteCoachId(e.target.value || null)}
+                             style={{ ...inputStyle, borderColor: "#F59E0B" }}
+                           >
+                             <option value="">Nenhuma substituição</option>
+                             {coaches.map((c) => (
+                               <option key={c.id} value={c.id}>
+                                 {c.full_name}
+                               </option>
+                             ))}
+                           </select>
+                           <textarea
+                             placeholder="Observações da substituição..."
+                             value={substitutionNotes}
+                             onChange={(e) => setSubstitutionNotes(e.target.value)}
+                             style={{ ...inputStyle, borderColor: "#F59E0B", minHeight: 60, fontSize: 12 }}
+                           />
+                           <button 
+                             onClick={handleSubstitutionSave}
+                             className="admin-btn"
+                             style={{ background: "#F59E0B", color: "#FFF", border: "2px solid #000", width: "100%", justifyContent: "center" }}
+                           >
+                             SALVAR SUBSTITUIÇÃO
+                           </button>
+                         </div>
+                       </div>
+ 
                        <div>
-                        <label style={labelStyle}>
-                          <Activity size={12} style={{ color: "#2563EB", marginRight: 4 }} />
-                          MONITORAMENTO EM TEMPO REAL
-                        </label>
-                        
-                        {editingSlot.day_of_week === todayDay ? (
-                          <>
-                            <div style={{ display: "flex", background: "#F0F9FF", border: "2px solid #2563EB", padding: 16, marginBottom: 12 }}>
-                              <div style={{ flex: 1 }}>
-                                <div style={{ fontSize: 10, fontWeight: 900, color: "#2563EB" }}>CHECK-INS HOJE</div>
-                                <div style={{ fontSize: 24, fontWeight: 900, color: "#1E3A8A" }}>{checkins.length}</div>
-                              </div>
-                            </div>
-
-                            <div style={{ border: "2px solid #2563EB", background: "#FFF", maxHeight: 400, overflowY: "auto" }}>
-                              {checkins.length === 0 ? (
-                                <div style={{ padding: 40, textAlign: "center", fontSize: 12, color: "#999" }}>Aguardando presenças...</div>
-                              ) : (
-                                checkins.map((c, i) => (
-                                  <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: 10, borderBottom: i < checkins.length-1 ? "1px solid #BFDBFE" : "none" }}>
-                                    <div style={{ width: 6, height: 6, background: "#2563EB", borderRadius: "50%" }} />
-                                    <div style={{ flex: 1, fontWeight: 800, fontSize: 12, color: "#1E3A8A" }}>{c.profiles.first_name} {c.profiles.last_name}</div>
-                                    <span style={{ fontSize: 10, color: "#2563EB", fontWeight: 700 }}>{new Date(c.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                                  </div>
-                                ))
-                              )}
-                            </div>
-                          </>
-                        ) : (
-                          <div style={{ padding: 60, textAlign: "center", border: "2px dashed #DDD", opacity: 0.5 }}>
-                            <Activity size={40} style={{ marginBottom: 12, marginInline: "auto" }} />
-                            <div style={{ fontSize: 11, fontWeight: 900 }}>DADOS DE CHECK-IN INDISPONÍVEIS</div>
-                            <div style={{ fontSize: 10 }}>Pode visualizar apenas no dia correspondente.</div>
-                          </div>
-                        )}
-                      </div>
+                         <label style={labelStyle}>
+                           MONITORAMENTO EM TEMPO REAL
+                         </label>
+                         
+                         {editingSlot.day_of_week === todayDay ? (
+                           <>
+                             <div style={{ display: "flex", background: "#F0F9FF", border: "2px solid #2563EB", padding: 16, marginBottom: 12 }}>
+                               <div style={{ flex: 1 }}>
+                                 <div style={{ fontSize: 10, fontWeight: 900, color: "#2563EB" }}>CHECK-INS HOJE</div>
+                                 <div style={{ fontSize: 24, fontWeight: 900, color: "#1E3A8A" }}>{checkins.length}</div>
+                               </div>
+                             </div>
+ 
+                             <div style={{ border: "2px solid #2563EB", background: "#FFF", maxHeight: 200, overflowY: "auto" }}>
+                               {checkins.length === 0 ? (
+                                 <div style={{ padding: 40, textAlign: "center", fontSize: 12, color: "#999" }}>Aguardando presenças...</div>
+                               ) : (
+                                 checkins.map((c, i) => (
+                                   <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: 10, borderBottom: i < checkins.length-1 ? "1px solid #BFDBFE" : "none" }}>
+                                     <div style={{ width: 6, height: 6, background: "#2563EB", borderRadius: "50%" }} />
+                                     <div style={{ flex: 1, fontWeight: 800, fontSize: 12, color: "#1E3A8A" }}>{c.profiles.first_name} {c.profiles.last_name}</div>
+                                     <span style={{ fontSize: 10, color: "#2563EB", fontWeight: 700 }}>{new Date(c.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                   </div>
+                                 ))
+                               )}
+                             </div>
+                           </>
+                         ) : (
+                           <div style={{ padding: 60, textAlign: "center", border: "2px dashed #DDD", opacity: 0.5 }}>
+                             <div style={{ fontSize: 11, fontWeight: 900 }}>DADOS DE CHECK-IN INDISPONÍVEIS</div>
+                             <div style={{ fontSize: 10 }}>Monitoramento apenas no dia correspondente.</div>
+                           </div>
+                         )}
+                       </div>
                     </div>
                   </>
                 )}
@@ -1316,7 +1681,18 @@ export default function TurmasClient({ initialSlots, occupancy, wods, enrollment
           </div>
         </div>
       )}
+      {/* ── CLOSE CLASS MODAL ── */}
+      {closingSlot && (
+        <CloseClassModal
+          slot={closingSlot}
+          onClose={() => setClosingSlot(null)}
+          onSuccess={() => {
+            setClosingSlot(null);
+            showToast("AULA FECHADA COM SUCESSO! XP DISTRIBUÍDO.", "success");
+            setTimeout(() => window.location.reload(), 1500);
+          }}
+        />
+      )}
     </div>
   );
 }
-

@@ -128,7 +128,7 @@ export const PRMatrix: React.FC<PRMatrixProps> = ({ prs, onUpsert }) => {
                     </div>
                     <span style={{ fontSize: "7px", fontWeight: 900, color: config.color, letterSpacing: "0.05em" }}>{config.label}</span>
                   </div>
-                  <span style={{ fontSize: "7px", color: "var(--text-dim)", fontWeight: 800 }}>{new Date(pr.date).toLocaleDateString('pt-BR')}</span>
+                  <span style={{ fontSize: "7px", color: "var(--text-dim)", fontWeight: 800 }}>{new Date(pr.date + "T00:00:00Z").toLocaleDateString('pt-BR', { timeZone: 'UTC', day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
                 </div>
               </div>
             );

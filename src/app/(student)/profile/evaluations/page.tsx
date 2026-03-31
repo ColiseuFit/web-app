@@ -116,9 +116,7 @@ export default async function EvaluationsPage() {
                   alignItems: "center"
                 }}>
                   <div>
-                    <div style={{ fontSize: "10px", fontWeight: 800, color: "rgba(255,255,255,0.4)", marginBottom: "4px" }}>
-                      {new Date(ev.evaluation_date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' }).toUpperCase()}
-                    </div>
+                      {new Date(ev.evaluation_date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric', timeZone: 'UTC' }).toUpperCase()}
                     <div style={{ display: "flex", gap: "16px" }}>
                       <div>
                         <span style={{ fontSize: "9px", color: "rgba(255,255,255,0.3)" }}>PESO:</span>

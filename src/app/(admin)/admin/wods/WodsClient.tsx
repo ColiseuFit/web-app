@@ -201,7 +201,7 @@ export default function WodsClient({ initialWods, weekDates }: WodsClientProps) 
         {weekDates.map((day) => {
           const isSelected = day.date === selectedDate;
           const hasWod = initialWods.some((w) => w.date === day.date);
-          const dayNum = new Date(day.date + "T00:00:00").getDate();
+          const dayNum = new Date(day.date + "T00:00:00Z").getUTCDate();
           return (
             <button
               key={day.date}
@@ -265,7 +265,7 @@ export default function WodsClient({ initialWods, weekDates }: WodsClientProps) 
                 padding: "4px 12px", background: "#000", color: "#FFF",
                 fontSize: "11px", fontWeight: 800, textTransform: "uppercase"
               }}>
-                {selectedDay?.label} — {new Date(selectedDate + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" })}
+                {selectedDay?.label} — {new Date(selectedDate + "T00:00:00Z").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "UTC" })}
               </div>
             </div>
 
@@ -597,7 +597,7 @@ export default function WodsClient({ initialWods, weekDates }: WodsClientProps) 
           <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "32px", borderBottom: "2px solid #000", paddingBottom: "20px" }}>
             <Calendar size={24} />
             <h2 style={{ fontSize: "20px", fontWeight: 800, textTransform: "uppercase", margin: 0 }}>
-              {selectedDay?.label}, {new Date(selectedDate + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "long" })}
+              {selectedDay?.label}, {new Date(selectedDate + "T00:00:00Z").toLocaleDateString("pt-BR", { day: "2-digit", month: "long", timeZone: "UTC" })}
             </h2>
           </div>
 

@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X } from "lucide-react";
-import { performCheckIn } from "@/app/(student)/actions";
+import { X, Loader2 } from "lucide-react";
+import { performCheckIn, getAvailableSlots } from "@/app/(student)/actions";
 import { hapticSelect, hapticConfirm } from "@/lib/haptic";
 import XpToast from "./XpToast";
 
@@ -13,63 +13,84 @@ interface CheckInModalProps {
   onSuccess: () => void;
 }
 
+interface DynamicSlot {
+  id: string;
+  time_start: string;
+  capacity: number;
+  name: string;
+  occupancy?: number;
+}
+
 /**
  * Modal de Seleção de Turma (Bottom Sheet).
- * Layout Final Otimizado (UX/UI Refinada).
- * Inclui Haptic Feedback e XP Toast pós-confirmação.
+ * Grade Dinâmica: Busca horários reais configurados pelo Gestor.
  */
 export default function CheckInModal({ wodId, date, onClose, onSuccess }: CheckInModalProps) {
-  const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [slots, setSlots] = useState<DynamicSlot[]>([]);
+  const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
+  const [selectedTime, setSelectedTime] = useState<string | null>(null);
+  const [loadingSlots, setLoadingSlots] = useState(true);
+  const [loadingSubmit, setLoadingSubmit] = useState(false);
 
   useEffect(() => {
+    async function loadSlots() {
+      setLoadingSlots(true);
+      const res = await getAvailableSlots(date);
+      if (res.data) {
+        setSlots(res.data.map(s => ({
+          id: s.id,
+          time_start: s.time_start.slice(0, 5),
+          capacity: s.capacity,
+          name: s.name,
+          occupancy: 0 // TODO: Buscar ocupação real do dia no futuro
+        })));
+      }
+      setLoadingSlots(false);
+    }
+    loadSlots();
+
     document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = "unset";
     };
-  }, []);
+  }, [date]);
 
   const dateObj = new Date(date + "T00:00:00Z");
-  const isSaturday = dateObj.getUTCDay() === 6;
 
-  const scheduleData = isSaturday 
-    ? [
-        { time: "06:30", period: "MANHÃ", vagas: 8, total: 20 },
-        { time: "08:30", period: "MANHÃ", vagas: 15, total: 20 },
-      ]
-    : [
-        { time: "05:00", period: "MANHÃ", vagas: 5, total: 20 },
-        { time: "06:00", period: "MANHÃ", vagas: 12, total: 20 },
-        { time: "07:00", period: "MANHÃ", vagas: 8, total: 20 },
-        { time: "08:00", period: "MANHÃ", vagas: 18, total: 20 },
-        { time: "11:00", period: "ALMOÇO", vagas: 10, total: 15 },
-        { time: "16:00", period: "TARDE", vagas: 4, total: 20 },
-        { time: "17:00", period: "TARDE", vagas: 15, total: 20 },
-        { time: "18:00", period: "NOITE", vagas: 7, total: 25 },
-        { time: "19:00", period: "NOITE", vagas: 22, total: 25 },
-        { time: "20:00", period: "NOITE", vagas: 12, total: 25 },
-      ];
+  const getPeriod = (time: string) => {
+    const hour = parseInt(time.split(":")[0]);
+    if (hour < 11) return "MANHÃ";
+    if (hour < 14) return "ALMOÇO";
+    if (hour < 18) return "TARDE";
+    return "NOITE";
+  };
 
   const formattedDate = new Intl.DateTimeFormat("pt-BR", {
     weekday: "long",
     day: "2-digit",
-    month: "short"
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC"
   }).format(dateObj).replace("-feira", "");
 
-  const handleSlotSelect = (time: string) => {
-    hapticSelect(); // Feedback tátil ao selecionar horário
-    setSelectedSlot(time);
+  const todayStr = new Date().toLocaleDateString("en-CA");
+  const isToday = date === todayStr;
+
+  const handleSlotSelect = (id: string, time: string) => {
+    hapticSelect();
+    setSelectedSlotId(id);
+    setSelectedTime(time);
   };
 
   const handleConfirm = async () => {
-    if (!selectedSlot) return;
-    setLoading(true);
+    if (!selectedSlotId || !selectedTime) return;
+    setLoadingSubmit(true);
 
-    const result = await performCheckIn(wodId, selectedSlot);
-    setLoading(false);
+    const result = await performCheckIn(wodId, selectedTime, selectedSlotId);
+    setLoadingSubmit(false);
 
     if (result.success) {
-      hapticConfirm(); // Vibração de confirmação de sinalização
+      hapticConfirm();
       onSuccess();
     } else {
       alert(result.error);
@@ -118,7 +139,9 @@ export default function CheckInModal({ wodId, date, onClose, onSuccess }: CheckI
             <p style={{ fontSize: "8px", fontWeight: 800, color: "var(--red)", letterSpacing: "0.2em", textTransform: "uppercase", marginBottom: "6px" }}>
               SINALIZAR CHECK-IN
             </p>
-            <h2 className="font-display" style={{ fontSize: "22px", lineHeight: 1, letterSpacing: "-0.02em" }}>TREINO DE HOJE</h2>
+            <h2 className="font-display" style={{ fontSize: "22px", lineHeight: 1, letterSpacing: "-0.02em" }}>
+              {isToday ? "TREINO DE HOJE" : "TREINO DO DIA"}
+            </h2>
             <p style={{ 
               fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", 
               marginTop: "8px", textTransform: "capitalize", letterSpacing: "0.02em"
@@ -129,48 +152,53 @@ export default function CheckInModal({ wodId, date, onClose, onSuccess }: CheckI
 
           {/* ÁREA ROLÁVEL */}
           <div style={{ flex: 1, overflowY: "auto", padding: "0 24px", scrollbarWidth: "none" }}>
-            <div style={{ display: "flex", flexDirection: "column", gap: "10px", paddingBottom: "32px" }}>
-              {scheduleData.map((slot) => {
-                const isSelected = selectedSlot === slot.time;
-                const occupancyPct = (slot.vagas / slot.total) * 100;
+            {loadingSlots ? (
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px", gap: "12px" }}>
+                <Loader2 size={24} className="animate-spin" style={{ color: "var(--red)" }} />
+                <span style={{ fontSize: "10px", fontWeight: 800, color: "var(--text-dim)", letterSpacing: "0.1em" }}>BUSCANDO GRADE...</span>
+              </div>
+            ) : slots.length === 0 ? (
+              <div style={{ padding: "40px 20px", textAlign: "center", background: "rgba(255,255,255,0.01)", border: "1px dashed rgba(255,255,255,0.05)" }}>
+                <p style={{ fontSize: "12px", color: "var(--text-dim)", fontWeight: 600 }}>Nenhuma turma disponível para este dia.</p>
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: "10px", paddingBottom: "32px" }}>
+                {slots.map((slot) => {
+                  const isSelected = selectedSlotId === slot.id;
+                  const period = getPeriod(slot.time_start);
 
-                return (
-                  <div
-                    key={slot.time}
-                    onClick={() => handleSlotSelect(slot.time)}
-                    style={{
-                      padding: "16px 20px",
-                      background: isSelected ? "var(--red)" : "rgba(255,255,255,0.02)",
-                      border: `1px solid ${isSelected ? "var(--red)" : "rgba(255,255,255,0.04)"}`,
-                      cursor: "pointer",
-                      transition: "all 0.1s ease",
-                      display: "flex", justifyContent: "space-between", alignItems: "center",
-                    }}
-                  >
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: "22px", fontWeight: 900, fontFamily: "var(--font-display)", color: isSelected ? "#fff" : "var(--text)", lineHeight: 1 }}>
-                        {slot.time}
+                  return (
+                    <div
+                      key={slot.id}
+                      onClick={() => handleSlotSelect(slot.id, slot.time_start)}
+                      style={{
+                        padding: "16px 20px",
+                        background: isSelected ? "var(--red)" : "rgba(255,255,255,0.02)",
+                        border: `1px solid ${isSelected ? "var(--red)" : "rgba(255,255,255,0.04)"}`,
+                        cursor: "pointer",
+                        transition: "all 0.1s ease",
+                        display: "flex", justifyContent: "space-between", alignItems: "center",
+                      }}
+                    >
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: "22px", fontWeight: 900, fontFamily: "var(--font-display)", color: isSelected ? "#fff" : "var(--text)", lineHeight: 1 }}>
+                          {slot.time_start}
+                        </div>
+                        <div style={{ fontSize: "8px", fontWeight: 700, letterSpacing: "0.1em", color: isSelected ? "rgba(255,255,255,0.7)" : "var(--text-muted)", marginTop: "4px" }}>
+                          {slot.name.toUpperCase()} • {period}
+                        </div>
                       </div>
-                      <div style={{ fontSize: "8px", fontWeight: 700, letterSpacing: "0.1em", color: isSelected ? "rgba(255,255,255,0.7)" : "var(--text-muted)", marginTop: "4px" }}>
-                        {slot.period}
+
+                      <div style={{ textAlign: "right" }}>
+                        <div style={{ fontSize: "10px", fontWeight: 800, color: isSelected ? "#fff" : "var(--text-dim)", marginBottom: "6px" }}>
+                          {slot.capacity} VAGAS
+                        </div>
                       </div>
                     </div>
-
-                    <div style={{ textAlign: "right" }}>
-                      <div style={{ fontSize: "10px", fontWeight: 800, color: isSelected ? "#fff" : "var(--text-dim)", marginBottom: "6px" }}>
-                        {slot.vagas}/{slot.total} VAGAS
-                      </div>
-                      <div style={{ width: "60px", height: "2px", backgroundColor: isSelected ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.05)", position: "relative" }}>
-                        <div style={{ 
-                          position: "absolute", left: 0, top: 0, height: "100%", width: `${occupancyPct}%`, 
-                          backgroundColor: isSelected ? "#fff" : "var(--red)",
-                        }} />
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* FOOTER FIXO */}
@@ -180,18 +208,23 @@ export default function CheckInModal({ wodId, date, onClose, onSuccess }: CheckI
           }}>
             <button
               onClick={handleConfirm}
-              disabled={!selectedSlot || loading}
+              disabled={!selectedSlotId || loadingSubmit}
               style={{
-                width: "100%", padding: "18px", background: selectedSlot ? "var(--red)" : "rgba(255,255,255,0.03)",
-                border: "none", color: selectedSlot ? "#fff" : "rgba(255,255,255,0.15)", fontSize: "11px", fontWeight: 900,
-                letterSpacing: "0.2em", cursor: !selectedSlot || loading ? "not-allowed" : "pointer",
+                width: "100%", padding: "18px", background: selectedSlotId ? "var(--red)" : "rgba(255,255,255,0.03)",
+                border: "none", color: selectedSlotId ? "#fff" : "rgba(255,255,255,0.15)", fontSize: "11px", fontWeight: 900,
+                letterSpacing: "0.2em", cursor: !selectedSlotId || loadingSubmit ? "not-allowed" : "pointer",
                 textTransform: "uppercase", fontFamily: "var(--font-display)",
-                boxShadow: selectedSlot ? "0 0 40px rgba(227,27,35,0.25)" : "none",
+                boxShadow: selectedSlotId ? "0 0 40px rgba(227,27,35,0.25)" : "none",
                 transition: "all 0.3s ease",
                 borderRadius: "2px"
               }}
             >
-              {loading ? "PROCESSANDO..." : selectedSlot ? `CONFIRMAR ${selectedSlot}` : "ESCOLHA UM HORÁRIO"}
+              {loadingSubmit ? (
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
+                  <Loader2 size={16} className="animate-spin" />
+                  <span>PROCESSANDO...</span>
+                </div>
+              ) : selectedSlotId ? `CONFIRMAR ${selectedTime}` : "ESCOLHA UM HORÁRIO"}
             </button>
           </div>
         </div>
@@ -200,6 +233,13 @@ export default function CheckInModal({ wodId, date, onClose, onSuccess }: CheckI
           @keyframes fadeIn {
             from { opacity: 0; transform: translateY(30px); }
             to { opacity: 1; transform: translateY(0); }
+          }
+          .animate-spin {
+            animation: spin 1s linear infinite;
+          }
+          @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
           }
         `}</style>
       </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { CheckCircle, Edit3, Dumbbell } from "lucide-react";
+import { CheckCircle, Edit3, Dumbbell, AlertTriangle } from "lucide-react";
 import CheckInModal from "./CheckInModal";
 import ConfirmModal from "./ConfirmModal";
 import { cancelCheckIn } from "@/app/(student)/actions";
@@ -10,13 +10,14 @@ interface CheckInButtonProps {
   wodId: string;
   date: string;
   alreadyChecked: boolean;
+  holiday?: any;
 }
 
 /**
  * Botão de Check-in que abre o modal de seleção de turma.
  * Suporta cancelamento e alteração de horário com modais customizados.
  */
-export default function CheckInButton({ wodId, date, alreadyChecked }: CheckInButtonProps) {
+export default function CheckInButton({ wodId, date, alreadyChecked, holiday }: CheckInButtonProps) {
   const [open, setOpen] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [done, setDone] = useState(alreadyChecked);
@@ -39,6 +40,31 @@ export default function CheckInButton({ wodId, date, alreadyChecked }: CheckInBu
       alert(result.error);
     }
   };
+
+  if (holiday) {
+    return (
+      <div style={{
+        width: "100%",
+        padding: "18px 24px",
+        background: "#0a0a0a",
+        borderTop: "1px solid rgba(220, 38, 38, 0.4)",
+        color: "#666",
+        fontSize: "11px",
+        fontWeight: 900,
+        letterSpacing: "0.2em",
+        textTransform: "uppercase",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: "10px",
+        cursor: "not-allowed",
+        fontFamily: "var(--font-display)"
+      }}>
+        <AlertTriangle size={20} color="#DC2626" />
+        {holiday.description ? holiday.description.toUpperCase() : "BOX FECHADO"}
+      </div>
+    );
+  }
 
   if (done) {
     return (

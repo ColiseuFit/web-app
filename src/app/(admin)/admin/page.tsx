@@ -19,19 +19,27 @@ export default async function AdminDashboardPage() {
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 
   // Parallel data fetching for maximum speed
-  const [profilesRes, checkinsRes, recentStudentsRes] = await Promise.all([
-    supabase.from("profiles").select("id, full_name, display_name, level, created_at, avatar_url, phone", { count: "exact" }),
+  const [profilesRes, checkinsRes] = await Promise.all([
+    supabase.from("profiles").select("id, full_name, display_name, level, created_at, avatar_url, phone, user_roles(role)", { count: "exact" }),
     supabase.from("check_ins").select("student_id, created_at", { count: "exact" }).gte("created_at", todayStart),
-    supabase.from("profiles").select("id", { count: "exact" }).gte("created_at", monthStart),
   ]);
 
-  const totalStudents = profilesRes.count ?? 0;
+  // Consider as students everyone WHO IS NOT an admin or coach
+  // This is legacy-proof for users without an explicit role yet
+  const allProfilesWithRoles = profilesRes.data ?? [];
+  const studentsOnly = allProfilesWithRoles.filter((p: any) => {
+    const role = p.user_roles?.role;
+    return role !== 'admin' && role !== 'coach';
+  });
+
+  const totalStudents = studentsOnly.length;
   const todayCheckins = checkinsRes.count ?? 0;
-  const newThisMonth = recentStudentsRes.count ?? 0;
+
+  // Recent signups this month (filtered for students only)
+  const newThisMonth = studentsOnly.filter(p => p.created_at >= monthStart).length;
 
   // Calculate "at risk" — students who haven't checked in for 7 days
-  // We get the latest check-in per student and compare
-  const allProfiles = profilesRes.data ?? [];
+  const allProfiles = studentsOnly;
   const todayCheckinStudents = new Set((checkinsRes.data ?? []).map((c: { student_id: string }) => c.student_id));
 
   const stats = [

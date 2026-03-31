@@ -14,6 +14,7 @@ interface EvaluationData {
   weight: number;
   height: number;
   body_fat_percentage: number;
+  waist_hip_ratio?: number;
   measurements: Record<string, any>;
   skinfolds: Record<string, any>;
   bone_diameters: Record<string, any>;
@@ -144,7 +145,7 @@ export default function EvaluationDetailsClient({
           <div className="animate-fadeIn">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "32px" }}>
               <div style={{ fontSize: "14px", fontWeight: 900, color: "#E31B23", fontFamily: "'Outfit', sans-serif" }}>
-                {new Date(evaluation.evaluation_date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' }).toUpperCase()}
+                {new Date(evaluation.evaluation_date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric', timeZone: 'UTC' }).toUpperCase()}
               </div>
               <div style={{ fontSize: "10px", fontWeight: 700, background: "rgba(255,255,255,0.05)", padding: "4px 8px", borderRadius: "2px" }}>
                 ESTADO: <span style={{ color: "#10B981" }}>EM EVOLUÇÃO</span>
@@ -193,9 +194,28 @@ export default function EvaluationDetailsClient({
                   )}
                 </div>
               </div>
+
+              {/* Height Card */}
+              <div style={{ background: "#0E0E0E", padding: "20px" }}>
+                <div style={{ fontSize: "8px", fontWeight: 800, color: "rgba(255,255,255,0.3)", marginBottom: "4px" }}>ALTURA</div>
+                <div style={{ fontFamily: "'Outfit', sans-serif", fontSize: "20px", fontWeight: 900, color: "#FFF" }}>{evaluation.height} <span style={{ fontSize: "10px" }}>M</span></div>
+              </div>
+
+              {/* WHR Card */}
+              <div style={{ background: "#0E0E0E", padding: "20px" }}>
+                <div style={{ fontSize: "8px", fontWeight: 800, color: "rgba(255,255,255,0.3)", marginBottom: "4px" }}>WHR (CINTURA/QUADRIL)</div>
+                <div style={{ display: "flex", alignItems: "baseline", gap: "8px" }}>
+                  <div style={{ fontFamily: "'Outfit', sans-serif", fontSize: "20px", fontWeight: 900, color: (evaluation.waist_hip_ratio || 0) > 0.9 ? "#F43F5E" : "#FFF" }}>
+                    {evaluation.waist_hip_ratio || "--"}
+                  </div>
+                  <span style={{ fontSize: "8px", fontWeight: 900, color: (evaluation.waist_hip_ratio || 0) > 0.9 ? "#F43F5E" : "rgba(255,255,255,0.4)" }}>
+                    {(evaluation.waist_hip_ratio || 0) > 0.9 ? "ATENÇÃO" : "SAUDÁVEL"}
+                  </span>
+                </div>
+              </div>
             </div>
 
-            {/* EVOLUTION SLIDER (Visual Wow) */}
+            {/* RADAR DE EVOLUÇÃO (Visual Wow) */}
             {previous && evaluation.photos.length > 0 && previous.photos.length > 0 && (
               <section style={{ marginBottom: "40px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "20px" }}>
@@ -203,7 +223,7 @@ export default function EvaluationDetailsClient({
                   <div style={{ flex: 1, height: "1px", background: "rgba(255,255,255,0.1)" }} />
                 </div>
                 
-                <div style={{ position: "relative", aspectRatio: "3/4", background: "#0E0E0E", overflow: "hidden" }}>
+                <div style={{ position: "relative", aspectRatio: "3/4", background: "#0E0E0E", overflow: "hidden", border: "1px solid rgba(255,255,255,0.1)" }}>
                   {/* Previous Image */}
                   <img 
                     src={previous.photos[0].url} 
@@ -220,12 +240,12 @@ export default function EvaluationDetailsClient({
                   }}>
                     <img 
                       src={evaluation.photos[0].url} 
-                      style={{ width: "440px", height: "100%", objectFit: "cover", filter: "grayscale(100%)" }} 
+                      style={{ width: "440px", height: "100%", objectFit: "cover" }} 
                     />
                   </div>
                   {/* Labels */}
-                  <div style={{ position: "absolute", left: "10px", top: "10px", fontSize: "10px", fontWeight: 900, color: "#E31B23", zIndex: 3 }}>ANTERIOR</div>
-                  <div style={{ position: "absolute", right: "10px", top: "10px", fontSize: "10px", fontWeight: 900, color: "#FFF", zIndex: 3 }}>ATUAL</div>
+                  <div style={{ position: "absolute", left: "12px", top: "12px", fontSize: "10px", fontWeight: 900, color: "rgba(255,255,255,0.5)", zIndex: 3 }}>ANTERIOR</div>
+                  <div style={{ position: "absolute", right: "12px", top: "12px", fontSize: "10px", fontWeight: 900, color: "#FFF", zIndex: 3, background: "#E31B23", padding: "2px 6px" }}>ATUAL</div>
                   
                   {/* Slider Control */}
                   <input 
@@ -236,8 +256,9 @@ export default function EvaluationDetailsClient({
                     onChange={(e) => setEvolutionSplit(Number(e.target.value))}
                     style={{ 
                       position: "absolute", 
-                      bottom: "20px", 
-                      left: "10%", 
+                      bottom: "24px", 
+                      left: "50%", 
+                      transform: "translateX(-50%)",
                       width: "80%", 
                       zIndex: 10,
                       accentColor: "#E31B23",
@@ -245,7 +266,25 @@ export default function EvaluationDetailsClient({
                     }}
                   />
                 </div>
-                <p style={{ fontSize: "9px", color: "rgba(255,255,255,0.3)", marginTop: "12px", textAlign: "center", letterSpacing: "0.1em" }}>ARRASte O SLIDER PARA COMPARAR VOLUME E DEFINIÇÃO</p>
+                <p style={{ fontSize: "9px", color: "rgba(255,255,255,0.3)", marginTop: "12px", textAlign: "center", letterSpacing: "0.1em" }}>DESLIZE PARA COMPARAR DEFINIÇÃO E VOLUME</p>
+              </section>
+            )}
+
+            {/* GALERIA COMPLETA */}
+            {evaluation.photos.length > 0 && (
+              <section style={{ marginBottom: "40px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "20px" }}>
+                  <h2 style={{ fontFamily: "'Outfit', sans-serif", fontSize: "12px", fontWeight: 900 }}>GALERIA DE REGISTROS</h2>
+                  <div style={{ flex: 1, height: "1px", background: "rgba(255,255,255,0.1)" }} />
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "12px" }}>
+                  {evaluation.photos.map((photo, i) => (
+                    <div key={i} style={{ background: "#0E0E0E", padding: "8px", border: "1px solid rgba(255,255,255,0.05)" }}>
+                      <img src={photo.url} alt={photo.label} style={{ width: "100%", aspectRatio: "1/1", objectFit: "cover", marginBottom: "8px" }} />
+                      <div style={{ fontSize: "9px", fontWeight: 800, color: "rgba(255,255,255,0.4)", textAlign: "center", textTransform: "uppercase" }}>{photo.label || `FOTO ${i+1}`}</div>
+                    </div>
+                  ))}
+                </div>
               </section>
             )}
 
@@ -263,19 +302,38 @@ export default function EvaluationDetailsClient({
           <div className="animate-fadeIn">
             <h2 style={{ fontFamily: "'Outfit', sans-serif", fontSize: "12px", fontWeight: 900, marginBottom: "20px", color: "#E31B23" }}>PERIMETRIA TÉCNICA (CM)</h2>
             <div style={{ display: "grid", gap: "1px", background: "rgba(255,255,255,0.05)" }}>
-              {Object.entries(evaluation.measurements).map(([key, value]) => (
-                <div key={key} style={{ background: "#0E0E0E", padding: "12px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ fontSize: "10px", fontWeight: 700, color: "rgba(255,255,255,0.4)", textTransform: "uppercase" }}>{(key as string).replace(/_/g, " ")}</span>
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <span style={{ fontFamily: "'Inter', sans-serif", fontWeight: 800, fontSize: "14px" }}>{value as any}</span>
-                    {previous?.measurements?.[key] && (
-                      <span style={{ fontSize: "9px", color: getStatusColor(Number(value) - Number(previous.measurements[key]), true) }}>
-                        {getDelta(Number(value), Number(previous.measurements[key]))}
-                      </span>
-                    )}
+              {[
+                { key: "neck", label: "PESCOÇO" },
+                { key: "shoulder", label: "OMBRO" },
+                { key: "chest", label: "TÓRAX" },
+                { key: "waist", label: "CINTURA" },
+                { key: "abdomen", label: "ABDÔMEN" },
+                { key: "hip", label: "QUADRIL" },
+                { key: "arm_right", label: "BRAÇO RELAXADO DIR." },
+                { key: "arm_left", label: "BRAÇO RELAXADO ESQ." },
+                { key: "forearm_right", label: "ANTEBRAÇO DIR." },
+                { key: "forearm_left", label: "ANTEBRAÇO ESQ." },
+                { key: "thigh_right", label: "COXA DIR." },
+                { key: "thigh_left", label: "COXA ESQ." },
+                { key: "calf_right", label: "PANTURRILHA DIR." },
+                { key: "calf_left", label: "PANTURRILHA ESQ." }
+              ].map(field => {
+                const value = evaluation.measurements[field.key];
+                if (value === undefined || value === null) return null;
+                return (
+                  <div key={field.key} style={{ background: "#0E0E0E", padding: "12px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontSize: "10px", fontWeight: 700, color: "rgba(255,255,255,0.4)", textTransform: "uppercase" }}>{field.label}</span>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                      <span style={{ fontFamily: "'Inter', sans-serif", fontWeight: 800, fontSize: "14px" }}>{value}</span>
+                      {previous?.measurements?.[field.key] && (
+                        <span style={{ fontSize: "9px", color: getStatusColor(Number(value) - Number(previous.measurements[field.key]), true) }}>
+                          {getDelta(Number(value), Number(previous.measurements[field.key]))}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
@@ -289,22 +347,43 @@ export default function EvaluationDetailsClient({
             </div>
             
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginBottom: "32px" }}>
-              {Object.entries(evaluation.skinfolds).map(([key, value]) => (
-                <div key={key} style={{ background: "#0E0E0E", padding: "16px" }}>
-                  <div style={{ fontSize: "8px", fontWeight: 700, color: "rgba(255,255,255,0.4)", marginBottom: "4px", textTransform: "uppercase" }}>{key}</div>
-                  <div style={{ fontFamily: "'Outfit', sans-serif", fontSize: "18px", fontWeight: 900 }}>{value as any}</div>
-                </div>
-              ))}
+              {[
+                { key: "triceps", label: "TRÍCEPS" },
+                { key: "subscapular", label: "SUBESCAPULAR" },
+                { key: "chest", label: "PEITORAL" },
+                { key: "midaxillary", label: "AXILAR MÉDIA" },
+                { key: "suprailiac", label: "SUPRA-ILÍACA" },
+                { key: "abdominal", label: "ABDOMINAL" },
+                { key: "thigh", label: "COXA" }
+              ].map(field => {
+                const value = evaluation.skinfolds[field.key];
+                if (value === undefined || value === null) return null;
+                return (
+                  <div key={field.key} style={{ background: "#0E0E0E", padding: "16px" }}>
+                    <div style={{ fontSize: "8px", fontWeight: 700, color: "rgba(255,255,255,0.4)", marginBottom: "4px", textTransform: "uppercase" }}>{field.label}</div>
+                    <div style={{ fontFamily: "'Outfit', sans-serif", fontSize: "18px", fontWeight: 900 }}>{value}</div>
+                  </div>
+                );
+              })}
             </div>
 
             <h2 style={{ fontFamily: "'Outfit', sans-serif", fontSize: "12px", fontWeight: 900, marginBottom: "20px", color: "rgba(255,255,255,0.4)" }}>DIÂMETROS ÓSSEOS (CM)</h2>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "4px" }}>
-              {Object.entries(evaluation.bone_diameters).map(([key, value]) => (
-                <div key={key} style={{ background: "#0E0E0E", padding: "12px", textAlign: "center" }}>
-                  <div style={{ fontSize: "7px", fontWeight: 700, opacity: 0.4, marginBottom: "4px", textTransform: "uppercase" }}>{key}</div>
-                  <div style={{ fontSize: "12px", fontWeight: 900 }}>{value as any}</div>
-                </div>
-              ))}
+              {[
+                { key: "humerus", label: "ÚMERO" },
+                { key: "femur", label: "FÊMUR" },
+                { key: "wrist", label: "PULSO" },
+                { key: "ankle", label: "TORNOZELO" }
+              ].map(field => {
+                const value = evaluation.bone_diameters[field.key];
+                if (value === undefined || value === null) return null;
+                return (
+                  <div key={field.key} style={{ background: "#0E0E0E", padding: "12px", textAlign: "center" }}>
+                    <div style={{ fontSize: "7px", fontWeight: 700, opacity: 0.4, marginBottom: "4px", textTransform: "uppercase" }}>{field.label}</div>
+                    <div style={{ fontSize: "12px", fontWeight: 900 }}>{value}</div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
@@ -315,15 +394,15 @@ export default function EvaluationDetailsClient({
             <h2 style={{ fontFamily: "'Outfit', sans-serif", fontSize: "12px", fontWeight: 900, marginBottom: "20px", color: "#E31B23" }}>ANÁLISE BIOMECÂNICA</h2>
             
             {Object.entries(evaluation.postural_analysis).map(([view, findings]) => (
-              <div key={view} style={{ marginBottom: "24px", background: "#0E0E0E", borderLeft: "2px solid rgba(255,255,255,0.1)", padding: "16px" }}>
-                <div style={{ fontSize: "10px", fontWeight: 900, color: "#E31B23", marginBottom: "12px", textTransform: "uppercase" }}>VISTA {view}</div>
-                <div style={{ display: "grid", gap: "8px" }}>
-                  {Object.entries(findings as Record<string, string>).map(([part, finding]) => (
-                    <div key={part} style={{ display: "flex", justifyContent: "space-between", fontSize: "11px" }}>
-                      <span style={{ opacity: 0.4, textTransform: "uppercase", fontWeight: 700 }}>{part}</span>
-                      <span style={{ fontWeight: 800 }}>{finding}</span>
-                    </div>
-                  ))}
+              <div key={view} style={{ marginBottom: "24px", background: "#0E0E0E", borderLeft: "2px solid #E31B23", padding: "16px" }}>
+                <div style={{ fontSize: "10px", fontWeight: 900, color: "#E31B23", marginBottom: "12px", textTransform: "uppercase" }}>
+                  {view === "anterior" ? "VISTA ANTERIOR" : 
+                   view === "posterior" ? "VISTA POSTERIOR" : 
+                   view === "lateral_right" ? "LATERAL DIREITA" : 
+                   view === "lateral_left" ? "LATERAL ESQUERDA" : view}
+                </div>
+                <div style={{ fontSize: "13px", color: "rgba(255,255,255,0.8)", lineHeight: 1.5, background: "rgba(255,255,255,0.02)", padding: "12px" }}>
+                   {String(findings)}
                 </div>
               </div>
             ))}

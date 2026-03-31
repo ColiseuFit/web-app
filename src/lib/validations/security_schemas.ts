@@ -23,6 +23,7 @@ export const createStudentSchema = z.object({
 export const checkInSchema = z.object({
   wodId: z.string().uuid("ID do WOD inválido"),
   timeSlot: z.string().min(4, "Horário inválido").optional(),
+  classSlotId: z.string().uuid("ID da turma inválido").optional(),
 });
 
 // 4. Schema para Cancelamento de Check-in
@@ -76,6 +77,25 @@ export const classSlotSchema = z.object({
   coach_name: z.string().optional(),
 });
 
+// 10. Schema para Avaliações Físicas (Biometria e Composição)
+export const physicalEvaluationSchema = z.object({
+  id: z.string().uuid().optional(),
+  student_id: z.string().uuid("ID do aluno obrigatório"),
+  evaluation_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data inválida"),
+  weight: z.number().positive("Peso deve ser positivo").optional(),
+  height: z.number().positive("Altura deve ser positiva").optional(),
+  body_fat_percentage: z.number().min(0).max(100).optional(),
+  protocol: z.string().default("Pollock 7 Dobras"),
+  measurements: z.record(z.any()).default({}),
+  skinfolds: z.record(z.any()).default({}),
+  bone_diameters: z.record(z.any()).default({}),
+  postural_analysis: z.record(z.any()).default({}),
+  waist_hip_ratio: z.number().optional().nullable(),
+  lean_mass_components: z.record(z.any()).default({}),
+  photos: z.array(z.any()).default([]),
+  notes: z.string().optional().nullable(),
+});
+
 export type LoginInput = z.infer<typeof loginSchema>;
 export type CreateStudentInput = z.infer<typeof createStudentSchema>;
 export type CheckInInput = z.infer<typeof checkInSchema>;
@@ -84,3 +104,4 @@ export type UpdateTargetInput = z.infer<typeof updateTargetSchema>;
 export type GoalInput = z.infer<typeof goalSchema>;
 export type WodInput = z.infer<typeof wodSchema>;
 export type ClassSlotInput = z.infer<typeof classSlotSchema>;
+export type PhysicalEvaluationInput = z.infer<typeof physicalEvaluationSchema>;

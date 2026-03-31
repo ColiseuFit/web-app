@@ -9,14 +9,19 @@ import { z } from "zod";
  * Garante tipagem estrita e segurança dos dados recebidos do formulário.
  */
 const profileSchema = z.object({
-  display_name: z.string().min(3, "Nome de exibição deve ter pelo menos 3 caracteres").max(50),
+  display_name: z.string().min(3, "O Codinome deve ter pelo menos 3 caracteres").max(50),
   first_name: z.string().min(2, "Primeiro nome é obrigatório").max(100),
   last_name: z.string().min(2, "Sobrenome é obrigatório").max(100),
-  bio: z.string().max(300).optional(),
-  gender: z.enum(["Masculino", "Feminino"]).optional().or(z.literal("")),
-  cpf: z.string().regex(/^\d{3}\.\d{3}\.\d{3}-\d{2}$|^\d{11}$/, "CPF inválido").optional().or(z.literal("")),
-  birth_date: z.string().optional().or(z.literal("")),
-  avatar_url: z.string().url().optional().or(z.literal("")),
+  bio: z.string().max(300).optional().nullable(),
+  gender: z.string().optional().nullable(),
+  cpf: z.string()
+    .refine((val) => val === "" || /^\d{3}\.\d{3}\.\d{3}-\d{2}$|^\d{11}$/.test(val), {
+      message: "Formato de CPF inválido"
+    })
+    .optional()
+    .nullable(),
+  birth_date: z.string().optional().nullable(),
+  avatar_url: z.string().url().optional().nullable().or(z.literal("")),
 });
 
 /**
@@ -41,21 +46,32 @@ export async function updateProfile(formData: FormData) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "Sem sessão ativa" };
 
-  // Extração e validação dos dados
+  // Extração e sanitização dos dados
+  const displayName = (formData.get("display_name") as string || "").trim();
+  const firstName = (formData.get("first_name") as string || "").trim();
+  const lastName = (formData.get("last_name") as string || "").trim();
+  const bio = (formData.get("bio") as string || "").trim();
+  const gender = formData.get("gender") as string || "";
+  const cpf = (formData.get("cpf") as string || "").trim();
+  const birthDate = formData.get("birth_date") as string || "";
+  const avatarUrl = formData.get("avatar_url") as string || "";
+
   const rawData = {
-    display_name: formData.get("display_name"),
-    first_name: formData.get("first_name"),
-    last_name: formData.get("last_name"),
-    bio: formData.get("bio"),
-    gender: formData.get("gender"),
-    cpf: formData.get("cpf"),
-    birth_date: formData.get("birth_date"),
-    avatar_url: formData.get("avatar_url"),
+    display_name: displayName,
+    first_name: firstName,
+    last_name: lastName,
+    bio: bio || undefined,
+    gender: gender || undefined,
+    cpf: cpf || undefined,
+    birth_date: birthDate || undefined,
+    avatar_url: avatarUrl || undefined,
   };
 
   const validation = profileSchema.safeParse(rawData);
   if (!validation.success) {
-    return { error: validation.error.issues[0].message };
+    const firstError = validation.error.issues[0];
+    console.error("[updateProfile] Validation Error:", validation.error.format());
+    return { error: firstError.message };
   }
 
   const { data: validatedData } = validation;
@@ -65,9 +81,9 @@ export async function updateProfile(formData: FormData) {
     first_name: validatedData.first_name,
     last_name: validatedData.last_name,
     full_name: `${validatedData.first_name} ${validatedData.last_name}`.trim(),
-    bio: validatedData.bio,
-    gender: validatedData.gender,
-    cpf: validatedData.cpf,
+    bio: validatedData.bio || null,
+    gender: validatedData.gender || null,
+    cpf: validatedData.cpf || null,
     birth_date: validatedData.birth_date || null,
     ...(validatedData.avatar_url && { avatar_url: validatedData.avatar_url }),
     updated_at: new Date().toISOString(),

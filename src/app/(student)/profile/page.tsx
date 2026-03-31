@@ -8,6 +8,7 @@ import BottomNav from "@/components/BottomNav";
 import LevelCard from "@/components/LevelCard";
 import DashboardStyles from "@/components/DashboardStyles";
 import { Zap, Shield, Diamond, Star, Award, Medal, Trophy, TrendingUp } from "lucide-react";
+import { getTodayDate } from "@/lib/date-utils";
 
 export const metadata: Metadata = {
   title: "Meu Perfil",
@@ -20,11 +21,12 @@ export const metadata: Metadata = {
  * @security
  * - Sessão verificada via Server Component (auth.getUser).
  * - Multi-fetch paralelo com RLS ativo no Supabase para máxima performance e segurança.
- * - Isolamento total de dados entre diferentes alunos.
+ * - Isolamento total de dados: Garante que o `auth.uid()` acesse apenas suas próprias métricas.
  * 
  * @technical
- * - Substituiu os MOCKS da V1.1 por um motor 100% Data-Driven na V1.2.
- * - Centraliza a lógica de gamificação (XP -> Níveis) no lado do servidor.
+ * - Data Lifecycle: Mapeia XP acumulado para os níveis visuais (Coliseu Levels L1-L5).
+ * - PR/Benchmark: Integração com o mural de Shields (Mídia binária via SVG).
+ * - Biometria: Exibe resumo da última avaliação física processada.
  */
 export default async function ProfilePage() {
   const supabase = await createClient();
@@ -44,7 +46,7 @@ export default async function ProfilePage() {
   ] = await Promise.all([
     supabase.from("profiles").select("*").eq("id", user.id).single(),
     supabase.from("physical_evaluations").select("*").eq("student_id", user.id).order("evaluation_date", { ascending: false }).limit(1).maybeSingle(),
-    supabase.from("check_ins").select("id", { count: "exact", head: true }).eq("student_id", user.id),
+    supabase.from("check_ins").select("created_at").eq("student_id", user.id).order("created_at", { ascending: false }),
     supabase.from("personal_records").select("*").eq("student_id", user.id).order("date", { ascending: false }).limit(4),
     supabase.from("student_benchmarks").select("*").eq("student_id", user.id)
   ]);
@@ -88,11 +90,48 @@ export default async function ProfilePage() {
   const xpProgress = (xpActual / totalXpGoal) * 100;
   const xpRemaining = totalXpGoal - xpActual;
   
+  const checkIns = checkInsCount || [];
+  
+  // Cálculo de Streak Real (Dias Seguidos)
+  const calculateStreak = (history: any[]) => {
+    if (history.length === 0) return 0;
+    
+    const uniqueDates = Array.from(new Set(
+      history.map(c => new Date(c.created_at).toISOString().split("T")[0])
+    )).sort().reverse();
+    
+    const today = getTodayDate();
+    const yesterday = new Date(new Date(today + "T00:00:00Z").getTime() - 86400000).toISOString().split("T")[0];
+    
+    let current = today;
+    let streak = 0;
+    let index = 0;
+
+    // Se não treinou hoje nem ontem, streak é 0
+    if (uniqueDates[0] !== today && uniqueDates[0] !== yesterday) return 0;
+    
+    // Começamos a contar a partir da data do último treino encontrado
+    let checkDate = uniqueDates[0];
+    
+    for (const date of uniqueDates) {
+      if (date === checkDate) {
+        streak++;
+        // Retroceder 1 dia para a próxima checagem
+        checkDate = new Date(new Date(checkDate + "T00:00:00Z").getTime() - 86400000).toISOString().split("T")[0];
+      } else {
+        break;
+      }
+    }
+    return streak;
+  };
+
+  const streak = calculateStreak(checkIns);
+
   const stats = {
     xp_actual: xpActual,
     xp_next_level: totalXpGoal,
-    trainings_count: checkInsCount || 0,
-    current_streak: 0, // Mockado até implementação matemática de streaks
+    trainings_count: checkIns.length,
+    current_streak: streak,
     total_xp_goal: totalXpGoal,
   };
 
@@ -216,8 +255,8 @@ export default async function ProfilePage() {
               padding: "24px", 
               border: "1px solid var(--border-glow)",
               display: "grid",
-              gridTemplateColumns: "1fr 1fr 1fr",
-              gap: "20px"
+              gridTemplateColumns: "repeat(4, 1fr)",
+              gap: "10px"
             }}>
               <div>
                 <div style={{ fontSize: "8px", fontWeight: 700, color: "var(--text-muted)", marginBottom: "8px", letterSpacing: "0.1em" }}>PESO ATUAL</div>
@@ -230,6 +269,12 @@ export default async function ProfilePage() {
               <div style={{ borderLeft: "1px solid var(--border-glow)", paddingLeft: "20px" }}>
                 <div style={{ fontSize: "8px", fontWeight: 700, color: "var(--text-muted)", marginBottom: "8px", letterSpacing: "0.1em" }}>MASSA MAGRA</div>
                 <div style={{ fontFamily: "var(--font-display, 'Outfit', sans-serif)", fontSize: "24px", fontWeight: 900 }}>{leanMass || "--"} <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>KG</span></div>
+              </div>
+              <div style={{ borderLeft: "1px solid var(--border-glow)", paddingLeft: "20px" }}>
+                <div style={{ fontSize: "8px", fontWeight: 700, color: "var(--text-muted)", marginBottom: "8px", letterSpacing: "0.1em" }}>WHR (C/Q)</div>
+                <div style={{ fontFamily: "var(--font-display, 'Outfit', sans-serif)", fontSize: "24px", fontWeight: 900, color: (latestEvaluation.waist_hip_ratio || 0) > 0.9 ? "var(--red)" : "inherit" }}>
+                  {latestEvaluation.waist_hip_ratio || "--"}
+                </div>
               </div>
             </div>
           ) : (

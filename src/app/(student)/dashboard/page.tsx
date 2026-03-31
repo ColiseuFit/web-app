@@ -8,6 +8,9 @@ import BottomNav from "@/components/BottomNav";
 import WodView from "@/components/WodView";
 import WeekWodCarousel from "@/components/WeekWodCarousel";
 import LevelBadge from "@/components/LevelBadge";
+import { AlertTriangle } from "lucide-react";
+import { getTodayDate, getWeekDates } from "@/lib/date-utils";
+
 // import RecentPRs from "@/components/progress/RecentPRs"; (Removed: moving to Progress page)
 
 export const metadata: Metadata = {
@@ -30,27 +33,21 @@ export default async function AppDashboard({ searchParams }: PageProps) {
   if (!user) redirect("/login");
 
   const params = await searchParams;
-  const today = new Date().toISOString().split("T")[0];
+  
+  const today = getTodayDate();
   const selectedDate = params.date || today;
 
   // 2-5. Parallel Fetches (Non-dependent)
   const [
     { data: profile },
-    { data: alerts },
     { data: selectedWod },
-    { data: weekWods }
+    { data: weekWods },
+    { data: holiday }
   ] = await Promise.all([
     supabase.from("profiles").select("*").eq("id", user.id).single(),
-    supabase.from("health_alerts").select("*").eq("student_id", user.id).eq("is_resolved", false),
     supabase.from("wods").select("*").eq("date", selectedDate).maybeSingle(),
-    supabase.from("wods").select("id, date, title, tags").in("date", Array.from({ length: 6 }, (_, i) => {
-      const todayDateObj = new Date(today + "T00:00:00Z");
-      const dayOfWeek = todayDateObj.getUTCDay();
-      const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; 
-      const mondayMs = todayDateObj.getTime() - daysFromMonday * 86400000;
-      const d = new Date(mondayMs + i * 86400000);
-      return d.toISOString().split("T")[0];
-    }))
+    supabase.from("wods").select("id, date, title, tags").in("date", getWeekDates()),
+    supabase.from("box_holidays").select("*").eq("date", selectedDate).maybeSingle()
   ]);
 
   // 6. Check-in (Dependent on selectedWod)
@@ -65,15 +62,7 @@ export default async function AppDashboard({ searchParams }: PageProps) {
     alreadyChecked = !!checkin;
   }
 
-  // Pre-calculate week dates for the carousel
-  const todayDateObj = new Date(today + "T00:00:00Z");
-  const dayOfWeek = todayDateObj.getUTCDay();
-  const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; 
-  const mondayMs = todayDateObj.getTime() - daysFromMonday * 86400000;
-  const weekDates = Array.from({ length: 6 }, (_, i) => {
-    const d = new Date(mondayMs + i * 86400000);
-    return d.toISOString().split("T")[0];
-  });
+  const weekDates = getWeekDates();
 
   // Formatação do carrossel semanal
   const DAY_LABELS = ["SEG", "TER", "QUA", "QUI", "SEX", "SÁB"];
@@ -126,7 +115,7 @@ export default async function AppDashboard({ searchParams }: PageProps) {
 
       <main style={{ maxWidth: "480px", margin: "0 auto", position: "relative" }}>
         
-        {/* ── SEÇÃO DE BOAS-VINDAS (ESTILO PÔSTER) ── */}
+        {/* ── HEADER DE IDENTIDADE ── */}
         <section style={{ padding: "40px 20px 32px", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
           
           {/* DUO DE BADGES CENTRALIZADOS */}
@@ -207,19 +196,12 @@ export default async function AppDashboard({ searchParams }: PageProps) {
             selectedDate={selectedDate} 
             alreadyChecked={alreadyChecked}
             studentLevel={profile?.level || "branco"}
+            holiday={holiday}
           />
         </section>
 
         {/* Recent PRs moved to Progress page as requested */}
 
-        {alerts && alerts.length > 0 && selectedDate === today && (
-          <div style={{ margin: "0 20px 16px", background: "rgba(255,193,7,0.05)", border: "1px solid rgba(255,193,7,0.2)", padding: "16px 20px", borderLeft: "3px solid #FFC107" }}>
-            <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "0.2em", color: "#FFC107", textTransform: "uppercase", marginBottom: "8px" }}>⚠ Alertas de Saúde</p>
-            {alerts.map((alert: { id: string; description: string }) => (
-              <p key={alert.id} style={{ fontSize: "13px", color: "rgba(255,193,7,0.8)" }}>{alert.description}</p>
-            ))}
-          </div>
-        )}
       </main>
 
       <BottomNav />
