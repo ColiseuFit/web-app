@@ -42,8 +42,10 @@ graph TD
     A -->|Bucket Storage| G[Athlete Photos]
     H[Coach: WOD Builder] -->|upsertWod Action| E
     E -->|Inner Join + Revalidate| I[Aluno: Activity Timeline]
-    J[Admin: Criação de Aluno] -->|RLS Bypass: Service Role| B
+    J[Admin: Criação/Gestão de Aluno] -->|RLS Bypass: Service Role| B
     J -->|RLS Bypass: Service Role| D
+    K[Aluno: Autogestão de Perfil/Senha] -->|RLS Enforced| B
+    K -->|RLS Enforced| D
 ```
 
 ### Princípios Inegociáveis (A Doutrina do Código):

@@ -249,16 +249,18 @@ export async function deleteStudent(studentId: string) {
 }
 
 /**
- * Updates a student's authentication credentials (email/password).
+ * Atualiza as credenciais de autenticação de um aluno (E-mail ou Senha) via Admin API.
  * 
  * @security
- * - Role Requirement: ONLY 'admin'.
- * - RLS Bypass: Uses `SUPABASE_SERVICE_ROLE_KEY` to update the Auth system directly.
- * - Impact: Changing the email updates the login identifier.
+ * - Role: Restrito a usuários com role 'admin'.
+ * - RLS Bypass: Utiliza `SUPABASE_SERVICE_ROLE_KEY` para interagir diretamente com a Auth Admin API do Supabase.
+ * - Registro: Falhas críticas são logadas no servidor para auditoria.
  * 
- * @param {string} studentId - The UUID of the athlete.
- * @param {FormData} formData - Data containing 'email' or 'password'.
- * @returns {Promise<{ success?: boolean; error?: string }>} Operation status.
+ * @param {string} studentId - O UUID único do atleta no Supabase Auth.
+ * @param {FormData} formData - Objeto contendo os campos opcionais 'email' e 'password'.
+ * @returns {Promise<{ success?: boolean; error?: string }>} Objeto indicando o status da operação.
+ * 
+ * @throws {Error} Captura erros da API de Auth e retorna como mensagem amigável; não interrompe o runtime.
  */
 export async function updateStudentAuth(studentId: string, formData: FormData) {
   const supabase = await createClient();
@@ -501,15 +503,20 @@ export async function deletePhysicalEvaluation(id: string) {
 }
 
 /**
- * Uploads a physical evaluation photo to the 'physical-evaluations' bucket.
+ * Realiza o upload de uma foto de avaliação física para o bucket 'physical-evaluations'.
  * 
  * @security
- * - Role Requirement: 'admin' or 'coach'.
- * - Storage Policy: Files are stored in path `[studentId]/[timestamp].[ext]`.
- * - Persistence: Generates a 1-year signed URL for immediate preview/storage in DB.
+ * - Role: 'admin', 'coach' ou 'reception'.
+ * - Storage Policy: Arquivos são organizados no path `[studentId]/[timestamp].[ext]`.
+ * - Persistence: Gera um Signed URL de 1 ano para visualização imediata no frontend e persistência no DB.
  * 
- * @param {FormData} formData - Payload containing 'file' (Image) and 'studentId' (UUID).
- * @returns {Promise<{ success?: boolean; url?: string; path?: string; error?: string }>} Upload results.
+ * @technical
+ * - Body Limit: Configurado para aceitar até 10MB (via experimental.serverActions.bodySizeLimit em next.config.ts).
+ * - Buffer: Converte o `File` do navegador para `Uint8Array` no servidor para máxima estabilidade no SDK do Supabase.
+ * - Fallback: Garante `contentType` padrão (image/jpeg) caso o arquivo venha sem metadados claros.
+ * 
+ * @param {FormData} formData - Payload contendo 'file' (Imagem) e 'studentId' (UUID do atleta).
+ * @returns {Promise<{ success?: boolean; url?: string; path?: string; error?: string }>} URLs de acesso e status do upload.
  */
 export async function uploadEvaluationPhoto(formData: FormData) {
   const supabase = await createClient();
