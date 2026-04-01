@@ -38,7 +38,7 @@ export async function getAvailableSlots(date: string): Promise<{ data?: { id: st
 
 /**
  * Realiza a sinalização de presença (Check-in) do aluno.
- * O XP só será creditado após a confirmação do Professor na aula.
+ * A Pontuação só será creditada após a confirmação do Professor na aula.
  * 
  * @security
  * - Validação de schema via Zod (`checkInSchema`).
@@ -87,7 +87,7 @@ export async function performCheckIn(wodId: string, timeSlot?: string, classSlot
     return { error: "Você já realizou o check-in para este treino." };
   }
 
-  // 2. Criar a sinalização de Check-in (XP zerado até validação do Coach)
+  // 2. Criar a sinalização de Check-in (Pontos zerados até validação do Coach)
   const { error: checkinError } = await supabase
     .from("check_ins")
     .insert({
@@ -96,15 +96,16 @@ export async function performCheckIn(wodId: string, timeSlot?: string, classSlot
       class_slot_id: classSlotId,
       time_slot: timeSlot,
       status: "checked",
-      score_xp: 0, 
+      score_points: 0, 
+      validated_at: null
     });
 
   if (checkinError) {
     return { error: "Erro ao sinalizar presença: " + checkinError.message };
   }
 
-  // O XP NÃO é incrementado aqui automaticamente conforme nova regra de negócio.
-  // A validação de XP será feita pelo Professor ao encerrar a aula.
+  // A Pontuação NÃO é incrementada aqui automaticamente conforme nova regra de negócio.
+  // A validação de Pontos será feita pelo Professor ao encerrar a aula.
 
   revalidatePath("/dashboard");
   revalidatePath("/treinos");
@@ -149,7 +150,7 @@ export async function cancelCheckIn(wodId: string) {
     return { error: "Erro ao cancelar check-in: " + deleteError.message };
   }
 
-  // Como o XP não foi dado na sinalização, não há necessidade de estorno aqui.
+  // Como a Pontuação não foi dada na sinalização, não há necessidade de estorno aqui.
 
   revalidatePath("/dashboard");
   revalidatePath("/profile");

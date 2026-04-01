@@ -4,6 +4,8 @@ import React, { useState, useEffect } from "react";
 import { CheckCircle, CalendarDays, Edit3, Dumbbell } from "lucide-react";
 import CheckInButton from "./CheckInButton";
 
+import { getLevelInfo, ALL_LEVELS } from "@/lib/constants/levels";
+
 interface Wod {
   id: string;
   title: string;
@@ -25,44 +27,9 @@ interface WodViewProps {
   holiday: any;
 }
 
-/**
- * Componente de Visualização do WOD e Escalonamento Técnico.
- * Permite ao aluno alternar entre os filtros de nível (L1-L5) para ver as variações do treino.
- * 
- * @param wod Objeto contendo os dados do WOD (tabela wods).
- * @param selectedDate Data do treino sendo visualizado.
- * @param alreadyChecked Booleano indicando se o aluno já fez check-in.
- * @param studentLevel Nível oficial do aluno (para pré-seleção do filtro).
- * 
- * @technical
- * - Mapeamento de níveis centralizado para garantir cores e contrastes acessíveis.
- * - Suporte a 'VERSÃO: ELITE' com branding Silk Gold diferenciado.
- */
 export default function WodView({ wod, selectedDate, alreadyChecked, studentLevel, holiday }: WodViewProps) {
-  // Mapeamento de níveis (L1 a L5)
-  const LEVELS = [
-    { id: "L1", label: "INICIANTE", color: "var(--lvl-white)", textColor: "#FFF", btnTextColor: "#000" },
-    { id: "L2", label: "SCALE", color: "var(--lvl-green)", textColor: "var(--lvl-green)", btnTextColor: "#000" },
-    { id: "L3", label: "INTERMEDIÁRIO", color: "var(--lvl-blue)", textColor: "var(--lvl-blue)", btnTextColor: "#FFF" },
-    { id: "L4", label: "RX", color: "var(--red)", textColor: "var(--red)", btnTextColor: "#FFF" },
-    { id: "L5", label: "ELITE", color: "#C5A059", textColor: "#C5A059", btnTextColor: "#000" },
-  ];
+  const [activeLevel, setActiveLevel] = useState(getLevelInfo(studentLevel).id);
 
-  // Determinar o nível inicial do aluno
-  const getInitialLevelId = (lvl: string) => {
-    const l = lvl.toLowerCase();
-    if (l.includes("preto") || l.includes("elite") || l.includes("casca")) return "L5";
-    if (l.includes("vermelho") || l.includes("rx")) return "L4";
-    if (l.includes("azul")) return "L3";
-    if (l.includes("verde")) return "L2";
-    if (l.includes("branco")) return "L1";
-    return "L1";
-  };
-
-  const [activeLevel, setActiveLevel] = useState(getInitialLevelId(studentLevel));
-
-  // Simulação de adaptação de conteúdo (MOCK)
-  // Em produção, isso viria da tabela 'wod_variations' ou similar.
   const getAdaptedContent = (baseContent: string, levelId: string) => {
     if (!baseContent) return "TREINO NÃO DISPONÍVEL PARA ESTE NÍVEL.";
     
@@ -83,7 +50,7 @@ export default function WodView({ wod, selectedDate, alreadyChecked, studentLeve
   };
 
   const adaptedWod = wod ? getAdaptedContent(wod.wod_content, activeLevel) : "";
-  const activeLevelInfo = LEVELS.find(l => l.id === activeLevel);
+  const activeLevelInfo = ALL_LEVELS.find(l => l.id === activeLevel);
 
   return (
     <>
@@ -125,13 +92,13 @@ export default function WodView({ wod, selectedDate, alreadyChecked, studentLeve
                       ESCALONAMENTO TÉCNICO
                    </div>
                    <div style={{ fontSize: "7px", fontWeight: 700, color: "var(--text-muted)", letterSpacing: "0.1em" }}>
-                      VERSÃO: <span style={{ color: activeLevelInfo?.color }}>{activeLevelInfo?.label}</span>
+                      VERSÃO: <span style={{ color: activeLevelInfo?.color }}>{activeLevelInfo?.label.toUpperCase()}</span>
                    </div>
                </div>
                
                <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "4px" }}>
-                  {LEVELS.map((lvl) => {
-                    const isStudentLvl = getInitialLevelId(studentLevel) === lvl.id;
+                  {ALL_LEVELS.map((lvl) => {
+                    const isStudentLvl = getLevelInfo(studentLevel).id === lvl.id;
                     return (
                         <button
                           key={lvl.id}

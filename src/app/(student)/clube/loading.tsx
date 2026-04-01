@@ -1,8 +1,7 @@
 "use client";
 
 /**
- * Skeleton Loader para a Página do Clube (Comunidade).
- * Simula Ranking de XP e Feed de Atividades.
+ * Simula Ranking de Pontos e Feed de Atividades.
  */
 export default function ClubeSkeleton() {
   return (
@@ -15,7 +14,7 @@ export default function ClubeSkeleton() {
           <div style={{ height: "32px", width: "160px", background: "var(--surface-low)", animation: "pulse 1.5s infinite ease-in-out" }} />
         </div>
 
-        {/* XP Leaderboard Skeleton */}
+        {/* Points Leaderboard Skeleton */}
         <div style={{ 
           height: "380px", 
           background: "var(--surface-lowest)", 

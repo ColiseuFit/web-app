@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import AlunosClient from "./AlunosClient"; 
+import { getCachedLevels } from "@/lib/constants/levels_actions";
 
 /**
  * Alunos Page (Server Component): Full member management.
@@ -10,13 +11,20 @@ import AlunosClient from "./AlunosClient";
 export default async function AlunosPage() {
   const supabase = await createClient();
 
-  const { data: allProfilesRes, error } = await supabase
-    .from("profiles")
-    .select("*, user_roles(role)")
-    .order("created_at", { ascending: false });
+  // Fetch profiles and dynamic levels in parallel for SSoT
+  const [
+    { data: allProfilesRes, error: profilesError },
+    dynamicLevels
+  ] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("*, user_roles(role)")
+      .order("created_at", { ascending: false }),
+    getCachedLevels()
+  ]);
 
-  if (error) {
-    console.error("[AlunosPage] Erro ao buscar perfis:", error.message);
+  if (profilesError) {
+    console.error("[AlunosPage] Erro ao buscar perfis:", profilesError.message);
   }
 
   // Filter students: those who have no role OR have the 'student' role.
@@ -36,12 +44,12 @@ export default async function AlunosPage() {
     phone: p.phone,
     avatar_url: p.avatar_url,
     created_at: p.created_at,
-    xp: p.xp_balance ?? 0,
+    points: p.points_balance ?? 0,
     bio: p.bio,
     cpf: p.cpf,
     birth_date: p.birth_date,
     gender: p.gender,
   }));
 
-  return <AlunosClient students={students} />;
+  return <AlunosClient students={students} dynamicLevels={dynamicLevels} />;
 }

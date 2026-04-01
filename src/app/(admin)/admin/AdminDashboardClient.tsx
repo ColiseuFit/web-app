@@ -2,6 +2,7 @@
 
 import { Users, UserCheck, TrendingUp, Phone, Plus } from "lucide-react";
 import Link from "next/link";
+import { getLevelInfo, type LevelInfo } from "@/lib/constants/levels";
 
 /**
  * AdminDashboardClient: Central Hub & Analytics Interface.
@@ -41,6 +42,7 @@ interface Props {
   stats: StatCard[];
   recentStudents: RecentStudent[];
   totalStudents: number;
+  dynamicLevels?: Record<string, LevelInfo>;
 }
 
 const ICON_MAP: Record<string, React.ReactNode> = {
@@ -54,16 +56,8 @@ const ICON_MAP: Record<string, React.ReactNode> = {
  * @param level - Raw level from DB (e.g., 'branco', 'preto').
  * @returns Capitalized level string.
  */
-function formatLevel(level: string): string {
-  if (!level) return "—";
-  const levels: Record<string, string> = {
-    iniciante: "Iniciante",
-    scale: "Scale",
-    intermediario: "Intermediário",
-    rx: "RX",
-    elite: "Elite",
-  };
-  return levels[level.toLowerCase()] || level.charAt(0).toUpperCase() + level.slice(1);
+function formatLevel(level: string, dynamicLevels?: Record<string, LevelInfo>): string {
+  return getLevelInfo(level, dynamicLevels).label;
 }
 
 /**
@@ -77,7 +71,7 @@ function formatDate(dateStr: string): string {
   });
 }
 
-export default function AdminDashboardClient({ stats, recentStudents, totalStudents }: Props) {
+export default function AdminDashboardClient({ stats, recentStudents, totalStudents, dynamicLevels }: Props) {
   return (
     <div className="admin-container-fluid">
       {/* ── PAGE HEADER ── */}
@@ -189,8 +183,8 @@ export default function AdminDashboardClient({ stats, recentStudents, totalStude
                       </div>
                     </td>
                     <td>
-                      <span className={`admin-badge badge-${student.level || "branco"}`}>
-                        {formatLevel(student.level)}
+                      <span className={`admin-badge badge-${getLevelInfo(student.level, dynamicLevels).key}`}>
+                        {getLevelInfo(student.level, dynamicLevels).label}
                       </span>
                     </td>
                     <td>

@@ -8,6 +8,8 @@ import BottomNav from "@/components/BottomNav";
 import WodView from "@/components/WodView";
 import WeekWodCarousel from "@/components/WeekWodCarousel";
 import LevelBadge from "@/components/LevelBadge";
+import { getLevelInfo } from "@/lib/constants/levels";
+import { getCachedLevels } from "@/lib/constants/levels_actions";
 import { AlertTriangle } from "lucide-react";
 import { getTodayDate, getWeekDates } from "@/lib/date-utils";
 
@@ -42,12 +44,14 @@ export default async function AppDashboard({ searchParams }: PageProps) {
     { data: profile },
     { data: selectedWod },
     { data: weekWods },
-    { data: holiday }
+    { data: holiday },
+    dynamicLevels
   ] = await Promise.all([
     supabase.from("profiles").select("*").eq("id", user.id).single(),
     supabase.from("wods").select("*").eq("date", selectedDate).order("created_at", { ascending: false }).limit(1).maybeSingle(),
     supabase.from("wods").select("id, date, title, tags").in("date", getWeekDates()),
-    supabase.from("box_holidays").select("*").eq("date", selectedDate).maybeSingle()
+    supabase.from("box_holidays").select("*").eq("date", selectedDate).maybeSingle(),
+    getCachedLevels()
   ]);
 
   // 6. Check-in (Dependent on selectedWod)
@@ -90,21 +94,7 @@ export default async function AppDashboard({ searchParams }: PageProps) {
 
   const displayName = profile?.display_name || profile?.full_name || "Atleta";
 
-    const getLevelInfo = (lvl: string) => {
-      const l = lvl?.toLowerCase() || "";
-      if (l.includes("elite") || l.includes("preto") || l.includes("casca"))
-        return { id: "L5", color: "#C5A059", label: "L5 - ELITE", textColor: "#000", icon: "/levels/icone-coliseu-levels-elite.svg", description: "O topo da pirâmide. Atletas de alto rendimento, força bruta e ginásticos inabaláveis." };
-      if (l.includes("rx") || l.includes("vermelho")) 
-        return { id: "L4", color: "var(--red)", label: "L4 - RX", textColor: "#FFF", icon: "/levels/icone-coliseu-levels-rx.svg", description: "O Padrão Ouro. Execução fiel de todos os WODs oficiais do Open/Games." };
-      if (l.includes("intermediario") || l.includes("azul")) 
-        return { id: "L3", color: "var(--lvl-blue)", label: "L3 - INTERMEDIÁRIO", textColor: "#FFF", icon: "/levels/icone-coliseu-levels-intermediario.svg", description: "Transição para movimentos ininterruptos e domínio parcial de habilidades ginásticas." };
-      if (l.includes("scale") || l.includes("verde")) 
-        return { id: "L2", color: "var(--lvl-green)", label: "L2 - SCALE", textColor: "#000", icon: "/levels/icone-coliseu-levels-scale.svg", description: "Capacidade de adaptar movimentos complexos e aumento da carga de trabalho." };
-      if (l.includes("iniciante") || l.includes("branco")) 
-        return { id: "L1", color: "var(--lvl-white)", label: "L1 - INICIANTE", textColor: "#000", icon: "/levels/icone-coliseu-levels-iniciante.svg", description: "Domínio dos padrões básicos de movimento e construção de base aeróbica sólida." };
-    return { id: "L1", color: "var(--surface-highest)", label: "INICIANTE", textColor: "#FFF", icon: "/levels/icone-coliseu-levels-iniciante.svg", description: "O início da jornada no Coliseu." };
-  };
-  const level = getLevelInfo(profile?.level);
+  const level = getLevelInfo(profile?.level, dynamicLevels);
 
   return (
     <div style={{ minHeight: "100vh", backgroundColor: "var(--bg)", color: "var(--text)", paddingBottom: "100px", position: "relative" }}>

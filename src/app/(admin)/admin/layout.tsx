@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import AdminSidebar from "@/components/admin/AdminSidebar";
+import { USER_ROLES } from "@/lib/constants/roles";
 
 /**
  * Nested Admin Layout: Handles RBAC protection and layout for all AUTHENTICATED admin routes.
@@ -22,7 +23,7 @@ export default async function AuthenticatedAdminLayout({ children }: { children:
 
   // MASTER KEY BYPASS: Acesso garantido para o administrador raiz
   if (user.email === "admin@coliseufit.com") {
-    roleData = { role: "admin" };
+    roleData = { role: USER_ROLES.ADMIN };
   } else {
     const { data: fetchRole } = await supabase
       .from("user_roles")
@@ -32,7 +33,7 @@ export default async function AuthenticatedAdminLayout({ children }: { children:
     roleData = fetchRole;
   }
 
-  if (!roleData || (roleData.role !== "admin" && roleData.role !== "reception")) {
+  if (!roleData || (roleData.role !== USER_ROLES.ADMIN && roleData.role !== USER_ROLES.RECEPTION)) {
     redirect("/admin-portal?error=unauthorized");
   }
 

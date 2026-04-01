@@ -143,12 +143,12 @@ export default function CloseClassModal({ slot, onClose, onSuccess }: CloseClass
               </>
             ) : (
               <>
-                <span className="text-[11px] font-black uppercase tracking-[0.2em]">Finalizar e Distribuir XP</span>
+                <span className="text-[11px] font-black uppercase tracking-[0.2em]">Finalizar e Atribuir Pontos</span>
               </>
             )}
           </button>
           <p className="text-[9px] text-zinc-600 text-center mt-4 font-bold uppercase tracking-widest leading-relaxed">
-            Ao finalizar, o XP será creditado <br/> e a presença confirmada para os alunos selecionados.
+            Ao finalizar, os pontos serão creditados <br/> e a presença confirmada para os alunos selecionados.
           </p>
         </div>
       </div>

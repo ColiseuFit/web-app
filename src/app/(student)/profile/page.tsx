@@ -9,6 +9,8 @@ import LevelCard from "@/components/LevelCard";
 import DashboardStyles from "@/components/DashboardStyles";
 import { Zap, Shield, Diamond, Star, Award, Medal, Trophy, TrendingUp } from "lucide-react";
 import { getTodayDate } from "@/lib/date-utils";
+import { getLevelInfo } from "@/lib/constants/levels";
+import { getCachedLevels } from "@/lib/constants/levels_actions";
 
 export const metadata: Metadata = {
   title: "Meu Perfil",
@@ -16,7 +18,7 @@ export const metadata: Metadata = {
 
 /**
  * Página de Perfil (Athletic Identity) do Aluno.
- * Componente central do ecossistema "Iron Monolith", consolidando XP, PRs e Conquistas.
+ * Componente central do ecossistema "Iron Monolith", consolidando Pontuação, PRs e Conquistas.
  * 
  * @security
  * - Sessão verificada via Server Component (auth.getUser).
@@ -24,7 +26,7 @@ export const metadata: Metadata = {
  * - Isolamento total de dados: Garante que o `auth.uid()` acesse apenas suas próprias métricas.
  * 
  * @technical
- * - Data Lifecycle: Mapeia XP acumulado para os níveis visuais (Coliseu Levels L1-L5).
+ * - Data Lifecycle: Mapeia Pontuação acumulada para os níveis visuais (Coliseu Levels L1-L5).
  * - PR/Benchmark: Integração com o mural de Shields (Mídia binária via SVG).
  * - Biometria: Exibe resumo da última avaliação física processada.
  */
@@ -42,13 +44,15 @@ export default async function ProfilePage() {
     { data: latestEvaluation },
     { data: checkInsCount },
     { data: prs },
-    { data: benchmarks }
+    { data: benchmarks },
+    dynamicLevels
   ] = await Promise.all([
     supabase.from("profiles").select("*").eq("id", user.id).single(),
     supabase.from("physical_evaluations").select("*").eq("student_id", user.id).order("evaluation_date", { ascending: false }).limit(1).maybeSingle(),
     supabase.from("check_ins").select("created_at").eq("student_id", user.id).order("created_at", { ascending: false }),
     supabase.from("personal_records").select("*").eq("student_id", user.id).order("date", { ascending: false }).limit(4),
-    supabase.from("student_benchmarks").select("*").eq("student_id", user.id)
+    supabase.from("student_benchmarks").select("*").eq("student_id", user.id),
+    getCachedLevels()
   ]);
 
   // Cálculo de massa magra se houver dados
@@ -60,35 +64,26 @@ export default async function ProfilePage() {
    * Identidade Visual do Nível (Coliseu Levels) no Perfil
    * @technical O mapeamento converte strings de nível em tokens de cor,
    */
-  const getLevelInfo = (lvl: string) => {
-    const l = lvl?.toLowerCase() || "";
-    if (l.includes("branco")) return { id: "L1", color: "var(--lvl-white)", label: "L1 - BRANCO", textColor: "#000", icon: "/levels/icone-coliseu-levels-iniciante.svg", description: "Domínio dos padrões básicos de movimento e construção de base aeróbica sólida." };
-    if (l.includes("verde")) return { id: "L2", color: "var(--lvl-green)", label: "L2 - VERDE", textColor: "#000", icon: "/levels/icone-coliseu-levels-scale.svg", description: "Capacidade de adaptar movimentos complexos e aumento da carga de trabalho." };
-    if (l.includes("azul")) return { id: "L3", color: "var(--lvl-blue)", label: "L3 - AZUL", textColor: "#FFF", icon: "/levels/icone-coliseu-levels-intermediario.svg", description: "Transição para movimentos ininterruptos e domínio parcial de habilidades ginásticas." };
-    if (l.includes("vermelho") || l.includes("rx")) return { id: "L4", color: "var(--lvl-red)", label: "L4 - RX", textColor: "#FFF", icon: "/levels/icone-coliseu-levels-rx.svg", description: "O Padrão Ouro. Execução fiel de todos os WODs oficiais do Open/Games." };
-    if (l.includes("preto") || l.includes("elite") || l.includes("casca")) return { id: "L5", color: "#C5A059", label: "L5 - ELITE", textColor: "#C5A059", glow: "rgba(197, 160, 89, 0.4)", icon: "/levels/icone-coliseu-levels-elite.svg", description: "O topo da pirâmide. Atletas de alto rendimento, força bruta e ginásticos inabaláveis." };
-    return { id: "L1", color: "var(--surface-highest)", label: (lvl || "INICIANTE").toUpperCase(), textColor: "#FFF", icon: "/levels/icone-coliseu-levels-iniciante.svg", description: "O início da jornada no Coliseu." };
-  };
 
   /**
    * LÓGICA DE PROGRESSÃO DATA-DRIVEN
-   * Substitui os mocks por dados reais e cálculos baseados em XP.
+   * Substitui os mocks por dados reais e cálculos baseados em Pontuação.
    */
-  const xpActual = profile?.xp_balance || 0;
+  const pointsActual = profile?.points_balance || 0;
   
   // Lógica temporária de escalonamento (5k por nível)
-  const calculateGoal = (xp: number) => {
-    if (xp < 5000) return 5000;
-    if (xp < 10000) return 10000;
-    if (xp < 15000) return 15000;
-    if (xp < 20000) return 20000;
-    return xp + 5000;
+  const calculateGoal = (points: number) => {
+    if (points < 5000) return 5000;
+    if (points < 10000) return 10000;
+    if (points < 15000) return 15000;
+    if (points < 20000) return 20000;
+    return points + 5000;
   };
 
-  const totalXpGoal = calculateGoal(xpActual);
+  const totalPointsGoal = calculateGoal(pointsActual);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const xpProgress = (xpActual / totalXpGoal) * 100;
-  const xpRemaining = totalXpGoal - xpActual;
+  const pointsProgress = (pointsActual / totalPointsGoal) * 100;
+  const pointsRemaining = totalPointsGoal - pointsActual;
   
   const checkIns = checkInsCount || [];
   
@@ -128,14 +123,14 @@ export default async function ProfilePage() {
   const streak = calculateStreak(checkIns);
 
   const stats = {
-    xp_actual: xpActual,
-    xp_next_level: totalXpGoal,
+    points_actual: pointsActual,
+    points_next_level: totalPointsGoal,
     trainings_count: checkIns.length,
     current_streak: streak,
-    total_xp_goal: totalXpGoal,
+    total_points_goal: totalPointsGoal,
   };
 
-  const level = getLevelInfo(profile?.level || "branco");
+  const level = getLevelInfo(profile?.level || "iniciante", dynamicLevels);
 
   return (
     <div style={{ backgroundColor: "var(--bg)", color: "var(--text)", minHeight: "100vh", paddingBottom: "100px" }}>
@@ -152,8 +147,8 @@ export default async function ProfilePage() {
             <LevelCard 
               level={level} 
               stats={stats} 
-              xpProgress={xpProgress} 
-              xpRemaining={xpRemaining} 
+              pointsProgress={pointsProgress} 
+              pointsRemaining={pointsRemaining} 
               avatarUrl={profile?.avatar_url}
             />
           </div>
@@ -216,7 +211,7 @@ export default async function ProfilePage() {
           marginBottom: "48px",
         }}>
           {[
-            { label: "XP TOTAL", value: stats.xp_actual.toLocaleString("pt-BR"), color: "var(--red)" },
+            { label: "PONTOS TOTAIS", value: stats.points_actual.toLocaleString("pt-BR"), color: "var(--red)" },
             { label: "TREINOS", value: stats.trainings_count.toString(), color: "var(--text)" },
             { label: "DAYS STREAK", value: stats.current_streak.toString(), color: "var(--text)" },
           ].map((stat, i) => (
@@ -413,7 +408,7 @@ export default async function ProfilePage() {
             {[
               { icon: Star, color: "var(--red)", label: "FUNDADOR", desc: "Membro Fundador do Coliseu Clube" },
               { icon: Award, color: "#FFD700", label: "PIONEIRO", desc: "Primeira turma de treinamento Coliseu" },
-              { icon: Medal, color: "var(--volt)", label: "TOP 10% XP", desc: "Entre os atletas mais ativos do mês" },
+              { icon: Medal, color: "var(--volt)", label: "TOP 10% PONTOS", desc: "Entre os atletas mais ativos do mês" },
             ].map((achievement, i) => (
               <div key={i} style={{ 
                 background: "var(--surface-lowest)", 

@@ -1,5 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import AdminDashboardClient from "./AdminDashboardClient"; 
+import { USER_ROLES } from "@/lib/constants/roles";
+import { getCachedLevels } from "@/lib/constants/levels_actions";
 
 /**
  * Admin Dashboard (Server Component): The operational overview.
@@ -19,9 +21,10 @@ export default async function AdminDashboardPage() {
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 
   // Parallel data fetching for maximum speed
-  const [profilesRes, checkinsRes] = await Promise.all([
+  const [profilesRes, checkinsRes, dynamicLevels] = await Promise.all([
     supabase.from("profiles").select("id, full_name, display_name, level, created_at, avatar_url, phone, user_roles(role)", { count: "exact" }),
     supabase.from("check_ins").select("student_id, created_at", { count: "exact" }).gte("created_at", todayStart),
+    getCachedLevels(),
   ]);
 
   // Consider as students everyone WHO IS NOT an admin or coach
@@ -29,7 +32,7 @@ export default async function AdminDashboardPage() {
   const allProfilesWithRoles = profilesRes.data ?? [];
   const studentsOnly = allProfilesWithRoles.filter((p: any) => {
     const role = p.user_roles?.role;
-    return role !== 'admin' && role !== 'coach';
+    return role !== USER_ROLES.ADMIN && role !== USER_ROLES.COACH && role !== USER_ROLES.RECEPTION;
   });
 
   const totalStudents = studentsOnly.length;
@@ -84,6 +87,7 @@ export default async function AdminDashboardPage() {
       stats={stats}
       recentStudents={recentStudents}
       totalStudents={totalStudents}
+      dynamicLevels={dynamicLevels}
     />
   );
 }

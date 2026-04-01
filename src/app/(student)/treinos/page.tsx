@@ -77,12 +77,12 @@ export default async function TreinosPage() {
       description: wod.wod_content ? wod.wod_content.slice(0, 100) + (wod.wod_content.length > 100 ? "..." : "") : "Treino programado pelo coach.",
       typeTag: wod.type_tag || "WOD",
       coach: "Coliseu",
-      xp: 50, // XP base por check-in (sistema futuro)
+      points: 50, // Pontos base por check-in (sistema futuro)
       result: "Realizado",
       isExcellence: false,
       metrics: [
         { label: "TIME CAP", value: wod.time_cap ? String(wod.time_cap) : "--", unit: "min" },
-        { label: "XP", value: "50", unit: "pts" }
+        { label: "Pontos", value: "50", unit: "pts" }
       ],
       achievements: []
     };

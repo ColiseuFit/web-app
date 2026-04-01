@@ -3,6 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { TrendingUp, Plus } from "lucide-react";
+import { getLevelInfo } from "@/lib/constants/levels";
 
 interface PRData {
   id: string;
@@ -10,7 +11,7 @@ interface PRData {
   value: number;
   unit: 'kg' | 'time' | 'reps';
   category: 'lpo' | 'strength' | 'gymnastics' | 'benchmark';
-  level: 'L1' | 'L2' | 'L3' | 'L4' | 'L5';
+  level: string;
   date: string;
 }
 
@@ -24,13 +25,6 @@ interface RecentPRsProps {
  * Exibe um resumo dos recordes mais recentes no Dashboard Home.
  */
 export default function RecentPRs({ prs, hideViewAll = false }: RecentPRsProps) {
-  const levelConfigs: Record<string, { color: string; label: string; icon: string }> = {
-    L1: { color: "#ffffff", label: "L1", icon: "/levels/icone-coliseu-levels-iniciante.svg" },
-    L2: { color: "#2dab61", label: "L2", icon: "/levels/icone-coliseu-levels-scale.svg" },
-    L3: { color: "#2980ba", label: "L3", icon: "/levels/icone-coliseu-levels-intermediario.svg" },
-    L4: { color: "#e52521", label: "L4", icon: "/levels/icone-coliseu-levels-rx.svg" },
-    L5: { color: "#C5A059", label: "L5", icon: "/levels/icone-coliseu-levels-elite.svg" }
-  };
 
   const formatValue = (p: PRData) => {
     if (p.unit === 'time') {
@@ -62,7 +56,7 @@ export default function RecentPRs({ prs, hideViewAll = false }: RecentPRsProps) 
       {prs.length > 0 ? (
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
           {prs.map((pr) => {
-            const config = levelConfigs[pr.level] || levelConfigs.L1;
+            const config = getLevelInfo(pr.level);
             return (
               <div 
                 key={pr.id}

@@ -56,7 +56,7 @@ interface ActivityItem {
   hashtags?: string[];
   typeTag?: string;
   coach?: string;
-  xp?: number;
+  points?: number;
   result?: string;
   metrics: { label: string; value: string | number; unit?: string }[];
   achievements?: { id: string; type: "seal" | "pr"; icon: string; color: string }[];

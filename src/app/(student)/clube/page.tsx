@@ -3,7 +3,7 @@ import ClubeClient from "./ClubeClient";
 
 export const metadata: Metadata = {
   title: "Comunidade",
-  description: "Ranking de XP e Feed de Atividades da Comunidade Coliseu.",
+  description: "Ranking de Pontos e Feed de Atividades da Comunidade Coliseu.",
 };
 
 /**

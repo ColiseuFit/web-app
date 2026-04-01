@@ -24,7 +24,7 @@ interface ActivityFeedCardProps {
   metrics: ActivityMetric[];
   achievements?: Achievement[];
   isExcellence?: boolean; // Highlight cards with PRs
-  xp?: number;
+  points?: number;
   coach?: string;
   result?: string;
   typeTag?: string; // e.g., AMRAP, FORÇA, HERO
@@ -42,7 +42,7 @@ export const ActivityFeedCard: React.FC<ActivityFeedCardProps> = ({
   metrics, 
   achievements = [],
   isExcellence = false,
-  xp,
+  points,
   coach,
   result,
   typeTag
@@ -146,7 +146,7 @@ export const ActivityFeedCard: React.FC<ActivityFeedCardProps> = ({
         display: "grid", 
         gridTemplateColumns: `repeat(${metrics.length}, 1fr)`, 
         gap: "12px",
-        marginBottom: (achievements.length > 0 || coach || xp) ? "24px" : "0",
+        marginBottom: (achievements.length > 0 || coach || points) ? "24px" : "0",
         paddingTop: "20px",
         borderTop: "1px solid rgba(255,255,255,0.03)"
       }}>
@@ -163,7 +163,7 @@ export const ActivityFeedCard: React.FC<ActivityFeedCardProps> = ({
       </div>
 
       {/* ── FOOTER ── */}
-      {(achievements.length > 0 || coach || xp) && (
+      {(achievements.length > 0 || coach || points) && (
         <div style={{ 
           display: "flex", 
           justifyContent: "space-between", 
@@ -202,10 +202,10 @@ export const ActivityFeedCard: React.FC<ActivityFeedCardProps> = ({
                 <span style={{ fontSize: "8px", fontWeight: 800, color: "var(--text-muted)", textTransform: "uppercase" }}>{coach}</span>
               </div>
             )}
-            {xp !== undefined && (
+            {points !== undefined && (
               <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                <span style={{ fontSize: "10px", fontWeight: 900, color: "var(--red)" }}>+{xp}</span>
-                <span style={{ fontSize: "8px", fontWeight: 800, color: "var(--text-muted)" }}>XP</span>
+                <span style={{ fontSize: "10px", fontWeight: 900, color: "var(--red)" }}>+{points}</span>
+                <span style={{ fontSize: "8px", fontWeight: 800, color: "var(--text-muted)" }}>PTS</span>
               </div>
             )}
           </div>

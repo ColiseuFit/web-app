@@ -11,7 +11,7 @@ import ActivityFeed from "@/components/ActivityFeed";
 interface LeaderboardEntry {
   id: string;
   display_name: string;
-  xp_balance: number;
+  points_balance: number;
   rank: number;
 }
 
@@ -31,19 +31,19 @@ export default function ClubeClient() {
    * DADOS MOCK - V1.2 (TESTE)
    */
   const MOCK_WEEKLY: LeaderboardEntry[] = [
-    { id: "1", display_name: "JOÃO COLISEU", xp_balance: 450, rank: 1 },
-    { id: "2", display_name: "MARIA SILVA", xp_balance: 400, rank: 2 },
-    { id: "3", display_name: "RICARDO SOUZA", xp_balance: 350, rank: 3 },
-    { id: "me", display_name: "VOCÊ", xp_balance: 300, rank: 4 },
-    { id: "5", display_name: "ANA COSTA", xp_balance: 280, rank: 5 },
+    { id: "1", display_name: "JOÃO COLISEU", points_balance: 450, rank: 1 },
+    { id: "2", display_name: "MARIA SILVA", points_balance: 400, rank: 2 },
+    { id: "3", display_name: "RICARDO SOUZA", points_balance: 350, rank: 3 },
+    { id: "me", display_name: "VOCÊ", points_balance: 300, rank: 4 },
+    { id: "5", display_name: "ANA COSTA", points_balance: 280, rank: 5 },
   ];
 
   const MOCK_GENERAL: LeaderboardEntry[] = [
-    { id: "10", display_name: "GABRIEL FERRO", xp_balance: 15400, rank: 1 },
-    { id: "11", display_name: "LUANA GRIT", xp_balance: 14200, rank: 2 },
-    { id: "12", display_name: "CARLOS BRUTO", xp_balance: 13800, rank: 3 },
-    { id: "1", display_name: "JOÃO COLISEU", xp_balance: 12800, rank: 4 },
-    { id: "me", display_name: "VOCÊ", xp_balance: 12450, rank: 5 },
+    { id: "10", display_name: "GABRIEL FERRO", points_balance: 15400, rank: 1 },
+    { id: "11", display_name: "LUANA GRIT", points_balance: 14200, rank: 2 },
+    { id: "12", display_name: "CARLOS BRUTO", points_balance: 13800, rank: 3 },
+    { id: "1", display_name: "JOÃO COLISEU", points_balance: 12800, rank: 4 },
+    { id: "me", display_name: "VOCÊ", points_balance: 12450, rank: 5 },
   ];
 
   const currentData = activeTab === "semanal" ? MOCK_WEEKLY : MOCK_GENERAL;
@@ -158,7 +158,7 @@ export default function ClubeClient() {
               {activeTab === "semanal" ? "DESEMPENHO DA SEMANA" : "ELITE HISTÓRICA"}
             </span>
             <span style={{ fontSize: "9px", fontWeight: 700, letterSpacing: "0.15em", color: "var(--text-muted)", opacity: 0.5, textTransform: "uppercase" }}>
-              RANKING XP
+              RANKING DE PONTUAÇÃO
             </span>
           </div>
 
@@ -189,7 +189,7 @@ export default function ClubeClient() {
                         {isMe && <span style={{ marginLeft: "8px", fontSize: "9px", color: "var(--red)", fontWeight: 900 }}>· VOCÊ</span>}
                     </span>
                     <span className="font-display" style={{ fontSize: "16px", color: isMe ? "var(--red)" : "var(--text-muted)" }}>
-                        {entry.xp_balance.toLocaleString("pt-BR")}
+                        {entry.points_balance.toLocaleString("pt-BR")}
                     </span>
                     </div>
                 );

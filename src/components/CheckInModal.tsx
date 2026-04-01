@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { X, Loader2 } from "lucide-react";
 import { performCheckIn, getAvailableSlots } from "@/app/(student)/actions";
 import { hapticSelect, hapticConfirm } from "@/lib/haptic";
-import XpToast from "./XpToast";
+import PointsToast from "./PointsToast";
 
 interface CheckInModalProps {
   wodId: string;

@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { Search, Plus, Phone, X, UserPlus, ChevronDown, Pencil, Trash2, User, Mail, Calendar, CreditCard, Info, Activity, ShieldCheck, Lock, Mail as MailIcon } from "lucide-react";
+import { Search, Plus, Phone, X, UserPlus, ChevronDown, Pencil, Trash2, User, Mail, Calendar, CreditCard, Info, Activity, ShieldCheck, Lock as LockIcon, Mail as MailIcon } from "lucide-react";
 import { createStudent, updateStudent, deleteStudent, getStudentEvaluations, deletePhysicalEvaluation, updateStudentAuth } from "../../actions";
 import PhysicalEvaluationForm from "./PhysicalEvaluationForm";
+import { getLevelInfo, LevelInfo } from "@/lib/constants/levels";
 
 /**
  * AlunosClient: Comprehensive Student Management CRM.
@@ -24,25 +25,14 @@ interface Student {
   phone: string | null;
   avatar_url: string | null;
   created_at: string;
-  xp: number;
+  points: number;
   bio: string | null;
   cpf: string | null;
   birth_date: string | null;
   gender: string | null;
 }
 
-const LEVELS = ["Todos", "iniciante", "scale", "intermediario", "rx", "elite"];
-
-function formatLevel(level: string): string {
-  if (!level) return "—";
-  const l = level.toLowerCase();
-  if (l === "iniciante") return "Iniciante";
-  if (l === "scale") return "Scale";
-  if (l === "intermediario") return "Intermediário";
-  if (l === "rx") return "RX";
-  if (l === "elite") return "Elite";
-  return level.charAt(0).toUpperCase() + level.slice(1);
-}
+// We will define this inside the component to use dynamic levels
 
 function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString("pt-BR", {
@@ -52,7 +42,20 @@ function formatDate(dateStr: string): string {
   });
 }
 
-export default function AlunosClient({ students }: { students: Student[] }) {
+export default function AlunosClient({ 
+  students, 
+  dynamicLevels 
+}: { 
+  students: Student[], 
+  dynamicLevels?: Record<string, LevelInfo> 
+}) {
+  // Use dynamic levels prioritized, fallback to static defaults if needed
+  const levelsList = dynamicLevels 
+    ? Object.values(dynamicLevels).sort((a, b) => (a.order || 0) - (b.order || 0)) 
+    : [];
+
+  const LEVEL_FILTERS = ["Todos", ...levelsList.map(l => l.key)];
+
   const [search, setSearch] = useState("");
   const [levelFilter, setLevelFilter] = useState("Todos");
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
@@ -203,12 +206,10 @@ export default function AlunosClient({ students }: { students: Student[] }) {
               </div>
               <div>
                 <label style={{ display: "block", fontSize: 12, fontWeight: 500, color: "var(--admin-text-secondary)", marginBottom: 6 }}>Nível</label>
-                <select name="level" defaultValue="iniciante">
-                  <option value="iniciante">Iniciante (Branco)</option>
-                  <option value="scale">Scale (Verde)</option>
-                  <option value="intermediario">Intermediário (Azul)</option>
-                  <option value="rx">RX (Vermelho)</option>
-                  <option value="elite">Elite (Preto/Ouro)</option>
+                <select name="level" defaultValue={levelsList[0]?.key || "iniciante"}>
+                  {levelsList.map(l => (
+                    <option key={l.key} value={l.key}>{l.label}</option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -245,8 +246,8 @@ export default function AlunosClient({ students }: { students: Student[] }) {
         </div>
         <div style={{ position: "relative", minWidth: "200px" }}>
           <select value={levelFilter} onChange={(e) => setLevelFilter(e.target.value)} style={{ appearance: "none", paddingRight: "40px", border: "2px solid #000", fontWeight: 700, textTransform: "uppercase", fontSize: "12px", letterSpacing: "0.05em" }}>
-            {LEVELS.map((l) => (
-              <option key={l} value={l}>{l === "Todos" ? "Filtrar por Nível" : `Nível: ${formatLevel(l)}`}</option>
+            {LEVEL_FILTERS.map((l) => (
+              <option key={l} value={l}>{l === "Todos" ? "Filtrar por Nível" : `Nível: ${getLevelInfo(l, dynamicLevels).label}`}</option>
             ))}
           </select>
           <ChevronDown size={16} style={{ position: "absolute", right: "14px", top: "50%", transform: "translateY(-50%)", pointerEvents: "none", color: "#000" }} />
@@ -264,7 +265,7 @@ export default function AlunosClient({ students }: { students: Student[] }) {
                 <tr>
                   <th style={{ paddingLeft: "24px" }}>Nome do Atleta</th>
                   <th>Nível</th>
-                  <th>XP Acumulado</th>
+                  <th>Pontuação</th>
                   <th>Data Cadastro</th>
                   <th>Contato</th>
                   <th style={{ width: "80px" }}>Ações</th>
@@ -284,8 +285,8 @@ export default function AlunosClient({ students }: { students: Student[] }) {
                         </div>
                       </div>
                     </td>
-                    <td><span className={`admin-badge badge-${student.level}`}>{formatLevel(student.level)}</span></td>
-                    <td style={{ fontSize: "14px", fontWeight: 700 }}>{student.xp.toLocaleString("pt-BR")} XP</td>
+                    <td><span className={`admin-badge badge-${getLevelInfo(student.level, dynamicLevels).key}`}>{getLevelInfo(student.level, dynamicLevels).label}</span></td>
+                    <td style={{ fontSize: "14px", fontWeight: 700 }}>{student.points.toLocaleString("pt-BR")} PTS</td>
                     <td style={{ fontSize: "13px" }}>{formatDate(student.created_at)}</td>
                     <td style={{ fontSize: "13px", fontWeight: 600 }}>{student.phone || "—"}</td>
                     <td>
@@ -356,7 +357,7 @@ export default function AlunosClient({ students }: { students: Student[] }) {
                   <h2 style={{ fontSize: 18, fontWeight: 900, textTransform: "uppercase", margin: 0, letterSpacing: "0.05em" }}>{selectedStudent.full_name}</h2>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
                     <span style={{ fontSize: 10, fontWeight: 900, background: "#FFF", color: "#000", padding: "2px 8px", textTransform: "uppercase" }}>
-                      {formatLevel(selectedStudent.level)}
+                      {getLevelInfo(selectedStudent.level, dynamicLevels).label}
                     </span>
                   </div>
                 </div>
@@ -451,7 +452,7 @@ export default function AlunosClient({ students }: { students: Student[] }) {
                         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                           <label style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", color: "#666" }}>Nível Técnico</label>
                           <select name="level" defaultValue={selectedStudent.level} style={{ width: "100%", padding: 14, border: "3px solid #000", fontWeight: 800, outline: "none" }}>
-                            {LEVELS.filter(l => l !== "Todos").map(l => <option key={l} value={l}>{formatLevel(l)}</option>)}
+                            {levelsList.map(l => <option key={l.key} value={l.key}>{l.label}</option>)}
                           </select>
                         </div>
                         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -487,9 +488,9 @@ export default function AlunosClient({ students }: { students: Student[] }) {
                         <div className="admin-card" style={{ padding: 24, border: "3px solid #000", background: "#F9FAFB", boxShadow: "8px 8px 0px rgba(0,0,0,0.05)" }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 10, color: "#666", marginBottom: 12 }}>
                             <Activity size={18} />
-                            <span style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase" }}>XP Acumulado</span>
+                            <span style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase" }}>Pontuação Total</span>
                           </div>
-                          <div style={{ fontSize: 18, fontWeight: 900 }}>{selectedStudent.xp.toLocaleString()} <span style={{ fontSize: 12, color: "#666" }}>XP</span></div>
+                          <div style={{ fontSize: 18, fontWeight: 900 }}>{selectedStudent.points.toLocaleString()} <span style={{ fontSize: 12, color: "#666" }}>PTS</span></div>
                         </div>
                       </div>
 
@@ -611,7 +612,7 @@ export default function AlunosClient({ students }: { students: Student[] }) {
 
                     <div className="admin-card" style={{ padding: 24, border: "3px solid #000" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
-                        <Lock size={16} />
+                        <LockIcon size={16} />
                         <span style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase" }}>Resetar Senha</span>
                       </div>
                       <input 

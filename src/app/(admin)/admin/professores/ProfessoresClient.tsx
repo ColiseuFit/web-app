@@ -3,6 +3,7 @@
 import React, { useState, useTransition, useRef, useEffect } from "react";
 import { Search, Plus, UserPlus, Trash2, Shield, Loader2, X, User as UserIcon, Mail, Phone, Check } from "lucide-react";
 import { searchUsersForCoach, toggleCoachRole, getCoaches, createNewCoach } from "./actions";
+import { USER_ROLES, getRoleInfo } from "@/lib/constants/roles";
 
 type Mode = "search" | "create";
 
@@ -70,7 +71,7 @@ export default function ProfessoresClient({ initialCoaches }: { initialCoaches: 
   }, [searchTerm, isDrawerOpen]);
 
   async function handleToggleRole(userId: string, currentRole: string | null) {
-    if (!confirm(currentRole === "coach" ? "Deseja remover as permissões de Professor deste usuário?" : "Deseja promover este usuário a Professor?")) return;
+    if (!confirm(currentRole === USER_ROLES.COACH ? "Deseja remover as permissões de Professor deste usuário?" : "Deseja promover este usuário a Professor?")) return;
 
     startTransition(async () => {
       const res = await toggleCoachRole(userId, currentRole !== "coach");
@@ -80,7 +81,7 @@ export default function ProfessoresClient({ initialCoaches }: { initialCoaches: 
         showToast(currentRole === "coach" ? "Permissões removidas." : "Professor adicionado!", "success");
         const fresh = await getCoaches();
         if (fresh.data) setCoaches(fresh.data);
-        if (currentRole !== "coach") setIsDrawerOpen(false);
+        if (currentRole !== USER_ROLES.COACH) setIsDrawerOpen(false);
       }
     });
   }
@@ -138,7 +139,7 @@ export default function ProfessoresClient({ initialCoaches }: { initialCoaches: 
             ADMINS
           </span>
           <span style={{ fontSize: 48, fontWeight: 900, color: "#000", lineHeight: 1 }}>
-            {coaches.filter(c => c.role === 'admin').length}
+            {coaches.filter(c => c.role === USER_ROLES.ADMIN).length}
           </span>
         </div>
         <div className="admin-card" style={{ display: "flex", flexDirection: "column", gap: 8, borderLeft: "6px solid #16A34A" }}>
@@ -166,7 +167,7 @@ export default function ProfessoresClient({ initialCoaches }: { initialCoaches: 
               ) : (
                   c.profile.full_name?.[0] || "?"
               )}
-              {c.role === 'admin' && (
+              {c.role === USER_ROLES.ADMIN && (
                   <div style={{ position: "absolute", bottom: -10, right: -10, background: "#000", color: "#FFF", padding: 6, border: "3px solid #FFF", display: "flex" }}>
                       <Shield size={14} fill="currentColor" />
                   </div>
@@ -179,8 +180,8 @@ export default function ProfessoresClient({ initialCoaches }: { initialCoaches: 
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <span style={{ fontSize: 10, fontWeight: 900, background: "#000", color: "#FFF", padding: "2px 8px", textTransform: "uppercase" }}>
-                        {c.role === 'admin' ? "ADMIN / COACH" : "COACH"}
+                    <span style={{ fontSize: 10, fontWeight: 900, background: getRoleInfo(c.role).color, color: "#FFF", padding: "2px 8px", textTransform: "uppercase" }}>
+                        {c.role === USER_ROLES.ADMIN ? "ADMIN / COACH" : getRoleInfo(c.role).label.toUpperCase()}
                     </span>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 4 }}>
@@ -196,9 +197,9 @@ export default function ProfessoresClient({ initialCoaches }: { initialCoaches: 
               </div>
             </div>
 
-            {c.role === 'coach' && (
+            {c.role === USER_ROLES.COACH && (
                 <button 
-                    onClick={() => handleToggleRole(c.user_id, "coach")}
+                    onClick={() => handleToggleRole(c.user_id, USER_ROLES.COACH)}
                     className="admin-btn admin-btn-ghost"
                     style={{ position: "absolute", top: 12, right: 12, border: "none", color: "#999", padding: 8 }}
                     title="Remover Permissões"

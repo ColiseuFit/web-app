@@ -5,22 +5,20 @@ import { X, Lock, CheckCircle } from "lucide-react";
 import { upsertPersonalRecord } from "@/app/(student)/actions";
 import { hapticSelect, hapticConfirm } from "@/lib/haptic";
 
+import { getLevelInfo, ALL_LEVELS } from "@/lib/constants/levels";
+
 interface PRRegistrationModalProps {
   onClose: () => void;
   onSuccess: () => void;
-  initialLevel?: "L1" | "L2" | "L3" | "L4" | "L5";
+  initialLevel?: string;
 }
 
-/**
- * Modal de Registro de PR - Versão Visual Identity (Official Icons)
- * Asset-First Selection with Strict Progression.
- */
 export default function PRRegistrationModal({ onClose, onSuccess, initialLevel }: PRRegistrationModalProps) {
   const [movementName, setMovementName] = useState("");
   const [category, setCategory] = useState<"lpo" | "strength" | "gymnastics" | "benchmark">("lpo");
   const [value, setValue] = useState("");
   const [unit, setUnit] = useState<"kg" | "time" | "reps">("kg");
-  const [level, setLevel] = useState<"L1" | "L2" | "L3" | "L4" | "L5">(initialLevel || "L1");
+  const [level, setLevel] = useState<string>(initialLevel || "L1");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -28,36 +26,9 @@ export default function PRRegistrationModal({ onClose, onSuccess, initialLevel }
     return () => { document.body.style.overflow = "unset"; };
   }, []);
 
-  const levelOrder = ["L1", "L2", "L3", "L4", "L5"];
-  const maxLevelIndex = levelOrder.indexOf(initialLevel || "L1");
-
-  const levelConfigs = {
-    L1: { 
-      color: "#ffffff", label: "INICIANTE", 
-      icon: "/levels/icone-coliseu-levels-iniciante.svg",
-      bg: "rgba(255,255,255,0.02)", border: "rgba(255,255,255,0.1)" 
-    },
-    L2: { 
-      color: "#2dab61", label: "SCALE", 
-      icon: "/levels/icone-coliseu-levels-scale.svg",
-      bg: "rgba(45,171,97,0.03)", border: "rgba(45,171,97,0.15)" 
-    },
-    L3: { 
-      color: "#2980ba", label: "INTERMEDIÁRIO", 
-      icon: "/levels/icone-coliseu-levels-intermediario.svg",
-      bg: "rgba(41,128,186,0.03)", border: "rgba(41,128,186,0.15)" 
-    },
-    L4: { 
-      color: "#e52521", label: "RX", 
-      icon: "/levels/icone-coliseu-levels-rx.svg",
-      bg: "rgba(229,37,33,0.03)", border: "rgba(229,37,33,0.15)" 
-    },
-    L5: { 
-      color: "#C5A059", label: "ELITE", 
-      icon: "/levels/icone-coliseu-levels-elite.svg",
-      bg: "rgba(197, 160, 89, 0.03)", border: "rgba(197, 160, 89, 0.2)" 
-    }
-  };
+  const levelOrder = ALL_LEVELS.map(l => l.id);
+  const currentLevelId = getLevelInfo(initialLevel || "L1").id;
+  const maxLevelIndex = levelOrder.indexOf(currentLevelId);
 
   const handleConfirm = async () => {
     if (!movementName || !value) return;
@@ -200,21 +171,20 @@ export default function PRRegistrationModal({ onClose, onSuccess, initialLevel }
               <label style={{ fontSize: "9px", fontWeight: 700, color: "var(--text-muted)", letterSpacing: "0.1em", textTransform: "uppercase", display: "block", marginBottom: "12px" }}>REQUISITO TÉCNICO (NÍVEL)</label>
               
               <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                {(Object.keys(levelConfigs) as Array<keyof typeof levelConfigs>).map((lvl, index) => {
-                  const config = levelConfigs[lvl];
-                  const isSelected = level === lvl;
+                {ALL_LEVELS.map((lvlInfo, index) => {
+                  const isSelected = level === lvlInfo.id;
                   const isLocked = index > maxLevelIndex;
-                  const isCurrentLevel = lvl === (initialLevel || "L1");
+                  const isCurrentLevel = lvlInfo.id === currentLevelId;
 
                   return (
                     <button
-                      key={lvl}
+                      key={lvlInfo.id}
                       disabled={isLocked}
-                      onClick={() => { hapticSelect(); setLevel(lvl); }}
+                      onClick={() => { hapticSelect(); setLevel(lvlInfo.id); }}
                       style={{
                         width: "100%", height: "64px",
                         background: isSelected ? "rgba(255,255,255,0.03)" : "rgba(255,255,255,0.01)",
-                        border: isSelected ? `1px solid ${config.color}` : "1px solid var(--border-glow)",
+                        border: isSelected ? `1px solid ${lvlInfo.color}` : "1px solid var(--border-glow)",
                         color: isSelected ? "#fff" : "var(--text-muted)",
                         fontSize: "11px", fontWeight: 900,
                         opacity: isLocked ? 0.15 : 1,
@@ -231,27 +201,27 @@ export default function PRRegistrationModal({ onClose, onSuccess, initialLevel }
                       <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
                         <div style={{ 
                           width: "36px", height: "36px", flexShrink: 0,
-                          filter: isLocked ? "grayscale(100%)" : (isSelected ? `drop-shadow(0 0 8px ${config.color}80)` : "none")
+                          filter: isLocked ? "grayscale(100%)" : (isSelected ? `drop-shadow(0 0 8px ${lvlInfo.color}80)` : "none")
                         }}>
                           {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={config.icon} alt={config.label} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+                          <img src={lvlInfo.icon} alt={lvlInfo.label} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
                         </div>
                         <div style={{ textAlign: "left" }}>
-                          <span style={{ fontSize: "8px", color: config.color, display: "block", marginBottom: "2px" }}>{lvl}</span>
-                          <span style={{ fontSize: "11px", letterSpacing: "0.1em" }}>{config.label}</span>
+                          <span style={{ fontSize: "8px", color: lvlInfo.color, display: "block", marginBottom: "2px" }}>{lvlInfo.id}</span>
+                          <span style={{ fontSize: "11px", letterSpacing: "0.1em" }}>{lvlInfo.label}</span>
                         </div>
                       </div>
                       
                       {isLocked ? (
                         <Lock size={18} style={{ opacity: 0.5 }} />
                       ) : isSelected ? (
-                        <CheckCircle size={22} color={config.color} />
+                        <CheckCircle size={22} color={lvlInfo.color} />
                       ) : null}
 
                       {/* BG EFFECT ON ACTIVE */}
                       {isSelected && (
                         <div style={{
-                          position: "absolute", inset: 0, background: `linear-gradient(90deg, transparent, ${config.color}10, transparent)`,
+                          position: "absolute", inset: 0, background: `linear-gradient(90deg, transparent, ${lvlInfo.color}10, transparent)`,
                           pointerEvents: "none"
                         }} />
                       )}

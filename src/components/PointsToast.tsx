@@ -3,16 +3,16 @@
 import { useEffect, useState } from "react";
 import { Zap } from "lucide-react";
 
-interface XpToastProps {
-  xp: number;
+interface PointsToastProps {
+  points: number;
   onComplete?: () => void;
 }
 
 /**
- * Toast de Recompensa de XP (Gamificação Ativa).
+ * Toast de Recompensa de Pontos (Gamificação Ativa).
  * Exibido como feedback imediato após sinalização de check-in bem-sucedida.
  * 
- * @param {number} xp - Quantidade de XP concedida para exibição proeminente.
+ * @param {number} points - Quantidade de Pontos concedida para exibição proeminente.
  * @param {() => void} onComplete - Callback opcional disparado após a conclusão da animação.
  * 
  * @animation
@@ -23,7 +23,7 @@ interface XpToastProps {
  * - Posicionamento fixo de alta prioridade (Z-index 5000) para garantir visibilidade sobre modais.
  * - Utiliza Lucide-React `Zap` para paridade visual com o sistema de níveis.
  */
-export default function XpToast({ xp, onComplete }: XpToastProps) {
+export default function PointsToast({ points, onComplete }: PointsToastProps) {
   const [visible, setVisible] = useState(true);
 
   useEffect(() => {
@@ -43,7 +43,7 @@ export default function XpToast({ xp, onComplete }: XpToastProps) {
       left: "50%",
       transform: "translateX(-50%)",
       zIndex: 5000,
-      animation: "xpToastIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards",
+      animation: "pointsToastIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards",
       pointerEvents: "none",
     }}>
       <div style={{
@@ -63,7 +63,7 @@ export default function XpToast({ xp, onComplete }: XpToastProps) {
             VAGA CONFIRMADA
           </div>
           <div className="font-display" style={{ fontSize: "28px", lineHeight: 1, color: "#fff", fontWeight: 900 }}>
-            +{xp} XP
+            +{points} PTS
           </div>
         </div>
         <div style={{ color: "var(--red)", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -72,7 +72,7 @@ export default function XpToast({ xp, onComplete }: XpToastProps) {
       </div>
 
       <style jsx global>{`
-        @keyframes xpToastIn {
+        @keyframes pointsToastIn {
           0% { opacity: 0; transform: translateX(-50%) translateY(-20px) scale(0.95); }
           100% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
         }

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ALL_LEVELS } from "../constants/levels";
 
 /**
  * 🔐 SECURITY SCHEMAS: Centralized validation for the Coliseu platform.
@@ -16,7 +17,7 @@ export const createStudentSchema = z.object({
   email: z.string().email("E-mail inválido"),
   password: z.string().min(8, "A senha deve ter pelo menos 8 caracteres para maior segurança"),
   full_name: z.string().min(3, "O nome completo deve ter pelo menos 3 caracteres"),
-  level: z.enum(["iniciante", "scale", "intermediario", "rx", "elite", "branco", "verde", "azul", "vermelho", "preto"]).default("iniciante"),
+  level: z.enum(ALL_LEVELS.map(l => l.key) as [string, ...string[]]).default("iniciante"),
 });
 
 // 3. Schema para Check-in no WOD

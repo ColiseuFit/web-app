@@ -3,37 +3,26 @@
 import React from "react";
 import { Award } from "lucide-react";
 import LevelBadge from "./LevelBadge";
-
-interface LevelInfo {
-  color: string;
-  label: string;
-  textColor: string;
-  glow?: string;
-  icon: string;
-  description?: string;
-  id?: string;
-}
+import { getLevelInfo, LevelInfo as CentralLevelInfo } from "@/lib/constants/levels";
 
 interface AthleteStats {
-  xp_actual: number;
-  xp_next_level: number;
-  total_xp_goal: number;
+  points_actual: number;
+  points_next_level: number;
+  total_points_goal: number;
 }
 
 interface LevelCardProps {
-  level: LevelInfo;
+  level: string | CentralLevelInfo;
   stats: AthleteStats;
-  xpProgress: number;
-  xpRemaining: number;
+  pointsProgress: number;
+  pointsRemaining: number;
   avatarUrl?: string;
 }
 
 /**
  * Card de Nível do Atleta (Brutalista / Iron Monolith).
- * Componente central de gamificação que exibe o progresso de XP e o nível técnico.
- * 
- * @param {number} currentXp - XP total acumulado pelo atleta.
- * @param {number} nextLevelXp - XP necessário para atingir o próximo nível.
+ * @param {number} points_actual - Pontuação total acumulada pelo atleta.
+ * @param {number} points_next_level - Pontuação necessária para atingir o próximo nível.
  * @param {string} level - Identificador do nível (ex: L1, L2, RX).
  * @param {string} category - Nome da categoria (ex: INICIANTE, SCALE, RX).
  * @param {string} avatarUrl - URL da imagem de perfil do atleta para o Dual Badge.
@@ -43,11 +32,14 @@ interface LevelCardProps {
  *   são exibidos lado a lado em um layout de alta densidade visual.
  * - Barra de Progresso: Representação linear do avanço radial entre níveis.
  */
-export default function LevelCard({ level, stats, xpProgress, xpRemaining, avatarUrl }: LevelCardProps) {
+export default function LevelCard({ level: levelInput, stats, pointsProgress, pointsRemaining, avatarUrl }: LevelCardProps) {
+  const level = typeof levelInput === "string" ? getLevelInfo(levelInput) : levelInput;
+  const isElite = level.key === "elite";
+  
   return (
     <div style={{ 
-      background: (level.color === "var(--lvl-black)" || level.color === "#C5A059") ? "var(--bg)" : level.color, 
-      border: (level.color === "var(--lvl-black)" || level.color === "#C5A059") ? `2px solid ${level.color}` : "none",
+      background: isElite ? "var(--bg)" : level.color, 
+      border: isElite ? `2px solid ${level.color}` : "none",
       borderRadius: "2px", 
       padding: "24px", 
       position: "relative",
@@ -61,7 +53,7 @@ export default function LevelCard({ level, stats, xpProgress, xpRemaining, avata
         right: "-20px", 
         bottom: "-20px", 
         color: level.textColor,
-        opacity: (level.color === "var(--lvl-black)" || level.color === "#C5A059") ? 0.05 : 0.15,
+        opacity: isElite ? 0.05 : 0.15,
         transform: "rotate(-15deg)"
       }}>
         <Award size={140} />
@@ -103,20 +95,22 @@ export default function LevelCard({ level, stats, xpProgress, xpRemaining, avata
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: "8px" }}>
-          <span style={{ fontSize: "10px", fontWeight: 700, color: level.textColor, opacity: 0.8, letterSpacing: "0.15em", marginBottom: "4px" }}>XP ACUMULADO</span>
+          <span style={{ fontSize: "10px", fontWeight: 700, color: level.textColor, opacity: 0.8, letterSpacing: "0.15em", marginBottom: "4px" }}>PONTUAÇÃO ACUMULADA</span>
           <span style={{ fontFamily: "var(--font-display)", fontSize: "32px", fontWeight: 900, color: level.textColor, lineHeight: 1 }}>
-            {stats.xp_actual.toLocaleString("pt-BR")}
+            {stats.points_actual.toLocaleString("pt-BR")}
           </span>
         </div>
 
         {/* Barra de Progresso Animada */}
         <div style={{ width: "100%", height: "6px", background: "rgba(0,0,0,0.2)", position: "relative", marginTop: "24px", marginBottom: "8px", borderRadius: "3px" }}>
-          <div style={{ 
+          <div 
+            className="points-bar-fill"
+            style={{ 
               position: "absolute", 
               left: 0, 
               top: 0, 
               height: "100%", 
-              width: `${xpProgress}%`, 
+              width: `${pointsProgress}%`, 
               background: level.textColor,
               transition: "width 1.5s cubic-bezier(0.16, 1, 0.3, 1)",
               borderRadius: "3px",
@@ -125,10 +119,10 @@ export default function LevelCard({ level, stats, xpProgress, xpRemaining, avata
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div style={{ fontSize: "10px", fontWeight: 700, color: level.textColor, opacity: 0.9 }}>
-            {xpRemaining.toLocaleString("pt-BR")} XP PARA O NÍVEL SEGUINTE
+            {pointsRemaining.toLocaleString("pt-BR")} PONTOS PARA O PRÓXIMO NÍVEL
           </div>
           <div style={{ fontSize: "10px", fontWeight: 900, color: level.textColor }}>
-              {Math.round(xpProgress)}%
+              {Math.round(pointsProgress)}%
           </div>
         </div>
       </div>

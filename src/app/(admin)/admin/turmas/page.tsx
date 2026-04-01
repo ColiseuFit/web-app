@@ -1,7 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import TurmasClient from "./TurmasClient";
 import { getCoaches } from "../professores/actions";
-import { getBoxSettings, getHolidays } from "./actions";
+import { getHolidays } from "./actions";
+import { getBoxSettings } from "@/lib/constants/settings_actions";
 
 import { getTodayDate } from "@/lib/date-utils";
 

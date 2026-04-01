@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { Inbox } from "lucide-react";
+import { getLevelInfo } from "@/lib/constants/levels";
 
 interface PRData {
   id: string;
@@ -28,13 +29,6 @@ export const PRMatrix: React.FC<PRMatrixProps> = ({ prs, onUpsert }) => {
     { id: 'benchmark', label: 'BENCHMARKS' },
   ];
 
-  const levelConfigs: Record<string, { color: string; label: string; icon: string }> = {
-    L1: { color: "#ffffff", label: "INICIANTE", icon: "/levels/icone-coliseu-levels-iniciante.svg" },
-    L2: { color: "#2dab61", label: "SCALE", icon: "/levels/icone-coliseu-levels-scale.svg" },
-    L3: { color: "#2980ba", label: "INTERMEDIÁRIO", icon: "/levels/icone-coliseu-levels-intermediario.svg" },
-    L4: { color: "#e52521", label: "RX", icon: "/levels/icone-coliseu-levels-rx.svg" },
-    L5: { color: "#C5A059", label: "ELITE", icon: "/levels/icone-coliseu-levels-elite.svg" }
-  };
 
   const filteredPrs = prs.filter(pr => pr.category === activeTab);
 
@@ -84,7 +78,7 @@ export const PRMatrix: React.FC<PRMatrixProps> = ({ prs, onUpsert }) => {
       <div style={{ padding: "24px 20px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
         {filteredPrs.length > 0 ? (
           filteredPrs.map((pr) => {
-            const config = levelConfigs[pr.level] || { color: "var(--text-muted)", label: pr.level, icon: "" };
+            const config = getLevelInfo(pr.level);
             return (
               <div 
                 key={pr.id} 

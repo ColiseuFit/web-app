@@ -181,11 +181,11 @@ export default function AdminStyles() {
         border: 1px solid #000;
       }
 
-      .badge-iniciante { background: #FFFFFF; color: #000000; border-color: #E5E7EB; }
-      .badge-scale { background: #DCFCE7; color: #166534; border-color: #86EFAC; }
-      .badge-intermediario { background: #DBEAFE; color: #1E40AF; border-color: #93C5FD; }
-      .badge-rx { background: #FEE2E2; color: #991B1B; border-color: #FCA5A5; }
-      .badge-elite { background: #FEF3C7; color: #92400E; border-color: #FCD34D; }
+      .badge-iniciante { background: #FFFFFF; color: #000; border-color: #000; }
+      .badge-scale { background: #DCFCE7; color: #166534; border-color: #2dab61; }
+      .badge-intermediario { background: #DBEAFE; color: #1E40AF; border-color: #2980ba; }
+      .badge-rx { background: #FEE2E2; color: #991B1B; border-color: #e52521; }
+      .badge-elite { background: #000000; color: #C5A059; border-color: #C5A059; }
 
       @keyframes fadeIn {
         from { opacity: 0; transform: translateY(4px); }

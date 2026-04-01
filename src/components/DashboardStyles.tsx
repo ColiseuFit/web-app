@@ -6,7 +6,7 @@ export default function DashboardStyles() {
       0%, 100% { box-shadow: 0 0 40px rgba(227,27,35,0.3); }
       50% { box-shadow: 0 0 60px rgba(227,27,35,0.5); }
     }
-    @keyframes xpGlow {
+    @keyframes pointsGlow {
       0%, 100% { box-shadow: 0 0 8px rgba(227,27,35,0.5); }
       50% { box-shadow: 0 0 18px rgba(227,27,35,0.9), 0 0 32px rgba(227,27,35,0.3); }
     }
@@ -45,8 +45,8 @@ export default function DashboardStyles() {
     .checkin-btn:active {
       transform: translateY(0) !important;
     }
-    .xp-bar-fill {
-      animation: xpGlow 2s ease-in-out infinite;
+    .points-bar-fill {
+      animation: pointsGlow 2s ease-in-out infinite;
     }
     .nav-link:hover {
       color: rgba(255,255,255,0.6) !important;

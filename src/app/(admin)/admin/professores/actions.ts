@@ -3,6 +3,7 @@
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { USER_ROLES } from "@/lib/constants/roles";
 
 /**
  * Helper to verify admin role and return an admin Supabase client.
@@ -14,13 +15,13 @@ async function getAdminContext() {
 
   let roleData = null;
   if (user.email === "admin@coliseufit.com") {
-    roleData = { role: "admin" };
+    roleData = { role: USER_ROLES.ADMIN };
   } else {
     const { data: fetchRole } = await supabase
       .from("user_roles").select("role").eq("user_id", user.id).single();
     roleData = fetchRole;
   }
-  if (!roleData || roleData.role !== "admin") {
+  if (!roleData || roleData.role !== USER_ROLES.ADMIN) {
     return { error: "Permissão insuficiente (Apenas Administradores)." };
   }
 
@@ -59,7 +60,7 @@ export async function getCoaches() {
         phone
       )
     `)
-    .in("role", ["coach", "admin"])
+    .in("role", [USER_ROLES.COACH, USER_ROLES.ADMIN])
     .order("created_at", { ascending: false });
 
   if (error) return { error: "Erro ao buscar professores: " + error.message };
@@ -106,13 +107,13 @@ export async function toggleCoachRole(userId: string, isCoach: boolean) {
     // Promote to coach
     const { error } = await ctx.adminClient
       .from("user_roles")
-      .upsert({ user_id: userId, role: "coach" }, { onConflict: "user_id" });
+      .upsert({ user_id: userId, role: USER_ROLES.COACH }, { onConflict: "user_id" });
     if (error) return { error: "Erro ao promover: " + error.message };
   } else {
     // Revert to student (or remove admin/coach privileges)
     const { error } = await ctx.adminClient
       .from("user_roles")
-      .update({ role: "student" })
+      .update({ role: USER_ROLES.STUDENT })
       .eq("user_id", userId);
     if (error) return { error: "Erro ao remover cargo: " + error.message };
   }
@@ -161,7 +162,7 @@ export async function createNewCoach(name: string, email: string, phone: string)
   // 3. Assign Coach Role
   const { error: roleError } = await ctx.adminClient
     .from("user_roles")
-    .insert({ user_id: userId, role: "coach" });
+    .insert({ user_id: userId, role: USER_ROLES.COACH });
 
   if (roleError) return { error: "Erro no Role: " + roleError.message };
 

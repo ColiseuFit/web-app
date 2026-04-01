@@ -89,7 +89,7 @@ export default function CheckInButton({ wodId, date, alreadyChecked, holiday }: 
                 </span>
               </div>
               <span style={{ fontSize: "8px", fontWeight: 700, color: "var(--text-muted)", letterSpacing: "0.05em", marginTop: "2px" }}>
-                Aguardando validação do Coach para ganhar XP
+                Aguardando validação do Coach para ganhar Pontos
               </span>
             </div>
           </div>

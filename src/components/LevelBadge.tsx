@@ -4,16 +4,11 @@ import React, { useState } from "react";
 import { X } from "lucide-react";
 import { hapticSelect } from "@/lib/haptic";
 import Link from "next/link";
+import { getLevelInfo, LevelInfo } from "@/lib/constants/levels";
 
 interface LevelBadgeProps {
-  level: {
-    color: string;
-    label: string;
-    textColor: string;
-    icon: string;
-    id?: string;
-  };
-  description: string;
+  level: string | LevelInfo;
+  description?: string;
   size?: number;
   avatarUrl?: string | null;
 }
@@ -31,8 +26,11 @@ interface LevelBadgeProps {
  * - Modal adaptativo (Glassmorphism) com desfoque de fundo profundo.
  * - Integração com haptic engine para feedback tátil em dispositivos móveis.
  */
-export default function LevelBadge({ level, description, size = 64, avatarUrl }: LevelBadgeProps) {
+export default function LevelBadge({ level: levelInput, description: descriptionInput, size = 64, avatarUrl }: LevelBadgeProps) {
   const [isOpen, setIsOpen] = useState(false);
+
+  const level = typeof levelInput === "string" ? getLevelInfo(levelInput) : levelInput;
+  const description = descriptionInput || level.description;
 
   const handleOpen = () => {
     try {
@@ -43,7 +41,7 @@ export default function LevelBadge({ level, description, size = 64, avatarUrl }:
     setIsOpen(true);
   };
 
-  const isElite = level.id === "L5" || level.label.includes("ELITE");
+  const isElite = level.key === "elite" || level.id === "L5" || level.label.includes("ELITE");
 
   return (
     <>

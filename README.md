@@ -13,11 +13,12 @@ A documentação segue o protocolo "Legacy Proof", garantindo manutenibilidade:
 - [PLAYBOOK: WOD Engine (Builder de Treinos)](docs/PLAYBOOKS/ADMIN_WOD_ENGINE.md) - Builder split-screen, Benchmark Library e sincronia com timeline do aluno.
 - [PLAYBOOK: Gestão de Alunos](docs/PLAYBOOKS/ADMIN_STUDENT_MANAGEMENT.md) - Matrícula, RLS Bypass, edição em Drawer e segurança de exclusão.
 - [PLAYBOOK: Gestão de Turmas](docs/PLAYBOOKS/CLASSES_MANAGEMENT.md) - Grade semanal, Matrículas fixas e Monitoramento Live.
-- [PLAYBOOK: Fechamento de Aula](docs/PLAYBOOKS/FECHAMENTO_AULA.md) - Fluxo de presenças e distribuição de XP (Gamificação).
+- [PLAYBOOK: Fechamento de Aula](docs/PLAYBOOKS/FECHAMENTO_AULA.md) - Fluxo de presenças e atribuição de Pontos (Gamificação).
+- [PLAYBOOK: Sistema de Pontuação](docs/PLAYBOOKS/PONTUACAO.md) - Configuração de gatilhos, regras de pontos e motor SSoT.
 
 ### 🏃 Módulo Aluno
 - [PLAYBOOK: Dashboard do Aluno](docs/PLAYBOOKS/STUDENT_DASHBOARD.md) - Guia operacional do App do Aluno.
-- [PLAYBOOK: Motor de Gamificação](docs/PLAYBOOKS/GAMIFICATION_ENGINE.md) - Regras de XP, Níveis (L1-L5) e Validação.
+- [PLAYBOOK: Motor de Gamificação](docs/PLAYBOOKS/GAMIFICATION_ENGINE.md) - Regras de Pontuação, Níveis (L1-L5) e Validação.
 - [PLAYBOOK: Avaliações Físicas](docs/PLAYBOOKS/AVALIACOES_FISICAS.md) - SOP de Biometria, Fotos e Radar de Saúde.
 - [PLAYBOOK: Autenticação & Login](docs/PLAYBOOKS/AUTH-LOGIN.md) - Fluxo de acesso e operacional do carrossel.
 - [PLAYBOOK: Estratégia de Ícones](docs/PLAYBOOKS/UI_ICON_STRATEGY.md) - Padrão de conformidade Lucide-React (Zero Font symbols).
@@ -25,7 +26,7 @@ A documentação segue o protocolo "Legacy Proof", garantindo manutenibilidade:
 
 ### 📐 Arquitetura & Design
 - [GUIA: Iron Monolith Architecture](docs/PLAYBOOKS/IRON_MONOLITH_GUIDE.md) - Filosofia visual, tokens CSS e estética brutalista.
-- [ARCHITECTURE: Iron Engine](docs/ARCHITECTURE/ACTIVITY_ENGINE.md) - Engenharia de dados, gamificação (XP/PRs) e arquitetura Server/Client.
+- [ARCHITECTURE: Iron Engine](docs/ARCHITECTURE/ACTIVITY_ENGINE.md) - Engenharia de dados, gamificação (Pontos/PRs) e arquitetura Server/Client.
 - [SQL SCHEMA: Contratos de Dados](docs/schema.sql) - Definição técnica das tabelas e RLS.
 
 ## 🛠️ ARQUITETURA DO SISTEMA
@@ -42,6 +43,7 @@ graph TD
     A -->|Bucket Storage| G[Athlete Photos]
     H[Coach: WOD Builder] -->|upsertWod Action| E
     E -->|Inner Join + Revalidate| I[Aluno: Activity Timeline]
+    K[Aluno: Gamificação] -->|Pontos/Check-in| D
     J[Admin: Criação/Gestão de Aluno] -->|RLS Bypass: Service Role| B
     J -->|RLS Bypass: Service Role| D
     K[Aluno: Autogestão de Perfil/Senha] -->|RLS Enforced| B
@@ -64,5 +66,5 @@ graph TD
 - public/levels/: Ativos de marca oficiais para a subida de níveis Coliseu.
 
 ---
-**Versão do Sistema:** 2.3.1 (Legacy Proof Audit & XP Integration)  
+**Versão do Sistema:** 2.4.0 (SSoT Scoring Engine & Terminology Finalization)  
 **Equipe:** Antigravity AI & Coliseu Engineering

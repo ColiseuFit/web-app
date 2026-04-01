@@ -802,44 +802,8 @@ export async function addSubstitution(slotId: string, coachId: string | null, da
   return { success: true };
 }
 
-// --- SETTINGS ---
+// Settings management is now centralized in @/lib/constants/settings_actions.ts
 
-export async function getBoxSettings() {
-  const ctx = await getAdminContext();
-  if ("error" in ctx) return { error: ctx.error };
-
-  const { data, error } = await ctx.adminClient
-    .from("box_settings")
-    .select("key, value");
-
-  if (error) return { error: "Erro ao buscar configurações: " + error.message };
-
-  // Convert array to object { [key]: value }
-  const settings = (data || []).reduce((acc: Record<string, string>, curr) => {
-    acc[curr.key] = curr.value || "";
-    return acc;
-  }, {});
-
-  return { data: settings };
-}
-
-export async function updateBoxSettings(updates: Record<string, string>) {
-  const ctx = await getAdminContext();
-  if ("error" in ctx) return { error: ctx.error };
-
-  const payloads = Object.entries(updates).map(([key, value]) => ({ key, value }));
-  
-  if (payloads.length === 0) return { success: true };
-
-  const { error } = await ctx.adminClient
-    .from("box_settings")
-    .upsert(payloads, { onConflict: "key" });
-
-  if (error) return { error: "Erro ao atualizar configurações: " + error.message };
-
-  revalidatePath("/admin/turmas");
-  return { success: true };
-}
 
 // --- HOLIDAYS ---
 
@@ -887,16 +851,17 @@ export async function removeHoliday(id: string) {
   revalidatePath("/admin/turmas");
   return { success: true };
 }
-// --- CLASS CLOSING AND XP ---
+
+// --- CLASS CLOSING AND POINTS ---
 
 /**
- * Closes a class, rewarding students with XP and marking attendance as confirmed.
+ * Closes a class, rewarding students with Points and marking attendance as confirmed.
  * 
  * @security 
  * - Role: Admin/Reception.
  * - Logic: 
  *   1. Confirms attendance for checked-in students.
- *   2. Optionally applies XP based on box setting 'xp_per_class'.
+ *   2. Optionally applies Points based on box setting 'points_per_class'.
  *   3. Updates check_in status to 'confirmed'.
  * 
  * @param {string} slotId - UUID of the class_slot.
@@ -909,22 +874,21 @@ export async function closeClassAction(slotId: string, date: string, studentIds:
 
   if (!studentIds.length) return { error: "Selecione ao menos um aluno presente." };
 
-  // 1. Get XP value from settings
-  const { data: xpSetting } = await ctx.adminClient
-    .from("box_settings")
-    .select("value")
-    .eq("key", "xp_per_class")
+  // 1. Get Points value from points_rules (SSoT)
+  const { data: pointRule } = await ctx.adminClient
+    .from("points_rules")
+    .select("points")
+    .eq("key", "check_in")
     .single();
 
-  const xpValue = parseInt(xpSetting?.value || "10");
+  const pointsValue = pointRule?.points ?? 10;
 
   // 2. Bulk update check-ins for this slot/day
-  // We only update students who were actually selected as present
   const { error: updateError } = await ctx.adminClient
     .from("check_ins")
     .update({ 
       status: "confirmed", 
-      score_xp: xpValue,
+      score_points: pointsValue, 
       validated_at: new Date().toISOString()
     })
     .eq("class_slot_id", slotId)
@@ -934,18 +898,17 @@ export async function closeClassAction(slotId: string, date: string, studentIds:
 
   if (updateError) return { error: "Erro ao fechar aula: " + updateError.message };
 
-  // 3. Update student profiles with new XP
-  // We do this in a loop or parallel settled promises for each present student
+  // 3. Update student profiles with new points
   await Promise.allSettled(
     studentIds.map(stId => 
-      ctx.adminClient.rpc("increment_xp", { user_id: stId, amount: xpValue })
+      ctx.adminClient.rpc("increment_points", { user_id: stId, amount: pointsValue })
     )
   );
 
   // 4. Mark others as 'missed' (absent) if they checked in but weren't confirmed
   await ctx.adminClient
     .from("check_ins")
-    .update({ status: "missed", score_xp: 0 })
+    .update({ status: "missed", score_points: 0 })
     .eq("class_slot_id", slotId)
     .not("student_id", "in", `(${studentIds.join(",")})`)
     .gte("created_at", `${date}T00:00:00`)
@@ -953,5 +916,6 @@ export async function closeClassAction(slotId: string, date: string, studentIds:
     .eq("status", "checked");
 
   revalidatePath("/admin/turmas");
-  return { success: true, xpAwarded: xpValue };
+  return { success: true, pointsAwarded: pointsValue };
 }
+

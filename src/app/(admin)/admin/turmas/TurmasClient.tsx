@@ -42,8 +42,6 @@ import {
   removeFromWaitlist,
   getSlotSubstitutions,
   addSubstitution,
-  getBoxSettings,
-  updateBoxSettings,
   getHolidays,
   addHoliday,
   removeHoliday,
@@ -183,7 +181,7 @@ export default function TurmasClient({
   const [formName, setFormName] = useState("CrossTraining");
   const [formDays, setFormDays] = useState<number[]>([]);
   const [formTime, setFormTime] = useState("07:00");
-  const [formCapacity, setFormCapacity] = useState(20);
+  const [formCapacity, setFormCapacity] = useState(Number(initialSettings?.box_capacity_limit || 20));
   const [formCoach, setFormCoach] = useState("");
   const [formDuration, setFormDuration] = useState(60);
   const [isBulk, setIsBulk] = useState(false);
@@ -280,16 +278,6 @@ export default function TurmasClient({
     setWaitlistLoading(false);
   }, [todayDay]);
 
-  /**
-   * handleSaveSettings: Persists box operation rules.
-   */
-  const handleSaveSettings = async () => {
-    startTransition(async () => {
-      const res = await updateBoxSettings(settings);
-      if (res.error) showToast(res.error, "error");
-      else showToast("Configurações atualizadas com sucesso!", "success");
-    });
-  };
 
   /**
    * handleAddHoliday: Adds a new box-wide closure.
@@ -462,7 +450,7 @@ export default function TurmasClient({
       setFormName("CrossTraining");
       setFormDays([]); // Deselect all by default to avoid confusion
       setFormTime("07:00");
-      setFormCapacity(20);
+      setFormCapacity(Number(initialSettings?.box_capacity_limit || 20));
       setFormCoach("");
       setFormDuration(60);
     }
@@ -635,7 +623,7 @@ export default function TurmasClient({
                 borderRadius: 4
               }}
             >
-              CONFIGURAÇÕES E DATAS
+              GESTÃO DE FERIADOS
             </button>
           </div>
         </div>
@@ -985,72 +973,7 @@ export default function TurmasClient({
         <div className="animate-in fade-in duration-500">
           <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
             
-            {/* ── OPERATION RULES ── */}
-            <div className="admin-card">
-              <h2 style={{ fontSize: 18, fontWeight: 900, marginBottom: 16, textTransform: "uppercase", display: "flex", alignItems: "center", gap: 8 }}>
-                <Settings size={20} />
-                Regras de Operação
-              </h2>
-              <div style={{ display: "flex", flexDirection: "column", gap: 24, maxWidth: 450 }}>
-                <div>
-                  <label style={labelStyle}>Ocupação Máxima Padrão</label>
-                  <input
-                    type="number"
-                    className="admin-input"
-                    value={settings.default_capacity || "20"}
-                    onChange={(e) => setSettings(prev => ({ ...prev, default_capacity: e.target.value }))}
-                    style={{ background: "#F9FAFB", border: "2px solid #000" }}
-                    min="1"
-                  />
-                </div>
-                <div>
-                  <label style={labelStyle}>Janela de Cancelamento (Horas)</label>
-                  <input
-                    type="number"
-                    className="admin-input"
-                    value={settings.cancellation_window_hours || "2"}
-                    onChange={(e) => setSettings(prev => ({ ...prev, cancellation_window_hours: e.target.value }))}
-                    style={{ background: "#F9FAFB", border: "2px solid #000" }}
-                    min="0"
-                  />
-                  <span style={{ fontSize: 11, color: "#666", display: "block", marginTop: 4 }}>
-                    O check-in não será retornado se faltar menos de X horas para a aula.
-                  </span>
-                </div>
 
-                {/* ── PERFORMANCE RULES (XP) ── */}
-                <div style={{ padding: 20, background: "#FFFBEB", border: "2px solid #F59E0B", marginTop: 8 }}>
-                  <h3 style={{ fontSize: 13, fontWeight: 900, marginBottom: 12, textTransform: "uppercase", display: "flex", alignItems: "center", gap: 8, color: "#B45309" }}>
-                    <Award size={16} />
-                    Regras de Desempenho (XP)
-                  </h3>
-                  <label style={{ ...labelStyle, color: "#B45309" }}>XP Base por Aula Concluída</label>
-                  <div style={{ position: "relative" }}>
-                    <input
-                      type="number"
-                      className="admin-input"
-                      value={settings.xp_per_class || "10"}
-                      onChange={(e) => setSettings(prev => ({ ...prev, xp_per_class: e.target.value }))}
-                      style={{ background: "#FFF", border: "2px solid #F59E0B", paddingLeft: 44 }}
-                      min="0"
-                    />
-                    <Zap size={18} style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: "#F59E0B" }} />
-                  </div>
-                  <span style={{ fontSize: 10, color: "#B45309", display: "block", marginTop: 6, fontWeight: 700 }}>
-                    Este valor será creditado ao aluno quando a aula for FECHADA pelo sistema.
-                  </span>
-                </div>
-
-                <button 
-                  className="admin-btn admin-btn-primary" 
-                  style={{ marginTop: 8, height: 52, justifyContent: "center" }}
-                  onClick={handleSaveSettings}
-                  disabled={isPending}
-                >
-                  {isPending ? "SALVANDO..." : <><Save size={18} /> Salvar Regras</>}
-                </button>
-              </div>
-            </div>
 
             {/* ── HOLIDAY MANAGER ── */}
             <div className="admin-card">
@@ -1688,7 +1611,7 @@ export default function TurmasClient({
           onClose={() => setClosingSlot(null)}
           onSuccess={() => {
             setClosingSlot(null);
-            showToast("AULA FECHADA COM SUCESSO! XP DISTRIBUÍDO.", "success");
+            showToast("AULA FECHADA COM SUCESSO! PONTOS DISTRIBUÍDOS.", "success");
             setTimeout(() => window.location.reload(), 1500);
           }}
         />

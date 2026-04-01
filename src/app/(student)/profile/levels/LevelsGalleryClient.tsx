@@ -4,59 +4,8 @@ import Link from "next/link";
 import StudentHeader from "@/components/StudentHeader";
 import BottomNav from "@/components/BottomNav";
 import { ArrowLeft } from "lucide-react";
+import { ALL_LEVELS } from "@/lib/constants/levels";
 
-const LEVELS = [
-  {
-    id: "L1",
-    label: "INICIANTE",
-    color: "#ffffff",
-    bgGlow: "rgba(255,255,255,0.03)",
-    borderColor: "rgba(255,255,255,0.12)",
-    icon: "/levels/icone-coliseu-levels-iniciante.svg",
-    desc: "Domínio dos padrões básicos de movimento e construção de base aeróbica sólida.",
-    requirements: "Consistência e Técnica básica.",
-  },
-  {
-    id: "L2",
-    label: "SCALE",
-    color: "#2dab61",
-    bgGlow: "rgba(45,171,97,0.05)",
-    borderColor: "rgba(45,171,97,0.2)",
-    icon: "/levels/icone-coliseu-levels-scale.svg",
-    desc: "Capacidade de adaptar movimentos complexos e aumento da carga de trabalho.",
-    requirements: "Adaptações técnicas eficientes.",
-  },
-  {
-    id: "L3",
-    label: "INTERMEDIÁRIO",
-    color: "#2980ba",
-    bgGlow: "rgba(41,128,186,0.05)",
-    borderColor: "rgba(41,128,186,0.2)",
-    icon: "/levels/icone-coliseu-levels-intermediario.svg",
-    desc: "Transição para movimentos ininterruptos e domínio parcial de habilidades ginásticas.",
-    requirements: "Aumento de intensidade e volume.",
-  },
-  {
-    id: "L4",
-    label: "RX",
-    color: "#e52521",
-    bgGlow: "rgba(229,37,33,0.05)",
-    borderColor: "rgba(229,37,33,0.2)",
-    icon: "/levels/icone-coliseu-levels-rx.svg",
-    desc: "O Padrão Ouro. Execução fiel de todos os WODs oficiais do Open/Games.",
-    requirements: "Performance técnica total e alta força.",
-  },
-  {
-    id: "L5",
-    label: "ELITE",
-    color: "#C5A059", /* Subtle Silk Gold */
-    bgGlow: "rgba(197, 160, 89, 0.05)",
-    borderColor: "rgba(197, 160, 89, 0.25)",
-    icon: "/levels/icone-coliseu-levels-elite.svg",
-    desc: "O topo da pirâmide. Atletas de alto rendimento, força bruta e ginásticos inabaláveis.",
-    requirements: "Capacidade física de elite nacional.",
-  },
-];
 
 /**
  * Galeria Interativa de Níveis Técnicos
@@ -105,12 +54,12 @@ export default function LevelsGalleryClient() {
 
         {/* CARDS DE NÍVEL */}
         <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-          {LEVELS.map((lvl, i) => (
+          {ALL_LEVELS.map((lvl, i) => (
             <div
               key={lvl.id}
               style={{
-                background: lvl.bgGlow,
-                border: `1px solid ${lvl.borderColor}`,
+                background: lvl.glow ? `rgba(197, 160, 89, 0.05)` : "rgba(255,255,255,0.02)",
+                border: "1px solid var(--border-glow)",
                 padding: "20px 20px 20px 16px",
                 display: "flex",
                 alignItems: "center",
@@ -150,9 +99,9 @@ export default function LevelsGalleryClient() {
                   <span style={{ fontSize: "9px", fontWeight: 900, color: lvl.color, letterSpacing: "0.15em", opacity: 0.8 }}>{lvl.id}</span>
                   <h3 className="font-display" style={{ fontSize: "18px", letterSpacing: "0.02em", lineHeight: 1 }}>{lvl.label}</h3>
                 </div>
-                <p style={{ fontSize: "11px", color: "var(--text-dim)", lineHeight: 1.5, marginBottom: "8px" }}>{lvl.desc}</p>
+                <p style={{ fontSize: "11px", color: "var(--text-dim)", lineHeight: 1.5, marginBottom: "8px" }}>{lvl.description}</p>
                 <div style={{ fontSize: "8px", fontWeight: 800, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                  EXIGE: <span style={{ color: lvl.color }}>{lvl.requirements}</span>
+                  EXIGE: <span style={{ color: lvl.color }}>{lvl.requirements || "TÉCNICA E CONSISTÊNCIA"}</span>
                 </div>
               </div>
 
