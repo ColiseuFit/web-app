@@ -40,7 +40,7 @@ export async function proxy(request: NextRequest) {
 
   const hostname = request.headers.get("host") || "";
   const path = request.nextUrl.pathname;
-  let url = request.nextUrl.clone();
+  const url = request.nextUrl.clone();
   let isRewritten = false;
 
   // 1. DOMAIN ROUTING: Admin
@@ -108,6 +108,6 @@ export const config = {
      * Protected routes matcher.
      * Excludes static assets and public icons.
      */
-    "/((?!_next/static|_next/image|favicon.ico|icon.svg|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|icon.svg|manifest.json|manifest.webmanifest|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

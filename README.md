@@ -52,9 +52,9 @@ graph TD
 
 ### Princípios Inegociáveis (A Doutrina do Código):
 1. **Isolamento de Tenant (RLS):** Garantido por políticas granulares no banco de dados. Nunca cruzar dados sem bypass explícito (service_role).
-2. **Design Brutalista (Iron Monolith):** Performance instantânea e zero carregamentos em branco (Skeleton Screens). Estética militar, alto contraste e recortes geométricos (clip-path).
+2. **Design Brutalista (Iron Monolith):** Performance instantânea e zero carregamentos em branco (Skeleton Screens). Estética de alta performance, alto contraste e recortes geométricos (clip-path).
 3. **Segurança de Mutação:** Uso de Zod para todo payload processado por Server Actions.
-4. **Resiliência de Estado:** Uso tático de Optimistic UI para feedbacks imediatos (Ex: seleção tática de treinos semanais).
+4. **Resiliência de Estado:** Uso estratégico de Optimistic UI para feedbacks imediatos (Ex: seleção estratégica de treinos semanais).
 
 ---
 

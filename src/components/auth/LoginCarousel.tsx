@@ -82,7 +82,7 @@ export function LoginCarousel({
       <div className="absolute bottom-0 left-0 right-0 h-24 z-10 pointer-events-none bg-gradient-to-t from-[#050505] to-transparent" />
 
       {/* Image Slides */}
-      <AnimatePresence mode="wait">
+      <AnimatePresence mode="wait" initial={false}>
         <motion.div
           key={currentIndex}
           initial={{ opacity: 0, scale: 1.08 }}
@@ -95,7 +95,7 @@ export function LoginCarousel({
             src={slides[currentIndex].src}
             alt={slides[currentIndex].alt}
             fill
-            priority={currentIndex === 0}
+            priority={true}
             className="object-cover grayscale contrast-[1.15] brightness-90"
             style={{ objectPosition: slides[currentIndex].objectPosition }}
             sizes="100vw"

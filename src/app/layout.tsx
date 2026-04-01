@@ -32,9 +32,8 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: "/favicon.svg",
-    apple: "/apple-touch-icon.png",
+    apple: "/favicon.svg",
   },
-  manifest: "/manifest.json",
 };
 
 export default function RootLayout({
@@ -46,8 +45,7 @@ export default function RootLayout({
     <html lang="pt-BR">
       <head>
         <meta name="theme-color" content="#131313" />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="mobile-web-app-capable" content="yes" />
       </head>
       <body className="antialiased">
         {children}

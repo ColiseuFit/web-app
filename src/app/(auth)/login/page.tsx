@@ -53,7 +53,7 @@ export default function LoginPage() {
 
   return (
     <div
-      className="login-root w-full text-white font-inter overflow-hidden bg-[#050505]"
+      className="login-root w-full h-screen text-white font-inter overflow-hidden bg-[#050505]"
       style={{
         display: "flex",
         flexDirection: "column",
@@ -66,8 +66,12 @@ export default function LoginPage() {
           Desktop: right-side column (via parent flex-direction override)
           ══════════════════════════════════════════════════════ */}
       <div
-        className="login-image-panel relative flex-shrink-0 overflow-hidden"
-        style={{ height: "50%" }}
+        className="login-image-panel relative overflow-hidden"
+        style={{
+          height: view === "login" ? "clamp(80px, 15vh, 180px)" : "clamp(180px, 42vh, 60%)",
+          flexShrink: 0,
+          transition: "height 0.5s cubic-bezier(0.16, 1, 0.3, 1)"
+        }}
       >
         <LoginCarousel currentIndex={currentSlide} />
 
@@ -91,20 +95,20 @@ export default function LoginPage() {
           ══════════════════════════════════════════════════════ */}
       <div
         className="login-content-panel flex flex-col bg-[#050505]"
-        style={{ flex: 1, overflow: view === "login" ? "auto" : "hidden" }}
+        style={{ flex: 1, overflowY: view === "login" ? "auto" : "hidden", overflowX: "hidden" }}
       >
         {/* Padded inner — full height flex-col */}
         <div
           className={`flex flex-col h-full transition-all duration-700 ${view === "login" ? "login-inner-form" : "login-inner-landing"}`}
           style={{ 
-            padding: "28px 24px",
+            padding: "clamp(16px, 3vh, 28px) 24px",
             justifyContent: view === "landing" ? "space-between" : "flex-start"
           }}
         >
 
           {/* ── SLIDE TEXT (hidden on mobile when login form is open) ── */}
           <div className={`flex-shrink-0 ${view === "login" ? "slide-text-login" : ""}`} style={{ marginBottom: view === "landing" ? "0" : "20px" }}>
-            <AnimatePresence mode="wait">
+            <AnimatePresence mode="wait" initial={false}>
               <motion.div
                 key={currentSlide}
                 initial={{ opacity: 0, y: 12 }}
@@ -139,7 +143,7 @@ export default function LoginPage() {
 
           {/* ── ACTIONS ── */}
           <div className="flex-shrink-0 w-full">
-            <AnimatePresence mode="wait">
+            <AnimatePresence mode="wait" initial={false}>
 
               {/* LANDING: two big buttons */}
               {view === "landing" && (
@@ -304,7 +308,7 @@ export default function LoginPage() {
                           background: "#0A0A0A",
                           border: "1px solid rgba(255,255,255,0.1)",
                           padding: "16px",
-                          fontSize: "15px",
+                          fontSize: "16px",
                           color: "white",
                           outline: "none",
                           fontFamily: "Inter, sans-serif",
@@ -337,7 +341,7 @@ export default function LoginPage() {
                             border: "1px solid rgba(255,255,255,0.1)",
                             padding: "16px",
                             paddingRight: "48px",
-                            fontSize: "15px",
+                            fontSize: "16px",
                             color: "white",
                             outline: "none",
                             letterSpacing: "0.2em",
@@ -439,7 +443,7 @@ export default function LoginPage() {
         @media (max-width: 639px) {
           .login-inner-form input {
             padding: 13px 16px !important;
-            font-size: 14px !important;
+            font-size: 16px !important; /* >= 16px prevents iOS auto-zoom on focus */
           }
           .login-inner-form button[type="submit"] {
             padding: 14px 18px !important;

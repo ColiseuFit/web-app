@@ -231,7 +231,7 @@ export async function updateWeeklyTarget(weekly_target: number) {
 }
 
 /**
- * Cria um novo objetivo tático pessoal (Meta) para o aluno.
+ * Cria um novo objetivo estratégico pessoal (Meta) para o aluno.
  * 
  * @security
  * - Validação de schema via `goalSchema` (Zod).

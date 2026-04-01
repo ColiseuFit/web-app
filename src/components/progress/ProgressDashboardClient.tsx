@@ -147,7 +147,7 @@ export default function ProgressDashboardClient({
             label="Compromisso Semanal" 
           />
 
-          {/* TARGET SELECTOR (TACTICAL UI) */}
+          {/* TARGET SELECTOR (STRATEGIC UI) */}
           <div style={{ marginTop: "24px", padding: "0 24px", display: "flex", flexDirection: "column", alignItems: "center" }}>
             <p style={{ fontSize: "8px", fontWeight: 700, color: "var(--text-muted)", letterSpacing: "0.2em", marginBottom: "12px", textTransform: "uppercase" }}>
               AJUSTAR META DE TREINOS

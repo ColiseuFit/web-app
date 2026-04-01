@@ -56,7 +56,7 @@ const BENCHMARKS: BenchmarkWod[] = [
     type_tag: "FOR TIME",
     time_cap: "60:00",
     result_type: "time",
-    wod_content: "1 mile Run\n100 Pull-ups\n200 Push-ups\n300 Squats\n1 mile Run\n\n* Com colete tático (20/14 lb)",
+    wod_content: "1 mile Run\n100 Pull-ups\n200 Push-ups\n300 Squats\n1 mile Run\n\n* Com colete de peso (20/14 lb)",
   },
   {
     id: "dt",
