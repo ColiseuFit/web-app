@@ -51,7 +51,12 @@ export async function proxy(request: NextRequest) {
     } else if (path === '/') {
       url.pathname = '/admin';
       isRewritten = true;
-    } else if (!path.startsWith('/admin') && !path.startsWith('/admin-portal')) {
+    } else if (
+      !path.startsWith('/admin') && 
+      !path.startsWith('/admin-portal') && 
+      !path.startsWith('/coach') && 
+      !path.startsWith('/coach-portal')
+    ) {
       url.pathname = `/admin${path}`;
       isRewritten = true;
     }
@@ -69,7 +74,10 @@ export async function proxy(request: NextRequest) {
   // PATH de intenção: avalia o que o usuário quer acessar de fato
   const targetPath = isRewritten ? url.pathname : path;
   
-  const isAuthPage = targetPath.startsWith("/login") || targetPath.startsWith("/admin-portal");
+  const isAuthPage = 
+    targetPath.startsWith("/login") || 
+    targetPath.startsWith("/admin-portal") || 
+    targetPath.startsWith("/coach-portal");
   // O index real do app student (apontado na base domain clude/) é publico por enquanto, 
   // mas o index do admin (/) é reescrito pra /admin (que é restrito).
   const isPublicPath = isAuthPage || (targetPath === "/" && !hostname.startsWith('admin'));
@@ -77,8 +85,18 @@ export async function proxy(request: NextRequest) {
   // Redirect to login if user is not authenticated
   if (!user && !isPublicPath) {
     const redirectUrl = request.nextUrl.clone();
-    const isAdminRoute = targetPath.startsWith("/admin");
-    redirectUrl.pathname = isAdminRoute ? "/admin-portal" : "/login";
+    
+    const isAdminRoute = targetPath.startsWith("/admin") || targetPath.startsWith("/admin-portal");
+    const isCoachRoute = targetPath.startsWith("/coach") || targetPath.startsWith("/coach-portal");
+
+    if (isAdminRoute) {
+      redirectUrl.pathname = "/admin-portal";
+    } else if (isCoachRoute) {
+      redirectUrl.pathname = "/coach-portal";
+    } else {
+      redirectUrl.pathname = "/login";
+    }
+    
     return NextResponse.redirect(redirectUrl);
   }
 
