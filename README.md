@@ -30,17 +30,15 @@ A documentação segue o protocolo "Legacy Proof", garantindo manutenibilidade e
 O projeto utiliza um stack moderno focado em performance extrema e isolamento de dados:
 
 ```mermaid
-graph TD
-    A[Next.js App Router] -->|Server Actions + Zod| B[Supabase Auth]
-    A -->|Parallel Data Loading| C[Supabase Postgres]
-    C -->|RLS Row Isolation| D[Profiles & Score]
-    C -->|RLS Row Isolation| E[WODs & Benchmarks]
-    C -->|RLS Row Isolation| F[Check-ins & Goals]
-    A -->|Bucket Storage| G[Athlete Photos]
-    H[Coach: Live Portal] -->|manualCheckin Action| F
-    H -->|closeClass Action| F
-    F -->|Validated_at Marker| I[Student App: Results Unlocked]
-    K[Student: Neo-Brutalist] -->|WOD Scalability Regex| E
+    A[Next.js App Router] -->|src/proxy.ts| B[Mult-Portal Routing]
+    B -->|/login| C[Student App]
+    B -->|/admin-portal| D[Admin Hub]
+    B -->|/coach-portal| E[Coach Portal]
+    A -->|Server Actions + Zod| F[Supabase Auth]
+    A -->|Parallel Data Loading| G[Supabase Postgres]
+    G -->|RLS Row Isolation| H[Profiles & Score]
+    G -->|RLS Row Isolation| I[WODs & Check-ins]
+    H -->|Validated_at Marker| J[Student App: Results Unlocked]
 ```
 
 ### Princípios de Engenharia:
@@ -59,5 +57,5 @@ graph TD
 - `docs/`: Sistema de conhecimento distribuído (Playbooks e SOPs).
 
 ---
-**Versão do Sistema:** 2.5.0 (Ecosystem Documentation Audit)  
+**Versão do Sistema:** 2.5.1 (Coach Portal Stabilization)  
 **Equipe:** Antigravity AI & Coliseu Engineering Team
