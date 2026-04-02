@@ -29,7 +29,6 @@ export default function AdminLoginPage() {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
 
-      console.log("Usuário logado com UID:", data.user?.id);
 
       // Pequena espera para garantir que o Supabase reflita a sessão nos headers do cliente
       let roleData = null;
@@ -37,7 +36,6 @@ export default function AdminLoginPage() {
 
       // MASTER KEY BYPASS: Prioridade absoluta para o admin raiz
       if (data.user?.email === "admin@coliseufit.com") {
-        console.log("Acesso via Chave Mestra concedido para:", data.user.email);
         roleData = { role: "admin" };
       } else {
         while (attempts < 2 && !roleData) {
@@ -55,7 +53,7 @@ export default function AdminLoginPage() {
         }
       }
 
-      console.log("Dados do cargo encontrados:", roleData);
+ 
 
       if (!roleData || (roleData.role !== "admin" && roleData.role !== "reception")) {
         await supabase.auth.signOut();

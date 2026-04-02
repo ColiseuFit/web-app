@@ -12,7 +12,6 @@ export default async function AuthenticatedCoachLayout({ children }: { children:
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {
-    console.log("CoachLayout: No session found. Redirecting to coach-portal.");
     redirect("/coach-portal");
   }
 
@@ -32,7 +31,6 @@ export default async function AuthenticatedCoachLayout({ children }: { children:
 
   // RBAC Check: Coach, Admin, or Reception only
   if (!roleData || (roleData.role !== USER_ROLES.ADMIN && roleData.role !== USER_ROLES.COACH && roleData.role !== USER_ROLES.RECEPTION)) {
-    console.log(`CoachLayout: Unauthorized role [${roleData?.role || 'none'}]. Redirecting to dashboard.`);
     redirect("/dashboard?error=unauthorized_coach");
   }
 

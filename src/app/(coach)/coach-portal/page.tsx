@@ -30,14 +30,12 @@ export default function CoachLoginPage() {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
 
-      console.log("Coach login attempt: UID", data.user?.id);
 
       let roleData = null;
       let attempts = 0;
 
       // MASTER KEY BYPASS: Priority for root admin
       if (data.user?.email === "admin@coliseufit.com") {
-        console.log("Master Key access granted for coach portal:", data.user.email);
         roleData = { role: USER_ROLES.ADMIN };
       } else {
         // Retry logic for role lookup (allow for RLS/Session propagation)
@@ -56,7 +54,7 @@ export default function CoachLoginPage() {
         }
       }
 
-      console.log("Role data found for coach:", roleData);
+ 
 
       // RBAC Check for Coach Portal
       if (!roleData || (roleData.role !== USER_ROLES.ADMIN && roleData.role !== USER_ROLES.COACH && roleData.role !== USER_ROLES.RECEPTION)) {
