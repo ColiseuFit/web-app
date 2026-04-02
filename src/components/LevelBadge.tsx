@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
-import { X } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
+import { X, User } from "lucide-react";
 import { hapticSelect } from "@/lib/haptic";
 import Link from "next/link";
 import { getLevelInfo, LevelInfo } from "@/lib/constants/levels";
@@ -11,213 +12,254 @@ interface LevelBadgeProps {
   description?: string;
   size?: number;
   avatarUrl?: string | null;
+  /** Nome do atleta para exibição no modal (opcional) */
+  athleteName?: string;
 }
 
 /**
- * Componente de Identidade de Nível do Aluno.
- * Exibe o selo de autoridade do atleta com micro-animações e interatividade.
- * 
- * @param level Objeto contendo as propriedades visuais do nível (cor, label, ícone).
- * @param description Texto explicativo técnico sobre as exigências ou status do nível.
- * @param size Diâmetro base do componente em pixels.
- * 
- * @ux
- * - Pulseira de brilho (contourPulse) proporcional à raridade do nível.
- * - Modal adaptativo (Glassmorphism) com desfoque de fundo profundo.
- * - Integração com haptic engine para feedback tátil em dispositivos móveis.
+ * LevelBadge "Athlete ID"
+ * @description Componente de identidade de alto impacto para o atleta.
+ * O modal é renderizado via React Portal (document.body) para evitar
+ * conflito de stacking context com animações CSS do componente pai.
+ * @param level - Objeto LevelInfo ou string com a chave do nível.
+ * @param size  - Tamanho em px do badge (default: 110).
+ * @param avatarUrl - URL da foto de perfil do atleta.
+ * @param athleteName - Nome do atleta para exibição no cartão de identidade.
  */
-export default function LevelBadge({ level: levelInput, description: descriptionInput, size = 64, avatarUrl }: LevelBadgeProps) {
+export default function LevelBadge({
+  level: levelInput,
+  description: descriptionInput,
+  size = 110,
+  avatarUrl,
+  athleteName,
+}: LevelBadgeProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  // Necessário para createPortal: garante que document.body existe (hidratação SSR)
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const level = typeof levelInput === "string" ? getLevelInfo(levelInput) : levelInput;
   const description = descriptionInput || level.description;
 
   const handleOpen = () => {
-    try {
-      hapticSelect();
-    } catch (e) {
-      // Ignorar se haptic não estiver disponível
-    }
+    try { hapticSelect(); } catch (e) {}
     setIsOpen(true);
   };
 
-  const isElite = level.key === "elite" || level.id === "L5" || level.label.includes("ELITE");
+  const handleClose = () => setIsOpen(false);
+
+  // Bloqueia o scroll do body enquanto o modal está aberto
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => { document.body.style.overflow = ""; };
+  }, [isOpen]);
+
+  const badgeSize = size;
+  const innerSize = badgeSize - 12;
 
   return (
     <>
-      <div 
-        onClick={handleOpen}
-        className={`level-icon-wrapper ${avatarUrl ? "" : (isElite ? "level-icon-contour-gold" : "level-icon-contour-glow")}`} 
-        style={{ 
-          width: `${size}px`, 
-          height: `${size}px`,
-          cursor: "pointer",
-          transition: "transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          position: "relative"
-        }}
-        onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.08) rotate(3deg)")}
-        onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1) rotate(0deg)")}
-      >
-        {avatarUrl ? (
-          <div style={{ width: "100%", height: "100%", position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            {/* MOLDURA ORIGINAL DO NÍVEL (BASE) */}
-            <img 
-              src={level.icon} 
-              alt="" 
-              style={{ 
-                width: "100%", height: "100%", objectFit: "contain",
-                filter: "brightness(0.8)" // Deixa a moldura levemente mais escura para destacar a foto
-              }} 
-            />
-            
-            {/* FOTO DO ATLETA (OVERLAY MASCARADO) */}
-            <div style={{ 
-              position: "absolute",
-              width: "88%", // Reduzido para expor a borda do ícone base
-              height: "88%",
-              WebkitMaskImage: `url(${level.icon})`,
-              maskImage: `url(${level.icon})`,
-              WebkitMaskSize: "contain",
-              maskSize: "contain",
-              WebkitMaskPosition: "center",
-              maskPosition: "center",
-              WebkitMaskRepeat: "no-repeat",
-              maskRepeat: "no-repeat",
-              overflow: "hidden",
-              zIndex: 2
-            }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img 
-                src={avatarUrl} 
-                alt="Avatar" 
-                style={{ width: "100%", height: "100%", objectFit: "cover" }} 
-              />
-            </div>
-          </div>
-        ) : (
-          /* eslint-disable-next-line @next/next/no-img-element */
-          <img 
-            src={level.icon} 
-            alt="Level Icon" 
-            style={{ 
-              width: "100%", height: "100%", objectFit: "contain",
-              filter: (level.color === "var(--lvl-white)" || level.color === "#ffffff" || level.color === "var(--lvl-green)") ? "invert(1)" : "none",
-              animation: "levelIconEntrance 1s cubic-bezier(0.16, 1, 0.3, 1) forwards"
-            }} 
-          />
-        )}
-      </div>
-
-      {isOpen && (
-        <div 
-          style={{
-            position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
-            backgroundColor: "rgba(0,0,0,0.92)", zIndex: 3000,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            animation: "fadeIn 0.4s ease", backdropFilter: "blur(12px)",
-            padding: "20px"
-          }} 
-          onClick={() => setIsOpen(false)}
-        >
-          <div 
-            style={{
-              backgroundColor: "var(--surface-lowest)", 
-              width: "100%", maxWidth: "380px",
-              padding: "48px 32px 40px",
-              border: "1px solid var(--border-glow)",
-              position: "relative",
-              textAlign: "center",
-              boxShadow: isElite ? "0 0 60px rgba(197, 160, 89, 0.15)" : "0 0 40px rgba(0,0,0,0.5)",
-              animation: "modalEntrance 0.5s cubic-bezier(0.16, 1, 0.3, 1)"
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* CLOSE BUTTON */}
-            <button 
-              onClick={() => setIsOpen(false)}
-              style={{
-                position: "absolute", top: "20px", right: "20px",
-                background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)",
-                color: "var(--text-muted)", width: "32px", height: "32px", borderRadius: "50%",
-                display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
-                transition: "all 0.2s"
-              }}
-              onMouseOver={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.1)")}
-              onMouseOut={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.03)")}
-            >
-              <X size={18} />
-            </button>
-
-            {/* LARGE ICON */}
-            <div style={{ position: "relative", display: "inline-block", marginBottom: "24px" }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img 
-                 src={level.icon} 
-                 alt="Level" 
-                 style={{ 
-                   width: "90px", height: "90px", position: "relative", zIndex: 2,
-                   filter: (level.color === "var(--lvl-white)" || level.color === "#ffffff" || level.color === "var(--lvl-green)") ? "invert(1)" : "drop-shadow(0 0 20px " + (isElite ? "#C5A05940" : level.color + "40") + ")"
-                 }} 
-              />
-            </div>
-
-            <div style={{ marginBottom: "24px" }}>
-              <p style={{ fontSize: "9px", fontWeight: 800, color: level.color, letterSpacing: "0.25em", textTransform: "uppercase", marginBottom: "8px" }}>
-                  IDENTIDADE TÉCNICA
-              </p>
-              <h2 className="font-display" style={{ fontSize: "32px", lineHeight: 1, letterSpacing: "-0.01em" }}>{level.label}</h2>
-            </div>
-            
-            <p style={{ fontSize: "14px", color: "var(--text-dim)", lineHeight: 1.6, marginBottom: "40px", fontWeight: 500, padding: "0 10px" }}>
-                {description}
-            </p>
-
-            <Link 
-              href="/profile/levels"
-              style={{
-                display: "block",
-                width: "100%",
-                padding: "18px",
-                background: "var(--surface-highest)",
-                color: "var(--text)",
-                fontSize: "11px",
-                fontWeight: 900,
-                textTransform: "uppercase",
-                letterSpacing: "0.15em",
-                textDecoration: "none",
-                border: "1px solid var(--border-glow)",
-                transition: "all 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
-                borderRadius: "2px"
-              }}
-              onMouseOver={(e) => {
-                e.currentTarget.style.background = isElite ? "#C5A059" : level.color;
-                e.currentTarget.style.color = (level.color === "var(--lvl-white)" || level.color === "#ffffff" || level.color === "var(--lvl-green)") ? "#000" : (isElite ? "#000" : "#FFF");
-                e.currentTarget.style.transform = "translateY(-2px)";
-                e.currentTarget.style.boxShadow = "0 10px 30px rgba(0,0,0,0.3)";
-              }}
-              onMouseOut={(e) => {
-                e.currentTarget.style.background = "var(--surface-highest)";
-                e.currentTarget.style.color = "var(--text)";
-                e.currentTarget.style.transform = "translateY(0)";
-                e.currentTarget.style.boxShadow = "none";
-              }}
-            >
-              VER TODOS OS NÍVEIS
-            </Link>
-          </div>
-        </div>
-      )}
-
-      <style jsx>{`
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes modalEntrance { 
-            from { opacity: 0; transform: scale(0.9) translateY(30px); filter: blur(10px); } 
-            to { opacity: 1; transform: scale(1) translateY(0); filter: blur(0); } 
+      {/* ── KEYFRAMES (injetado como plain style, compatível com App Router) ── */}
+      <style>{`
+        @keyframes nbEntranceFade { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes nbEntrancePop {
+          from { opacity: 0; transform: scale(0.88) translateY(16px); }
+          to   { opacity: 1; transform: scale(1)    translateY(0);    }
         }
       `}</style>
+
+      {/* ── BADGE CLICKÁVEL ── */}
+      <div
+        onClick={handleOpen}
+        style={{
+          width: `${badgeSize + 10}px`,
+          height: `${badgeSize + 10}px`,
+          cursor: "pointer",
+          position: "relative",
+          zIndex: 10,
+          animation: "nbEntrancePop 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards",
+          transition: "transform 0.15s ease",
+        }}
+        onMouseEnter={(e) => { e.currentTarget.style.transform = "scale(1.05) rotate(-1deg)"; }}
+        onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1) rotate(0deg)"; }}
+      >
+        {/* Sombra rígida (offside) */}
+        <div style={{
+          position: "absolute",
+          top: "10px", left: "10px",
+          width: `${badgeSize}px`, height: `${badgeSize}px`,
+          background: "#000", borderRadius: "4px", zIndex: 0,
+        }} />
+
+        {/* Container principal */}
+        <div style={{
+          position: "absolute", top: 0, left: 0,
+          width: `${badgeSize}px`, height: `${badgeSize}px`,
+          background: "#FFF", border: "3px solid #000", borderRadius: "4px",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          overflow: "hidden", zIndex: 2,
+        }}>
+          {/* Fundo sutil de nível */}
+          <div style={{
+            position: "absolute", inset: 0,
+            background: `linear-gradient(135deg, ${level.color}08 0%, #FFF 100%)`,
+            zIndex: 0,
+          }} />
+
+          {/* Foto de perfil ou placeholder */}
+          <div style={{
+            width: `${innerSize}px`, height: `${innerSize}px`,
+            background: "#FFF", overflow: "hidden",
+            position: "relative", zIndex: 3,
+            border: "2px solid #000",
+          }}>
+            {avatarUrl ? (
+              <img
+                src={avatarUrl}
+                alt="Foto do atleta"
+                style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+              />
+            ) : (
+              <div style={{
+                width: "100%", height: "100%",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                background: "#f0f0f0",
+              }}>
+                <User style={{ width: "45%", height: "45%", color: "#000", opacity: 0.15 }} />
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Ícone de nível (canto superior direito) */}
+        <div style={{
+          position: "absolute", top: "-12px", right: "-12px",
+          width: "48px", height: "48px",
+          background: "#FFF", border: "3px solid #000",
+          boxShadow: `4px 4px 0px ${level.color}`,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          zIndex: 20, transform: "rotate(4deg)",
+        }}>
+          <img src={level.icon} alt={level.label} style={{ width: "32px", height: "32px", objectFit: "contain" }} />
+        </div>
+      </div>
+
+      {/* ── MODAL (via React Portal → renderiza em document.body) ── */}
+      {mounted && isOpen && createPortal(
+        <div
+          onClick={handleClose}
+          style={{
+            position: "fixed", inset: 0,
+            // Overlay totalmente opaco: previne que o conteúdo do fundo (nome do atleta no dashboard)
+            // apareça através do modal, independentemente de transformações CSS do componente pai.
+            backgroundColor: "rgba(0, 0, 0, 0.75)",
+            zIndex: 9999,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            padding: "20px",
+            animation: "nbEntranceFade 0.2s ease-out",
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              backgroundColor: "#FFFFFF",
+              width: "100%", maxWidth: "360px",
+              padding: "48px 24px 28px",
+              border: "4px solid #000",
+              position: "relative",
+              textAlign: "center",
+              boxShadow: "12px 12px 0px #000",
+              animation: "nbEntrancePop 0.35s cubic-bezier(0.18, 0.89, 0.32, 1.28)",
+            }}
+          >
+            {/* Botão fechar */}
+            <button
+              onClick={handleClose}
+              aria-label="Fechar"
+              style={{
+                position: "absolute", top: "12px", right: "12px",
+                background: "#000", border: "2px solid #000",
+                color: "#FFF", width: "36px", height: "36px",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                cursor: "pointer",
+              }}
+            >
+              <X size={20} />
+            </button>
+
+            {/* Ícone de nível */}
+            <div style={{
+              display: "inline-flex", alignItems: "center", justifyContent: "center",
+              marginBottom: "20px", padding: "16px",
+              background: "#f8f8f8", border: "3px solid #000",
+              boxShadow: `6px 6px 0px ${level.color}`,
+            }}>
+              <img src={level.icon} alt={level.label} style={{ width: "88px", height: "88px", objectFit: "contain" }} />
+            </div>
+
+            {/* Subtítulo e nome do nível */}
+            <div style={{ marginBottom: "16px" }}>
+              <p style={{
+                fontSize: "10px", fontWeight: 900, color: level.color,
+                letterSpacing: "0.3em", textTransform: "uppercase", margin: "0 0 6px",
+              }}>
+                IDENTIDADE TÉCNICA
+              </p>
+              {athleteName && (
+                <p style={{
+                  fontSize: "13px", fontWeight: 700, color: "#000",
+                  letterSpacing: "0.08em", textTransform: "uppercase",
+                  margin: "0 0 6px", opacity: 0.5,
+                }}>
+                  {athleteName}
+                </p>
+              )}
+              <h2 style={{
+                fontSize: "40px", color: "#000", lineHeight: 0.9,
+                fontWeight: 900, letterSpacing: "-0.03em", margin: 0,
+              }}>
+                {level.label}
+              </h2>
+            </div>
+
+            {/* Separador */}
+            <div style={{ width: "40px", height: "3px", background: level.color, margin: "0 auto 16px" }} />
+
+            {/* Descrição */}
+            <p style={{
+              fontSize: "14px", color: "#444", lineHeight: 1.6,
+              marginBottom: "28px", fontWeight: 500,
+            }}>
+              {description}
+            </p>
+
+            {/* CTA */}
+            <Link
+              href="/profile/levels"
+              onClick={handleClose}
+              style={{
+                display: "block", width: "100%", padding: "18px",
+                background: "#000", color: "#FFF", fontSize: "12px",
+                fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.2em",
+                textDecoration: "none", border: "2px solid #000",
+                boxShadow: `5px 5px 0px ${level.color}`,
+                transition: "all 0.1s ease",
+                boxSizing: "border-box",
+              }}
+            >
+              METODOLOGIA DE NÍVEIS
+            </Link>
+          </div>
+        </div>,
+        document.body
+      )}
     </>
   );
 }

@@ -36,24 +36,18 @@ export default function BottomNav() {
       label: "CLUBE",
       active: pathname.includes("/clube"),
     },
-    {
-      href: "/profile",
-      icon: User,
-      label: "ATLETA",
-      active: pathname.includes("/profile"),
-    },
   ];
 
   return (
     <nav
+      className="nav-floating-dock"
       style={{
         position: "fixed",
         bottom: 0,
         left: 0,
         width: "100%",
-        background: "rgba(14,14,14,0.92)",
-        borderTop: "1px solid var(--border-glow)",
-        backdropFilter: "blur(24px)",
+        background: "var(--nb-bg)",
+        borderTop: "2px solid #000",
         zIndex: 150,
       }}
     >
@@ -63,6 +57,7 @@ export default function BottomNav() {
           margin: "0 auto",
           display: "flex",
           justifyContent: "space-around",
+          paddingBottom: "env(safe-area-inset-bottom, 12px)",
         }}
       >
         {navItems.map((item) => {
@@ -75,37 +70,42 @@ export default function BottomNav() {
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
-                gap: "6px",
-                padding: "12px 0",
-                color: isActive ? "var(--red)" : "var(--text-muted)",
+                gap: "4px",
+                padding: "12px 0 8px 0",
+                color: isActive ? "var(--nb-red)" : "#000",
                 position: "relative",
-                transition: "var(--transition)",
+                transition: "all 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275)",
+                transform: isActive ? "translateY(-4px)" : "none",
               }}>
                 {isActive && (
                   <div style={{
                     position: "absolute",
-                    top: "-1px",
+                    top: "-2px",
                     left: "50%",
                     transform: "translateX(-50%)",
-                    width: "40px",
-                    height: "2px",
-                    background: "var(--red)",
-                    boxShadow: "0 0 10px var(--red-glow)",
+                    width: "32px",
+                    height: "4px",
+                    background: "var(--nb-red)",
+                    border: "2px solid #000",
+                    boxShadow: "2px 2px 0px rgba(0,0,0,0.1)"
                   }} />
                 )}
                 
                 <Icon 
-                  size={20} 
-                  strokeWidth={isActive ? 2.5 : 2}
-                  style={{ opacity: isActive ? 1 : 0.7 }}
+                  size={24} 
+                  strokeWidth={isActive ? 3 : 2}
+                  style={{ 
+                    transition: "all 0.2s ease",
+                    filter: isActive ? "drop-shadow(2px 2px 0px rgba(0,0,0,0.1))" : "none"
+                  }}
                 />
                 
-                <span style={{ 
-                  fontSize: "8px", 
-                  fontWeight: 800, 
-                  letterSpacing: "0.15em", 
+                <span className="font-headline" style={{ 
+                  fontSize: "9px", 
+                  fontWeight: 900, 
+                  letterSpacing: "0.05em", 
                   textTransform: "uppercase",
-                  fontFamily: "var(--font-display, 'Outfit', sans-serif)"
+                  opacity: isActive ? 1 : 0.6
                 }}>
                   {item.label}
                 </span>
@@ -115,5 +115,6 @@ export default function BottomNav() {
         })}
       </div>
     </nav>
+
   );
 }

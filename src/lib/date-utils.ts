@@ -31,6 +31,39 @@ export function getTodayDate(): string {
 }
 
 /**
+ * Retorna o horário atual (HH:mm) ajustado para o fuso de Brasília.
+ */
+export function getNowBR(): string {
+  const now = new Date();
+  const formatter = new Intl.DateTimeFormat('pt-BR', {
+    timeZone: 'America/Sao_Paulo',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  });
+  return formatter.format(now);
+}
+
+/**
+ * Verifica se um horário de início de aula já passou, considerando uma tolerância (grace period).
+ * 
+ * @param {string} timeStart - Horário da aula (HH:mm ou HH:mm:ss).
+ * @param {number} graceMinutes - Minutos permitidos após o início (default 15).
+ * @returns {boolean} True se a aula já começou e passou da tolerância.
+ */
+export function isTimePast(timeStart: string, graceMinutes: number = 15): boolean {
+  const now = getNowBR();
+  
+  const [nowH, nowM] = now.split(':').map(Number);
+  const [startH, startM] = timeStart.split(':').map(Number);
+
+  const nowTotal = nowH * 60 + nowM;
+  const startTotal = startH * 60 + startM;
+
+  return nowTotal > (startTotal + graceMinutes);
+}
+
+/**
  * Formata uma string de data (YYYY-MM-DD) para exibição amigável.
  * 
  * @param {string} dateStr - Data no formato ISO.

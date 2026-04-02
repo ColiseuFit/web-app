@@ -8,8 +8,7 @@ interface ProgressGaugeProps {
   label: string;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export const ProgressGauge: React.FC<ProgressGaugeProps> = ({ current, target, label }) => {
+export const ProgressGauge: React.FC<ProgressGaugeProps> = ({ current, target }) => {
   const radius = 75;
   const strokeWidth = 10;
   const normalizedRadius = radius - strokeWidth * 2;
@@ -18,29 +17,18 @@ export const ProgressGauge: React.FC<ProgressGaugeProps> = ({ current, target, l
   const strokeDashoffset = circumference - progress * circumference;
 
   return (
-    <div className="flex flex-col items-center justify-center relative overflow-hidden bg-transparent">
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "transparent" }}>
       
-      <div className="relative flex items-center justify-center">
+      <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
         {/* SVG Gauge */}
         <svg
           height={radius * 2}
           width={radius * 2}
-          className="transform -rotate-90 filter drop-shadow-[0_0_12px_rgba(227,27,35,0.2)]"
+          style={{ transform: "rotate(-90deg)" }}
         >
-          <defs>
-            <linearGradient id="gaugeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="var(--red)" />
-              <stop offset="100%" stopColor="#ff4d6d" />
-            </linearGradient>
-            <filter id="neonGlow">
-              <feGaussianBlur stdDeviation="2" result="blur" />
-              <feComposite in="SourceGraphic" in2="blur" operator="over" />
-            </filter>
-          </defs>
-
           {/* Background circle track */}
           <circle
-            stroke="var(--surface-highest)"
+            stroke="#f0f0f0"
             fill="transparent"
             strokeWidth={strokeWidth}
             r={normalizedRadius}
@@ -50,41 +38,48 @@ export const ProgressGauge: React.FC<ProgressGaugeProps> = ({ current, target, l
           
           {/* Progress circle arc */}
           <circle
-            stroke="url(#gaugeGradient)"
+            stroke={current >= target ? "#10b981" : "#E31B23"}
             fill="transparent"
             strokeWidth={strokeWidth}
             strokeDasharray={circumference + " " + circumference}
             style={{ 
               strokeDashoffset,
-              filter: progress > 0 ? "url(#neonGlow)" : "none" 
+              transition: "stroke-dashoffset 1s cubic-bezier(0.18, 0.89, 0.32, 1.28)"
             }}
-            strokeLinecap="round"
             r={normalizedRadius}
             cx={radius}
             cy={radius}
-            className="transition-all duration-1000 ease-in-out"
           />
         </svg>
 
         {/* Text overlay */}
         <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-          <span className="font-display" style={{ fontSize: "48px", fontWeight: 900, fontStyle: "italic", color: "white", lineHeight: 1 }}>
+          <span className="font-display" style={{ fontSize: "56px", fontWeight: 900, fontStyle: "italic", color: "#000", lineHeight: 0.8 }}>
             {current}
           </span>
-          <div style={{ height: "1px", width: "24px", backgroundColor: "var(--border-glow)", margin: "8px 0" }} />
-          <span style={{ fontSize: "10px", color: "var(--text-muted)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.4em" }}>
-            /{target}
+          <div style={{ height: "4px", width: "16px", backgroundColor: "#000", margin: "10px 0" }} />
+          <span style={{ fontSize: "12px", color: "rgba(0,0,0,0.5)", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.2em" }}>
+            ALVO {target}
           </span>
         </div>
       </div>
 
-      <div style={{ marginTop: "32px", textAlign: "center", position: "relative", zIndex: 10, padding: "0 16px" }}>
-        <h3 style={{ fontSize: "10px", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.38em", marginBottom: "4px" }}>
-          COMPROMISSO SEMANAL
-        </h3>
-        <p style={{ fontSize: "9px", color: "var(--text-muted)", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.15em", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
-          <span style={{ width: "6px", height: "6px", backgroundColor: "var(--red)", borderRadius: "50%" }} className="animate-pulse" />
-          {Math.round(progress * 100)}% CONCLUÍDO
+      <div style={{ marginTop: "24px", textAlign: "center", width: "100%" }}>
+        <p className="font-headline" style={{ 
+          fontSize: "10px", 
+          color: "#FFF", 
+          background: "#000",
+          fontWeight: 900, 
+          textTransform: "uppercase", 
+          letterSpacing: "0.15em", 
+          display: "inline-flex", 
+          alignItems: "center", 
+          justifyContent: "center", 
+          gap: "8px",
+          padding: "6px 16px",
+          border: "2px solid #000"
+        }}>
+          {Math.round(progress * 100)}% DA META CONCLUÍDA
         </p>
       </div>
     </div>

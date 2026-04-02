@@ -1,70 +1,63 @@
 # 🏛️ COLISEU CLUBE V2
 
-Bem-vindo à "Monolito de Ferro", a infraestrutura digital de elite do Coliseu. Este repositório centraliza o dashboard do aluno, gestão administrativa e as fundações de dados da plataforma.
+Bem-vindo à "Monolito de Ferro", a infraestrutura digital de elite do Coliseu. Este repositório centraliza o dashboard do aluno, o Portal do Coach e as fundações de dados da plataforma.
 
 ---
 
 ## 📚 ÍNDICE DE DOCUMENTAÇÃO E PLAYBOOKS
 
-A documentação segue o protocolo "Legacy Proof", garantindo manutenibilidade:
+A documentação segue o protocolo "Legacy Proof", garantindo manutenibilidade e excelência operacional:
 
-### 🏛️ Módulo Admin
-- [PLAYBOOK: Admin Hub (Painel Geral)](docs/PLAYBOOKS/ADMIN_HUB.md) - KPIs, matrículas recentes e fluxo de acesso.
-- [PLAYBOOK: WOD Engine (Builder de Treinos)](docs/PLAYBOOKS/ADMIN_WOD_ENGINE.md) - Builder split-screen, Benchmark Library e sincronia com timeline do aluno.
-- [PLAYBOOK: Gestão de Alunos](docs/PLAYBOOKS/ADMIN_STUDENT_MANAGEMENT.md) - Matrícula, RLS Bypass, edição em Drawer e segurança de exclusão.
-- [PLAYBOOK: Gestão de Turmas](docs/PLAYBOOKS/CLASSES_MANAGEMENT.md) - Grade semanal, Matrículas fixas e Monitoramento Live.
-- [PLAYBOOK: Fechamento de Aula](docs/PLAYBOOKS/FECHAMENTO_AULA.md) - Fluxo de presenças e atribuição de Pontos (Gamificação).
-- [PLAYBOOK: Sistema de Pontuação](docs/PLAYBOOKS/PONTUACAO.md) - Configuração de gatilhos, regras de pontos e motor SSoT.
+### 🏛️ Mapeamento Operacional
+- [PLAYBOOK: Admin Hub (Painel Geral)](docs/PLAYBOOKS/ADMIN_HUB.md) - Controle de KPIs, matrículas e visão macro do box.
+- [PLAYBOOK: Portal do Coach (Live Operations)](docs/PLAYBOOKS/COACH_PORTAL.md) - **[ESTADO DA ARTE]** Gestão em tempo real, validação de presenças e busca rápida de alunos.
+- [PLAYBOOK: App do Aluno (Experience)](docs/PLAYBOOKS/STUDENT_APP.md) - **[ATHLETIC NEO-BRUTALISM]** Rebranding total, Streaks e Engine de adaptação de WOD.
+- [PLAYBOOK: Fechamento de Aula](docs/PLAYBOOKS/FECHAMENTO_AULA.md) - Procedimento SSoT para validação de resultados e entrega de pontos.
 
-### 🏃 Módulo Aluno
-- [PLAYBOOK: Dashboard do Aluno](docs/PLAYBOOKS/STUDENT_DASHBOARD.md) - Guia operacional do App do Aluno.
-- [PLAYBOOK: Motor de Gamificação](docs/PLAYBOOKS/GAMIFICATION_ENGINE.md) - Regras de Pontuação, Níveis (L1-L5) e Validação.
-- [PLAYBOOK: Avaliações Físicas](docs/PLAYBOOKS/AVALIACOES_FISICAS.md) - SOP de Biometria, Fotos e Radar de Saúde.
-- [PLAYBOOK: Autenticação & Login](docs/PLAYBOOKS/AUTH-LOGIN.md) - Fluxo de acesso e operacional do carrossel.
-- [PLAYBOOK: Estratégia de Ícones](docs/PLAYBOOKS/UI_ICON_STRATEGY.md) - Padrão de conformidade Lucide-React (Zero Font symbols).
-- [PLAYBOOK: Identidade do Atleta](docs/PLAYBOOKS/USER_IDENTITY_SYSTEM.md) - Lógica de Nomes e Dual Badge.
+### ⚙️ Engenharia e Regras
+- [PLAYBOOK: WOD Engine](docs/PLAYBOOKS/ADMIN_WOD_ENGINE.md) - **[NOVO]** Detalhamento técnico do builder e lógica de escalonamento (L1-L5).
+- [PLAYBOOK: Gestão de Alunos](docs/PLAYBOOKS/ADMIN_STUDENT_MANAGEMENT.md) - CRUD avançado e Drawer de edição com validação Zod.
+- [PLAYBOOK: Sistema de Pontuação](docs/PLAYBOOKS/PONTUACAO.md) - Economia de pontos (Points), ranking e Score Engine.
+- [PLAYBOOK: Coliseu Levels](docs/PLAYBOOKS/coliseu-levels.md) - Regras de progressão e SSoT dos níveis atléticos.
 
 ### 📐 Arquitetura & Design
-- [GUIA: Iron Monolith Architecture](docs/PLAYBOOKS/IRON_MONOLITH_GUIDE.md) - Filosofia visual, tokens CSS e estética brutalista.
-- [ARCHITECTURE: Iron Engine](docs/ARCHITECTURE/ACTIVITY_ENGINE.md) - Engenharia de dados, gamificação (Pontos/PRs) e arquitetura Server/Client.
-- [SQL SCHEMA: Contratos de Dados](docs/schema.sql) - Definição técnica das tabelas e RLS.
+- [GUIA: Iron Monolith Architecture](docs/PLAYBOOKS/IRON_MONOLITH_GUIDE.md) - **[FILOSOFIA 2.0]** Estética Brutalista Light & Dark, tokens CSS e paridade visual.
+- [ARCHITECTURE: Iron Engine](docs/ARCHITECTURE/ACTIVITY_ENGINE.md) - Engenharia de dados e arquitetura de componentes Server/Client.
+- [SQL SCHEMA: Contratos de Dados](docs/schema.sql) - Definição de Tabelas, RLS e Policies de segurança.
 
 ## 🛠️ ARQUITETURA DO SISTEMA
 
-O projeto segue um padrão de engenharia focado em performance, isolamento de dados e interatividade em tempo real:
+O projeto utiliza um stack moderno focado em performance extrema e isolamento de dados:
 
 ```mermaid
 graph TD
     A[Next.js App Router] -->|Server Actions + Zod| B[Supabase Auth]
-    A -->|Promise.all / Parallel Queries| C[Supabase Postgres]
-    C -->|RLS Enforced| D[Profiles & PRs]
-    C -->|RLS Enforced| E[WODs & Benchmarks]
-    C -->|RLS Enforced| F[Check-ins & Goals]
+    A -->|Parallel Data Loading| C[Supabase Postgres]
+    C -->|RLS Row Isolation| D[Profiles & Score]
+    C -->|RLS Row Isolation| E[WODs & Benchmarks]
+    C -->|RLS Row Isolation| F[Check-ins & Goals]
     A -->|Bucket Storage| G[Athlete Photos]
-    H[Coach: WOD Builder] -->|upsertWod Action| E
-    E -->|Inner Join + Revalidate| I[Aluno: Activity Timeline]
-    K[Aluno: Gamificação] -->|Pontos/Check-in| D
-    J[Admin: Criação/Gestão de Aluno] -->|RLS Bypass: Service Role| B
-    J -->|RLS Bypass: Service Role| D
-    K[Aluno: Autogestão de Perfil/Senha] -->|RLS Enforced| B
-    K -->|RLS Enforced| D
+    H[Coach: Live Portal] -->|manualCheckin Action| F
+    H -->|closeClass Action| F
+    F -->|Validated_at Marker| I[Student App: Results Unlocked]
+    K[Student: Neo-Brutalist] -->|WOD Scalability Regex| E
 ```
 
-### Princípios Inegociáveis (A Doutrina do Código):
-1. **Isolamento de Tenant (RLS):** Garantido por políticas granulares no banco de dados. Nunca cruzar dados sem bypass explícito (service_role).
-2. **Design Brutalista (Iron Monolith):** Performance instantânea e zero carregamentos em branco (Skeleton Screens). Estética de alta performance, alto contraste e recortes geométricos (clip-path).
-3. **Segurança de Mutação:** Uso de Zod para todo payload processado por Server Actions.
-4. **Resiliência de Estado:** Uso estratégico de Optimistic UI para feedbacks imediatos (Ex: seleção estratégica de treinos semanais).
+### Princípios de Engenharia:
+1. **Isolamento de Dados (RLS):** Segurança inegociável. Dados de alunos nunca se cruzam sem autorização explícita.
+2. **Estética Funcional (Neo-Brutalism):** Design de alto contraste (Nike/Adidas style), focado em ação e clareza visual.
+3. **SSoT (Single Source of Truth):** Toda aula ou resultado depende do marcador `validated_at`. Nada é deletado, apenas invalidado ou inacessível.
+4. **Resiliência UTC-3:** Operações de tempo centralizadas para garantir paridade entre fuso do servidor e do box.
 
 ---
 
 ## 🚀 ESTRUTURA DE DIRETÓRIOS
 
-- src/app/: Camada de Roteamento Next.js (Dashboard do Aluno, Perfil, Autenticação).
-- src/components/: Componentes modulares brutalistas, divididos por nicho (Progresso, Atleta, Layout).
-- docs/: Motor de conhecimento. Contém os SOPs, Playbooks arquiteturais e esquemas do sistema.
-- public/levels/: Ativos de marca oficiais para a subida de níveis Coliseu.
+- `src/app/(student)`: Experiência mobile do aluno (Fundo Branco/Neo-Brutalism).
+- `src/app/(coach)`: Interface operacional para coaches no tatame.
+- `src/app/(admin)`: Painel de gestão estratégica e financeira.
+- `docs/`: Sistema de conhecimento distribuído (Playbooks e SOPs).
 
 ---
-**Versão do Sistema:** 2.4.0 (SSoT Scoring Engine & Terminology Finalization)  
-**Equipe:** Antigravity AI & Coliseu Engineering
+**Versão do Sistema:** 2.5.0 (Ecosystem Documentation Audit)  
+**Equipe:** Antigravity AI & Coliseu Engineering Team

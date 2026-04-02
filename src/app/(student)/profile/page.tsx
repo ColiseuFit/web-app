@@ -133,7 +133,7 @@ export default async function ProfilePage() {
   const level = getLevelInfo(profile?.level || "iniciante", dynamicLevels);
 
   return (
-    <div style={{ backgroundColor: "var(--bg)", color: "var(--text)", minHeight: "100vh", paddingBottom: "100px" }}>
+    <div style={{ backgroundColor: "#FFF", color: "#000", minHeight: "100vh", paddingBottom: "120px" }}>
       <DashboardStyles />
       <StudentHeader />
 
@@ -154,49 +154,70 @@ export default async function ProfilePage() {
           </div>
 
           {/* NOVO BLOCO DE IDENTIDADE (CENTRALIZADO & IMPOSTO) */}
-          <div style={{ textAlign: "center", marginTop: "32px", width: "100%" }}>
-            <h1 style={{ 
-              fontSize: "clamp(32px, 10vw, 42px)", 
-              fontWeight: 900, 
-              fontFamily: "var(--font-display)", 
-              lineHeight: 0.9, 
+          <div style={{ textAlign: "center", marginTop: "40px", width: "100%", position: "relative" }}>
+            <h1 className="font-display" style={{ 
+              fontSize: "clamp(42px, 12vw, 52px)", 
+              fontWeight: 950, 
+              lineHeight: 0.8, 
               textTransform: "uppercase",
-              letterSpacing: "-0.02em",
-              color: "var(--text)"
+              letterSpacing: "-0.04em",
+              color: "#000",
+              textShadow: `4px 4px 0px ${level.color}20`
             }}>
               {profile?.first_name || profile?.display_name?.split(' ')[0] || "ATLETA"}
             </h1>
             
-            <p style={{ 
+            <p className="font-headline" style={{ 
               fontSize: "14px", 
-              fontWeight: 800, 
-              color: "var(--text-muted)", 
+              fontWeight: 900, 
+              color: "#000", 
               textTransform: "uppercase", 
-              letterSpacing: "0.4em", 
-              marginTop: "8px",
+              letterSpacing: "0.3em", 
+              marginTop: "12px",
               opacity: 0.8
             }}>
-              {profile?.last_name || profile?.display_name?.split(' ').slice(1).join(' ') || ""}
+              {profile?.last_name || profile?.display_name?.split(' ').slice(1).join(' ') || "COLISEU CLUB"}
             </p>
 
             <div style={{ 
-              marginTop: "16px",
-              padding: "4px 12px",
-              background: "var(--surface-lowest)",
+              marginTop: "24px",
+              padding: "8px 20px",
+              background: "#000",
               display: "inline-block",
-              border: "1px solid var(--border-glow)",
-              fontSize: "10px", 
-              fontWeight: 700, 
-              color: "var(--text-muted)", 
+              border: "2px solid #000",
+              fontSize: "11px", 
+              fontWeight: 900, 
+              color: "#FFF", 
               letterSpacing: "0.2em", 
-              textTransform: "uppercase" 
+              textTransform: "uppercase",
+              boxShadow: `4px 4px 0px ${level.color}`
             }}>
-              #{(profile?.member_number || "000").toString().padStart(3, '0')} · COL. CLUBE
+              MEMBER ID: #{(profile?.member_number || "000").toString().padStart(3, '0')}
             </div>
             
-            <div style={{ marginTop: "24px" }}>
-              <Link href="/profile/edit" style={{ fontSize: "9px", fontWeight: 700, color: "var(--text-muted)", letterSpacing: "0.15em", textDecoration: "none", borderBottom: "1px dotted var(--text-muted)", paddingBottom: "2px", opacity: 0.6 }}>
+            <div style={{ marginTop: "32px", display: "flex", justifyContent: "center", gap: "24px" }}>
+              <Link href="/profile/edit" style={{ 
+                fontSize: "11px", 
+                fontWeight: 900, 
+                color: "#000", 
+                letterSpacing: "0.1em", 
+                textDecoration: "none", 
+                borderBottom: "2px solid #000", 
+                paddingBottom: "2px",
+                opacity: 0.6
+              }}>
                 EDITAR PERFIL
+              </Link>
+              <Link href="/progresso" style={{ 
+                fontSize: "11px", 
+                fontWeight: 900, 
+                color: level.color, 
+                letterSpacing: "0.1em", 
+                textDecoration: "none", 
+                borderBottom: `2px solid ${level.color}`, 
+                paddingBottom: "2px"
+              }}>
+                MINHA EVOLUÇÃO
               </Link>
             </div>
           </div>
@@ -206,81 +227,102 @@ export default async function ProfilePage() {
         <section style={{ 
           display: "grid", 
           gridTemplateColumns: "1fr 1fr 1fr", 
-          gap: "1px", 
-          background: "var(--border-glow)",
+          gap: "8px", 
           marginBottom: "48px",
         }}>
           {[
-            { label: "PONTOS TOTAIS", value: stats.points_actual.toLocaleString("pt-BR"), color: "var(--red)" },
-            { label: "TREINOS", value: stats.trainings_count.toString(), color: "var(--text)" },
-            { label: "DAYS STREAK", value: stats.current_streak.toString(), color: "var(--text)" },
+            { label: "PONTOS TOTAIS", value: stats.points_actual.toLocaleString("pt-BR"), color: "#E31B23" },
+            { label: "TREINOS", value: stats.trainings_count.toString(), color: "#000" },
+            { label: "DIAS SEGUIDOS", value: stats.current_streak.toString(), color: "#000" },
           ].map((stat, i) => (
-            <div key={i} style={{ background: "var(--surface-lowest)", padding: "20px 10px", textAlign: "center" }}>
+            <div key={i} style={{ 
+              background: "#FFF", 
+              padding: "20px 10px", 
+              textAlign: "center",
+              border: "2px solid #000",
+              boxShadow: "2px 2px 0px #000"
+            }}>
               <div style={{ 
                 fontFamily: "var(--font-display, 'Outfit', sans-serif)", 
-                fontSize: "24px", 
-                fontWeight: 900, 
+                fontSize: "28px", 
+                fontWeight: 950, 
                 color: stat.color,
                 marginBottom: "4px",
+                lineHeight: 1
               }}>{stat.value}</div>
-              <div style={{ fontSize: "8px", fontWeight: 700, color: "var(--text-muted)", letterSpacing: "0.1em" }}>{stat.label}</div>
+              <div style={{ fontSize: "9px", fontWeight: 900, color: "#000", letterSpacing: "0.1em", opacity: 0.7 }}>{stat.label}</div>
             </div>
           ))}
         </section>
 
         {/* ── ÚLTIMA AVALIAÇÃO ── */}
         <section style={{ marginBottom: "48px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "24px" }}>
-            <h2 className="font-display" style={{ fontSize: "16px", letterSpacing: "0.05em" }}>ÚLTIMA AVALIAÇÃO</h2>
-            <div style={{ flex: 1, height: "1px", background: "linear-gradient(90deg, var(--red), transparent)" }} />
+          <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "20px" }}>
+            <h2 className="font-display" style={{ fontSize: "18px", letterSpacing: "0.05em", fontWeight: 900 }}>ÚLTIMA AVALIAÇÃO</h2>
+            <div style={{ flex: 1, height: "2px", background: "#000" }} />
             <Link href="/profile/evaluations" style={{ 
-              fontSize: "9px", 
-              fontWeight: 800, 
-              color: "var(--text-muted)", 
+              fontSize: "10px", 
+              fontWeight: 900, 
+              color: "#000", 
               textDecoration: "none",
               letterSpacing: "0.1em",
-              border: "1px solid var(--border-glow)",
-              padding: "4px 8px"
+              border: "2px solid #000",
+              padding: "6px 12px",
+              background: "#FFF",
+              boxShadow: "2px 2px 0px #000"
             }}>VER TUDO</Link>
           </div>
 
           {latestEvaluation ? (
             <div style={{ 
-              background: "var(--surface-lowest)", 
+              background: "#FFF", 
               padding: "24px", 
-              border: "1px solid var(--border-glow)",
+              border: "2px solid #000",
+              boxShadow: "4px 4px 0px #F0F0F0",
               display: "grid",
-              gridTemplateColumns: "repeat(4, 1fr)",
-              gap: "10px"
+              gridTemplateColumns: "repeat(2, 1fr)",
+              gap: "16px"
             }}>
+              <div style={{ borderBottom: "1px solid #EEE", paddingBottom: "12px" }}>
+                <div style={{ fontSize: "9px", fontWeight: 900, color: "#000", marginBottom: "8px", letterSpacing: "0.1em", opacity: 0.5 }}>PESO ATUAL</div>
+                <div style={{ fontFamily: "var(--font-display)", fontSize: "28px", fontWeight: 950 }}>{latestEvaluation.weight} <span style={{ fontSize: "14px", fontWeight: 800, color: "#999" }}>KG</span></div>
+              </div>
+              <div style={{ borderBottom: "1px solid #EEE", paddingBottom: "12px" }}>
+                <div style={{ fontSize: "9px", fontWeight: 900, color: "#000", marginBottom: "8px", letterSpacing: "0.1em", opacity: 0.5 }}>% GORDURA</div>
+                <div style={{ fontFamily: "var(--font-display)", fontSize: "28px", fontWeight: 950, color: "#E31B23" }}>{latestEvaluation.body_fat_percentage}%</div>
+              </div>
               <div>
-                <div style={{ fontSize: "8px", fontWeight: 700, color: "var(--text-muted)", marginBottom: "8px", letterSpacing: "0.1em" }}>PESO ATUAL</div>
-                <div style={{ fontFamily: "var(--font-display, 'Outfit', sans-serif)", fontSize: "24px", fontWeight: 900 }}>{latestEvaluation.weight} <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>KG</span></div>
+                <div style={{ fontSize: "9px", fontWeight: 900, color: "#000", marginBottom: "8px", letterSpacing: "0.1em", opacity: 0.5 }}>MASSA MAGRA</div>
+                <div style={{ fontFamily: "var(--font-display)", fontSize: "28px", fontWeight: 950 }}>{leanMass || "--"} <span style={{ fontSize: "14px", fontWeight: 800, color: "#999" }}>KG</span></div>
               </div>
-              <div style={{ borderLeft: "1px solid var(--border-glow)", paddingLeft: "20px" }}>
-                <div style={{ fontSize: "8px", fontWeight: 700, color: "var(--text-muted)", marginBottom: "8px", letterSpacing: "0.1em" }}>% GORDURA</div>
-                <div style={{ fontFamily: "var(--font-display, 'Outfit', sans-serif)", fontSize: "24px", fontWeight: 900, color: "var(--red)" }}>{latestEvaluation.body_fat_percentage}%</div>
-              </div>
-              <div style={{ borderLeft: "1px solid var(--border-glow)", paddingLeft: "20px" }}>
-                <div style={{ fontSize: "8px", fontWeight: 700, color: "var(--text-muted)", marginBottom: "8px", letterSpacing: "0.1em" }}>MASSA MAGRA</div>
-                <div style={{ fontFamily: "var(--font-display, 'Outfit', sans-serif)", fontSize: "24px", fontWeight: 900 }}>{leanMass || "--"} <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>KG</span></div>
-              </div>
-              <div style={{ borderLeft: "1px solid var(--border-glow)", paddingLeft: "20px" }}>
-                <div style={{ fontSize: "8px", fontWeight: 700, color: "var(--text-muted)", marginBottom: "8px", letterSpacing: "0.1em" }}>WHR (C/Q)</div>
-                <div style={{ fontFamily: "var(--font-display, 'Outfit', sans-serif)", fontSize: "24px", fontWeight: 900, color: (latestEvaluation.waist_hip_ratio || 0) > 0.9 ? "var(--red)" : "inherit" }}>
+              <div>
+                <div style={{ fontSize: "9px", fontWeight: 900, color: "#000", marginBottom: "8px", letterSpacing: "0.1em", opacity: 0.5 }}>WHR (C/Q)</div>
+                <div style={{ fontFamily: "var(--font-display)", fontSize: "28px", fontWeight: 950, color: (latestEvaluation.waist_hip_ratio || 0) > 0.9 ? "#E31B23" : "inherit" }}>
                   {latestEvaluation.waist_hip_ratio || "--"}
                 </div>
               </div>
             </div>
           ) : (
             <div style={{ 
-              background: "var(--surface-lowest)", 
-              padding: "32px", 
+              background: "#FFF", 
+              padding: "40px 24px", 
               textAlign: "center",
-              border: "1px dashed var(--border-glow)",
+              border: "2px dashed #000",
             }}>
-              <p style={{ fontSize: "12px", color: "var(--text-muted)", marginBottom: "16px" }}>NENHUMA AVALIAÇÃO REGISTRADA</p>
-              <button className="btn-icon" style={{ margin: "0 auto", borderColor: "var(--red)", color: "var(--red)" }}>
+              <p style={{ fontSize: "13px", fontWeight: 800, color: "#000", marginBottom: "20px", letterSpacing: "0.02em" }}>NENHUMA AVALIAÇÃO REGISTRADA</p>
+              <button 
+                style={{ 
+                  margin: "0 auto", 
+                  background: "#000", 
+                  color: "#FFF", 
+                  border: "none", 
+                  padding: "12px 24px", 
+                  fontSize: "10px", 
+                  fontWeight: 900,
+                  letterSpacing: "0.1em",
+                  cursor: "pointer"
+                }}
+              >
                 SOLICITAR AVALIAÇÃO
               </button>
             </div>
@@ -289,52 +331,52 @@ export default async function ProfilePage() {
 
         {/* ── RECORDES PESSOAIS (PRs) ── */}
         <section style={{ marginBottom: "48px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "24px" }}>
-            <h2 className="font-display" style={{ fontSize: "16px", letterSpacing: "0.05em" }}>RECORDES PESSOAIS</h2>
-            <div style={{ flex: 1, height: "1px", background: "linear-gradient(90deg, var(--red), transparent)" }} />
+          <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "20px" }}>
+            <h2 className="font-display" style={{ fontSize: "18px", letterSpacing: "0.05em", fontWeight: 900 }}>RECORDES PESSOAIS</h2>
+            <div style={{ flex: 1, height: "2px", background: "#000" }} />
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
             {prs && prs.length > 0 ? (
               prs.map((pr, i) => (
                 <div key={i} style={{ 
-                  background: "var(--surface-lowest)", 
+                  background: "#FFF", 
                   padding: "20px", 
-                  borderTop: "1px solid var(--border-glow)",
+                  border: "2px solid #000",
+                  boxShadow: "2px 2px 0px #000",
                   position: "relative",
                   overflow: "hidden",
                 }}>
-                  <div style={{ fontSize: "9px", fontWeight: 700, color: "var(--text-muted)", marginBottom: "6px", letterSpacing: "0.05em", textTransform: "uppercase" }}>{pr.movement_name}</div>
-                  <div style={{ fontFamily: "var(--font-display, 'Outfit', sans-serif)", fontSize: "20px", fontWeight: 900 }}>{pr.value} <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>{pr.unit}</span></div>
-                  <div style={{ fontFamily: "var(--font-display, 'Outfit', sans-serif)", fontSize: "20px", fontWeight: 900 }}>{pr.value} <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>{pr.unit}</span></div>
+                  <div style={{ fontSize: "10px", fontWeight: 900, color: "#000", marginBottom: "8px", letterSpacing: "0.05em", textTransform: "uppercase", opacity: 0.5 }}>{pr.movement_name}</div>
+                  <div style={{ fontFamily: "var(--font-display)", fontSize: "24px", fontWeight: 950 }}>{pr.value} <span style={{ fontSize: "12px", fontWeight: 800, color: "#999" }}>{pr.unit}</span></div>
                   <div style={{ 
                     position: "absolute", 
-                    right: "10px", 
-                    bottom: "10px", 
+                    right: "-5px", 
+                    bottom: "-5px", 
                     opacity: 0.1, 
-                    color: "var(--red)" 
+                    color: "#000" 
                   }}>
-                    <TrendingUp size={16} />
+                    <TrendingUp size={32} />
                   </div>
                 </div>
               ))
             ) : (
-              <div style={{ gridColumn: "span 2", padding: "24px", textAlign: "center", border: "1px dashed var(--border-glow)", fontSize: "12px", color: "var(--text-muted)" }}>
+              <div style={{ gridColumn: "span 2", padding: "32px", textAlign: "center", border: "2px dashed #EEE", fontSize: "12px", fontWeight: 800, color: "#999" }}>
                 NENHUM RECORDE REGISTRADO
               </div>
             )}
           </div>
         </section>
 
-        {/* ── MURAL DE CONQUISTAS (ACHIEVEMENTS & BENCHMARKS) ── */}
-        <section style={{ marginBottom: "40px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "24px" }}>
-            <h2 className="font-display" style={{ fontSize: "16px", letterSpacing: "0.05em" }}>MURAL DE CONQUISTAS</h2>
-            <div style={{ flex: 1, height: "1px", background: "linear-gradient(90deg, var(--volt), transparent)" }} />
+        {/* ── MURAL DE CONQUISTAS ── */}
+        <section style={{ marginBottom: "0px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "20px" }}>
+            <h2 className="font-display" style={{ fontSize: "18px", letterSpacing: "0.05em", fontWeight: 900 }}>CONQUISTAS</h2>
+            <div style={{ flex: 1, height: "2px", background: "#000" }} />
           </div>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-            {/* Seção de Benchmarks (Shields) */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+            {/* Seção de Benchmarks (Shields Brutalistas) */}
             <div style={{ 
               display: "grid", 
               gridTemplateColumns: "repeat(3, 1fr)", 
@@ -342,63 +384,40 @@ export default async function ProfilePage() {
               marginBottom: "12px" 
             }}>
               {[
-                { id: "du", title: "DOUBLE UNDERS", icon: "bolt" },
-                { id: "pu", title: "PULL UPS", icon: "shield" },
-                { id: "hspu", title: "HSPU", icon: "diamond" },
+                { id: "du", title: "DOUBLE UNDERS", icon: Zap },
+                { id: "pu", title: "PULL UPS", icon: Shield },
+                { id: "hspu", title: "HSPU", icon: Diamond },
               ].map((bm_meta) => {
                 const bmInstance = benchmarks?.find(b => b.benchmark_id === bm_meta.id);
                 const completed = !!bmInstance;
                 
                 return (
                   <div key={bm_meta.id} style={{
-                    background: "var(--surface-lowest)",
-                    border: "1px solid var(--border-glow)",
+                    background: completed ? "#000" : "#FFF",
+                    border: "2px solid #000",
                     padding: "20px 10px",
                     display: "flex",
                     flexDirection: "column",
                     alignItems: "center",
                     justifyContent: "center",
                     gap: "12px",
-                    borderRadius: "4px",
-                    opacity: completed ? 1 : 0.2,
-                    filter: completed ? "none" : "grayscale(100%)",
-                    position: "relative"
+                    boxShadow: completed ? "none" : "3px 3px 0px #F0F0F0",
+                    opacity: completed ? 1 : 0.3,
+                    transition: "all 0.2s ease"
                   }}>
-                    <div style={{
-                      width: "42px",
-                      height: "48px",
-                      clipPath: "polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)",
-                      background: completed ? "rgba(225, 255, 0, 0.1)" : "transparent",
-                      border: `1px solid ${completed ? "var(--volt)" : "var(--text-dim)"}`,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}>
-                      <div style={{ 
-                        color: completed ? "var(--volt)" : "var(--text-dim)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center"
-                      }}>
-                        {bm_meta.id === "du" && <Zap size={20} fill={completed ? "var(--volt)" : "none"} />}
-                        {bm_meta.id === "pu" && <Shield size={20} fill={completed ? "var(--volt)" : "none"} />}
-                        {bm_meta.id === "hspu" && <Diamond size={20} fill={completed ? "var(--volt)" : "none"} />}
-                      </div>
+                    <div style={{ color: completed ? "#FFF" : "#000" }}>
+                      <bm_meta.icon size={24} strokeWidth={completed ? 2 : 1} />
                     </div>
-                    <div style={{ fontSize: "8px", fontWeight: 900, color: "var(--text)", textAlign: "center", letterSpacing: "0.1em" }}>
+                    <div style={{ 
+                      fontSize: "8px", 
+                      fontWeight: 900, 
+                      color: completed ? "#FFF" : "#000", 
+                      textAlign: "center", 
+                      letterSpacing: "0.1em",
+                      textTransform: "uppercase" 
+                    }}>
                       {bm_meta.title}
                     </div>
-                    {completed && (
-                      <div style={{
-                        position: "absolute",
-                        width: "30px",
-                        height: "30px",
-                        background: "var(--volt)",
-                        filter: "blur(15px)",
-                        opacity: 0.2,
-                        zIndex: -1
-                      }} />
-                    )}
                   </div>
                 );
               })}
@@ -406,59 +425,56 @@ export default async function ProfilePage() {
 
             {/* Conquistas Gerais */}
             {[
-              { icon: Star, color: "var(--red)", label: "FUNDADOR", desc: "Membro Fundador do Coliseu Clube" },
-              { icon: Award, color: "#FFD700", label: "PIONEIRO", desc: "Primeira turma de treinamento Coliseu" },
-              { icon: Medal, color: "var(--volt)", label: "TOP 10% PONTOS", desc: "Entre os atletas mais ativos do mês" },
+              { icon: Star, color: "#E31B23", label: "FUNDADOR", desc: "Membro Fundador do Coliseu Clube" },
+              { icon: Award, color: "#000", label: "PIONEIRO", desc: "Primeira turma Coliseu V2" },
+              { icon: Medal, color: "#000", label: "TOP 10% ATIVOS", desc: "Entre as lendas do Coliseu" },
             ].map((achievement, i) => (
               <div key={i} style={{ 
-                background: "var(--surface-lowest)", 
-                padding: "16px 20px",
-                border: "1px solid var(--border-glow)",
+                background: "#FFF", 
+                padding: "20px",
+                border: "2px solid #000",
                 display: "flex",
                 alignItems: "center",
                 gap: "20px",
-                borderRadius: "4px"
+                position: "relative",
+                boxShadow: "3px 3px 0px #000"
               }}>
                 <div style={{
-                  width: "40px",
-                  height: "40px",
-                  borderRadius: "50%",
-                  background: "var(--bg)",
-                  border: `1px solid ${achievement.color}`,
+                  width: "48px",
+                  height: "48px",
+                  background: "#000",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                   flexShrink: 0,
-                  boxShadow: `0 0 10px ${achievement.color}20`
                 }}>
-                  <div style={{ color: achievement.color, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <achievement.icon size={20} />
+                  <div style={{ color: achievement.color === "#000" ? "#FFF" : achievement.color, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <achievement.icon size={24} strokeWidth={2.5} />
                   </div>
                 </div>
                 
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: "12px", fontWeight: 800, color: "white", textTransform: "uppercase", marginBottom: "2px" }}>{achievement.label}</div>
-                  <div style={{ fontSize: "10px", color: "var(--text-dim)" }}>{achievement.desc}</div>
+                  <div style={{ fontSize: "14px", fontWeight: 950, color: "#000", textTransform: "uppercase", marginBottom: "2px", lineHeight: 1 }}>{achievement.label}</div>
+                  <div style={{ fontSize: "10px", fontWeight: 800, color: "#000", opacity: 0.5 }}>{achievement.desc}</div>
                 </div>
               </div>
             ))}
           </div>
           
           <button 
-            className="btn-outline-hover"
             style={{ 
               width: "100%", 
-              background: "transparent", 
-              border: "1px solid var(--border-glow)", 
-              padding: "16px", 
-              marginTop: "16px", 
-              fontSize: "9px", 
-              fontWeight: 800, 
+              background: "#FFF", 
+              border: "2px solid #000", 
+              padding: "18px", 
+              marginTop: "24px", 
+              fontSize: "11px", 
+              fontWeight: 950, 
               letterSpacing: "0.15em",
-              color: "var(--text-muted)",
+              color: "#000",
               textTransform: "uppercase",
               cursor: "pointer",
-              borderRadius: "4px"
+              boxShadow: "4px 4px 0px #000"
             }}
           >
             VER TODAS AS CONQUISTAS

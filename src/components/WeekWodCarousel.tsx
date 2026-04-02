@@ -39,20 +39,21 @@ export default function WeekWodCarousel({ wods, selectedDate }: WeekWodCarouselP
   };
 
   return (
-    <div style={{ position: "relative", margin: "0 0 16px" }}>
+    <div style={{ position: "relative", margin: "0 0 24px" }}>
       {/* Seta Esquerda */}
       <button
         onClick={() => scrollBy("left")}
         style={{
           position: "absolute", left: "8px", top: "50%", transform: "translateY(-50%)",
-          zIndex: 10, background: "rgba(14,14,14,0.9)", border: "1px solid var(--border-glow)",
-          color: "var(--text-dim)", width: "28px", height: "28px",
+          zIndex: 10, background: "#000", border: "2px solid #000",
+          color: "#FFF", width: "32px", height: "32px",
           display: "flex", alignItems: "center", justifyContent: "center",
-          cursor: "pointer", backdropFilter: "blur(8px)", borderRadius: "4px",
-          boxShadow: "0 4px 12px rgba(0,0,0,0.5)"
+          cursor: "pointer", borderRadius: "0px",
+          boxShadow: "4px 4px 0px #000"
         }}
+        className="nb-button-tap"
       >
-        <ChevronLeft size={18} />
+        <ChevronLeft size={20} />
       </button>
 
       {/* Seta Direita */}
@@ -60,23 +61,26 @@ export default function WeekWodCarousel({ wods, selectedDate }: WeekWodCarouselP
         onClick={() => scrollBy("right")}
         style={{
           position: "absolute", right: "8px", top: "50%", transform: "translateY(-50%)",
-          zIndex: 10, background: "rgba(14,14,14,0.9)", border: "1px solid var(--border-glow)",
-          color: "var(--text-dim)", width: "28px", height: "28px",
+          zIndex: 10, background: "#000", border: "2px solid #000",
+          color: "#FFF", width: "32px", height: "32px",
           display: "flex", alignItems: "center", justifyContent: "center",
-          cursor: "pointer", backdropFilter: "blur(8px)", borderRadius: "4px",
-          boxShadow: "0 4px 12px rgba(0,0,0,0.5)"
+          cursor: "pointer", borderRadius: "0px",
+          boxShadow: "4px 4px 0px #000"
         }}
+        className="nb-button-tap"
       >
-        <ChevronRight size={18} />
+        <ChevronRight size={20} />
       </button>
 
       {/* Lista Rolável */}
       <div
         ref={scrollRef}
         style={{
-          display: "flex", overflowX: "auto", gap: "10px",
-          margin: "0 44px", padding: "12px 0", scrollbarWidth: "none",
+          display: "flex", overflowX: "auto", gap: "12px",
+          margin: "0 48px", padding: "16px 0", scrollbarWidth: "none",
+          msOverflowStyle: "none",
         }}
+        className="hide-scrollbar"
       >
         {wods.map((wod) => {
           const isSelected = wod.date === selectedDate;
@@ -93,31 +97,66 @@ export default function WeekWodCarousel({ wods, selectedDate }: WeekWodCarouselP
               style={{
                 textDecoration: "none", flexShrink: 0,
                 display: "flex", flexDirection: "column", alignItems: "center",
-                padding: "12px 0", width: "84px", height: "96px",
+                padding: "14px 0", width: "80px", height: "100px",
                 justifyContent: "center",
-                background: isSelected ? "var(--red)" : wod.isToday ? "rgba(227,27,35,0.08)" : "var(--surface-lowest)",
-                border: isSelected ? "1px solid var(--red)" : wod.isToday ? "1px dashed rgba(227,27,35,0.3)" : "1px solid var(--border-glow)",
-                color: isSelected ? "#fff" : "var(--text-muted)",
-                transition: "all 0.15s ease",
+                background: isSelected ? "var(--nb-red)" : "#FFF",
+                border: "2px solid #000",
+                boxShadow: isSelected ? "none" : "4px 4px 0px #000",
+                color: isSelected ? "#fff" : "#000",
+                transition: "all 0.1s ease",
+                transform: isSelected ? "translate(2px, 2px)" : "none",
+                position: "relative"
               }}
             >
-              <span style={{ fontSize: "8px", fontWeight: 900, letterSpacing: "0.2em", textTransform: "uppercase", color: isSelected ? "rgba(255,255,255,0.7)" : "var(--text-dim)", marginBottom: "6px" }}>
+              <span className="font-headline" style={{ 
+                fontSize: "9px", 
+                fontWeight: 900, 
+                letterSpacing: "0.1em", 
+                textTransform: "uppercase", 
+                color: isSelected ? "#FFF" : "rgba(0,0,0,0.4)", 
+                marginBottom: "4px" 
+              }}>
                 {wod.dayLabel}
               </span>
-              <span className="font-display" style={{ fontSize: "22px", lineHeight: 1, fontWeight: 900, color: isSelected ? "#fff" : wod.isToday ? "var(--red)" : "var(--text)" }}>
+              <span className="font-display" style={{ 
+                fontSize: "26px", 
+                lineHeight: 1, 
+                fontWeight: 900, 
+                color: isSelected ? "#FFF" : (wod.isToday ? "var(--nb-red)" : "#000") 
+              }}>
                 {wod.isRest ? "🛡" : dayNum}
               </span>
-              <span style={{ fontSize: "7px", color: isSelected ? "rgba(255,255,255,0.6)" : "var(--text-dim)", marginTop: "2px", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+              <span style={{ 
+                fontSize: "9px", 
+                fontWeight: 800,
+                color: isSelected ? "#FFF" : "rgba(0,0,0,0.4)", 
+                marginTop: "2px", 
+                textTransform: "uppercase", 
+                letterSpacing: "0.05em" 
+              }}>
                 {month}
               </span>
+
+              {wod.isToday && !isSelected && (
+                <div style={{
+                  position: "absolute",
+                  top: "4px",
+                  right: "4px",
+                  width: "6px",
+                  height: "6px",
+                  background: "var(--nb-red)",
+                  border: "1px solid #000",
+                }} />
+              )}
             </Link>
           );
         })}
       </div>
 
-      <style jsx global>{`
-        div::-webkit-scrollbar { display: none; }
-      `}</style>
+      <style dangerouslySetInnerHTML={{ __html: `
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .nb-button-tap:active { transform: translateY(-50%) scale(0.95); }
+      `}} />
     </div>
   );
 }

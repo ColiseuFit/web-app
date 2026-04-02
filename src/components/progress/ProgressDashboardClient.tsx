@@ -133,26 +133,26 @@ export default function ProgressDashboardClient({
       )}
       
       {/* 1. MONITOR DE COMPROMISSO */}
-      <section style={{ margin: "0 20px 24px", background: "var(--surface-lowest)", border: "1px solid var(--border-glow)", position: "relative", overflow: "hidden", borderRadius: "4px" }}>
-        <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: "4px", background: "var(--red)" }} />
+      <section style={{ margin: "0 20px 32px", background: "#FFF", border: "2px solid #000", position: "relative", overflow: "hidden", boxShadow: "8px 8px 0px rgba(0,0,0,0.1)" }}>
         
-        <div style={{ padding: "14px 20px", borderBottom: "1px solid var(--border-glow)", display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(255,255,255,0.02)" }}>
-          <span style={{ fontSize: "9px", fontWeight: 700, letterSpacing: "0.3em", color: "var(--text-muted)", textTransform: "uppercase" }}>COMPROMISSO SEMANAL</span>
+        <div style={{ padding: "16px 20px", borderBottom: "2px solid #000", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#000" }}>
+          <span className="font-headline" style={{ fontSize: "10px", fontWeight: 900, letterSpacing: "0.2em", color: "#FFF", textTransform: "uppercase" }}>COMPROMISSO SEMANAL</span>
+          <div style={{ width: "8px", height: "8px", background: "#E31B23", border: "1px solid #FFF" }} />
         </div>
 
-        <div style={{ padding: "24px 0 32px" }}>
+        <div style={{ padding: "32px 0" }}>
           <ProgressGauge 
             current={currentCheckIns} 
             target={target} 
-            label="Compromisso Semanal" 
+            label="Meta de Treinos" 
           />
 
-          {/* TARGET SELECTOR (STRATEGIC UI) */}
-          <div style={{ marginTop: "24px", padding: "0 24px", display: "flex", flexDirection: "column", alignItems: "center" }}>
-            <p style={{ fontSize: "8px", fontWeight: 700, color: "var(--text-muted)", letterSpacing: "0.2em", marginBottom: "12px", textTransform: "uppercase" }}>
-              AJUSTAR META DE TREINOS
+          {/* TARGET SELECTOR (NEO-BRUTALIST) */}
+          <div style={{ marginTop: "32px", padding: "0 24px", display: "flex", flexDirection: "column", alignItems: "center" }}>
+            <p className="font-headline" style={{ fontSize: "8px", fontWeight: 900, color: "rgba(0,0,0,0.5)", letterSpacing: "0.25em", marginBottom: "16px", textTransform: "uppercase" }}>
+              DEFINIR NOVA META SEMANAL
             </p>
-            <div style={{ display: "flex", gap: "8px" }}>
+            <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "10px" }}>
               {[1, 2, 3, 4, 5, 6, 7].map((num) => {
                 const isActive = target === num;
                 return (
@@ -161,43 +161,43 @@ export default function ProgressDashboardClient({
                     onClick={() => handleUpdateTarget(num)}
                     disabled={isPending}
                     style={{
-                      width: "36px",
-                      height: "36px",
-                      background: isActive ? "var(--red)" : "rgba(255,255,255,0.03)",
-                      border: "1px solid",
-                      borderColor: isActive ? "var(--red)" : "var(--border-glow)",
-                      color: isActive ? "white" : "var(--text-muted)",
-                      fontSize: "12px",
+                      width: "40px",
+                      height: "40px",
+                      background: isActive ? "#000" : "#FFF",
+                      border: "2px solid #000",
+                      color: isActive ? "#FFF" : "#000",
+                      fontSize: "14px",
                       fontWeight: 900,
                       fontStyle: "italic",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
                       cursor: isPending ? "not-allowed" : "pointer",
-                      transition: "all 0.2s cubic-bezier(0.2, 0, 0, 1)",
-                      filter: isActive ? "drop-shadow(0 0 8px rgba(227,27,35,0.4))" : "none",
-                      position: "relative",
-                      overflow: "hidden"
+                      transition: "all 0.1s ease",
+                      boxShadow: isActive ? "4px 4px 0px #E31B23" : "2px 2px 0px rgba(0,0,0,0.1)",
+                      transform: isActive ? "translate(-2px, -2px)" : "none",
                     }}
-                    className="btn-outline-hover"
                   >
                     {num}
                   </button>
                 );
               })}
             </div>
-            <p style={{ fontSize: "9px", color: "var(--text-muted)", marginTop: "16px", fontStyle: "italic", opacity: isPending ? 0.5 : 1 }}>
-              {isPending ? "SINCRONIZANDO..." : `META ATUAL: ${target} DIAS/SEMANA`}
-            </p>
+            <div style={{ marginTop: "24px", padding: "8px 16px", background: "#f0f0f0", border: "1px solid #000", boxShadow: "2px 2px 0px #000" }}>
+              <p style={{ fontSize: "10px", color: "#000", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                {isPending ? "SINCRONIZANDO..." : `META ATIVA: ${target} DIAS`}
+              </p>
+            </div>
           </div>
         </div>
       </section>
 
       {/* 2. RECORDES PESSOAIS */}
-      <section style={{ margin: "0 20px 24px", background: "var(--surface-lowest)", border: "1px solid var(--border-glow)", position: "relative", overflow: "hidden", borderRadius: "4px" }}>
+      <section style={{ margin: "0 20px 32px", background: "#FFF", border: "2px solid #000", position: "relative", overflow: "hidden", boxShadow: "8px 8px 0px rgba(0,0,0,0.1)" }}>
         
-        <div style={{ padding: "14px 20px", borderBottom: "1px solid var(--border-glow)", display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(255,255,255,0.02)" }}>
-          <span style={{ fontSize: "9px", fontWeight: 700, letterSpacing: "0.3em", color: "var(--text-muted)", textTransform: "uppercase" }}>BIBLIOTECA DE MOVIMENTOS (PRS)</span>
+        <div style={{ padding: "16px 20px", borderBottom: "2px solid #000", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#000" }}>
+          <span className="font-headline" style={{ fontSize: "10px", fontWeight: 900, letterSpacing: "0.2em", color: "#FFF", textTransform: "uppercase" }}>BIBLIOTECA DE PRS</span>
+          <div style={{ width: "8px", height: "8px", background: "#FFF" }} />
         </div>
 
         <PRMatrix 
@@ -207,10 +207,11 @@ export default function ProgressDashboardClient({
       </section>
 
       {/* 3. METAS E OBJETIVOS */}
-      <section style={{ margin: "0 20px 24px", background: "var(--surface-lowest)", border: "1px solid var(--border-glow)", position: "relative", overflow: "hidden", borderRadius: "4px" }}>
+      <section style={{ margin: "0 20px 32px", background: "#FFF", border: "2px solid #000", position: "relative", overflow: "hidden", boxShadow: "8px 8px 0px rgba(0,0,0,0.1)" }}>
         
-        <div style={{ padding: "14px 20px", borderBottom: "1px solid var(--border-glow)", display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(255,255,255,0.02)" }}>
-          <span style={{ fontSize: "9px", fontWeight: 700, letterSpacing: "0.3em", color: "var(--text-muted)", textTransform: "uppercase" }}>OBJETIVOS E METAS</span>
+        <div style={{ padding: "16px 20px", borderBottom: "2px solid #000", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#000" }}>
+          <span className="font-headline" style={{ fontSize: "10px", fontWeight: 900, letterSpacing: "0.2em", color: "#FFF", textTransform: "uppercase" }}>OBJETIVOS TÉCNICOS</span>
+          <div style={{ width: "8px", height: "8px", background: "#E31B23" }} />
         </div>
 
         <div style={{ padding: "0" }}>

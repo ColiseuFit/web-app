@@ -55,15 +55,16 @@ export default async function AppDashboard({ searchParams }: PageProps) {
   ]);
 
   // 6. Check-in (Dependent on selectedWod)
-  let alreadyChecked = false;
+  let userCheckin = null;
   if (selectedWod) {
     const { data: checkin } = await supabase
       .from("check_ins")
-      .select("id")
+      .select("id, status, result")
       .eq("student_id", user.id)
       .eq("wod_id", selectedWod.id)
+      .neq("status", "missed")
       .maybeSingle();
-    alreadyChecked = !!checkin;
+    userCheckin = checkin;
   }
 
   const weekDates = getWeekDates();
@@ -97,95 +98,98 @@ export default async function AppDashboard({ searchParams }: PageProps) {
   const level = getLevelInfo(profile?.level, dynamicLevels);
 
   return (
-    <div style={{ minHeight: "100vh", backgroundColor: "var(--bg)", color: "var(--text)", paddingBottom: "100px", position: "relative" }}>
+    <div style={{ minHeight: "100vh", backgroundColor: "var(--nb-bg)", color: "var(--nb-text)", paddingBottom: "100px", position: "relative" }}>
       <DashboardStyles />
-
-      <div style={{ position: "fixed", top: "-20%", left: "50%", transform: "translateX(-50%)", width: "100vw", height: "60vh", background: "radial-gradient(ellipse, rgba(227,27,35,0.05) 0%, transparent 70%)", filter: "blur(80px)", zIndex: 0, pointerEvents: "none" }} />
       <StudentHeader />
 
       <main style={{ maxWidth: "480px", margin: "0 auto", position: "relative" }}>
         
-        {/* ── HEADER DE IDENTIDADE ── */}
-        <section style={{ padding: "40px 20px 32px", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
+        {/* ── HEADER DE IDENTIDADE (ATHLETE PASS) ── */}
+        <section style={{ 
+          padding: "48px 20px 40px", 
+          display: "flex", 
+          flexDirection: "column", 
+          alignItems: "center", 
+          textAlign: "center",
+          position: "relative",
+          animation: "slideInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards",
+        }}>
           
-          {/* IDENTIDADE CENTRALIZADA - DUAL BADGE */}
-          <div style={{ 
-            marginBottom: "24px", 
-            animation: "levelIconEntrance 0.8s ease-out",
-            display: "flex",
-            gap: "16px",
-            justifyContent: "center"
-          }}>
-            {/* ÍCONE DE RANKING */}
-            <LevelBadge 
-              level={level} 
-              description={level.description} 
-              size={84} 
-            />
+           {/* BACKGROUND DECOR REMOVED */}
 
-            {/* FOTO DO ATLETA */}
+          <div style={{ 
+            marginBottom: "32px", 
+            zIndex: 1,
+            position: "relative",
+            animation: "slideInUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards",
+          }}>
             <LevelBadge 
               level={level} 
-              description={level.description} 
-              size={84} 
+              size={130} 
               avatarUrl={profile?.avatar_url}
+              athleteName={profile?.first_name ? profile.first_name.toUpperCase() : displayName.split(' ')[0].toUpperCase()}
             />
           </div>
 
-          {/* IDENTIDADE DO ATLETA */}
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px" }}>
+          <div style={{ zIndex: 1, position: "relative", animation: "slideInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards" }}>
             <h1 className="font-display" style={{ 
-              fontSize: "clamp(32px, 10vw, 42px)", 
-              lineHeight: 0.9,
-              letterSpacing: "-0.02em",
-              color: "#FFF",
-              textTransform: "uppercase"
+              fontSize: "clamp(42px, 12vw, 56px)", 
+              lineHeight: 0.8,
+              fontWeight: 900,
+              letterSpacing: "-0.04em",
+              color: "#000",
+              textTransform: "uppercase",
+              marginBottom: "8px",
+              textShadow: `6px 6px 0px ${level.color}30`
             }}>
               {profile?.first_name ? profile.first_name.toUpperCase() : displayName.split(' ')[0].toUpperCase()}
             </h1>
             
-            <h2 style={{ 
-              fontSize: "14px", 
-              fontWeight: 700, 
-              color: "rgba(255,255,255,0.4)", 
-              textTransform: "uppercase",
-              letterSpacing: "0.2em",
-              marginBottom: "12px"
-            }}>
-              {profile?.last_name ? profile.last_name.toUpperCase() : displayName.split(' ').slice(1).join(' ').toUpperCase()}
-            </h2>
-
             <div style={{ 
-              display: "inline-block",
-              padding: "4px 12px",
-              background: "rgba(255,255,255,0.03)",
-              border: `1px solid ${level.color}44`,
-              borderRadius: "4px"
+              display: "flex", 
+              alignItems: "center", 
+              justifyContent: "center", 
+              gap: "8px",
+              marginTop: "4px"
             }}>
-              <span style={{ 
-                fontSize: "10px", 
+              <div style={{ width: "20px", height: "2px", background: "#000" }} />
+              <span className="font-headline" style={{ 
+                fontSize: "13px", 
                 fontWeight: 900, 
-                letterSpacing: "0.15em", 
-                color: level.color, 
-                textTransform: "uppercase" 
+                color: "#000", 
+                textTransform: "uppercase",
+                letterSpacing: "0.2em"
               }}>
                 {level.label}
               </span>
+              <div style={{ width: "20px", height: "2px", background: "#000" }} />
             </div>
           </div>
         </section>
 
 
-        <WeekWodCarousel wods={carouselWods} selectedDate={selectedDate} />
+        <div style={{ animation: "slideInUp 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards", opacity: 0 }}>
+          <WeekWodCarousel wods={carouselWods} selectedDate={selectedDate} />
+        </div>
 
-        <section style={{ margin: "0 20px 16px", background: "var(--surface-lowest)", border: "1px solid var(--border-glow)", position: "relative", overflow: "hidden" }}>
-          <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: "3px", background: "var(--red)", boxShadow: "0 0 20px rgba(227,27,35,0.5)" }} />
+        <section 
+          className="nb-card" 
+          style={{ 
+            margin: "0 20px 16px", 
+            background: "var(--nb-surface)", 
+            position: "relative", 
+            overflow: "hidden",
+            animation: "slideInUp 1s cubic-bezier(0.16, 1, 0.3, 1) forwards",
+            opacity: 0
+          }}
+        >
+          <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: "6px", background: "var(--nb-red)" }} />
 
-          <div style={{ padding: "14px 24px", borderBottom: "1px solid var(--border-glow)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ padding: "14px 24px", borderBottom: "2px solid #000", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#f8f8f8" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <span style={{ fontSize: "9px", fontWeight: 700, letterSpacing: "0.3em", color: "var(--text-dim)", textTransform: "uppercase" }}>WOD</span>
+                <span className="font-headline" style={{ fontSize: "11px", fontWeight: 900, letterSpacing: "0.1em", color: "#000", textTransform: "uppercase" }}>WOD DO DIA</span>
                 {selectedDate === today && (
-                    <span style={{ fontSize: "8px", background: "var(--red)", color: "#fff", padding: "1px 4px", borderRadius: "2px", fontWeight: 900 }}>HOJE</span>
+                    <span style={{ fontSize: "9px", background: "var(--nb-red)", color: "#fff", padding: "2px 6px", border: "1px solid #000", fontWeight: 900 }}>HOJE</span>
                 )}
             </div>
           </div>
@@ -193,7 +197,7 @@ export default async function AppDashboard({ searchParams }: PageProps) {
           <WodView 
             wod={selectedWod} 
             selectedDate={selectedDate} 
-            alreadyChecked={alreadyChecked}
+            checkin={userCheckin}
             studentLevel={profile?.level || "branco"}
             holiday={holiday}
           />

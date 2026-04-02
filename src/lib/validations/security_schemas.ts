@@ -114,6 +114,12 @@ export const updatePasswordSchema = z.object({
   path: ["confirm_password"],
 });
 
+// 13. Schema para Resultado de WOD (Aluno)
+export const wodResultSchema = z.object({
+  checkInId: z.string().uuid("ID do check-in inválido"),
+  result: z.string().min(1, "O resultado não pode estar vazio"),
+});
+
 export type LoginInput = z.infer<typeof loginSchema>;
 export type CreateStudentInput = z.infer<typeof createStudentSchema>;
 export type CheckInInput = z.infer<typeof checkInSchema>;
@@ -125,3 +131,4 @@ export type ClassSlotInput = z.infer<typeof classSlotSchema>;
 export type PhysicalEvaluationInput = z.infer<typeof physicalEvaluationSchema>;
 export type UpdateAuthInput = z.infer<typeof updateAuthSchema>;
 export type UpdatePasswordInput = z.infer<typeof updatePasswordSchema>;
+export type WodResultInput = z.infer<typeof wodResultSchema>;

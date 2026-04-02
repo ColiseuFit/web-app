@@ -8,37 +8,63 @@
    ============================ */
 
 :root {
-  /* Core Iron & Grit Palette */
+  /* ============================
+     COLISEU DESIGN SYSTEM (NEO-BRUTALIST LIGHT)
+     ============================ */
+
+  /* Dark Theme (Default/Login) */
   --bg: #131313;
-  --surface-lowest: #0E0E0E;
-  --surface-low: #1C1B1B;
   --surface: #201F1F;
-  --surface-high: #2A2A2A;
-  --surface-highest: #353534;
-  
-  --red: #E31B23;
-  --red-glow: rgba(227, 27, 35, 0.4);
-  --red-tint: rgba(227, 27, 35, 0.1);
-  
-  --border: #1A1A1A;
-  --border-glow: rgba(255, 255, 255, 0.05);
-  
   --text: #E5E2E1;
   --text-dim: #AAAAAA;
-  --text-muted: #828282;
-  
-  /* Geometry & Motion */
+  --red: #E31B23;
+  --border: #1A1A1A;
   --radius: 0px;
-  --radius-sm: 0px;
   --transition: cubic-bezier(0.16, 1, 0.3, 1) 0.3s;
 
-  /* Coliseu Levels (L1 - L5) */
-  --lvl-white: #FFFFFF;
-  --lvl-green: #22C55E;
-  --lvl-blue: #3B82F6;
-  --lvl-red: #E31B23;
-  --lvl-black: #0E0E0E;
+  /* Design Tokens: Neo-Brutalist Light */
+  --nb-bg: #FFFFFF;
+  --nb-surface: #FFFFFF;
+  --nb-surface-low: #F5F5F5;
+  --nb-text: #000000;
+  --nb-text-dim: #666666;
+  --nb-border: #000000;
+  --nb-red: #E31B23;
+  
+  /* Hard Shadows */
+  --nb-shadow: 4px 4px 0px #000000;
+  --nb-shadow-sm: 2px 2px 0px #000000;
+  --nb-shadow-lg: 8px 8px 0px #000000;
+  --nb-shadow-red: 4px 4px 0px #E31B23;
+
+  /* Typography */
+  --font-mono: 'Space Mono', 'Roboto Mono', monospace;
+
+  /* ── Level Color Tokens ── */
+  --lvl-iniciante: #F5F5F5;  /* L1 Iniciante - branco/cinza */
+  --lvl-scale:     #2DAB61;  /* L2 Scale     - verde       */
+  --lvl-inter:     #2980BA;  /* L3 Interm.   - azul        */
+  --lvl-rx:        #E52521;  /* L4 RX        - vermelho    */
+  --lvl-elite:     #C5A059;  /* L5 Elite     - dourado     */
+  --lvl-blue:      #1A73E8;  /* misc (ConfirmModal) */
 }
+
+.student-layout-wrapper {
+  --bg: var(--nb-bg) !important;
+  --surface: var(--nb-surface) !important;
+  --surface-low: var(--nb-surface-low) !important;
+  --text: var(--nb-text) !important;
+  --text-dim: var(--nb-text-dim) !important;
+  --border: var(--nb-border) !important;
+  --red: var(--nb-red) !important;
+  --radius: 0px !important;
+  
+  background-color: var(--bg);
+  color: var(--text);
+  min-height: 100dvh;
+}
+
+
 
 /* ============================
    BASE
@@ -88,6 +114,11 @@ textarea:focus,
 select:focus {
   border-color: rgba(227, 27, 35, 0.5);
   background: rgba(227, 27, 35, 0.05);
+}
+
+.nb-placeholder-dark::placeholder {
+  color: rgba(0, 0, 0, 0.4) !important;
+  opacity: 1;
 }
 
 /* ============================

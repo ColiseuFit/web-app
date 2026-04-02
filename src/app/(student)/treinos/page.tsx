@@ -47,20 +47,25 @@ export default async function TreinosPage() {
     .select(`
       id,
       created_at,
+      status,
+      result,
+      is_excellence,
       wods (
         id,
         title,
         wod_content,
         type_tag,
         date,
-        time_cap
+        time_cap,
+        tags
       )
     `)
     .eq("student_id", user.id)
+    .neq("status", "missed")
     .order("created_at", { ascending: false });
 
   // Map database results to the Timeline props
-  const wodHistory = (checkins || []).map((checkin: any) => {
+  const realHistory = (checkins || []).map((checkin: any) => {
     const wod = checkin.wods;
     if (!wod) return null;
     
@@ -73,20 +78,26 @@ export default async function TreinosPage() {
     return {
       id: checkin.id,
       date: formattedDate,
+      isoDate: wod.date,
       title: wod.title || "Treino do Dia",
       description: wod.wod_content ? wod.wod_content.slice(0, 100) + (wod.wod_content.length > 100 ? "..." : "") : "Treino programado pelo coach.",
+      rawContent: wod.wod_content || "",
       typeTag: wod.type_tag || "WOD",
       coach: "Coliseu",
-      points: 50, // Pontos base por check-in (sistema futuro)
-      result: "Realizado",
-      isExcellence: false,
+      points: checkin.status === 'confirmed' ? 50 : 0,
+      result: checkin.result || (checkin.status === 'confirmed' ? "SEM RESULTADO" : "PENDENTE"),
+      status: checkin.status,
+      tags: wod.tags || [],
+      isExcellence: !!checkin.is_excellence,
       metrics: [
         { label: "TIME CAP", value: wod.time_cap ? String(wod.time_cap) : "--", unit: "min" },
-        { label: "Pontos", value: "50", unit: "pts" }
+        { label: "PONTOS", value: checkin.status === 'confirmed' ? "50" : "0", unit: "pts" }
       ],
       achievements: []
     };
   }).filter(Boolean);
+
+  const wodHistory = realHistory;
 
   return (
     <div
@@ -143,70 +154,9 @@ export default async function TreinosPage() {
           </p>
         </div>
 
-        {/* Dynamic Empty State & Sync Badge */}
-        {wodHistory.length === 0 ? (
-          <div style={{ textAlign: "center", padding: "60px 20px" }}>
-             <p style={{ fontSize: "14px", fontWeight: 800, color: "var(--text)", textTransform: "uppercase", letterSpacing: "0.1em" }}>
-               Nenhuma atividade registrada
-             </p>
-             <p style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "8px", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-               Seu histórico de treinos aparecerá aqui após o primeiro check-in.
-             </p>
-          </div>
-        ) : (
-          <ActivityDashboard history={wodHistory as any} />
-        )}
+        {/* Activity Dashboard & Sync Badge */}
+        <ActivityDashboard history={wodHistory as any} />
 
-        {/* ── SYNC FOOTER ── */}
-        <div 
-          style={{ 
-            display: "flex", 
-            alignItems: "center", 
-            justifyContent: "center", 
-            gap: "10px", 
-            marginTop: "60px",
-            paddingBottom: "20px"
-          }}
-        >
-          {/* Pulsing Sync Indicator */}
-          <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <div style={{ 
-              width: "6px", 
-              height: "6px", 
-              background: "#00FF41", 
-              borderRadius: "50%",
-              boxShadow: "0 0 10px rgba(0, 255, 65, 0.5)"
-            }} />
-            <div style={{ 
-              position: "absolute",
-              width: "12px", 
-              height: "12px", 
-              border: "1px solid #00FF41", 
-              borderRadius: "50%",
-              animation: "pulse-sync 2s infinite cubic-bezier(0.4, 0, 0.6, 1)"
-            }} />
-          </div>
-
-          <p
-            style={{
-              fontSize: "10px",
-              fontWeight: 800,
-              letterSpacing: "0.2em",
-              color: "var(--text-muted)",
-              textTransform: "uppercase",
-              opacity: 0.6
-            }}
-          >
-            Conexão Ativa • WOD Engine Sync
-          </p>
-
-          <style dangerouslySetInnerHTML={{ __html: `
-            @keyframes pulse-sync {
-              0% { transform: scale(0.8); opacity: 0.8; }
-              100% { transform: scale(2.5); opacity: 0; }
-            }
-          `}} />
-        </div>
       </main>
 
       <BottomNav />

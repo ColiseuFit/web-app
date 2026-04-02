@@ -21,13 +21,24 @@ export interface LevelInfo {
   order: number; // For manual sorting in the UI
 }
 
+/**
+ * LEVEL_CONFIG — FALLBACK DE EMERGÊNCIA APENAS.
+ *
+ * ⚠️  ATENÇÃO — SSoT (Single Source of Truth):
+ *     A fonte canônica dos níveis é o BANCO DE DADOS (tabela `levels`),
+ *     gerenciado pelo painel admin em /admin/settings.
+ *
+ *     Este objeto é utilizado SOMENTE quando o DB está inacessível.
+ *     NÃO edite cores, labels ou descrições aqui — use o admin.
+ *     Alterações feitas aqui serão sobrescritas pela configuração do DB.
+ */
 export const LEVEL_CONFIG: Record<string, LevelInfo> = {
   iniciante: {
     id: 'L1',
     key: 'iniciante',
     label: 'Iniciante',
-    color: 'var(--lvl-white)',
-    textColor: '#FFF',
+    color: '#888888',       // FALLBACK — fonte real: admin DB
+    textColor: '#000',
     btnTextColor: '#000',
     icon: '/levels/icone-coliseu-levels-iniciante.svg',
     description: 'Domínio dos padrões básicos de movimento e construção de base aeróbica sólida.',
@@ -38,10 +49,10 @@ export const LEVEL_CONFIG: Record<string, LevelInfo> = {
     id: 'L2',
     key: 'scale',
     label: 'Scale',
-    color: 'var(--lvl-yellow)',
-    textColor: '#000',
-    btnTextColor: '#000',
-    icon: '/levels/icone-coliseu-levels-amarelo.svg',
+    color: '#2DAB61',       // FALLBACK — fonte real: admin DB
+    textColor: '#FFF',
+    btnTextColor: '#FFF',
+    icon: '/levels/icone-coliseu-levels-scale.svg',
     description: 'Movimentos adaptados com maior volume e intensidade controlada.',
     requirements: 'Domínio do cardio e ginásticos básicos.',
     order: 2
@@ -50,10 +61,10 @@ export const LEVEL_CONFIG: Record<string, LevelInfo> = {
     id: 'L3',
     key: 'intermediario',
     label: 'Intermediário',
-    color: 'var(--lvl-red)',
+    color: '#2980BA',       // FALLBACK — fonte real: admin DB
     textColor: '#FFF',
     btnTextColor: '#FFF',
-    icon: '/levels/icone-coliseu-levels-vermelho.svg',
+    icon: '/levels/icone-coliseu-levels-intermediario.svg',
     description: 'Domínio de cargas moderadas e ginásticos intermediários (DU, Pullup, HSPU).',
     requirements: 'Resistência avançada e força base.',
     order: 3
@@ -62,10 +73,10 @@ export const LEVEL_CONFIG: Record<string, LevelInfo> = {
     id: 'L4',
     key: 'rx',
     label: 'RX',
-    color: 'var(--lvl-brown)',
+    color: '#E52521',       // FALLBACK — fonte real: admin DB
     textColor: '#FFF',
     btnTextColor: '#FFF',
-    icon: '/levels/icone-coliseu-levels-marrom.svg',
+    icon: '/levels/icone-coliseu-levels-rx.svg',
     description: 'Padrão oficial de competição. Cargas prescritas e ginásticos complexos.',
     requirements: 'Força absoluta e técnica refinada.',
     order: 4
@@ -74,7 +85,7 @@ export const LEVEL_CONFIG: Record<string, LevelInfo> = {
     id: 'L5',
     key: 'elite',
     label: 'Elite',
-    color: '#C5A059',
+    color: '#C5A059',       // FALLBACK — fonte real: admin DB
     textColor: '#C5A059',
     btnTextColor: '#000',
     icon: '/levels/icone-coliseu-levels-elite.svg',

@@ -69,36 +69,28 @@ export default async function ProgressPage() {
   const studentLevelMapped = profile?.level ? levelMap[profile.level] || "L1" : "L1";
 
   return (
-    <div style={{ minHeight: "100vh", backgroundColor: "var(--bg)", color: "var(--text)", paddingBottom: "100px", position: "relative" }}>
+    <div style={{ minHeight: "100vh", backgroundColor: "#FFF", color: "#000", paddingBottom: "120px", position: "relative" }}>
       <DashboardStyles />
       
-      {/* Background Glow */}
-      <div style={{ 
-        position: "fixed", top: "-20%", left: "50%", transform: "translateX(-50%)", 
-        width: "100vw", height: "60vh", 
-        background: "radial-gradient(ellipse, rgba(227,27,35,0.05) 0%, transparent 70%)", 
-        filter: "blur(80px)", zIndex: 0, pointerEvents: "none" 
-      }} />
-
       <StudentHeader />
 
       <main style={{ maxWidth: "480px", margin: "0 auto", position: "relative" }}>
         
-        {/* BOAS-VINDAS / TÍTULO (IRON MONOLITH BRANDING) */}
-        <section style={{ padding: "24px 20px 32px" }}>
-          <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "0.35em", color: "var(--text-muted)", textTransform: "uppercase", marginBottom: "4px" }}>
+        {/* BOAS-VINDAS / TÍTULO (ATHLETIC BRANDING) */}
+        <section style={{ padding: "32px 20px 24px" }}>
+          <p className="font-headline" style={{ fontSize: "10px", fontWeight: 900, letterSpacing: "0.2em", color: "rgba(0,0,0,0.5)", textTransform: "uppercase", marginBottom: "4px" }}>
             {(profile?.display_name || "ATLETA").toUpperCase()}
           </p>
-          <h1 className="font-display" style={{ fontSize: "clamp(26px, 6vw, 32px)", lineHeight: 1, textTransform: "uppercase" }}>
-            PROGRESSO
+          <h1 className="font-display" style={{ fontSize: "42px", lineHeight: 0.9, textTransform: "uppercase", fontWeight: 900, letterSpacing: "-0.03em" }}>
+            MEU<br />PROGRESSO
           </h1>
-          <p style={{ fontSize: "12px", color: "var(--text-muted)", marginTop: "4px", letterSpacing: "0.1em" }}>
-            MONITOR DE EVOLUÇÃO TÉCNICA
-          </p>
+          <div style={{ width: "40px", height: "4px", background: "#000", marginTop: "16px" }}></div>
         </section>
 
         {/* ── RECORDES RECENTES (DESTAQUE) ── */}
-        <RecentPRs prs={(prs?.slice(0, 4) || []) as any[]} hideViewAll={true} />
+        <div style={{ padding: "0 20px", marginBottom: "32px" }}>
+           <RecentPRs prs={(prs?.slice(0, 4) || []) as any[]} hideViewAll={true} />
+        </div>
 
         {/* SEÇÃO PRINCIPAL INTERATIVA (CLIENT WRAPPER) */}
         <ProgressDashboardClient 

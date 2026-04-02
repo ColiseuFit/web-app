@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
-import { getTodayDate } from "@/lib/date-utils";
+import { getTodayDate, isTimePast } from "@/lib/date-utils";
 
 import {
   checkInSchema,
@@ -10,22 +10,32 @@ import {
   personalRecordSchema,
   updateTargetSchema,
   goalSchema,
+  wodResultSchema,
 } from "@/lib/validations/security_schemas";
 
 /**
- * Busca as turmas disponíveis na grade para uma data específica.
+ * BUSCA DE DISPONIBILIDADE (SSoT): Recupera as turmas de uma data e calcula o estado operacional.
  * 
- * @param {string} date - Data no formato YYYY-MM-DD.
+ * Lógica de Visibilidade:
+ * 1. Filtra por `day_of_week`.
+ * 2. `is_past`: Define se passou do horário inicial + 15 minutos (Tolerância Coliseu).
+ * 3. `is_finished`: Verifica se o Coach validou a aula via `validated_at` na tabela `check_ins`.
+ * 
+ * @security 
+ * - Alinhado com `America/Sao_Paulo` via `getTodayDate()`.
+ * 
+ * @param {string} date - Data alvo (YYYY-MM-DD).
  */
-export async function getAvailableSlots(date: string): Promise<{ data?: { id: string; name: string; time_start: string; capacity: number }[]; error?: string }> {
+export async function getAvailableSlots(date: string): Promise<{ data?: { id: string; name: string; time_start: string; capacity: number; is_past: boolean; is_finished: boolean }[]; error?: string }> {
   const supabase = await createClient();
   
-  // Converter data para dia da semana (0 = Domingo, 1 = Segunda, etc.)
-  // Usamos Date.parse + offset or UTC para garantir consistência
   const dateObj = new Date(date + "T12:00:00Z"); 
   const dayOfWeek = dateObj.getUTCDay();
+  const todayStr = getTodayDate();
+  const isToday = date === todayStr;
 
-  const { data, error } = await supabase
+  // 1. Buscar todas as turmas ativas do dia
+  const { data: slots, error } = await supabase
     .from("class_slots")
     .select("*")
     .eq("day_of_week", dayOfWeek)
@@ -33,22 +43,51 @@ export async function getAvailableSlots(date: string): Promise<{ data?: { id: st
     .order("time_start", { ascending: true });
 
   if (error) return { error: error.message };
-  return { data };
+  if (!slots) return { data: [] };
+
+  // 2. Buscar quais dessas turmas já foram "Finalizadas" pelo Coach na data solicitada
+  // SSoT: Uma aula está finalizada se houver QUALQUER check-in validado para aquele slot/data.
+  const { data: finishedMarkers } = await supabase
+    .from("check_ins")
+    .select("class_slot_id, wods!inner(date)")
+    .eq("wods.date", date)
+    .not("validated_at", "is", null);
+
+  const finishedSlotIds = new Set(finishedMarkers?.map(m => m.class_slot_id) || []);
+
+  // 3. Processar metadados
+  const enrichedData = slots.map(slot => {
+    const isPast = isToday ? isTimePast(slot.time_start, 15) : false;
+    const isFinished = finishedSlotIds.has(slot.id);
+
+    return {
+      id: slot.id,
+      name: slot.name,
+      time_start: slot.time_start,
+      capacity: slot.capacity,
+      is_past: isPast,
+      is_finished: isFinished
+    };
+  });
+
+  return { data: enrichedData };
 }
 
 /**
- * Realiza a sinalização de presença (Check-in) do aluno.
- * A Pontuação só será creditada após a confirmação do Professor na aula.
+ * SINALIZAÇÃO DE PRESENÇA (Check-in): Registro de intenção de treino do aluno.
+ * 
+ * Regras Operacionais (SSoT):
+ * 1. **Pendente**: Inicialmente entra como status `checked`.
+ * 2. **Bloqueios**: Feriados (`box_holidays`) ou duplicidade (1 check-in/aluno/WOD).
+ * 3. **Validação**: A Pontuação só é creditada se o Coach validar a aula (`closeClassAction`).
  * 
  * @security
  * - Validação de schema via Zod (`checkInSchema`).
- * - Bloqueia check-ins em feriados cadastrados (`box_holidays`).
- * - Impede duplicidade de sinalização por Aluno/WOD (RLS + Unique Index).
+ * - Proteção via RLS no Supabase (policy per-user).
  * 
- * @param {string} wodId - UUID do WOD vindo da tabela `wods`.
- * @param {string} timeSlot - Horário selecionado (ex: "08:00").
- * @param {string} classSlotId - UUID da turma vindo da tabela `class_slots`.
- * @throws {Error} Retorna objeto `{ error }` em caso de falha de autenticação ou indisponibilidade.
+ * @param {string} wodId - UUID do WOD.
+ * @param {string} timeSlot - Horário (ex: "08:00").
+ * @param {string} classSlotId - UUID da grade de horários.
  */
 export async function performCheckIn(wodId: string, timeSlot?: string, classSlotId?: string) {
   // 0. Validation
@@ -309,5 +348,38 @@ export async function deleteGoal(goalId: string) {
   if (error) return { error: error.message };
 
   revalidatePath("/progresso");
+  return { success: true };
+}
+
+/**
+ * Salva o resultado final do WOD (Tempo, Reps ou Carga).
+ * Só pode ser feito após o Coach confirmar a presença do aluno.
+ * 
+ * @security
+ * - Validação de schema via `wodResultSchema`.
+ * - RLS garante que o aluno só atualize seu próprio check-in.
+ * 
+ * @param {string} checkInId - UUID do registro de check-in.
+ * @param {string} result - String contendo o score (ex: "12:30", "150 reps").
+ */
+export async function updateWodResult(checkInId: string, result: string) {
+  const validation = wodResultSchema.safeParse({ checkInId, result });
+  if (!validation.success) return { error: "Dados de resultado inválidos." };
+
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Não autenticado." };
+
+  // 1. Atualizar o resultado
+  const { error } = await supabase
+    .from("check_ins")
+    .update({ result: validation.data.result })
+    .eq("id", checkInId)
+    .eq("student_id", user.id);
+
+  if (error) return { error: "Erro ao salvar resultado: " + error.message };
+
+  revalidatePath("/dashboard");
+  revalidatePath("/treinos");
   return { success: true };
 }

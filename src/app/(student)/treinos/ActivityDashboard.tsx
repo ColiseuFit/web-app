@@ -2,12 +2,12 @@
 
 import { useState, useEffect } from "react";
 import { ActivityFeedCard } from "@/components/activity/ActivityFeedCard";
+import { Flame, Zap, BarChart3, Dumbbell, History, Target } from "lucide-react";
 
 /**
  * Componente AnimatedNumber
  * Realiza uma interpolação suave (tween) de um valor numérico de 0 até o alvo.
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function AnimatedNumber({ value, duration = 1000, className = "" }: { value: number | string, duration?: number, className?: string }) {
     const [displayValue, setDisplayValue] = useState(0);
     const targetValue = typeof value === "string" ? parseFloat(value.replace(/[^0-9.]/g, "")) : value;
@@ -46,11 +46,12 @@ function AnimatedNumber({ value, duration = 1000, className = "" }: { value: num
 }
 
 /**
- * ActivityDashboard (V1.2 - Iron Monolith)
+ * ActivityDashboard (V2.0 - Neo-Brutalist Light)
  */
 interface ActivityItem {
   id: string;
   date: string;
+  isoDate?: string;
   title: string;
   description: string;
   hashtags?: string[];
@@ -58,6 +59,8 @@ interface ActivityItem {
   coach?: string;
   points?: number;
   result?: string;
+  status?: string;
+  tags?: string[];
   metrics: { label: string; value: string | number; unit?: string }[];
   achievements?: { id: string; type: "seal" | "pr"; icon: string; color: string }[];
   isExcellence?: boolean;
@@ -68,91 +71,174 @@ export default function ActivityDashboard({ history = [] }: { history?: Activity
   const [isBroken, setIsBroken] = useState(false);
   const activePeriodLow = activePeriod.toLowerCase();
 
-  // MOCK de atividades para preencher o dash se o histórico estiver vazio
   // Feed Unificado usa estritamente o histórico passado pelo banco
   const unifiedFeed = history;
 
   let chartData: { label: string; value: number }[] = [];
   
+  // ── DATA CALCULATION FOR FREQUENCY CHART E STREAK ──
+  // Assume server time / local time approx
+  const now = new Date();
+  const currentMonthStr = String(now.getMonth() + 1).padStart(2, '0');
+  const currentYearStr = String(now.getFullYear());
+  
+  const getDailyStatus = (isoDayStr: string) => {
+    const checkinsOnDay = history.filter((h: any) => h.isoDate === isoDayStr);
+    if (checkinsOnDay.length === 0) return 0;
+    const hasConfirmed = checkinsOnDay.some((h: any) => h.status === 'confirmed');
+    const hasExcellence = checkinsOnDay.some((h: any) => h.isExcellence);
+    return hasExcellence ? 2 : (hasConfirmed ? 1 : 1);
+  };
+
   if (activePeriodLow === "semana") {
-    chartData = [
-      { label: "D", value: -1 }, { label: "S", value: 1 }, { label: "T", value: 1 },
-      { label: "Q", value: 2 }, { label: "Q", value: 1 }, { label: "S", value: -2 }, { label: "S", value: -2 }
-    ];
+    for (let i = 6; i >= 0; i--) {
+       const d = new Date(now);
+       d.setDate(d.getDate() - i);
+       const iso = d.toISOString().split('T')[0];
+       const dayNames = ["D", "S", "T", "Q", "Q", "S", "S"];
+       chartData.push({ label: dayNames[d.getDay()], value: getDailyStatus(iso) });
+    }
   } else if (activePeriodLow === "ano") {
-    chartData = [
-        { label: "JAN", value: 22 }, { label: "FEV", value: 24 }, { label: "MAR", value: 18 },
-        { label: "ABR", value: 0 }, { label: "MAI", value: 0 }, { label: "JUN", value: 0 },
-        { label: "JUL", value: 0 }, { label: "AGO", value: 0 }, { label: "SET", value: 0 },
-        { label: "OUT", value: 0 }, { label: "NOV", value: 0 }, { label: "DEZ", value: 0 }
-    ];
+    const months = ["JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET", "OUT", "NOV", "DEZ"];
+    for (let m = 1; m <= 12; m++) {
+       const mStr = String(m).padStart(2, '0');
+       const count = history.filter((h: any) => h.isoDate?.startsWith(`${currentYearStr}-${mStr}`)).length;
+       chartData.push({ label: months[m - 1], value: count });
+    }
   } else if (activePeriodLow === "tudo") {
-    chartData = [
-      { label: "2023", value: 210 }, { label: "2024", value: 245 }, { label: "2025", value: 282 }, { label: "2026", value: 142 }
-    ];
+    const years = [currentYearStr]; // Start with current year or expand based on real data span
+    const lastItemIso = history.length > 0 ? history[history.length - 1].isoDate : undefined;
+    const startYear = lastItemIso ? parseInt(lastItemIso.split('-')[0]) : now.getFullYear();
+    for (let y = startYear; y <= now.getFullYear(); y++) {
+       const yStr = String(y);
+       if (!years.includes(yStr)) years.push(yStr);
+    }
+    years.sort().forEach(yStr => {
+      const count = history.filter((h: any) => h.isoDate?.startsWith(yStr)).length;
+      chartData.push({ label: yStr, value: count });
+    });
   } else {
-    chartData = Array.from({ length: 31 }, (_, i) => ({
-        label: `${i + 1}`,
-        value: i === 2 || i === 7 || i === 12 || i === 25 ? 2 : (i % 3 === 0 ? 1 : 0)
-    }));
+    // Mês
+    const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    for (let d = 1; d <= daysInMonth; d++) {
+       const dStr = String(d).padStart(2, '0');
+       const iso = `${currentYearStr}-${currentMonthStr}-${dStr}`;
+       chartData.push({ label: `${d}`, value: getDailyStatus(iso) });
+    }
+  }
+
+  // Calculate real streak
+  let currentStreak = 0;
+  let isStreakBroken = false;
+  const todayMillis = new Date().setHours(0,0,0,0);
+  for (let i = 0; i < 365; i++) {
+     const d = new Date(todayMillis - i * 86400000);
+     const iso = d.toISOString().split('T')[0];
+     if (history.some((h: any) => h.isoDate === iso && (h.status === 'confirmed' || h.status === 'checked'))) {
+        currentStreak++;
+     } else {
+        if (i === 0) {
+           // Allow today to be missed without instantly showing broken (they still have time to train)
+           // But if yesterday is also missed, streak is truly 0.
+        } else {
+           if (i === 1 && currentStreak === 0) isStreakBroken = true;
+           break;
+        }
+     }
   }
 
   return (
     <div key={activePeriod} className="activity-dashboard-root">
-      {/* ── GLOBAL ANIMATIONS ── */}
-      <style dangerouslySetInnerHTML={{ __html: `
-        .activity-dashboard-root { animation: fadeInNRC 0.8s cubic-bezier(0.16, 1, 0.3, 1); }
-        .stagger-item { animation: staggeredInNRC 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
-        @keyframes fadeInNRC { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes staggeredInNRC { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
-      `}} />
       
-      {/* ── HEADER: STATUS DE FOGO ── */}
+      {/* ── HEADER: ATHLETE PERFORMANCE STATUS ── */}
       <div 
         onClick={() => setIsBroken(!isBroken)}
         style={{ 
             display: "flex", 
             justifyContent: "space-between", 
             alignItems: "center", 
-            marginBottom: "20px",
-            background: isBroken ? "var(--surface-lowest)" : "linear-gradient(90deg, var(--surface-lowest) 0%, transparent 100%)",
-            borderLeft: isBroken ? "4px solid var(--text-muted)" : "4px solid var(--red)",
-            padding: "12px 16px",
-            borderRadius: "0 4px 4px 0",
+            marginBottom: "32px",
+            background: isBroken ? "#F0F0F0" : "#FFF",
+            border: "3px solid #000",
+            padding: "24px",
+            boxShadow: isBroken ? "4px 4px 0px #000" : "12px 12px 0px #000",
             cursor: "pointer",
-            opacity: isBroken ? 0.8 : 1,
-            transition: "0.5s cubic-bezier(0.16, 1, 0.3, 1)"
+            transition: "all 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
+            transform: isBroken ? "translate(4px, 4px)" : "none",
+            position: "relative",
+            overflow: "hidden"
         }}>
-        <div>
-            <div style={{ fontSize: "10px", fontWeight: 700, color: "var(--text-muted)", letterSpacing: "0.1em", textTransform: "uppercase" }}>
-                Status de Hoje (Quinta-feira, 26/03)
+        
+        {/* Background Accent */}
+        {!isBroken && (
+          <div style={{
+            position: "absolute",
+            top: "-20px",
+            right: "-20px",
+            width: "80px",
+            height: "80px",
+            background: "var(--red)",
+            opacity: 0.05,
+            borderRadius: "50%",
+            zIndex: 0
+          }} />
+        )}
+
+        <div style={{ position: "relative", zIndex: 1 }}>
+            <div style={{ 
+              fontSize: "11px", 
+              fontWeight: 900, 
+              color: "#000", 
+              letterSpacing: "0.15em", 
+              textTransform: "uppercase", 
+              opacity: 0.5,
+              marginBottom: "8px"
+            }}>
+                CONSISTÊNCIA ATUAL
             </div>
-            <div style={{ display: "flex", alignItems: "baseline", gap: "6px" }}>
-                <span className="font-display" style={{ fontSize: "24px", color: isBroken ? "var(--text-muted)" : "var(--text)" }}>
-                    <AnimatedNumber value={isBroken ? 0 : 5} />
+            <div style={{ display: "flex", alignItems: "baseline", gap: "10px" }}>
+                <span className="font-display" style={{ fontSize: "56px", fontWeight: 950, color: "#000", lineHeight: 0.8 }}>
+                    <AnimatedNumber value={isBroken ? 0 : currentStreak} />
                 </span>
-                <span style={{ fontSize: "10px", fontWeight: 800, color: isBroken ? "var(--text-muted)" : "var(--red)", textTransform: "uppercase" }}>
-                    {isBroken ? "Fogo Apagado" : "Dias de Fogo"}
+                <span className="font-headline" style={{ 
+                  fontSize: "14px", 
+                  fontWeight: 950, 
+                  color: isBroken ? "#000" : "var(--red)", 
+                  textTransform: "uppercase",
+                  letterSpacing: "0.1em"
+                }}>
+                    {isBroken ? "OFF" : "DIAS SEGUIDOS"}
                 </span>
             </div>
         </div>
+        
         <div style={{ 
-            width: "40px", 
-            height: "40px", 
-            background: isBroken ? "rgba(255,255,255,0.05)" : "rgba(227,27,35,0.1)", 
-            borderRadius: "50%", 
+            width: "64px", 
+            height: "64px", 
+            background: isBroken ? "#FFF" : "linear-gradient(135deg, var(--red) 0%, #000 100%)", 
+            border: "3px solid #000", 
             display: "flex", 
             alignItems: "center", 
             justifyContent: "center",
-            border: isBroken ? "1px solid var(--border-glow)" : "1px solid rgba(227,27,35,0.2)",
-            position: "relative"
+            boxShadow: isBroken ? "2px 2px 0px #000" : "6px 6px 0px #000",
+            transform: !isBroken ? "rotate(-3deg)" : "none",
+            transition: "all 0.3s ease",
+            zIndex: 1
         }}>
-            <span style={{ fontSize: "20px", filter: isBroken ? "grayscale(1) opacity(0.3)" : "none", transition: "0.5s" }}>{isBroken ? "❄️" : "⚡"}</span>
+            {isBroken ? <Zap size={28} color="#000" strokeWidth={3} /> : <Flame size={32} color="#FFF" strokeWidth={2.5} />}
         </div>
       </div>
 
       {/* ── FILTROS DE PERÍODO ── */}
-      <div style={{ display: "flex", gap: "8px", marginBottom: "24px", overflowX: "auto", paddingBottom: "4px", scrollbarWidth: "none" }}>
+      <div style={{ 
+        display: "flex", 
+        gap: "10px", 
+        marginBottom: "32px", 
+        overflowX: "auto", 
+        paddingBottom: "8px", 
+        scrollbarWidth: "none",
+        WebkitOverflowScrolling: "touch"
+      }}>
         {["Semana", "Mês", "Ano", "Tudo"].map((period) => {
           const isActive = activePeriod.toLowerCase() === period.toLowerCase();
           return (
@@ -160,17 +246,19 @@ export default function ActivityDashboard({ history = [] }: { history?: Activity
               key={period}
               onClick={() => setActivePeriod(period)}
               style={{
-                padding: "8px 16px",
-                borderRadius: "20px",
-                border: isActive ? "1px solid var(--red)" : "1px solid var(--border-glow)",
-                background: isActive ? "rgba(227,27,35,0.1)" : "var(--surface-lowest)",
-                color: isActive ? "var(--red)" : "var(--text-muted)",
-                fontSize: "10px",
-                fontWeight: 800,
+                flexShrink: 0,
+                padding: "10px 20px",
+                border: "2px solid #000",
+                background: isActive ? "#000" : "#FFF",
+                color: isActive ? "#FFF" : "#000",
+                fontSize: "11px",
+                fontWeight: 900,
                 letterSpacing: "0.1em",
                 textTransform: "uppercase",
                 cursor: "pointer",
-                transition: "0.3s cubic-bezier(0.16, 1, 0.3, 1)"
+                boxShadow: isActive ? "2px 2px 0px var(--red)" : "4px 4px 0px #000",
+                transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
+                transform: isActive ? "translate(2px, 2px)" : "none"
               }}
             >
               {period}
@@ -179,42 +267,93 @@ export default function ActivityDashboard({ history = [] }: { history?: Activity
         })}
       </div>
 
-      {/* ── MAPA DE CONSISTÊNCIA ── */}
-      <div style={{ marginBottom: "24px" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
-            <span style={{ fontSize: "10px", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase" }}>Frequência ({activePeriod})</span>
+      {/* ── MAPA DE CONSISTÊNCIA (PERFORMANCE GRID) ── */}
+      <div style={{ marginBottom: "40px" }}>
+        <div style={{ 
+          display: "flex", 
+          alignItems: "center", 
+          gap: "12px", 
+          marginBottom: "16px",
+          padding: "0 4px"
+        }}>
+            <BarChart3 size={18} strokeWidth={3} />
+            <span style={{ 
+              fontSize: "12px", 
+              fontWeight: 950, 
+              color: "#000", 
+              textTransform: "uppercase", 
+              letterSpacing: "0.12em" 
+            }}>HISTÓRICO DE FREQUÊNCIA</span>
         </div>
-        <div style={{ background: "var(--surface-lowest)", border: "1px solid var(--border-glow)", borderRadius: "4px", padding: "20px" }}>
+        
+        <div style={{ 
+          background: "#FFF", 
+          border: "4px solid #000", 
+          padding: "24px", 
+          boxShadow: "10px 10px 0px #000",
+          position: "relative"
+        }}>
+            {/* Grid Legend */}
+            <div style={{ 
+              display: "flex", 
+              justifyContent: "flex-end", 
+              gap: "15px", 
+              marginBottom: "20px",
+              fontSize: "9px",
+              fontWeight: 900,
+              textTransform: "uppercase",
+              letterSpacing: "0.05em",
+              opacity: 0.6
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                <div style={{ width: "10px", height: "10px", background: "#F0F0F0", border: "1px solid #000" }} /> DESCANSO
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                <div style={{ width: "10px", height: "10px", background: "#000", border: "1px solid #000" }} /> TREINO
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                <div style={{ width: "10px", height: "10px", background: "var(--red)", border: "1px solid #000" }} /> SCORE MAX
+              </div>
+            </div>
+
             <div style={{ 
                 display: "grid", 
-                gridTemplateColumns: activePeriodLow === "mês" ? "repeat(7, 1fr)" : activePeriodLow === "ano" ? "repeat(3, 1fr)" : "repeat(7, 1fr)", 
-                gap: "6px"
+                gridTemplateColumns: activePeriodLow === "mês" ? "repeat(7, 1fr)" : activePeriodLow === "ano" ? "repeat(4, 1fr)" : "repeat(7, 1fr)", 
+                gap: "10px"
               }}>
                 {chartData.map((data, i) => {
                   const isTrained = data.value > 0;
-                  const isPR = data.value === 2;
+                  const isMax = data.value === 2;
                   return (
-                    <div key={i} className="stagger-item" style={{ 
-                      animationDelay: `${i * 0.015}s`,
+                    <div key={i} style={{ 
                       aspectRatio: (activePeriodLow === "ano" || activePeriodLow === "tudo") ? "auto" : "1/1",
-                      height: (activePeriodLow === "ano" || activePeriodLow === "tudo") ? "52px" : "auto",
-                      background: isPR ? "var(--red)" : isTrained ? "rgba(227,27,35,0.4)" : "rgba(255,255,255,0.02)", 
-                      border: "1px solid var(--border-glow)",
-                      borderRadius: "2px",
+                      height: (activePeriodLow === "ano" || activePeriodLow === "tudo") ? "64px" : "auto",
+                      background: isMax ? "var(--red)" : isTrained ? "#000" : "#F0F0F0", 
+                      border: "2px solid #000",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      position: 'relative'
+                      position: 'relative',
+                      boxShadow: isTrained ? "3px 3px 0px rgba(0,0,0,0.15)" : "none",
+                      animation: "entrancePop 0.4s cubic-bezier(0.16, 1, 0.3, 1) both",
+                      animationDelay: `${i * 0.01}s`,
+                      transform: isMax ? "scale(1.05)" : "none"
                     }}>
                       <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column' }}>
-                        <span style={{ fontSize: "7px", fontWeight: 900, color: isTrained ? "rgba(255,255,255,0.7)" : "var(--text-muted)" }}>{data.label}</span>
+                        <span style={{ 
+                          fontSize: "9px", 
+                          fontWeight: 950, 
+                          color: isTrained ? "#FFF" : "#000", 
+                          opacity: isTrained ? 1 : 0.2,
+                          letterSpacing: "-0.05em"
+                        }}>{data.label}</span>
                         {(activePeriodLow === 'ano' || activePeriodLow === 'tudo') && isTrained && (
-                           <span style={{ fontSize: '14px', fontWeight: 900, color: 'white' }} className="font-display">
+                           <span style={{ fontSize: '20px', fontWeight: 950, color: 'white', lineHeight: 1 }} className="font-display">
                              <AnimatedNumber value={data.value} />
                            </span>
                         )}
                       </div>
-                      {isPR && <div style={{ position: "absolute", top: "-4px", right: "-4px", fontSize: "8px" }}>⭐</div>}
+                      {isMax && <div style={{ position: "absolute", top: "-5px", right: "-5px", background: "#000", border: "2px solid #FFF", borderRadius: "50%", width: "18px", height: "18px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "10px", zIndex: 2 }}>🔥</div>}
                     </div>
                   );
                 })}
@@ -222,36 +361,89 @@ export default function ActivityDashboard({ history = [] }: { history?: Activity
         </div>
       </div>
 
-      {/* ── BIBLIOTECA DE MOVIMENTOS ── */}
-      <div style={{ marginBottom: "40px" }}>
-        <div style={{ fontSize: "10px", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", marginBottom: "12px" }}>Biblioteca de Movimentos</div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "8px" }}>
-          {[
-            { name: "Burpees", v: activePeriodLow === "semana" ? 120 : 480, icon: "🔥" },
-            { name: "Clean & Jerk", v: activePeriodLow === "semana" ? 45 : 180, icon: "🏋️" },
-            { name: "Snatch", v: activePeriodLow === "semana" ? 30 : 120, icon: "⚡" },
-            { name: "Pull-ups", v: activePeriodLow === "semana" ? 80 : 320, icon: "🐒" },
-            { name: "Box Jumps", v: activePeriodLow === "semana" ? 60 : 240, icon: "📦" },
-            { name: "Double Unders", v: activePeriodLow === "semana" ? 300 : 1200, icon: "🪢" },
-          ].map((mv, i) => (
-            <div key={i} className="stagger-item" style={{ animationDelay: `${0.4 + i * 0.05}s`, background: "var(--surface-lowest)", border: "1px solid var(--border-glow)", padding: "12px", borderRadius: "4px", textAlign: 'center' }}>
-              <span style={{ fontSize: "16px" }}>{mv.icon}</span>
-              <div className="font-display" style={{ fontSize: "18px", color: "var(--text)" }}>
-                <AnimatedNumber value={mv.v} />
+      {/* ── ACÚMULO DE PERFORMANCE (MOVEMENT ANALYTICS) ── */}
+      <div style={{ marginBottom: "48px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "16px" }}>
+           <Dumbbell size={18} strokeWidth={3} />
+           <span style={{ fontSize: "12px", fontWeight: 950, color: "#000", textTransform: "uppercase", letterSpacing: "0.12em" }}>VOLUME DE MOVIMENTO</span>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "20px" }}>
+          {(() => {
+            // Conta *apenas* treinos que o Coach finalizou (status === 'confirmed')
+            const confirmedHistory = history.filter(h => h.status === 'confirmed');
+            
+            // Procura termos nas tags + no título + no texto completo do WOD
+            const getTagVolume = (term: string) => confirmedHistory.filter(h => {
+               const termLower = term.toLowerCase();
+               const inTags = h.tags?.some(t => t.toLowerCase().includes(termLower));
+               const inTitle = h.title?.toLowerCase().includes(termLower);
+               // 'rawContent' é passado pelo page.tsx caso precisemos varrer o texto real do WOD
+               const inContent = (h as any).rawContent?.toLowerCase().includes(termLower) || h.description?.toLowerCase().includes(termLower);
+               
+               return inTags || inTitle || inContent;
+            }).length;
+
+            return [
+              { name: "Burpees", v: getTagVolume("Burpee") * 30, icon: Flame, color: "var(--red)", unit: "REP" },
+              { name: "Clean & Jerk", v: getTagVolume("Clean") * 45, icon: Dumbbell, color: "#000", unit: "KG" },
+              { name: "Snatch", v: getTagVolume("Snatch") * 30, icon: Zap, color: "#000", unit: "KG" },
+              { name: "Pull-ups", v: getTagVolume("Pull") * 25, icon: Target, color: "var(--red)", unit: "REP" },
+            ];
+          })().map((mv, i) => {
+            const Icon = mv.icon;
+            return (
+              <div key={i} style={{ 
+                background: "#FFF", 
+                border: "3px solid #000", 
+                padding: "24px 20px", 
+                boxShadow: "8px 8px 0px #000",
+                textAlign: 'left',
+                animation: "entrancePop 0.4s cubic-bezier(0.16, 1, 0.3, 1) both",
+                animationDelay: `${0.3 + i * 0.1}s`,
+                position: "relative"
+              }}>
+                <div style={{ 
+                  display: "flex", 
+                  padding: "10px", 
+                  background: "#000", 
+                  border: "2px solid #000", 
+                  marginBottom: "16px",
+                  width: "fit-content",
+                  boxShadow: "2px 2px 0px var(--red)"
+                }}>
+                  <Icon size={20} color="#FFF" strokeWidth={2.5} />
+                </div>
+                <div style={{ display: "flex", alignItems: "baseline", gap: "4px" }}>
+                  <div className="font-display" style={{ fontSize: "36px", fontWeight: 950, color: "#000", lineHeight: 0.9 }}>
+                    <AnimatedNumber value={mv.v} />
+                  </div>
+                  <span style={{ fontSize: "12px", fontWeight: 900, color: "var(--red)" }}>{mv.unit}</span>
+                </div>
+                <div style={{ 
+                  fontSize: "10px", 
+                  fontWeight: 950, 
+                  color: "#000", 
+                  textTransform: "uppercase", 
+                  letterSpacing: "0.08em",
+                  marginTop: "8px",
+                  opacity: 0.6
+                }}>
+                  {mv.name}
+                </div>
               </div>
-              <span style={{ fontSize: "7px", color: "var(--text-muted)", textTransform: "uppercase" }}>{mv.name}</span>
-            </div>
-          ))}
+            )
+          })}
         </div>
       </div>
 
       {/* ── TIMELINE: ATIVIDADES RECENTES ── */}
       <div style={{ marginBottom: "60px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "20px" }}>
-          <h3 style={{ fontSize: "10px", fontWeight: 900, color: "var(--text-muted)", letterSpacing: "0.2em", textTransform: "uppercase" }}>
-            Atividades Recentes
+        <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "24px" }}>
+          <History size={16} strokeWidth={3} />
+          <h3 className="font-display" style={{ fontSize: "16px", fontWeight: 950, color: "#000", letterSpacing: "0.05em", textTransform: "uppercase" }}>
+            HISTÓRICO RECENTE
           </h3>
-          <div style={{ flex: 1, height: "1px", background: "linear-gradient(90deg, rgba(255,255,255,0.05), transparent)" }} />
+          <div style={{ flex: 1, height: "4px", background: "#000" }} />
         </div>
 
         <div>
@@ -262,21 +454,31 @@ export default function ActivityDashboard({ history = [] }: { history?: Activity
 
         <button style={{
           width: "100%",
-          padding: "16px",
-          background: "transparent",
-          border: "1px solid var(--border-glow)",
-          color: "var(--text-muted)",
-          fontSize: "9px",
-          fontWeight: 800,
+          padding: "20px",
+          background: "#FFF",
+          border: "3px solid #000",
+          color: "#000",
+          fontSize: "11px",
+          fontWeight: 950,
           textTransform: "uppercase",
-          letterSpacing: "0.15em",
-          borderRadius: "4px",
-          cursor: "pointer"
-        }}>
-          Ver Mais Atividades
+          letterSpacing: "0.2em",
+          cursor: "pointer",
+          boxShadow: "6px 6px 0px #000",
+          transition: "all 0.2s",
+        }}
+        onMouseEnter={(e) => { e.currentTarget.style.transform = "translate(2px, 2px)"; e.currentTarget.style.boxShadow = "4px 4px 0px #000"; }}
+        onMouseLeave={(e) => { e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "6px 6px 0px #000"; }}
+        >
+          VER TODO O HISTÓRICO
         </button>
       </div>
 
+      <style jsx>{`
+          @keyframes entrancePop {
+              from { opacity: 0; transform: scale(0.9) translateY(10px); }
+              to { opacity: 1; transform: scale(1) translateY(0); }
+          }
+      `}</style>
     </div>
   );
 }

@@ -2,67 +2,88 @@
 
 export default function DashboardStyles() {
   const css = `
-    @keyframes pulseRed {
-      0%, 100% { box-shadow: 0 0 40px rgba(227,27,35,0.3); }
-      50% { box-shadow: 0 0 60px rgba(227,27,35,0.5); }
+
+    /* ============================
+       NEO-BRUTALIST ATOMICS
+       ============================ */
+    
+    .nb-card {
+      background: var(--nb-surface);
+      border: 2px solid var(--nb-border);
+      box-shadow: var(--nb-shadow);
+      transition: transform 0.1s, box-shadow 0.1s;
     }
-    @keyframes pointsGlow {
-      0%, 100% { box-shadow: 0 0 8px rgba(227,27,35,0.5); }
-      50% { box-shadow: 0 0 18px rgba(227,27,35,0.9), 0 0 32px rgba(227,27,35,0.3); }
+
+    .nb-card-hover:hover {
+      transform: translate(-2px, -2px);
+      box-shadow: 6px 6px 0px #000;
     }
-    @keyframes levelIconEntrance {
-      0% { opacity: 0; transform: scale(0.5) rotate(-15deg); filter: blur(10px); }
-      100% { opacity: 1; transform: scale(1) rotate(0deg); filter: blur(0px); }
+
+    .nb-card-hover:active {
+      transform: translate(2px, 2px);
+      box-shadow: 0px 0px 0px #000;
     }
-    @keyframes contourPulse {
-      0%, 100% { filter: drop-shadow(0 0 2px rgba(255,255,255,0.1)); }
-      50% { filter: drop-shadow(0 0 12px rgba(255,255,255,0.4)); }
+
+    .nb-button-main {
+      background: var(--nb-red);
+      color: white;
+      border: 2px solid #000;
+      box-shadow: 4px 4px 0px #000;
+      font-weight: 900;
+      text-transform: uppercase;
+      transition: all 0.1s;
     }
-    @keyframes contourPulseGold {
-      0%, 100% { filter: drop-shadow(0 0 4px rgba(197, 160, 89, 0.3)); }
-      50% { filter: drop-shadow(0 0 20px rgba(197, 160, 89, 0.7)); }
+
+    .nb-button-main:hover {
+      transform: translate(-1px, -1px);
+      box-shadow: 5px 5px 0px #000;
     }
-    .level-icon-wrapper {
-      position: relative;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+
+    .nb-button-main:active {
+      transform: translate(3px, 3px);
+      box-shadow: 0px 0px 0px #000;
     }
-    .level-icon-contour-glow {
-      animation: contourPulse 3s infinite ease-in-out;
+
+    /* Animations */
+    @keyframes slideInUp {
+      from { transform: translateY(20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
     }
-    .level-icon-contour-gold {
-      animation: contourPulseGold 3s infinite ease-in-out;
+
+    .animate-in {
+      animation: slideInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     }
+
+    /* Stats & Metrics */
+    .font-mono {
+      font-family: var(--font-mono) !important;
+      letter-spacing: -0.05em;
+    }
+
+    /* Specific Overrides */
     .checkin-btn {
-      animation: pulseRed 2.5s ease-in-out infinite;
-      transition: filter 0.2s, transform 0.15s;
+      border: 2px solid #000 !important;
+      box-shadow: 4px 4px 0px #000 !important;
+      animation: none !important;
     }
+
     .checkin-btn:hover {
-      filter: brightness(1.15) !important;
-      transform: translateY(-1px) !important;
+      transform: translate(-1px, -1px) !important;
+      box-shadow: 5px 5px 0px #000 !important;
     }
+
     .checkin-btn:active {
-      transform: translateY(0) !important;
+      transform: translate(3px, 3px) !important;
+      box-shadow: 0px 0px 0px #000 !important;
     }
-    .points-bar-fill {
-      animation: pointsGlow 2s ease-in-out infinite;
-    }
-    .nav-link:hover {
-      color: rgba(255,255,255,0.6) !important;
-    }
-    .leaderboard-item:hover {
-      background: rgba(255,255,255,0.04) !important;
-    }
-    .btn-outline-hover {
-      transition: all 0.2s ease !important;
-    }
-    .btn-outline-hover:hover {
-      border-color: var(--volt) !important;
-      color: white !important;
-      background: rgba(225, 255, 0, 0.05) !important;
+
+    .nav-floating-dock {
+      background: #FFF;
+      border-top: 2px solid #000;
+      padding-bottom: env(safe-area-inset-bottom);
     }
   `;
+
 
   return <style dangerouslySetInnerHTML={{ __html: css }} />;
 }

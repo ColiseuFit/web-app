@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Zap, Clock, Weight, Award, User } from "lucide-react";
+import { Zap, Clock, Weight, Award, User, Target } from "lucide-react";
 
 interface ActivityMetric {
   label: string;
@@ -31,8 +31,8 @@ interface ActivityFeedCardProps {
 }
 
 /**
- * ActivityFeedCard (NRC-Style)
- * O "Card da Glória" do atleta Coliseu.
+ * ActivityFeedCard (Neo-Brutalist Light Edition)
+ * O "Diário de Bordo" do atleta Coliseu.
  */
 export const ActivityFeedCard: React.FC<ActivityFeedCardProps> = ({ 
   date, 
@@ -47,94 +47,95 @@ export const ActivityFeedCard: React.FC<ActivityFeedCardProps> = ({
   result,
   typeTag
 }) => {
-  const voltColor = "#e1ff00";
-
-  // Mapeamento de ícones legado para Lucide
+  
+  // Mapeamento de ícones para Lucide
   const getIcon = (iconName: string) => {
     switch (iconName) {
-      case "bolt": return <Zap size={14} />;
-      case "timer": return <Clock size={14} />;
-      case "monitor_weight": return <Weight size={14} />;
-      case "workspace_premium": return <Award size={14} />;
-      default: return <Zap size={14} />;
+      case "bolt": return <Zap size={14} strokeWidth={3} />;
+      case "timer": return <Clock size={14} strokeWidth={3} />;
+      case "monitor_weight": return <Weight size={14} strokeWidth={3} />;
+      case "workspace_premium": return <Award size={14} strokeWidth={3} />;
+      default: return <Target size={14} strokeWidth={3} />;
     }
   };
 
   return (
     <div style={{
-      background: "var(--surface-lowest)",
-      border: isExcellence ? `1px solid ${voltColor}40` : "1px solid var(--border-glow)",
-      borderRadius: "4px",
+      background: "#FFF",
+      border: "3px solid #000",
       padding: "24px",
-      marginBottom: "20px",
+      marginBottom: "24px",
       position: "relative",
-      overflow: "hidden",
-      transition: "all 0.3s ease",
-      boxShadow: isExcellence ? `0 0 40px ${voltColor}08` : "none"
+      boxShadow: isExcellence ? "8px 8px 0px var(--red)" : "6px 6px 0px #000",
+      transition: "all 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
     }}>
+      
       {/* ── TOP BADGES ── */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-        <div style={{ display: "flex", gap: "6px" }}>
+        <div style={{ display: "flex", gap: "8px" }}>
           {typeTag && (
             <span style={{ 
-              fontSize: "8px", 
+              fontSize: "9px", 
               fontWeight: 900, 
-              color: "white", 
-              background: "rgba(255,255,255,0.1)", 
-              padding: "2px 6px", 
-              borderRadius: "2px",
+              color: "#FFF", 
+              background: "#000", 
+              padding: "4px 8px", 
               letterSpacing: "0.1em",
-              textTransform: "uppercase"
+              textTransform: "uppercase",
+              boxShadow: "2px 2px 0px var(--red)"
             }}>
               {typeTag}
             </span>
           )}
           {isExcellence && (
             <span style={{ 
-              fontSize: "8px", 
+              fontSize: "9px", 
               fontWeight: 900, 
-              color: voltColor, 
-              background: `${voltColor}15`, 
-              padding: "2px 6px", 
-              borderRadius: "2px",
-              letterSpacing: "0.1em" 
+              color: "#000", 
+              background: "#FFF", 
+              border: "2px solid var(--red)",
+              padding: "2px 8px", 
+              letterSpacing: "0.1em",
+              textTransform: "uppercase"
             }}>
-              PR BATIDO
+              RECORDE PESSOAL
             </span>
           )}
         </div>
-        <span style={{ fontSize: "10px", fontWeight: 800, color: "var(--text-dim)", letterSpacing: "0.05em" }}>
-          {date}
+        <span style={{ fontSize: "10px", fontWeight: 900, color: "#000", opacity: 0.4, letterSpacing: "0.05em" }}>
+          {date.toUpperCase()}
         </span>
       </div>
 
       {/* ── HEADER ── */}
-      <div style={{ marginBottom: "20px" }}>
-        <h4 style={{ fontSize: "16px", fontWeight: 900, color: "white", textTransform: "uppercase", marginBottom: "4px" }}>
+      <div style={{ marginBottom: "24px" }}>
+        <h4 className="font-display" style={{ fontSize: "24px", fontWeight: 950, color: "#000", textTransform: "uppercase", lineHeight: 0.9, marginBottom: "8px" }}>
           {title}
         </h4>
-        <p style={{ fontSize: "12px", color: "var(--text-muted)", marginBottom: "12px", lineHeight: "1.4" }}>
+        <p style={{ fontSize: "13px", color: "#000", fontWeight: 500, marginBottom: "16px", lineHeight: "1.4", opacity: 0.8 }}>
           {description}
         </p>
         
         {result && (
           <div style={{ 
-            fontSize: "10px", 
-            fontWeight: 800, 
-            color: "white", 
-            background: "linear-gradient(90deg, var(--red)20, transparent)",
-            padding: "8px 12px",
-            borderLeft: "2px solid var(--red)",
-            marginBottom: "12px",
+            fontSize: "12px", 
+            fontWeight: 900, 
+            color: "#FFF", 
+            background: "#000",
+            padding: "10px 16px",
+            border: "2px solid #000",
+            boxShadow: "4px 4px 0px var(--red)",
+            display: "inline-block",
+            marginBottom: "16px",
             letterSpacing: "0.05em"
           }}>
-            SCORE: <span style={{ color: "var(--red)" }}>{result}</span>
+            SCORE FINAL: <span style={{ color: "#FFF" }}>{result}</span>
           </div>
         )}
 
-        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginTop: "12px" }}>
           {hashtags.map((tag, i) => (
-            <span key={i} style={{ fontSize: "9px", fontWeight: 700, color: "var(--red)", opacity: 0.8 }}>
+            <span key={i} style={{ fontSize: "10px", fontWeight: 900, color: "var(--red)", textTransform: "uppercase" }}>
               {tag.startsWith("#") ? tag : `#${tag}`}
             </span>
           ))}
@@ -145,17 +146,17 @@ export const ActivityFeedCard: React.FC<ActivityFeedCardProps> = ({
       <div style={{ 
         display: "grid", 
         gridTemplateColumns: `repeat(${metrics.length}, 1fr)`, 
-        gap: "12px",
+        gap: "16px",
         marginBottom: (achievements.length > 0 || coach || points) ? "24px" : "0",
         paddingTop: "20px",
-        borderTop: "1px solid rgba(255,255,255,0.03)"
+        borderTop: "2px solid #F0F0F0"
       }}>
         {metrics.map((metric, i) => (
           <div key={i} style={{ textAlign: "left" }}>
-            <div className="font-display" style={{ fontSize: "20px", color: "white", marginBottom: "2px" }}>
-              {metric.value}<span style={{ fontSize: "10px", opacity: 0.5, marginLeft: "2px" }}>{metric.unit}</span>
+            <div className="font-display" style={{ fontSize: "24px", fontWeight: 900, color: "#000", lineHeight: 1 }}>
+              {metric.value}<span style={{ fontSize: "12px", fontWeight: 900, opacity: 0.4, marginLeft: "4px" }}>{metric.unit}</span>
             </div>
-            <div style={{ fontSize: "8px", fontWeight: 800, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.1em" }}>
+            <div style={{ fontSize: "9px", fontWeight: 900, color: "#000", textTransform: "uppercase", letterSpacing: "0.1em", marginTop: "4px", opacity: 0.5 }}>
               {metric.label}
             </div>
           </div>
@@ -168,44 +169,46 @@ export const ActivityFeedCard: React.FC<ActivityFeedCardProps> = ({
           display: "flex", 
           justifyContent: "space-between", 
           alignItems: "center",
-          paddingTop: "16px", 
-          borderTop: "1px solid rgba(255,255,255,0.03)" 
+          paddingTop: "20px", 
+          borderTop: "2px solid #F0F0F0" 
         }}>
-          <div style={{ display: "flex", gap: "8px" }}>
+          <div style={{ display: "flex", gap: "12px" }}>
             {achievements.map((ach) => (
               <div key={ach.id} style={{
-                width: "24px",
-                height: "28px",
-                position: "relative",
+                width: "32px",
+                height: "32px",
+                background: ach.color === "volt" ? "#000" : "var(--red)",
+                border: "2px solid #000",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
+                boxShadow: "2px 2px 0px #000"
               }}>
-                <div style={{
-                  position: "absolute",
-                  inset: 0,
-                  clipPath: "polygon(50% 0%, 100% 20%, 100% 80%, 50% 100%, 0% 80%, 0% 20%)",
-                  background: ach.color === "volt" ? `${voltColor}20` : "var(--red)20",
-                  border: `1px solid ${ach.color === "volt" ? voltColor : "var(--red)"}`,
-                }} />
-                <div style={{ color: ach.color === "volt" ? voltColor : "var(--red)", zIndex: 1, display: "flex" }}>
+                <div style={{ color: ach.color === "volt" ? "var(--red)" : "#FFF" }}>
                   {getIcon(ach.icon)}
                 </div>
               </div>
             ))}
           </div>
 
-          <div style={{ display: "flex", gap: "16px", alignItems: "center" }}>
+          <div style={{ display: "flex", gap: "20px", alignItems: "center" }}>
             {coach && (
-              <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                <User size={12} color="var(--text-dim)" />
-                <span style={{ fontSize: "8px", fontWeight: 800, color: "var(--text-muted)", textTransform: "uppercase" }}>{coach}</span>
+              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                <User size={14} color="#000" strokeWidth={3} />
+                <span style={{ fontSize: "10px", fontWeight: 900, color: "#000", textTransform: "uppercase" }}>COACH {coach}</span>
               </div>
             )}
             {points !== undefined && (
-              <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                <span style={{ fontSize: "10px", fontWeight: 900, color: "var(--red)" }}>+{points}</span>
-                <span style={{ fontSize: "8px", fontWeight: 800, color: "var(--text-muted)" }}>PTS</span>
+              <div style={{ 
+                background: "var(--red)", 
+                padding: "2px 10px", 
+                border: "2px solid #000",
+                display: "flex", 
+                alignItems: "center", 
+                gap: "4px" 
+              }}>
+                <span style={{ fontSize: "12px", fontWeight: 950, color: "#FFF" }}>+{points}</span>
+                <span style={{ fontSize: "8px", fontWeight: 900, color: "#FFF" }}>PTS</span>
               </div>
             )}
           </div>

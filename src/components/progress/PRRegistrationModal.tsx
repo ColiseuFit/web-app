@@ -57,54 +57,57 @@ export default function PRRegistrationModal({ onClose, onSuccess, initialLevel }
   return (
     <div style={{
       position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
-      backgroundColor: "rgba(0,0,0,0.92)", zIndex: 3000,
-      display: "flex", alignItems: "flex-end", backdropFilter: "blur(12px)",
-      animation: "modalFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1)"
+      backgroundColor: "rgba(255,255,255,0.98)", zIndex: 3000,
+      display: "flex", alignItems: "flex-end",
+      animation: "modalSlideUp 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28)"
     }}>
       <div style={{
-        backgroundColor: "var(--surface-lowest)", 
-        width: "100%", maxWidth: "480px", margin: "0 auto",
-        borderTopLeftRadius: "32px", borderTopRightRadius: "32px",
-        maxHeight: "94vh", display: "flex", flexDirection: "column",
-        position: "relative", boxShadow: "0 -25px 100px rgba(0,0,0,0.9)",
-        border: "1px solid var(--border-glow)", borderBottom: "none"
+        backgroundColor: "#FFF", 
+        width: "100%", maxWidth: "500px", margin: "0 auto",
+        maxHeight: "96vh", display: "flex", flexDirection: "column",
+        position: "relative", boxShadow: "0 -10px 40px rgba(0,0,0,0.05)",
+        border: "3px solid #000", borderBottom: "none"
       }}>
         
-        {/* DRAG INDICATOR */}
-        <div onClick={onClose} style={{ padding: "12px 0 20px", display: "flex", justifyContent: "center", cursor: "pointer" }}>
-          <div style={{ width: "40px", height: "4px", backgroundColor: "rgba(255,255,255,0.15)", borderRadius: "2px" }} />
-        </div>
+        {/* CLOSE BUTTON */}
+        <button 
+          onClick={onClose} 
+          style={{ 
+            position: "absolute", top: "16px", right: "16px",
+            background: "#000", border: "none", color: "#FFF", 
+            cursor: "pointer", width: "32px", height: "32px",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            zIndex: 10
+          }}
+        >
+          <X size={20} />
+        </button>
 
         {/* HEADER */}
-        <div style={{ padding: "0 24px 24px", flexShrink: 0 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-            <div>
-              <p style={{ fontSize: "9px", fontWeight: 800, color: "var(--red)", letterSpacing: "0.25em", textTransform: "uppercase", marginBottom: "4px" }}>
-                REGISTRO DE PERFORMANCE
-              </p>
-              <h2 className="font-display" style={{ fontSize: "28px", lineHeight: 1, letterSpacing: "-0.02em" }}>ALCANÇAR MARCA</h2>
-            </div>
-            <button onClick={onClose} style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <X size={24} />
-            </button>
-          </div>
+        <div style={{ padding: "32px 24px 24px", flexShrink: 0, borderBottom: "2px solid #000" }}>
+          <p style={{ fontSize: "10px", fontWeight: 900, color: "#E31B23", letterSpacing: "0.2em", textTransform: "uppercase", marginBottom: "8px" }}>
+            CONTROLE DE PERFORMANCE
+          </p>
+          <h2 className="font-display" style={{ fontSize: "32px", lineHeight: 0.9, color: "#000", textTransform: "uppercase" }}>
+            REGISTRAR <br />NOVA MARCA
+          </h2>
         </div>
 
         {/* SCROLLABLE FORM */}
-        <div style={{ flex: 1, overflowY: "auto", padding: "0 24px 32px", scrollbarWidth: "none" }}>
+        <div style={{ flex: 1, overflowY: "auto", padding: "32px 24px", scrollbarWidth: "none" }}>
           <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
             
             {/* MOVIMENTO */}
             <div>
-              <label style={{ fontSize: "9px", fontWeight: 700, color: "var(--text-muted)", letterSpacing: "0.1em", display: "block", marginBottom: "10px" }}>MOVIMENTO / EXERCÍCIO</label>
+              <label style={{ fontSize: "10px", fontWeight: 900, color: "#000", letterSpacing: "0.1em", display: "block", marginBottom: "12px", textTransform: "uppercase" }}>MOVIMENTO / EXERCÍCIO</label>
               <input 
                 value={movementName}
                 onChange={(e) => setMovementName(e.target.value)}
-                placeholder="Ex: Snatch, Fran, Burpees..."
+                placeholder="Ex: SNATCH, FRAN..."
                 style={{
-                  width: "100%", background: "rgba(255,255,255,0.02)", border: "1px solid var(--border-glow)",
-                  padding: "18px", color: "#fff", fontSize: "16px", fontWeight: 600, outline: "none",
-                  borderRadius: "4px", transition: "border 0.2s"
+                  width: "100%", background: "#FFF", border: "2px solid #000",
+                  padding: "16px", color: "#000", fontSize: "16px", fontWeight: 900, outline: "none",
+                  boxShadow: "4px 4px 0px #f0f0f0"
                 }}
               />
             </div>
@@ -112,53 +115,56 @@ export default function PRRegistrationModal({ onClose, onSuccess, initialLevel }
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
               {/* RESULTADO */}
               <div>
-                <label style={{ fontSize: "9px", fontWeight: 700, color: "var(--text-muted)", letterSpacing: "0.1em", display: "block", marginBottom: "10px" }}>CARGA / TEMPO</label>
+                <label style={{ fontSize: "10px", fontWeight: 900, color: "#000", letterSpacing: "0.1em", display: "block", marginBottom: "12px", textTransform: "uppercase" }}>RESULTADO</label>
                 <input 
                   type="number"
                   value={value}
                   onChange={(e) => setValue(e.target.value)}
                   placeholder="0.00"
                   style={{
-                    width: "100%", background: "rgba(255,255,255,0.02)", border: "1px solid var(--border-glow)",
-                    padding: "18px", color: "#fff", fontSize: "22px", fontWeight: 900, outline: "none",
-                    borderRadius: "4px"
+                    width: "100%", background: "#FFF", border: "2px solid #000",
+                    padding: "16px", color: "#000", fontSize: "20px", fontWeight: 900, outline: "none",
+                    boxShadow: "4px 4px 0px #f0f0f0"
                   }}
                 />
               </div>
 
               {/* UNIDADE */}
               <div>
-                <label style={{ fontSize: "9px", fontWeight: 700, color: "var(--text-muted)", letterSpacing: "0.1em", display: "block", marginBottom: "10px" }}>UNIDADE</label>
+                <label style={{ fontSize: "10px", fontWeight: 900, color: "#000", letterSpacing: "0.1em", display: "block", marginBottom: "12px", textTransform: "uppercase" }}>UNIDADE</label>
                 <select 
                   value={unit}
                   onChange={(e) => setUnit(e.target.value as "kg" | "time" | "reps")}
                   style={{
-                    width: "100%", background: "rgba(255,255,255,0.02)", border: "1px solid var(--border-glow)",
-                    padding: "18px", color: "#fff", fontSize: "14px", fontWeight: 700, outline: "none",
-                    appearance: "none", borderRadius: "4px"
+                    width: "100%", background: "#FFF", border: "2px solid #000",
+                    padding: "18px", color: "#000", fontSize: "14px", fontWeight: 900, outline: "none",
+                    appearance: "none", borderRadius: "0"
                   }}
                 >
-                  <option value="kg">KG</option>
-                  <option value="reps">REPS</option>
-                  <option value="time">SEG</option>
+                  <option value="kg">KG (PESO)</option>
+                  <option value="reps">REPETIÇÕES</option>
+                  <option value="time">TEMPO (SEG)</option>
                 </select>
               </div>
             </div>
 
             {/* CATEGORIA */}
             <div>
-              <label style={{ fontSize: "9px", fontWeight: 700, color: "var(--text-muted)", letterSpacing: "0.1em", display: "block", marginBottom: "10px" }}>CATEGORIA DO MOVIMENTO</label>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "6px" }}>
+              <label style={{ fontSize: "10px", fontWeight: 900, color: "#000", letterSpacing: "0.1em", display: "block", marginBottom: "12px", textTransform: "uppercase" }}>CATEGORIA</label>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
                 {(["lpo", "strength", "gymnastics", "benchmark"] as const).map((cat) => (
                   <button
                     key={cat}
                     onClick={() => { hapticSelect(); setCategory(cat); }}
                     style={{
-                      padding: "10px 4px", fontSize: "8px", fontWeight: 900, textTransform: "uppercase",
-                      background: category === cat ? "var(--red)" : "rgba(255,255,255,0.02)",
-                      border: "1px solid", borderColor: category === cat ? "var(--red)" : "var(--border-glow)",
-                      color: category === cat ? "#fff" : "var(--text-muted)", cursor: "pointer", transition: "0.2s",
-                      letterSpacing: "0.1em", borderRadius: "2px"
+                      padding: "12px 0", fontSize: "9px", fontWeight: 900, textTransform: "uppercase",
+                      background: category === cat ? "#000" : "#FFF",
+                      border: "2px solid #000",
+                      color: category === cat ? "#FFF" : "#000",
+                      cursor: "pointer", transition: "0.1s",
+                      letterSpacing: "0.1em",
+                      boxShadow: category === cat ? "none" : "3px 3px 0px #000",
+                      transform: category === cat ? "translate(2px, 2px)" : "none",
                     }}
                   >
                     {cat}
@@ -168,13 +174,12 @@ export default function PRRegistrationModal({ onClose, onSuccess, initialLevel }
             </div>
 
             <div>
-              <label style={{ fontSize: "9px", fontWeight: 700, color: "var(--text-muted)", letterSpacing: "0.1em", textTransform: "uppercase", display: "block", marginBottom: "12px" }}>REQUISITO TÉCNICO (NÍVEL)</label>
+              <label style={{ fontSize: "10px", fontWeight: 900, color: "#000", letterSpacing: "0.1em", textTransform: "uppercase", display: "block", marginBottom: "16px" }}>REQUISITO TÉCNICO (NÍVEL)</label>
               
-              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                 {ALL_LEVELS.map((lvlInfo, index) => {
                   const isSelected = level === lvlInfo.id;
                   const isLocked = index > maxLevelIndex;
-                  const isCurrentLevel = lvlInfo.id === currentLevelId;
 
                   return (
                     <button
@@ -182,49 +187,42 @@ export default function PRRegistrationModal({ onClose, onSuccess, initialLevel }
                       disabled={isLocked}
                       onClick={() => { hapticSelect(); setLevel(lvlInfo.id); }}
                       style={{
-                        width: "100%", height: "64px",
-                        background: isSelected ? "rgba(255,255,255,0.03)" : "rgba(255,255,255,0.01)",
-                        border: isSelected ? `1px solid ${lvlInfo.color}` : "1px solid var(--border-glow)",
-                        color: isSelected ? "#fff" : "var(--text-muted)",
-                        fontSize: "11px", fontWeight: 900,
-                        opacity: isLocked ? 0.15 : 1,
+                        width: "100%", height: "70px",
+                        background: isSelected ? "#000" : "#FFF",
+                        border: "2px solid #000",
+                        color: isSelected ? "#FFF" : "#000",
+                        fontSize: "12px", fontWeight: 900,
+                        opacity: isLocked ? 0.2 : 1,
                         cursor: isLocked ? "not-allowed" : "pointer",
                         display: "flex", alignItems: "center", justifyContent: "space-between",
-                        padding: "0 16px", borderRadius: "4px",
-                        transition: "all 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
-                        animation: isCurrentLevel && isSelected ? "levelPulse 3s infinite ease-in-out" : "none",
-                        position: "relative",
-                        overflow: "hidden"
+                        padding: "0 20px",
+                        transition: "all 0.1s ease",
+                        boxShadow: isSelected ? "none" : "4px 4px 0px rgba(0,0,0,0.05)",
+                        transform: isSelected ? "translate(2px, 2px)" : "none",
+                        position: "relative"
                       }}
                     >
-                      {/* ICON & LABEL */}
                       <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
                         <div style={{ 
-                          width: "36px", height: "36px", flexShrink: 0,
-                          filter: isLocked ? "grayscale(100%)" : (isSelected ? `drop-shadow(0 0 8px ${lvlInfo.color}80)` : "none")
+                          width: "32px", height: "32px", flexShrink: 0,
+                          filter: isLocked ? "grayscale(100%)" : "none",
+                          border: isSelected ? "1px solid #FFF" : "1px solid #000",
+                          background: "#FFF", padding: "4px"
                         }}>
                           {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={lvlInfo.icon} alt={lvlInfo.label} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+                          <img src={lvlInfo.icon} alt="" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
                         </div>
                         <div style={{ textAlign: "left" }}>
-                          <span style={{ fontSize: "8px", color: lvlInfo.color, display: "block", marginBottom: "2px" }}>{lvlInfo.id}</span>
-                          <span style={{ fontSize: "11px", letterSpacing: "0.1em" }}>{lvlInfo.label}</span>
+                          <span style={{ fontSize: "8px", color: isSelected ? "#FFF" : lvlInfo.color, display: "block", marginBottom: "2px", fontWeight: 900 }}>{lvlInfo.id}</span>
+                          <span style={{ fontSize: "12px", letterSpacing: "0.1em", textTransform: "uppercase" }}>{lvlInfo.label}</span>
                         </div>
                       </div>
                       
                       {isLocked ? (
-                        <Lock size={18} style={{ opacity: 0.5 }} />
+                        <Lock size={16} style={{ opacity: 0.5 }} />
                       ) : isSelected ? (
-                        <CheckCircle size={22} color={lvlInfo.color} />
+                        <CheckCircle size={20} color="#E31B23" />
                       ) : null}
-
-                      {/* BG EFFECT ON ACTIVE */}
-                      {isSelected && (
-                        <div style={{
-                          position: "absolute", inset: 0, background: `linear-gradient(90deg, transparent, ${lvlInfo.color}10, transparent)`,
-                          pointerEvents: "none"
-                        }} />
-                      )}
                     </button>
                   );
                 })}
@@ -235,33 +233,32 @@ export default function PRRegistrationModal({ onClose, onSuccess, initialLevel }
         </div>
 
         {/* FOOTER */}
-        <div style={{ padding: "24px 24px 44px", borderTop: "1px solid rgba(255,255,255,0.05)", background: "var(--surface-lowest)" }}>
+        <div style={{ padding: "24px 24px 48px", borderTop: "2px solid #000", background: "#f9f9f9" }}>
           <button
             onClick={handleConfirm}
             disabled={!movementName || !value || loading}
             style={{
-              width: "100%", padding: "20px", background: movementName && value ? "var(--red)" : "rgba(255,255,255,0.03)",
-              border: "none", color: movementName && value ? "#fff" : "rgba(255,255,255,0.15)", 
-              fontSize: "12px", fontWeight: 900, cursor: !movementName || !value || loading ? "not-allowed" : "pointer",
-              textTransform: "uppercase", fontFamily: "var(--font-display)",
-              transition: "all 0.5s ease", borderRadius: "1px", letterSpacing: "0.2em",
-              boxShadow: movementName && value ? "0 15px 40px rgba(227,27,35,0.25)" : "none"
+              width: "100%", padding: "22px", 
+              background: movementName && value ? "#000" : "#ccc",
+              border: "2px solid #000", 
+              color: "#FFF", 
+              fontSize: "14px", fontWeight: 900, 
+              cursor: !movementName || !value || loading ? "not-allowed" : "pointer",
+              textTransform: "uppercase", 
+              letterSpacing: "0.2em",
+              boxShadow: movementName && value ? "6px 6px 0px #E31B23" : "none"
             }}
           >
-            {loading ? "SINCRONIZANDO..." : "REGISTRAR RECORDE"}
+            {loading ? "PROCESSANDO..." : "CONFIRMAR REGISTRO"}
           </button>
         </div>
 
       </div>
 
       <style jsx global>{`
-        @keyframes modalFadeIn {
-          from { opacity: 0; transform: translateY(100%); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes levelPulse {
-          0%, 100% { transform: scale(1); }
-          50% { transform: scale(1.01); border-color: #fff; }
+        @keyframes modalSlideUp {
+          from { transform: translateY(100%); }
+          to { transform: translateY(0); }
         }
       `}</style>
     </div>

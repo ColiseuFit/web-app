@@ -1,7 +1,6 @@
 "use client";
 
 import React from "react";
-import { Award } from "lucide-react";
 import LevelBadge from "./LevelBadge";
 import { getLevelInfo, LevelInfo as CentralLevelInfo } from "@/lib/constants/levels";
 
@@ -16,123 +15,147 @@ interface LevelCardProps {
   stats: AthleteStats;
   pointsProgress: number;
   pointsRemaining: number;
-  avatarUrl?: string;
+  avatarUrl?: string | null;
 }
 
 /**
- * Card de Nível do Atleta (Brutalista / Iron Monolith).
- * @param {number} points_actual - Pontuação total acumulada pelo atleta.
- * @param {number} points_next_level - Pontuação necessária para atingir o próximo nível.
- * @param {string} level - Identificador do nível (ex: L1, L2, RX).
- * @param {string} category - Nome da categoria (ex: INICIANTE, SCALE, RX).
- * @param {string} avatarUrl - URL da imagem de perfil do atleta para o Dual Badge.
- * 
- * @design
- * - Dual Badge: Implementa o padrão visual onde o ícone de nível e o avatar do atleta
- *   são exibidos lado a lado em um layout de alta densidade visual.
- * - Barra de Progresso: Representação linear do avanço radial entre níveis.
+ * LevelCard "Elite Performance Certificate"
+ * A high-density data component for the athlete's progress.
  */
 export default function LevelCard({ level: levelInput, stats, pointsProgress, pointsRemaining, avatarUrl }: LevelCardProps) {
   const level = typeof levelInput === "string" ? getLevelInfo(levelInput) : levelInput;
-  const isElite = level.key === "elite";
   
   return (
     <div style={{ 
-      background: isElite ? "var(--bg)" : level.color, 
-      border: isElite ? `2px solid ${level.color}` : "none",
-      borderRadius: "2px", 
-      padding: "24px", 
+      background: "#FFF", 
+      border: "3px solid #000",
+      padding: "40px 24px 32px", 
       position: "relative",
-      overflow: "hidden",
-      boxShadow: level.glow ? `0 0 30px ${level.glow}` : "none",
-      transition: "all 0.5s cubic-bezier(0.16, 1, 0.3, 1)"
+      boxShadow: "10px 10px 0px #000",
+      transition: "all 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
+      overflow: "hidden"
     }}>
-      {/* Background Icon Watermark */}
-      <div style={{ 
-        position: "absolute", 
-        right: "-20px", 
-        bottom: "-20px", 
-        color: level.textColor,
-        opacity: isElite ? 0.05 : 0.15,
-        transform: "rotate(-15deg)"
-      }}>
-        <Award size={140} />
-      </div>
+      
+      {/* BACKGROUND DECOR (Dashed Frame) */}
+      <div style={{
+        position: "absolute",
+        inset: "6px",
+        border: "1px dashed #000",
+        opacity: 0.1,
+        pointerEvents: "none"
+      }} />
 
       <div style={{ position: "relative", zIndex: 1 }}>
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: "24px" }}>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: "32px" }}>
           
-          {/* IDENTIDADE DUAL (LEVEL + AVATAR) */}
+          {/* IDENTIDADE UNIFICADA (LEVEL + AVATAR) */}
           <div style={{ 
-            marginBottom: "20px",
+            marginBottom: "24px",
             display: "flex",
-            gap: "12px",
-            justifyContent: "center"
+            justifyContent: "center",
           }}>
-            {/* ÍCONE DE RANKING */}
             <LevelBadge 
               level={level} 
-              description={level.description || ""} 
-              size={100} 
-            />
-
-            {/* FOTO DO ATLETA */}
-            <LevelBadge 
-              level={level} 
-              description={level.description || ""} 
-              size={100} 
+              size={130} 
               avatarUrl={avatarUrl}
             />
           </div>
           
-          <span style={{ fontSize: "10px", fontWeight: 800, color: level.textColor, letterSpacing: "0.2em", textTransform: "uppercase", opacity: 0.8 }}>
-            NÍVEL ATUAL
-          </span>
-          
-          <div style={{ fontFamily: "var(--font-display)", fontSize: "28px", fontWeight: 900, color: level.textColor, lineHeight: 1, marginTop: "6px", textAlign: "center" }}>
-            {level.label}
+          <div style={{ 
+            marginTop: "12px",
+            background: "#000",
+            padding: "4px 16px",
+            color: "#FFF",
+            fontSize: "12px",
+            fontWeight: 900,
+            letterSpacing: "0.2em",
+            textTransform: "uppercase"
+          }}>
+            {level.label} STATUS
           </div>
         </div>
 
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: "8px" }}>
-          <span style={{ fontSize: "10px", fontWeight: 700, color: level.textColor, opacity: 0.8, letterSpacing: "0.15em", marginBottom: "4px" }}>PONTUAÇÃO ACUMULADA</span>
-          <span style={{ fontFamily: "var(--font-display)", fontSize: "32px", fontWeight: 900, color: level.textColor, lineHeight: 1 }}>
-            {stats.points_actual.toLocaleString("pt-BR")}
+        {/* MÉTRICA DE PONTOS CENTRAL */}
+        <div style={{ 
+          display: "flex", 
+          flexDirection: "column", 
+          alignItems: "center", 
+          marginBottom: "40px",
+          textAlign: "center"
+        }}>
+          <span className="font-headline" style={{ 
+            fontSize: "12px", 
+            fontWeight: 900, 
+            color: "#000", 
+            letterSpacing: "0.15em", 
+            marginBottom: "8px", 
+            textTransform: "uppercase",
+            opacity: 0.4
+          }}>
+            PONTUAÇÃO ACUMULADA
           </span>
+          <div style={{ position: "relative" }}>
+            <span className="font-display" style={{ 
+              fontSize: "64px", 
+              fontWeight: 950, 
+              color: "#000", 
+              lineHeight: 0.8,
+              letterSpacing: "-0.05em" 
+            }}>
+              {stats.points_actual.toLocaleString("pt-BR")}
+            </span>
+            <div style={{ 
+               position: "absolute", 
+               bottom: "-10px", 
+               right: "-20px", 
+               fontSize: "14px", 
+               fontWeight: 900, 
+               color: level.color,
+               transform: "rotate(-5deg)"
+            }}>
+              PTS
+            </div>
+          </div>
         </div>
 
-        {/* Barra de Progresso Animada */}
-        <div style={{ width: "100%", height: "6px", background: "rgba(0,0,0,0.2)", position: "relative", marginTop: "24px", marginBottom: "8px", borderRadius: "3px" }}>
-          <div 
-            className="points-bar-fill"
-            style={{ 
-              position: "absolute", 
-              left: 0, 
-              top: 0, 
-              height: "100%", 
-              width: `${pointsProgress}%`, 
-              background: level.textColor,
-              transition: "width 1.5s cubic-bezier(0.16, 1, 0.3, 1)",
-              borderRadius: "3px",
-              boxShadow: `0 0 10px ${level.textColor}40`
-          }} />
-        </div>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div style={{ fontSize: "10px", fontWeight: 700, color: level.textColor, opacity: 0.9 }}>
-            {pointsRemaining.toLocaleString("pt-BR")} PONTOS PARA O PRÓXIMO NÍVEL
+        {/* PROGRESS BAR (BRUTALIST TRACK) */}
+        <div style={{ marginTop: "24px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
+             <span style={{ fontSize: "10px", fontWeight: 900, letterSpacing: "0.05em" }}>PROGRESSO DE NÍVEL</span>
+             <span style={{ fontSize: "10px", fontWeight: 900 }}>{Math.round(pointsProgress)}%</span>
           </div>
-          <div style={{ fontSize: "10px", fontWeight: 900, color: level.textColor }}>
-              {Math.round(pointsProgress)}%
+          <div style={{ 
+            width: "100%", 
+            height: "16px", 
+            background: "#F0F0F0", 
+            border: "2px solid #000", 
+            position: "relative",
+          }}>
+            <div 
+              style={{ 
+                position: "absolute", 
+                left: 0, 
+                top: 0, 
+                height: "100%", 
+                width: `${pointsProgress}%`, 
+                background: level.color,
+                borderRight: "2px solid #000",
+                transition: "width 1.5s cubic-bezier(0.16, 1, 0.3, 1)",
+            }} />
+          </div>
+          <div style={{ 
+            marginTop: "10px", 
+            fontSize: "10px", 
+            fontWeight: 800, 
+            color: "#000", 
+            textAlign: "center",
+            letterSpacing: "0.02em",
+            opacity: 0.6
+          }}>
+            FALTAM {pointsRemaining.toLocaleString("pt-BR")} PONTOS PARA A PRÓXIMA GRADUAÇÃO
           </div>
         </div>
       </div>
-
-      <style jsx>{`
-          @keyframes sealEntrance {
-              from { opacity: 0; transform: scale(0.5) rotate(-20deg); }
-              to { opacity: 1; transform: scale(1) rotate(0deg); }
-          }
-      `}</style>
     </div>
   );
 }

@@ -37,33 +37,34 @@ export const GoalsSection: React.FC<GoalsSectionProps> = ({
   const totalCount = goals.length;
 
   return (
-    <div style={{ width: "100%", background: "transparent", padding: "20px" }}>
+    <div style={{ width: "100%", background: "transparent", padding: "24px 20px" }}>
       
       {/* ── HEADER DE PROGRESSO (OBJETIVOS) ── */}
       <div style={{ display: "flex", flexDirection: "column", marginBottom: "32px" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
-          <h3 style={{ fontSize: "10px", fontWeight: 900, letterSpacing: "0.25em", color: "var(--volt)", textTransform: "uppercase" }}>
-            OBJETIVOS DE CURTO PRAZO
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
+          <h3 className="font-headline" style={{ fontSize: "11px", fontWeight: 900, letterSpacing: "0.15em", color: "#000", textTransform: "uppercase" }}>
+            CONTROLE DE OBJETIVOS
           </h3>
-          <span style={{ fontSize: "10px", fontFamily: "monospace", color: "white", fontWeight: 900, opacity: 0.8 }}>
-            {completedCount} <span style={{ opacity: 0.3 }}>/</span> {totalCount}
-          </span>
+          <div style={{ padding: "4px 12px", background: "#000", border: "1px solid #000" }}>
+            <span style={{ fontSize: "11px", fontFamily: "monospace", color: "#FFF", fontWeight: 900 }}>
+              {completedCount} <span style={{ opacity: 0.5 }}>/</span> {totalCount}
+            </span>
+          </div>
         </div>
-        <div style={{ width: "100%", height: "4px", backgroundColor: "rgba(255,255,255,0.03)", position: "relative", overflow: "hidden", borderRadius: "2px" }}>
+        <div style={{ width: "100%", height: "8px", backgroundColor: "#f0f0f0", border: "2px solid #000", position: "relative", overflow: "hidden" }}>
           <div 
             style={{ 
               height: "100%", 
-              backgroundColor: "var(--volt)", 
-              transition: "width 1.2s cubic-bezier(0.16, 1, 0.3, 1)", 
+              backgroundColor: "#E31B23", 
+              transition: "width 0.8s cubic-bezier(0.16, 1, 0.3, 1)", 
               width: totalCount > 0 ? `${(completedCount/totalCount)*100}%` : "0%",
-              boxShadow: "0 0 10px rgba(225,255,0,0.4)"
             }}
           />
         </div>
       </div>
 
       {/* ── LISTA DE METAS (VERTICAL LIST) ── */}
-      <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
         {goals.map((goal) => (
           <div 
             key={goal.id} 
@@ -71,32 +72,34 @@ export const GoalsSection: React.FC<GoalsSectionProps> = ({
             style={{
               display: "flex",
               alignItems: "center",
-              padding: "18px 0",
-              borderBottom: "1px solid rgba(255,255,255,0.03)",
+              padding: "16px",
+              background: goal.is_completed ? "#fafafa" : "#FFF",
+              border: "2px solid #000",
               cursor: "pointer",
-              transition: "opacity 0.2s ease",
-              opacity: goal.is_completed ? 0.4 : 1,
+              transition: "all 0.1s ease",
+              boxShadow: goal.is_completed ? "none" : "4px 4px 0px #000",
+              transform: goal.is_completed ? "translate(2px, 2px)" : "none",
+              opacity: goal.is_completed ? 0.7 : 1,
             }}
           >
             <div style={{ 
-              width: "14px", 
-              height: "14px", 
-              border: "1px solid",
-              borderColor: goal.is_completed ? "white" : "var(--text-muted)", 
+              width: "18px", 
+              height: "18px", 
+              border: "2px solid #000",
               marginRight: "16px", 
               display: "flex", 
               alignItems: "center", 
               justifyContent: "center",
-              backgroundColor: goal.is_completed ? "white" : "transparent",
+              backgroundColor: goal.is_completed ? "#000" : "#transparent",
             }}>
-              {goal.is_completed && <div style={{ width: "6px", height: "6px", backgroundColor: "black" }} />}
+              {goal.is_completed && <div style={{ width: "6px", height: "6px", backgroundColor: "#FFF" }} />}
             </div>
-            <span style={{ 
-              fontSize: "11px", 
-              fontWeight: 700, 
+            <span className="font-headline" style={{ 
+              fontSize: "12px", 
+              fontWeight: 900, 
               letterSpacing: "0.05em", 
               textTransform: "uppercase",
-              color: goal.is_completed ? "var(--text-muted)" : "white",
+              color: "#000",
               textDecoration: goal.is_completed ? "line-through" : "none",
             }}>
               {goal.title}
@@ -106,24 +109,24 @@ export const GoalsSection: React.FC<GoalsSectionProps> = ({
       </div>
 
       {/* INPUT DE NOVA META (STREAK STYLE) */}
-      <form onSubmit={handleSubmit} style={{ marginTop: "12px" }}>
+      <form onSubmit={handleSubmit} style={{ marginTop: "24px" }}>
         <input
           type="text"
           value={newGoal}
           onChange={(e) => setNewGoal(e.target.value)}
-          placeholder="ESTABELECER NOVO ALVO..."
+          placeholder="+ ESTABELECER NOVO ALVO"
           style={{
             width: "100%",
-            backgroundColor: "rgba(255,255,255,0.01)",
-            border: "none",
-            borderBottom: "1px solid var(--border-glow)",
-            padding: "20px 0",
-            fontSize: "10px",
-            color: "white",
+            backgroundColor: "#FFF",
+            border: "2px solid #000",
+            padding: "16px 20px",
+            fontSize: "12px",
+            color: "#000",
             fontWeight: 800,
             textTransform: "uppercase",
-            letterSpacing: "0.2em",
+            letterSpacing: "0.1em",
             outline: "none",
+            boxShadow: "4px 4px 0px #f0f0f0"
           }}
         />
       </form>

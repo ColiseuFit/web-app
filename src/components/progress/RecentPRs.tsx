@@ -36,62 +36,57 @@ export default function RecentPRs({ prs, hideViewAll = false }: RecentPRsProps) 
   };
 
   return (
-    <section style={{ padding: "0 20px 32px" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: "16px" }}>
+    <section style={{ marginBottom: "16px" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
         <div>
-          <span style={{ fontSize: "8px", fontWeight: 800, color: "var(--red)", letterSpacing: "0.2em", textTransform: "uppercase", display: "block", marginBottom: "4px" }}>
-            Desempenho
+          <span className="font-headline" style={{ fontSize: "10px", fontWeight: 900, color: "#000", letterSpacing: "0.15em", textTransform: "uppercase", display: "inline-block", background: "#f0f0f0", border: "1px solid #000", padding: "4px 8px", marginBottom: "8px" }}>
+            PERFORMANCE
           </span>
-          <h3 className="font-display" style={{ fontSize: "20px", fontWeight: 900, textTransform: "uppercase" }}>
+          <h3 className="font-display" style={{ fontSize: "22px", fontWeight: 900, textTransform: "uppercase", color: "#000", letterSpacing: "-0.01em" }}>
             Recordes Recentes
           </h3>
         </div>
         {!hideViewAll && (
-          <Link href="/progresso" style={{ fontSize: "10px", fontWeight: 800, color: "var(--text-muted)", textDecoration: "none", letterSpacing: "0.05em", borderBottom: "1px solid rgba(255,255,255,0.1)", paddingBottom: "2px" }}>
+          <Link href="/progresso" style={{ fontSize: "11px", fontWeight: 900, color: "#000", textDecoration: "underline", textUnderlineOffset: "4px", letterSpacing: "0.05em" }}>
             VER TUDO
           </Link>
         )}
       </div>
 
       {prs.length > 0 ? (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
           {prs.map((pr) => {
             const config = getLevelInfo(pr.level);
             return (
               <div 
                 key={pr.id}
                 style={{
-                  background: "var(--surface-lowest)",
-                  border: "1px solid var(--border-glow)",
-                  padding: "12px",
-                  borderRadius: "2px",
+                  background: "#FFF",
+                  border: "2px solid #000",
+                  padding: "16px 12px",
+                  borderRadius: "0",
                   position: "relative",
-                  overflow: "hidden",
                   display: "flex",
                   flexDirection: "column",
                   justifyContent: "space-between",
-                  minHeight: "80px"
+                  minHeight: "100px",
+                  boxShadow: "4px 4px 0px #000",
                 }}
               >
-                {/* Level Icon Watermark */}
-                <div style={{ position: "absolute", right: "-5px", top: "-5px", width: "40px", height: "40px", opacity: 0.05, filter: "grayscale(100%)" }}>
-                  <img src={config.icon} alt="" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
-                </div>
-
                 <div>
-                  <div style={{ fontSize: "7px", fontWeight: 800, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "4px" }}>
+                  <div style={{ fontSize: "8px", fontWeight: 900, color: "rgba(0,0,0,0.4)", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: "6px" }}>
                     {pr.movement_key.replace(/_/g, " ")}
                   </div>
-                  <div className="font-display" style={{ fontSize: "16px", fontWeight: 900, color: "white", fontStyle: "italic" }}>
+                  <div className="font-display" style={{ fontSize: "20px", fontWeight: 900, color: "#000", fontStyle: "italic", lineHeight: 1 }}>
                     {formatValue(pr)}
                   </div>
                 </div>
 
-                <div style={{ display: "flex", alignItems: "center", gap: "4px", marginTop: "8px" }}>
-                    <div style={{ width: "10px", height: "10px" }}>
-                        <img src={config.icon} alt={config.label} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+                <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "12px" }}>
+                    <div style={{ width: "12px", height: "12px", background: config.color, border: "1px solid #000", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <img src={config.icon} alt={config.label} style={{ width: "8px", height: "8px", objectFit: "contain", filter: "brightness(0) invert(1)" }} />
                     </div>
-                    <span style={{ fontSize: "7px", fontWeight: 900, color: config.color }}>{config.label}</span>
+                    <span style={{ fontSize: "8px", fontWeight: 900, color: "#000", textTransform: "uppercase" }}>{config.label}</span>
                 </div>
               </div>
             );
@@ -100,25 +95,25 @@ export default function RecentPRs({ prs, hideViewAll = false }: RecentPRsProps) 
       ) : (
         <Link href="/progresso" style={{ textDecoration: "none" }}>
             <div style={{ 
-                padding: "24px", 
-                background: "rgba(227,27,35,0.02)", 
-                border: "1px dashed var(--border-glow)", 
-                borderRadius: "4px",
+                padding: "32px 24px", 
+                background: "#FFF", 
+                border: "2px dashed #000", 
                 textAlign: "center",
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
-                gap: "12px"
+                gap: "16px",
+                boxShadow: "6px 6px 0px rgba(0,0,0,0.05)"
             }}>
-                <div style={{ width: "40px", height: "40px", borderRadius: "50%", background: "rgba(227,27,35,0.1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <TrendingUp size={20} color="var(--red)" />
+                <div style={{ width: "48px", height: "48px", background: "#f0f0f0", border: "2px solid #000", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <TrendingUp size={24} color="#000" />
                 </div>
                 <div>
-                    <p style={{ fontSize: "12px", fontWeight: 800, color: "white", marginBottom: "4px" }}>JORNADA DE EVOLUÇÃO</p>
-                    <p style={{ fontSize: "10px", color: "var(--text-muted)" }}>Sua evolução começa aqui. Registre seu primeiro recorde!</p>
+                    <h4 style={{ fontSize: "14px", fontWeight: 900, color: "#000", marginBottom: "6px", textTransform: "uppercase" }}>COMECE SUA JORNADA</h4>
+                    <p style={{ fontSize: "11px", color: "rgba(0,0,0,0.6)", fontWeight: 600 }}>Toda evolução começa com o primeiro registro técnico.</p>
                 </div>
-                <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "9px", fontWeight: 900, color: "var(--red)", letterSpacing: "0.1em" }}>
-                    <Plus size={12} strokeWidth={3} /> COMEÇAR AGORA
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "10px", fontWeight: 900, background: "#E31B23", padding: "10px 20px", border: "2px solid #000", boxShadow: "4px 4px 0px #000", color: "#FFF", letterSpacing: "0.1em" }}>
+                    <Plus size={14} strokeWidth={3} /> REGISTRAR PR
                 </div>
             </div>
         </Link>

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import StudentHeader from "@/components/StudentHeader";
 import BottomNav from "@/components/BottomNav";
 import ActivityFeed from "@/components/ActivityFeed";
+import { Trophy, Globe, Flame } from "lucide-react";
 
 /**
  * Interface para os atletas do ranking
@@ -16,7 +17,7 @@ interface LeaderboardEntry {
 }
 
 /**
- * Cliente Interativo da Comunidade (O Clube)
+ * Cliente Interativo da Comunidade (O Clube) - EDIÇÃO NEO-BRUTALIST
  */
 export default function ClubeClient() {
   const [activeTab, setActiveTab] = useState<"semanal" | "geral">("semanal");
@@ -27,9 +28,6 @@ export default function ClubeClient() {
     setIsLoaded(true);
   }, []);
 
-  /** 
-   * DADOS MOCK - V1.2 (TESTE)
-   */
   const MOCK_WEEKLY: LeaderboardEntry[] = [
     { id: "1", display_name: "JOÃO COLISEU", points_balance: 450, rank: 1 },
     { id: "2", display_name: "MARIA SILVA", points_balance: 400, rank: 2 },
@@ -50,119 +48,118 @@ export default function ClubeClient() {
 
   return (
     <>
-      <div
-        style={{
-          position: "fixed",
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          zIndex: -1,
-          background: "linear-gradient(to bottom, #111 0%, #080808 100%)",
-        }}
-      >
-        <div style={{ position: "absolute", top: "-10%", right: "-20%", width: "50vh", height: "50vh", background: "var(--red)", filter: "blur(200px)", opacity: 0.05, borderRadius: "50%" }} />
-      </div>
+      {/* BACKGROUND LIGTH */}
+      <div 
+        style={{ 
+          position: "fixed", top: 0, left: 0, right: 0, bottom: 0, 
+          zIndex: -1, background: "#FFF" 
+        }} 
+      />
 
       <StudentHeader />
 
-      <main style={{ maxWidth: "480px", margin: "0 auto", padding: "0 20px", opacity: isLoaded ? 1 : 0, transition: "opacity 0.8s ease" }}>
+      <main style={{ 
+        maxWidth: "500px", margin: "0 auto", padding: "0 20px 120px", 
+        opacity: isLoaded ? 1 : 0, transition: "all 0.6s cubic-bezier(0.16, 1, 0.3, 1)" 
+      }}>
         
-        {/* ── HEADER ── */}
-        <section style={{ paddingTop: "24px", paddingBottom: "32px" }}>
-          <h1
-            className="font-display"
-            style={{
-              fontSize: "clamp(26px, 6vw, 32px)",
-              lineHeight: 1,
-            }}
-          >
-            O Clube
+        {/* ── HEADER DE IMPACTO ── */}
+        <section style={{ paddingTop: "32px", paddingBottom: "32px", textAlign: "center" }}>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: "8px", background: "var(--red)", color: "white", padding: "4px 12px", border: "2px solid #000", boxShadow: "4px 4px 0px #000", marginBottom: "16px" }}>
+            <Trophy size={14} strokeWidth={3} />
+            <span style={{ fontSize: "10px", fontWeight: 900, letterSpacing: "0.2em" }}>HALL DA FAMA</span>
+          </div>
+          <h1 className="font-display" style={{ fontSize: "52px", fontWeight: 950, lineHeight: 0.8, textTransform: "uppercase", letterSpacing: "-0.04em", margin: 0 }}>
+             O CLUBE
           </h1>
-          <p
-            style={{
-              fontSize: "12px",
-              color: "var(--text-muted)",
-              marginTop: "4px",
-              letterSpacing: "0.1em",
-              textTransform: "uppercase"
-            }}
-          >
-            A Elite do Coliseu
+          <p className="font-headline" style={{ fontSize: "12px", fontWeight: 800, color: "#000", marginTop: "12px", letterSpacing: "0.15em", textTransform: "uppercase", opacity: 0.6 }}>
+            RANKING DE PERFORMANCE COLISEU
           </p>
         </section>
 
-        {/* ── RANKING TABS (BRUTALIST TOGGLE) ── */}
+        {/* ── BRUTALIST TAB TOGGLE ── */}
         <div style={{ 
             display: "flex", 
-            gap: "2px", 
-            background: "rgba(255,255,255,0.02)", 
-            padding: "4px", 
-            borderRadius: "4px", 
-            marginBottom: "20px", 
-            border: "1px solid var(--border-glow)" 
+            gap: "10px", 
+            marginBottom: "32px", 
         }}>
             <button 
                 onClick={() => setActiveTab("semanal")}
                 style={{ 
                     flex: 1, 
-                    padding: "12px", 
-                    background: activeTab === "semanal" ? "var(--red)" : "transparent", 
-                    border: "none", 
-                    color: activeTab === "semanal" ? "white" : "var(--text-muted)", 
-                    fontSize: "10px", 
+                    padding: "16px 8px", 
+                    background: activeTab === "semanal" ? "#000" : "#FFF", 
+                    border: "3px solid #000", 
+                    color: activeTab === "semanal" ? "#FFF" : "#000", 
+                    fontSize: "11px", 
                     fontWeight: 900, 
                     letterSpacing: "0.1em", 
-                    borderRadius: "2px",
                     cursor: "pointer",
-                    transition: "all 0.3s cubic-bezier(0.16, 1, 0.3, 1)"
+                    boxShadow: activeTab === "semanal" ? "2px 2px 0px #000" : "6px 6px 0px #000",
+                    transform: activeTab === "semanal" ? "translate(4px, 4px)" : "none",
+                    transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "8px"
                 }}
             >
+                <Flame size={14} strokeWidth={3} />
                 LIGA SEMANAL
             </button>
             <button 
                 onClick={() => setActiveTab("geral")}
                 style={{ 
                     flex: 1, 
-                    padding: "12px", 
-                    background: activeTab === "geral" ? "var(--red)" : "transparent", 
-                    border: "none", 
-                    color: activeTab === "geral" ? "white" : "var(--text-muted)", 
-                    fontSize: "10px", 
+                    padding: "16px 8px", 
+                    background: activeTab === "geral" ? "#000" : "#FFF", 
+                    border: "3px solid #000", 
+                    color: activeTab === "geral" ? "#FFF" : "#000", 
+                    fontSize: "11px", 
                     fontWeight: 900, 
                     letterSpacing: "0.1em", 
-                    borderRadius: "2px",
                     cursor: "pointer",
-                    transition: "all 0.3s cubic-bezier(0.16, 1, 0.3, 1)"
+                    boxShadow: activeTab === "geral" ? "2px 2px 0px #000" : "6px 6px 0px #000",
+                    transform: activeTab === "geral" ? "translate(4px, 4px)" : "none",
+                    transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "8px"
                 }}
             >
-                RANKING GERAL
+                <Globe size={14} strokeWidth={3} />
+                GERAL RX
             </button>
         </div>
 
-        {/* ── LISTA DE RANKING ── */}
+        {/* ── LISTA DE RANKING (BRUTALIST CONTAINER) ── */}
         <section
-          key={activeTab} // Força re-render para animação
+          key={activeTab}
           style={{
-            background: "var(--surface-lowest)",
-            border: "1px solid var(--border-glow)",
+            background: "#FFF",
+            border: "3px solid #000",
+            boxShadow: "10px 10px 0px #000",
             position: "relative",
             overflow: "hidden",
-            borderRadius: "4px",
-            animation: "fadeInRight 0.5s cubic-bezier(0.16, 1, 0.3, 1)"
+            animation: "entrancePop 0.4s cubic-bezier(0.16, 1, 0.3, 1)"
           }}
         >
-          {/* Header */}
-          <div style={{ padding: "14px 20px", borderBottom: "1px solid var(--border-glow)", display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(255,255,255,0.02)" }}>
-            <span style={{ fontSize: "9px", fontWeight: 700, letterSpacing: "0.3em", color: "var(--red)", textTransform: "uppercase" }}>
-              {activeTab === "semanal" ? "DESEMPENHO DA SEMANA" : "ELITE HISTÓRICA"}
+          {/* Header Barra */}
+          <div style={{ 
+            padding: "12px 20px", 
+            borderBottom: "3px solid #000", 
+            display: "flex", 
+            justifyContent: "space-between", 
+            alignItems: "center", 
+            background: "#F0F0F0" 
+          }}>
+            <span style={{ fontSize: "10px", fontWeight: 900, letterSpacing: "0.1em", color: "#000" }}>
+              {activeTab === "semanal" ? "TOP ATLETAS SEMANA" : "OS MAIORES DA HISTÓRIA"}
             </span>
-            <span style={{ fontSize: "9px", fontWeight: 700, letterSpacing: "0.15em", color: "var(--text-muted)", opacity: 0.5, textTransform: "uppercase" }}>
-              RANKING DE PONTUAÇÃO
-            </span>
+            <div style={{ width: "8px", height: "8px", background: "var(--red)", borderRadius: "50%" }} />
           </div>
 
-          {/* Leaderboard rows */}
           <div style={{ display: "flex", flexDirection: "column" }}>
             {currentData.map((entry, index) => {
                 const isMe = entry.id === "me";
@@ -171,26 +168,52 @@ export default function ClubeClient() {
                 
                 return (
                     <div
-                    key={entry.id}
-                    style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "16px",
-                        padding: "16px 20px",
-                        borderBottom: index === currentData.length - 1 ? "none" : "1px solid var(--border-glow)",
-                        background: isMe ? "rgba(227,27,35,0.05)" : "transparent",
-                    }}
+                      key={entry.id}
+                      style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "16px",
+                          padding: "20px",
+                          borderBottom: index === currentData.length - 1 ? "none" : "2px solid #000",
+                          background: isMe ? "#F8FBFF" : "transparent",
+                          position: "relative"
+                      }}
                     >
-                    <span className="font-display" style={{ fontSize: rank <= 3 ? "24px" : "18px", color: rank === 1 ? "#C5A059" : rank === 2 ? "var(--red)" : rank === 3 ? "#C0C0C0" : "var(--text-muted)", minWidth: "28px" }}>
-                        #{rank}
-                    </span>
-                    <span style={{ flex: 1, fontSize: "14px", fontWeight: isMe ? 900 : 500, color: isMe ? "var(--text)" : "var(--text-dim)" }}>
-                        {name.toUpperCase()}
-                        {isMe && <span style={{ marginLeft: "8px", fontSize: "9px", color: "var(--red)", fontWeight: 900 }}>· VOCÊ</span>}
-                    </span>
-                    <span className="font-display" style={{ fontSize: "16px", color: isMe ? "var(--red)" : "var(--text-muted)" }}>
-                        {entry.points_balance.toLocaleString("pt-BR")}
-                    </span>
+                      {isMe && <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: "6px", background: "var(--red)" }} />}
+                      
+                      <div className="font-display" style={{ 
+                        fontSize: "24px", 
+                        fontWeight: 950,
+                        color: rank === 1 ? "#FFD700" : rank === 2 ? "#C0C0C0" : rank === 3 ? "#CD7F32" : "#000", 
+                        minWidth: "42px",
+                        textAlign: "center",
+                        WebkitTextStroke: "1px #000"
+                      }}>
+                        {rank}
+                      </div>
+
+                      <div style={{ flex: 1 }}>
+                        <div style={{ 
+                          fontSize: "14px", 
+                          fontWeight: 900, 
+                          color: "#000",
+                          letterSpacing: "-0.01em"
+                        }}>
+                          {name.toUpperCase()}
+                        </div>
+                        {isMe && (
+                          <div style={{ display: "inline-block", background: "var(--red)", color: "white", fontSize: "10px", fontWeight: 900, padding: "2px 8px", marginTop: "4px" }}>
+                            MINHA POSIÇÃO
+                          </div>
+                        )}
+                      </div>
+
+                      <div style={{ textAlign: "right" }}>
+                        <div className="font-display" style={{ fontSize: "20px", fontWeight: 950, color: "#000" }}>
+                          {entry.points_balance.toLocaleString("pt-BR")}
+                        </div>
+                        <div style={{ fontSize: "9px", fontWeight: 900, color: "#000", opacity: 0.4, letterSpacing: "0.1em" }}>PONTOS</div>
+                      </div>
                     </div>
                 );
             })}
@@ -200,15 +223,16 @@ export default function ClubeClient() {
         {/* ── ACTIVITY FEED ── */}
         <ActivityFeed />
 
-        <style jsx>{`
-            @keyframes fadeInRight {
-                from { opacity: 0; transform: translateX(-10px); }
-                to { opacity: 1; transform: translateX(0); }
-            }
-        `}</style>
       </main>
 
       <BottomNav />
+      
+      <style jsx>{`
+          @keyframes entrancePop {
+              from { opacity: 0; transform: scale(0.95) translateY(10px); }
+              to { opacity: 1; transform: scale(1) translateY(0); }
+          }
+      `}</style>
     </>
   );
 }
