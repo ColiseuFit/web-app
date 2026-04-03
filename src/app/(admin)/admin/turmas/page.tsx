@@ -4,54 +4,169 @@ import { getCoaches } from "../professores/actions";
 import { getHolidays } from "./actions";
 import { getBoxSettings } from "@/lib/constants/settings_actions";
 
-import { getTodayDate } from "@/lib/date-utils";
+import { getTodayDate, getWeekDates } from "@/lib/date-utils";
 
 /**
- * Turmas Page (Server Component): Fetches the full class schedule grid.
- *
- * @data Fetches all class_slots ordered by day_of_week and time_start.
- * Passes sanitized slot data to the Client Component for rendering the weekly grid.
+ * Turmas Page (Server Component): Arquiteto de Dados da Grade Semanal.
+ * 
+ * @architecture
+ * Este componente atua como o agregador central de dados para o módulo de Turmas.
+ * Ele realiza o "Pre-Processing" de diversas fontes para entregar um estado hidratado
+ * e otimizado ao TurmasClient.
+ * 
+ * @data_sources
+ * 1. class_slots: Definição estrutural dos horários e coaches padrão.
+ * 2. check_ins: Dados de ocupação filtrados pela semana atual (SSoT Operacional).
+ * 3. class_enrollments: Mapeamento de matrículas fixas para contagem de vagas.
+ * 4. class_sessions: Marcadores de finalização (SSoT de Fechamento).
+ * 5. class_substitutions: Substituições de coach contextuais à data.
+ * 6. profiles: Lista paginada de alunos (CRM) para gestão de matrículas.
+ * 
+ * @logic_paginacao 
+ * Implementa range-based pagination (Supabase) para suportar bases de 300+ alunos
+ * sem degradação de performance no servidor.
  */
-export default async function TurmasPage() {
+export default async function TurmasPage(props: {
+  searchParams?: Promise<{
+    search?: string;
+    level?: string;
+    unenroll?: string;
+    page?: string;
+  }>;
+}) {
+  const searchParams = await props.searchParams;
+  const search = searchParams?.search || "";
+  const level = searchParams?.level || "";
+  const unenroll = searchParams?.unenroll === "true";
+  const page = parseInt(searchParams?.page || "1");
+  const pageSize = 50;
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
   const supabase = await createClient();
-  const todayStr = getTodayDate(); // YYYY-MM-DD em Fuso Local (America/Sao_Paulo)
+  const todayStr = getTodayDate();
 
-  // 1. Fetch Class Slots (Template)
+  // 1. Get Admin/Coach IDs to exclude them from student lists
+  const { data: staffRoles } = await supabase
+    .from("user_roles")
+    .select("user_id")
+    .in("role", ["admin", "coach"]);
+  const staffIds = (staffRoles || []).map((r: any) => r.user_id);
+
+  // 1. Weekly Grid Data (Remains total for the timeline/counts)
   const { data: slots, error: slotsError } = await supabase
     .from("class_slots")
-    .select("*")
+    .select(`
+      *,
+      profiles!default_coach_id (full_name),
+      class_substitutions (
+        substitute_coach_id,
+        profiles!substitute_coach_id (full_name),
+        date
+      )
+    `)
     .order("day_of_week", { ascending: true })
     .order("time_start", { ascending: true });
 
-  // 2. Fetch Todays Occupancy (Check-ins)
-  // Logic: Get check-ins linked to today's WOD instead of relying on created_at UTC parsing
-  const { data: occupancy, error: occError } = await supabase
+  // 2. Weekly Occupancy (Check-ins for all days in the current week)
+  const weekDates = getWeekDates();
+  const { data: occupancy } = await supabase
     .from("check_ins")
-    .select("class_slot_id, wods!inner(date)")
-    .eq("wods.date", todayStr);
+    .select("class_slot_id, status, wods!inner(date)")
+    .in("wods.date", weekDates)
+    .neq("status", "missed");
 
-  // 3. Fetch all Enrollments (Fixed)
-  // Logic: Count all class_enrollments grouped by slot
-  const { data: enrollments, error: enrollError } = await supabase
+  // 3. ALL Enrollments (For grid counts & student context)
+  const { data: allEnrollments } = await supabase
     .from("class_enrollments")
-    .select("class_slot_id");
+    .select(`
+      id,
+      student_id,
+      class_slot_id,
+      class_slots:class_slot_id (id, day_of_week, time_start, name)
+    `);
 
-  // 4. Fetch Todays WODs
-  const { data: todayWods, error: wodsError } = await supabase
+  let profilesQuery = supabase
+    .from("profiles")
+    .select("id, full_name, level, member_number", { count: "exact" });
+
+  if (staffIds.length > 0) {
+    profilesQuery = profilesQuery.not("id", "in", `(${staffIds.join(",")})`);
+  }
+
+  if (search) {
+    const isNumeric = /^\d+$/.test(search);
+    if (isNumeric) {
+      profilesQuery = profilesQuery.or(`full_name.ilike.*${search}*,display_name.ilike.*${search}*,member_number.eq.${search}`);
+    } else {
+      profilesQuery = profilesQuery.or(`full_name.ilike.*${search}*,display_name.ilike.*${search}*,first_name.ilike.*${search}*`);
+    }
+  }
+  if (level) {
+    profilesQuery = profilesQuery.eq("level", level);
+  }
+  
+  // Logic for "Unenrolled" (Sem Matrícula)
+  // If true, we want students who DON'T have an entry in class_enrollments
+  if (unenroll && allEnrollments) {
+    const enrolledIds = allEnrollments.map(e => e.student_id);
+    profilesQuery = profilesQuery.not("id", "in", `(${enrolledIds.join(",")})`);
+  }
+
+  const { data: allProfiles, count: totalProfilesCount } = await profilesQuery
+    .order("full_name", { ascending: true })
+    .range(from, to);
+
+  const totalPages = Math.ceil((totalProfilesCount || 0) / pageSize);
+
+  // 5. Weekly WODs (for tags in the grid)
+  const { data: weeklyWods } = await supabase
     .from("wods")
-    .select("id, type_tag")
-    .eq("date", todayStr);
+    .select("id, type_tag, date")
+    .in("date", weekDates);
     
-  // 5. Fetch Coaches (using the dedicated action to bypass RLS)
+  // 6. Coaches & Settings
   const { data: coachesData } = await getCoaches();
   const coaches = coachesData?.map(d => ({
     id: d.profile.id,
     full_name: d.profile.full_name
   })) || [];
   
-  // 6. Fetch Global Rules & Holidays
   const { data: settings } = await getBoxSettings();
   const { data: holidays } = await getHolidays();
+
+  // 6. Finalized Sessions (for the current week)
+  const { data: sessions } = await supabase
+    .from("class_sessions")
+    .select("class_slot_id, date, finalized_at")
+    .in("date", weekDates);
+
+  // 7. Substitutions (for the current week)
+  const { data: substitutionsData } = await supabase
+    .from("class_substitutions")
+    .select(`
+      class_slot_id, 
+      date, 
+      substitute_coach_id,
+      profiles:substitute_coach_id(id, full_name)
+    `)
+    .in("date", weekDates);
+
+  // Pre-process sessions into a map: slotId-date -> finalized_at
+  const sessionMap: Record<string, string> = {};
+  sessions?.forEach((s: any) => {
+    sessionMap[`${s.class_slot_id}-${s.date}`] = s.finalized_at;
+  });
+
+  // Pre-process substitutions into a map: slotId-date -> { id, full_name }
+  const substitutionMap: Record<string, { id: string; full_name: string }> = {};
+  substitutionsData?.forEach((s: any) => {
+    if (s.profiles) {
+      substitutionMap[`${s.class_slot_id}-${s.date}`] = {
+        id: s.profiles.id,
+        full_name: s.profiles.full_name
+      };
+    }
+  });
 
   if (slotsError) {
     return (
@@ -62,20 +177,21 @@ export default async function TurmasPage() {
     );
   }
 
-  // Pre-process occupancy counts (Check-ins)
+  // Pre-process occupancy & enrollment counts for the GRID
+  // Key: slot_id-date
   const occupancyMap: Record<string, number> = {};
-  occupancy?.forEach((ci) => {
-    if (ci.class_slot_id) {
-      occupancyMap[ci.class_slot_id] = (occupancyMap[ci.class_slot_id] || 0) + 1;
+  occupancy?.forEach((ci: any) => {
+    const slotId = ci.class_slot_id;
+    const date = ci.wods?.date;
+    if (slotId && date) {
+      const key = `${slotId}-${date}`;
+      occupancyMap[key] = (occupancyMap[key] || 0) + 1;
     }
   });
 
-  // Pre-process enrollment counts (Fixed)
   const enrollmentMap: Record<string, number> = {};
-  enrollments?.forEach((en) => {
-    if (en.class_slot_id) {
-      enrollmentMap[en.class_slot_id] = (enrollmentMap[en.class_slot_id] || 0) + 1;
-    }
+  allEnrollments?.forEach((en: any) => {
+    if (en.class_slot_id) enrollmentMap[en.class_slot_id] = (enrollmentMap[en.class_slot_id] || 0) + 1;
   });
 
   return (
@@ -83,10 +199,20 @@ export default async function TurmasPage() {
       initialSlots={slots || []}
       occupancy={occupancyMap}
       enrollmentCounts={enrollmentMap}
-      wods={todayWods || []}
+      wods={weeklyWods || []}
       coaches={coaches || []}
       initialSettings={settings || {}}
       initialHolidays={holidays || []}
+      initialSessions={sessionMap}
+      initialSubstitutions={substitutionMap}
+      allProfiles={allProfiles || []}
+      allEnrollments={allEnrollments || []}
+      currentPage={page}
+      totalPages={totalPages}
+      totalCount={totalProfilesCount || 0}
+      currentSearch={search}
+      currentLevel={level}
+      currentUnenroll={unenroll}
     />
   );
 }

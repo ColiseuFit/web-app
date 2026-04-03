@@ -20,15 +20,18 @@ export const metadata: Metadata = {
  * Página de Perfil (Athletic Identity) do Aluno.
  * Componente central do ecossistema "Iron Monolith", consolidando Pontuação, PRs e Conquistas.
  * 
+ * @architecture
+ * - SSoT de Identidade: Agrega Perfil, Avaliações, Check-ins e Benchmarks em um único "Passaporte do Atleta".
+ * - Motor de Progressão: Mapeia `points_balance` para os níveis visuais (Coliseu Levels L1-L5).
+ * - Algoritmo de Streak: Cálculo server-side de dias consecutivos baseado no histórico de `check_ins`.
+ * 
  * @security
- * - Sessão verificada via Server Component (auth.getUser).
- * - Multi-fetch paralelo com RLS ativo no Supabase para máxima performance e segurança.
- * - Isolamento total de dados: Garante que o `auth.uid()` acesse apenas suas próprias métricas.
+ * - RBAC: Sessão verificada via Server Component; RLS garante isolamento total de dados.
+ * - Integridade: Validação de cache via `getCachedLevels` para consistência de tokens de design.
  * 
  * @technical
- * - Data Lifecycle: Mapeia Pontuação acumulada para os níveis visuais (Coliseu Levels L1-L5).
+ * - Biometria: Exibe resumo da última avaliação física processada (WHR e Massa Magra).
  * - PR/Benchmark: Integração com o mural de Shields (Mídia binária via SVG).
- * - Biometria: Exibe resumo da última avaliação física processada.
  */
 export default async function ProfilePage() {
   const supabase = await createClient();
@@ -66,8 +69,11 @@ export default async function ProfilePage() {
    */
 
   /**
-   * LÓGICA DE PROGRESSÃO DATA-DRIVEN
-   * Substitui os mocks por dados reais e cálculos baseados em Pontuação.
+   * LÓGICA DE PROGRESSÃO DATA-DRIVEN (SSoT)
+   * @logic
+   * 1. Consome `points_balance` do perfil.
+   * 2. Aplica escala de 5k por nível para determinar o `totalPointsGoal`.
+   * 3. Calcula progresso percentual e pontos restantes para o próximo nível.
    */
   const pointsActual = profile?.points_balance || 0;
   
@@ -81,13 +87,18 @@ export default async function ProfilePage() {
   };
 
   const totalPointsGoal = calculateGoal(pointsActual);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const pointsProgress = (pointsActual / totalPointsGoal) * 100;
   const pointsRemaining = totalPointsGoal - pointsActual;
   
   const checkIns = checkInsCount || [];
   
-  // Cálculo de Streak Real (Dias Seguidos)
+  /**
+   * CÁLCULO DE STREAK (Resiliência)
+   * @technical
+   * - Agrupa check-ins por data única (ISO 8601).
+   * - Valida continuidade a partir de hoje ou ontem (Buffer de repouso).
+   * - Itera retroativamente para contar dias seguidos sem quebras.
+   */
   const calculateStreak = (history: any[]) => {
     if (history.length === 0) return 0;
     
@@ -98,15 +109,12 @@ export default async function ProfilePage() {
     const today = getTodayDate();
     const yesterday = new Date(new Date(today + "T00:00:00Z").getTime() - 86400000).toISOString().split("T")[0];
     
-    let current = today;
-    let streak = 0;
-    let index = 0;
-
     // Se não treinou hoje nem ontem, streak é 0
     if (uniqueDates[0] !== today && uniqueDates[0] !== yesterday) return 0;
     
     // Começamos a contar a partir da data do último treino encontrado
     let checkDate = uniqueDates[0];
+    let streak = 0;
     
     for (const date of uniqueDates) {
       if (date === checkDate) {

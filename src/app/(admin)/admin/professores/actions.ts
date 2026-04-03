@@ -6,7 +6,16 @@ import { revalidatePath } from "next/cache";
 import { USER_ROLES } from "@/lib/constants/roles";
 
 /**
- * Helper to verify admin role and return an admin Supabase client.
+ * getAdminContext: Provedor de Contexto Elevado (IAM).
+ * 
+ * @security
+ * - Role-Based Access Control (RBAC): Valida se o usuário logado possui a role 'admin' 
+ *   ou é o e-mail de fallback de emergência.
+ * - Service Role Bypass: Cria um cliente Supabase com a `SERVICE_ROLE_KEY` para 
+ *   executar operações de bypass de RLS (necessário para manipulação de roles e 
+ *   gestão de Auth Users).
+ * 
+ * @returns {Promise<{ adminClient: any, user: any } | { error: string }>}
  */
 async function getAdminContext() {
   const supabase = await createClient();
@@ -39,8 +48,14 @@ async function getAdminContext() {
 }
 
 /**
- * Fetches all users with the 'coach' or 'admin' role.
- * These are considered the "Professores" list.
+ * getCoaches: Recupera a Equipe Técnica do Box (SSoT: user_roles).
+ * 
+ * @operation
+ * Filtra por roles 'coach' e 'admin' para compor a lista de professores. 
+ * Realiza o join com 'profiles' para exibir metadados do staff.
+ * 
+ * @security Restricted: Admin-Only (via getAdminContext).
+ * @returns {Promise<{ data: any[] } | { error: string }>}
  */
 export async function getCoaches() {
   const ctx = await getAdminContext();
@@ -77,7 +92,14 @@ export async function getCoaches() {
 }
 
 /**
- * Searches users to be promoted to Coach.
+ * searchUsersForCoach: Busca candidatos para promoção técnica.
+ * 
+ * @operation
+ * Realiza busca parcial (ilike) na tabela `profiles`. Utilizado no fluxo de 
+ * "Promover Aluno a Professor".
+ * 
+ * @security Restricted: Admin-Only.
+ * @param {string} query - Termo de busca (min 2 chars).
  */
 export async function searchUsersForCoach(query: string) {
   const ctx = await getAdminContext();
@@ -97,7 +119,16 @@ export async function searchUsersForCoach(query: string) {
 }
 
 /**
- * Assigns or removes the 'coach' role to a user.
+ * toggleCoachRole: Orquestrador de Hierarquia Técnica.
+ * 
+ * @operation
+ * - Promoção: Upsert da role 'coach' na tabela `user_roles`.
+ * - Democração (Downgrade): Atualiza role para 'student', removendo acessos ao 
+ *   Coach Portal e Admin.
+ * 
+ * @security Restricted: Admin-Only.
+ * @param {string} userId - ID do usuário alvo.
+ * @param {boolean} isCoach - Direção da transição (true = promover).
  */
 export async function toggleCoachRole(userId: string, isCoach: boolean) {
   const ctx = await getAdminContext();
@@ -123,14 +154,27 @@ export async function toggleCoachRole(userId: string, isCoach: boolean) {
 }
 
 /**
- * Creates a new Coach from scratch (Auth + Profile + Role).
+ * createNewCoach: Transação Atômica de Onboarding Staff.
+ * 
+ * @lifecycle
+ * 1. Auth Creation: Gera conta no Supabase Auth com senha padrão.
+ * 2. Profile Sync: Insere metadados na tabela de perfis.
+ * 3. Role Assignment: Concede permissão de 'coach'.
+ * 
+ * @security
+ * - Rollback: Se a inserção de perfil ou role falhar, exclui o usuário Auth 
+ *   para evitar contas órfãs ("Ghost accounts").
+ * - Restricted: Admin-Only.
+ * 
+ * @param {string} name - Nome Completo.
+ * @param {string} email - E-mail (login principal).
+ * @param {string} phone - Contato WhatsApp.
  */
 export async function createNewCoach(name: string, email: string, phone: string) {
   const ctx = await getAdminContext();
   if ("error" in ctx) return { error: ctx.error };
 
-  const password = "Coliseu" + Math.random().toString(36).slice(-6); // Temporary password
-
+  const password = "coliseu123"; // Senha padrão para novos professores
   // 1. Create Auth User
   const { data: authUser, error: authError } = await ctx.adminClient.auth.admin.createUser({
     email,

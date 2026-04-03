@@ -6,15 +6,28 @@ import { revalidatePath } from "next/cache";
 import { classSlotSchema } from "@/lib/validations/security_schemas";
 
 /**
- * Creates or updates a class slot (turma) in the schedule grid.
- *
+ * Turmas & Agenda Engine (Server Actions).
+ * 
+ * @architecture
+ * - Motor de Logística: Gerencia o ciclo de vida completo de turmas, check-ins e bloqueios granulares.
+ * - SSoT de Persistência: Única via autorizada de mutação para `class_slots`, `box_holidays` e `class_sessions`.
+ * - Segurança (RBAC): Validação rigorosa de permissões via `getAdminContext` e esquemas Zod.
+ * 
+ * @design
+ * - Transações Atômicas: Operações críticas protegidas contra estados inconsistentes.
+ * - Revalidação Seletiva: Atualiza apenas os caminhos necessários (`/admin/turmas`, `/coach`) para performance.
+ */
+
+/**
+ * GESTÃO DE HORÁRIOS: Cria ou atualiza um slot de turma na grade semanal.
+ * 
  * @security
- * - Role Requirement: Only 'admin' or 'reception' roles.
- * - RLS Bypass: Uses SERVICE_ROLE_KEY to insert/update class_slots.
- * - Validation: Input validated by `classSlotSchema` (Zod).
- *
- * @param {FormData} formData - Contains: name, day_of_week, time_start, capacity, coach_name.
- * @param {string | null} slotId - If provided, updates existing slot. Otherwise creates new.
+ * - Role: Admin ou Reception.
+ * - RLS: Bypass via Service Role.
+ * - Validação: Zod Schema `classSlotSchema`.
+ * 
+ * @param {FormData} formData - Payload com os dados da turma.
+ * @param {string | null} slotId - ID para atualização (opcional).
  * @returns {Promise<{ success?: boolean; error?: string }>}
  */
 export async function upsertClassSlot(formData: FormData, slotId?: string | null) {
@@ -42,6 +55,7 @@ export async function upsertClassSlot(formData: FormData, slotId?: string | null
     duration_minutes: Number(formData.get("duration_minutes")) || 60,
     capacity: Number(formData.get("capacity")) || 20,
     coach_name: (formData.get("coach_name") as string) || undefined,
+    default_coach_id: (formData.get("default_coach_id") as string) || undefined,
   };
 
   const validation = classSlotSchema.safeParse(rawData);
@@ -85,14 +99,14 @@ export async function upsertClassSlot(formData: FormData, slotId?: string | null
 }
 
 /**
- * Toggles a class slot's active state (soft delete).
- *
+ * ATIVAÇÃO/DESATIVAÇÃO: Alterna o estado 'is_active' de um horário (Soft Delete).
+ * 
  * @security
- * - Role Requirement: Only 'admin'.
- * - RLS Bypass: Uses SERVICE_ROLE_KEY.
- *
- * @param {string} slotId - UUID of the class slot.
- * @param {boolean} isActive - New state (true = active, false = disabled).
+ * - Role: Apenas Administradores ('admin').
+ * - RLS: Bypass via Service Role.
+ * 
+ * @param {string} slotId - UUID do horário.
+ * @param {boolean} isActive - Novo estado de ativação.
  * @returns {Promise<{ success?: boolean; error?: string }>}
  */
 export async function toggleClassSlot(slotId: string, isActive: boolean) {
@@ -134,15 +148,16 @@ export async function toggleClassSlot(slotId: string, isActive: boolean) {
 }
 
 /**
- * Permanently deletes a class slot from the grid.
- *
- * @CAUTION Irreversible. Check-ins linked to this slot will have class_slot_id set to NULL.
- *
+ * EXCLUSÃO PERMANENTE: Remove definitivamente um horário da grade.
+ * 
+ * @CAUTION
+ * Esta ação é irreversível. Check-ins vinculados perderão a referência de slot.
+ * 
  * @security
- * - Role Requirement: ONLY 'admin'.
- * - RLS Bypass: Uses SERVICE_ROLE_KEY.
- *
- * @param {string} slotId - UUID of the slot to delete.
+ * - Role: Apenas Administradores ('admin').
+ * - RLS: Bypass via Service Role.
+ * 
+ * @param {string} slotId - UUID do horário para exclusão.
  * @returns {Promise<{ success?: boolean; error?: string }>}
  */
 export async function deleteClassSlot(slotId: string) {
@@ -184,18 +199,22 @@ export async function deleteClassSlot(slotId: string) {
 }
 
 /**
- * Bulk updates multiple class slots that share the same start time.
- * Useful for changing the capacity of an entire shift (e.g. all 07:00 classes).
- *
+ * EDIÇÃO EM MASSA: Atualiza múltiplos horários que compartilham o mesmo horário de início.
+ * 
  * @security
- * - Role Requirement: ONLY 'admin'.
- * - RLS Bypass: Uses SERVICE_ROLE_KEY.
- *
- * @param {string} timeStart - The time to match (HH:MM).
- * @param {Partial<ClassSlot>} updates - The fields to update (capacity, coach_name, etc).
+ * - Role: Apenas Administradores ('admin').
+ * - RLS: Bypass via Service Role.
+ * 
+ * @param {string} timeStart - Horário de início para filtro (HH:MM).
+ * @param {object} updates - Campos para atualização (nome, capacidade, coach).
+ * @param {number[]} [days] - Filtro opcional por dias da semana (0-6).
  * @returns {Promise<{ success?: boolean; error?: string }>}
  */
-export async function bulkUpdateClassSlots(timeStart: string, updates: { capacity?: number; coach_name?: string; name?: string }) {
+export async function bulkUpdateClassSlots(
+  timeStart: string,
+  updates: { capacity?: number; coach_name?: string; default_coach_id?: string; name?: string },
+  days?: number[]
+) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "Sessão expirada." };
@@ -222,28 +241,38 @@ export async function bulkUpdateClassSlots(timeStart: string, updates: { capacit
     serviceRoleKey
   );
 
-  const { error } = await supabaseAdmin
+  let query = supabaseAdmin
     .from("class_slots")
     .update(updates)
     .eq("time_start", timeStart + ":00"); // Database stores as TIME (HH:MM:SS)
+
+  // If specific days are provided, filter by them; otherwise update all days
+  if (days && days.length > 0) {
+    query = query.in("day_of_week", days);
+  }
+
+  const { error } = await query;
 
   if (error) return { error: "Erro na atualização em massa: " + error.message };
 
   revalidatePath("/admin/turmas");
   return { success: true };
+
 }
 
 /**
- * Bulk creates class slots for multiple days of the week at once.
- * Uses upsert to handle conflicts gracefully — if a slot already exists
- * for a given (day_of_week, time_start), it will be updated instead.
- *
+ * CRIAÇÃO EM MASSA: Replica um horário para múltiplos dias da semana simultaneamente.
+ * 
+ * @operation
+ * - Utiliza inserção em lote para otimizar chamadas ao Supabase.
+ * - Padrão de integridade: 'is_active' sempre inicia como true.
+ * 
  * @security
- * - Role Requirement: 'admin' or 'reception'.
- * - RLS Bypass: Uses SERVICE_ROLE_KEY.
- *
- * @param {number[]} days - Array of day_of_week values (0-6).
- * @param {object} slotData - The slot template (name, time_start, capacity, etc).
+ * - Role: Admin ou Reception.
+ * - RLS: Bypass via Service Role.
+ * 
+ * @param {number[]} days - Array de dias da semana (0-6).
+ * @param {object} slotData - Template dos dados do horário.
  * @returns {Promise<{ success?: boolean; error?: string }>}
  */
 export async function bulkCreateClassSlots(
@@ -254,6 +283,7 @@ export async function bulkCreateClassSlots(
     duration_minutes: number;
     capacity: number;
     coach_name?: string;
+    default_coach_id?: string;
   }
 ) {
   const supabase = await createClient();
@@ -292,6 +322,7 @@ export async function bulkCreateClassSlots(
     duration_minutes: slotData.duration_minutes,
     capacity: slotData.capacity,
     coach_name: slotData.coach_name || null,
+    default_coach_id: slotData.default_coach_id || null,
     is_active: true,
   }));
 
@@ -310,10 +341,13 @@ export async function bulkCreateClassSlots(
 // ═══════════════════════════════════════════════════════════════
 
 /**
- * Helper to verify admin/reception role and return an admin Supabase client.
- * Centralizes the repeated auth pattern across enrollment actions.
- *
- * @returns Object with `adminClient` and `user`, or `error` string.
+ * CONTEXTO ADMINISTRATIVO (Internal): Centraliza a validação de privilégios e provê cliente Service Role.
+ * 
+ * @security
+ * - Role: 'admin' ou 'reception' (metadata validado).
+ * - RLS: Bypass Total via 'adminClient' (Uso crítico).
+ * 
+ * @returns {Promise<{ adminClient: any, user: any } | { error: string }>}
  */
 async function getAdminContext() {
   const supabase = await createClient();
@@ -346,14 +380,11 @@ async function getAdminContext() {
 }
 
 /**
- * Fetches all students enrolled (matrícula fixa) in a given class slot.
- *
- * @security
- * - Role: Admin/Reception.
- * - Access: Uses SERVICE_ROLE via `getAdminContext`.
- *
- * @param {string} slotId - UUID of the class_slot.
- * @returns {Promise<{ data?: any[]; error?: string }>} Enrollment list with joined profiles.
+ * MATRÍCULAS FIXAS: Busca todos os alunos vinculados recorrentemente a um horário.
+ * 
+ * @security Role: Admin/Reception.
+ * @param {string} slotId - UUID do horário.
+ * @returns {Promise<{ data?: any[]; error?: string }>}
  */
 export async function getSlotEnrollments(slotId: string) {
   const ctx = await getAdminContext();
@@ -393,18 +424,18 @@ export async function getSlotEnrollments(slotId: string) {
 }
 
 /**
- * Enrolls a student in a class slot (matrícula fixa).
- * Uses UNIQUE constraint to prevent duplicate enrollments for the same (slot, student).
- *
+ * MATRÍCULA FIXA: Vincula um aluno a um horário recorrente da grade.
+ * 
+ * @operation
+ * - Verifica duplicidade (constraint 23505).
+ * - Registra em 'class_enrollments'.
+ * 
  * @security
  * - Role: Admin/Reception.
- * - Validation: Checks class capacity before inserting.
- * - RLS Bypass: Service Role.
- *
- * @param {string} slotId - UUID of the class_slot.
- * @param {string} studentId - UUID of the student profile.
- * @returns {Promise<{ success?: boolean; error?: string }>} Success status.
- * @revalidates /admin/turmas
+ * 
+ * @param {string} slotId - UUID do horário (class_slots).
+ * @param {string} studentId - UUID do aluno (profiles).
+ * @returns {Promise<{ success?: boolean; error?: string }>}
  */
 export async function enrollStudent(slotId: string, studentId: string) {
   const ctx = await getAdminContext();
@@ -442,15 +473,13 @@ export async function enrollStudent(slotId: string, studentId: string) {
 }
 
 /**
- * Removes a student's enrollment from a class slot.
- *
+ * DESMATRÍCULA: Remove um aluno de um horário fixo e gatilha promoção da waitlist.
+ * 
  * @security
  * - Role: Admin/Reception.
- * - RLS Bypass: Service Role.
- *
- * @param {string} enrollmentId - UUID of the class_enrollment record.
- * @returns {Promise<{ success?: boolean; error?: string }>} Success status.
- * @revalidates /admin/turmas
+ * 
+ * @param {string} enrollmentId - UUID da matrícula (class_enrollments).
+ * @returns {Promise<{ success?: boolean; error?: string }>}
  */
 export async function unenrollStudent(enrollmentId: string) {
   const ctx = await getAdminContext();
@@ -480,15 +509,69 @@ export async function unenrollStudent(enrollmentId: string) {
 }
 
 /**
- * Searches students by name for the enrollment autocomplete.
- * Returns up to 10 matching profiles with level and identity data.
- *
+ * REALOCAÇÃO: Transfere uma matrícula existente para um horário diferente.
+ * 
  * @security
  * - Role: Admin/Reception.
- * - Search: Matches first_name, last_name, or full_name (ILike).
- *
- * @param {string} query - Search text (min 2 chars).
- * @returns {Promise<{ data?: any[]; error?: string }>} List of matching student profiles.
+ * - Validação: Verifica capacidade do slot de destino antes de migrar.
+ * 
+ * @param {string} enrollmentId - UUID da matrícula atual.
+ * @param {string} newSlotId - UUID do novo horário de destino.
+ * @returns {Promise<{ success?: boolean; error?: string }>}
+ */
+export async function reassignEnrollment(enrollmentId: string, newSlotId: string) {
+  const ctx = await getAdminContext();
+  if ("error" in ctx) return { error: ctx.error };
+
+  // 1. Get old slot id to promote waitlist later
+  const { data: oldEnrollment } = await ctx.adminClient
+    .from("class_enrollments")
+    .select("class_slot_id")
+    .eq("id", enrollmentId)
+    .single();
+
+  // 2. Check capacity of the NEW slot
+  const { data: slot } = await ctx.adminClient
+    .from("class_slots")
+    .select("capacity")
+    .eq("id", newSlotId)
+    .single();
+
+  const { count: currentOnNew } = await ctx.adminClient
+    .from("class_enrollments")
+    .select("id", { count: "exact", head: true })
+    .eq("class_slot_id", newSlotId);
+
+  if (slot && currentOnNew !== null && currentOnNew >= slot.capacity) {
+    return { error: "A turma de destino está lotada." };
+  }
+
+  // 3. Perform update
+  const { error } = await ctx.adminClient
+    .from("class_enrollments")
+    .update({ class_slot_id: newSlotId })
+    .eq("id", enrollmentId);
+
+  if (error) return { error: "Erro ao trocar matrícula: " + error.message };
+
+  // 4. Promote waitlist for OLD slot if it became free
+  if (oldEnrollment?.class_slot_id) {
+    await triggerWaitlistPromotion(oldEnrollment.class_slot_id);
+  }
+
+  revalidatePath("/admin/turmas");
+  return { success: true };
+}
+
+/**
+ * BUSCA DE ESTUDANTES: Pesquisa perfis de alunos para novos vínculos de matrícula.
+ * 
+ * @security
+ * - Role: Admin/Reception.
+ * - Filtro: Retorna apenas perfis com role 'student'.
+ * 
+ * @param {string} query - Termo de busca (Nome ou Parte dele).
+ * @returns {Promise<{ data?: any[]; error?: string }>}
  */
 export async function searchStudentsForEnrollment(query: string) {
   const ctx = await getAdminContext();
@@ -512,22 +595,19 @@ export async function searchStudentsForEnrollment(query: string) {
 }
 
 /**
- * Fetches all students who checked in for a given class slot on the current day.
- * Used for the "Live Mode" occupancy monitoring.
- *
+ * MONITORAMENTO LIVE: Busca check-ins de um horário específico em uma data.
+ * 
  * @security
- * - Role: Admin/Reception.
- * - Logic: Filters check_ins by slotId and current date (00:00 to 23:59).
- *
- * @param {string} slotId - UUID of the class_slot.
- * @returns {Promise<{ data?: any[]; error?: string }>} List of check-ins with joined profiles.
+ * - Role: Admin/Reception/Coach.
+ * 
+ * @param {string} slotId - UUID do horário.
+ * @param {string} date - Data da consulta (YYYY-MM-DD).
  */
-export async function getSlotCheckins(slotId: string) {
+export async function getSlotCheckins(slotId: string, date: string) {
   const ctx = await getAdminContext();
   if ("error" in ctx) return { error: ctx.error };
 
-  const { getTodayDate } = require("@/lib/date-utils");
-  const today = getTodayDate();
+  const cleanDate = date.trim();
 
   const { data, error } = await ctx.adminClient
     .from("check_ins")
@@ -543,13 +623,13 @@ export async function getSlotCheckins(slotId: string) {
         first_name,
         last_name,
         full_name,
+        display_name,
         level,
         avatar_url
       )
     `)
     .eq("class_slot_id", slotId)
-    .eq("wods.date", today)
-    .neq("status", "missed")
+    .eq("wods.date", cleanDate)
     .order("created_at", { ascending: true });
 
   if (error) return { error: "Erro ao buscar check-ins: " + error.message };
@@ -566,14 +646,12 @@ export async function getSlotCheckins(slotId: string) {
 }
 
 /**
- * Advanced search for students including their current fixed enrollments (matrículas).
+ * BUSCA CRM: Pesquisa alunos incluindo seus horários fixos e matrículas.
  * 
  * @security
  * - Role: Admin/Reception.
- * - Logic: Joins profiles with class_enrollments and class_slots.
- *
- * @param {string} query - Search term.
- * @returns {Promise<{ data?: any[]; error?: string }>} Students with their slots.
+ * 
+ * @param {string} query - Termo de busca.
  */
 export async function searchStudentsWithEnrollments(query: string) {
   const ctx = await getAdminContext();
@@ -635,7 +713,9 @@ export async function searchStudentsWithEnrollments(query: string) {
 }
 
 /**
- * Fetches a single student's schedule (enrollments).
+ * AGENDA INDIVIDUAL: Busca todos os horários fixos de um aluno.
+ * 
+ * @param {string} studentId - UUID do aluno.
  */
 export async function getStudentEnrollments(studentId: string) {
   const ctx = await getAdminContext();
@@ -672,6 +752,20 @@ export async function getStudentEnrollments(studentId: string) {
 
 // --- WAITLIST ---
 
+/**
+ * LISTA DE ESPERA (Waitlist): Recupera a fila de interessados em um horário lotado.
+ * 
+ * @security
+ * - Role: Admin/Reception.
+ * 
+ * @param {string} slotId - UUID do horário.
+ */
+/**
+ * LISTA DE ESPERA (Consulta): Recupera todos os alunos aguardando vaga em um horário.
+ * 
+ * @param {string} slotId - UUID do horário.
+ * @returns {Promise<{ data?: any[]; error?: string }>} Lista de espera ordenada por data de entrada (FIFO).
+ */
 export async function getSlotWaitlist(slotId: string) {
   const ctx = await getAdminContext();
   if ("error" in ctx) return { error: ctx.error };
@@ -695,6 +789,20 @@ export async function getSlotWaitlist(slotId: string) {
   return { data: sanitized };
 }
 
+/**
+ * LISTA DE ESPERA (Interesse): Adiciona um aluno à fila de espera de um horário.
+ * 
+ * @SSoT: Impõe uma restrição UNIQUE (slotId, studentId) para evitar duplicidade.
+ * 
+ * @lifecycle
+ * - Os alunos da waitlist podem ser promovidos via 'triggerWaitlistPromotion'.
+ * 
+ * @security
+ * - Role: Admin/Reception.
+ * 
+ * @param {string} slotId - UUID do horário.
+ * @param {string} studentId - UUID do aluno.
+ */
 export async function addToWaitlist(slotId: string, studentId: string) {
   const ctx = await getAdminContext();
   if ("error" in ctx) return { error: ctx.error };
@@ -712,6 +820,12 @@ export async function addToWaitlist(slotId: string, studentId: string) {
   return { success: true };
 }
 
+/**
+ * LISTA DE ESPERA (Remoção): Exclui um registro da fila de interessados.
+ * 
+ * @security Role: Admin/Reception.
+ * @param {string} waitlistId - UUID do registro na tabela 'class_waitlist'.
+ */
 export async function removeFromWaitlist(waitlistId: string) {
   const ctx = await getAdminContext();
   if ("error" in ctx) return { error: ctx.error };
@@ -727,6 +841,19 @@ export async function removeFromWaitlist(waitlistId: string) {
   return { success: true };
 }
 
+/**
+ * PROMOÇÃO AUTOMÁTICA (Waitlist): Transfere o primeiro da fila para uma matrícula fixa.
+ * 
+ * @SSoT Lógica:
+ * 1. Recupera o registro mais antigo (FIFO).
+ * 2. Tenta inserir na 'class_enrollments'.
+ * 3. Se sucesso, deleta da 'class_waitlist'.
+ * 
+ * @operation
+ * - Disparado manualmente pelo Admin ou automaticamente em fluxos de desmatrícula.
+ * 
+ * @security Role: Admin/Reception.
+ */
 export async function triggerWaitlistPromotion(slotId: string) {
   const ctx = await getAdminContext();
   if ("error" in ctx) return { error: ctx.error };
@@ -760,6 +887,14 @@ export async function triggerWaitlistPromotion(slotId: string) {
 
 // --- SUBSTITUTIONS ---
 
+/**
+ * SUBSTITUIÇÕES (Consulta): Recupera todos os coaches substitutos para uma data.
+ * 
+ * Utilizado para renderização dinâmica da grade e lógica do Portal do Coach.
+ *
+ * @param {string} date - Data para verificação (YYYY-MM-DD).
+ * @returns {Promise<{ data?: any[]; error?: string }>} Lista de substituições com detalhes do perfil.
+ */
 export async function getSlotSubstitutions(date: string) {
   const ctx = await getAdminContext();
   if ("error" in ctx) return { error: ctx.error };
@@ -781,6 +916,17 @@ export async function getSlotSubstitutions(date: string) {
   return { data: sanitized };
 }
 
+/**
+ * SUBSTITUIÇÃO DE COACH (Operação): Define ou remove um coach substituto para uma data específica.
+ * 
+ * @SSoT: Se coachId for null, a substituição é removida e o sistema volta ao 'default_coach_id'.
+ * 
+ * @security Role: Admin/Reception.
+ * @param {string} slotId - UUID do horário.
+ * @param {string | null} coachId - UUID do substituto (ou null para reset).
+ * @param {string} date - Data (YYYY-MM-DD).
+ * @param {string} [notes] - Notas opcionais (ex: férias, atestado).
+ */
 export async function addSubstitution(slotId: string, coachId: string | null, date: string, notes?: string) {
   const ctx = await getAdminContext();
   if ("error" in ctx) return { error: ctx.error };
@@ -808,38 +954,101 @@ export async function addSubstitution(slotId: string, coachId: string | null, da
 // Settings management is now centralized in @/lib/constants/settings_actions.ts
 
 
-// --- HOLIDAYS ---
+// --- HOLIDAYS / GRANULAR BLOCKING (SSoT) ---
+//
+// box_holidays is the Single Source of Truth for ALL schedule overrides.
+// Every blocking rule — whether a national holiday, a maintenance window,
+// or a single cancelled class — lives here and is consumed by both the
+// Grade (config) and Check-ins (operational) views.
+//
+// Block Types:
+//   'full_day'  — The unit is closed for the entire day.
+//   'period'    — Only slots whose time_start falls within [start_time, end_time) are blocked.
+//   'slot'      — Only the specific class_slot_id is cancelled on that date.
 
+/**
+ * BLOQUEIOS GRANULARES (SSoT): Recupera todas as regras de exceção da agenda.
+ * 
+ * @SSoT: 'box_holidays' é a fonte única para feriados, manutenções e cancelamentos pontuais.
+ * @security Público p/ Admin e Coach: Necessário para renderização correta da grade.
+ * 
+ * @returns {Promise<{ data: any[]; error?: string }>}
+ */
 export async function getHolidays() {
   const ctx = await getAdminContext();
   if ("error" in ctx) return { error: ctx.error };
   const { data, error } = await ctx.adminClient
     .from("box_holidays")
-    .select("id, date, description")
+    .select("id, date, description, block_type, start_time, end_time, class_slot_id")
     .order("date", { ascending: true });
 
-  if (error) return { error: "Erro ao buscar feriados: " + error.message };
+  if (error) return { error: "Erro ao buscar bloqueios: " + error.message };
 
   return { data: data || [] };
 }
 
-export async function addHoliday(date: string, description: string) {
+/**
+ * BLOQUEIOS GRANULARES (Inclusão): Cria uma nova regra de bloqueio com escopo definido.
+ * 
+ * @SSoT: 'box_holidays' é a fonte de verdade para feriados e cancelamentos.
+ * @security ADMIN ONLY: Ação estratégica que afeta faturamento e disponibilidade do box.
+ * @operation
+ * 1. Valida o tipo de bloqueio (Full/Period/Slot).
+ * 2. Verifica obrigatoriedade de campos específicos (Times/SlotId).
+ * 3. Persiste a regra com unicidade por data (Constraint DB).
+ * 
+ * @param {string} date - Data do bloqueio (YYYY-MM-DD).
+ * @param {string} description - Motivo exibido na UI.
+ * @param {'full_day'|'period'|'slot'} blockType - Escopo do bloqueio.
+ * @param {object} [options] - Parâmetros extras (horários/ID do slot).
+ */
+export async function addHoliday(
+  date: string,
+  description: string,
+  blockType: 'full_day' | 'period' | 'slot' = 'full_day',
+  options?: { startTime?: string; endTime?: string; classSlotId?: string }
+) {
   const ctx = await getAdminContext();
   if ("error" in ctx) return { error: ctx.error };
 
+  // Validate period blocks have both times
+  if (blockType === 'period' && (!options?.startTime || !options?.endTime)) {
+    return { error: "Bloqueio de período requer horário de início e fim." };
+  }
+  // Validate slot blocks have a slot reference
+  if (blockType === 'slot' && !options?.classSlotId) {
+    return { error: "Bloqueio de aula requer a turma selecionada." };
+  }
+
+  const payload: Record<string, unknown> = {
+    date,
+    description,
+    block_type: blockType,
+    start_time: options?.startTime || null,
+    end_time:   options?.endTime || null,
+    class_slot_id: options?.classSlotId || null,
+  };
+
   const { error } = await ctx.adminClient
     .from("box_holidays")
-    .insert({ date, description });
+    .insert(payload);
 
   if (error) {
-    if (error.code === "23505") return { error: "Já existe um feriado/fechamento nesta data." };
-    return { error: "Erro ao adicionar feriado: " + error.message };
+    if (error.code === "23505") return { error: "Já existe um bloqueio equivalente nesta data." };
+    return { error: "Erro ao adicionar bloqueio: " + error.message };
   }
 
   revalidatePath("/admin/turmas");
   return { success: true };
 }
 
+/**
+ * BLOQUEIOS GRANULARES (Remoção): Exclui permanentemente uma regra de bloqueio/feriado.
+ * 
+ * @security Role: Admin/Reception.
+ * @param {string} id - UUID do registro em 'box_holidays'.
+ * @returns {Promise<{ success?: boolean; error?: string }>}
+ */
 export async function removeHoliday(id: string) {
   const ctx = await getAdminContext();
   if ("error" in ctx) return { error: ctx.error };
@@ -849,7 +1058,7 @@ export async function removeHoliday(id: string) {
     .delete()
     .eq("id", id);
 
-  if (error) return { error: "Erro ao remover feriado: " + error.message };
+  if (error) return { error: "Erro ao remover bloqueio: " + error.message };
 
   revalidatePath("/admin/turmas");
   return { success: true };
@@ -858,25 +1067,30 @@ export async function removeHoliday(id: string) {
 // --- CLASS CLOSING AND POINTS ---
 
 /**
- * FINALIZAÇÃO DE AULA (SSoT): Registra presenças, faltas e distribui pontos.
+ * FINALIZAÇÃO DE AULA (SSoT): Registra presenças, faltas e atribui pontuação definitiva.
  * 
- * Lógica:
- * 1. Identifica WODs ativos (Data-Driven).
- * 2. Transição 'checked' -> 'missed' (Default) para quem não foi selecionado.
- * 3. Transição 'checked'/'missed' -> 'confirmed' para quem foi selecionado.
- * 4. Atribuição de pontos via RPC `increment_points`.
- * 5. Define `validated_at` (UTC) como marcador definitivo de aula encerrada.
+ * @SSoT: Transforma a intenção (Check-in) em registro oficial 'confirmed' ou 'missed'.
+ * @operation
+ * 1. Valida existência de WOD.
+ * 2. Transiciona alunos não selecionados para 'missed' (zero pontos).
+ * 3. Transiciona selecionados para 'confirmed' (atribui pontos).
+ * 4. Incrementa o saldo total de pontos do aluno via RPC.
+ * 5. Registra o fechamento em 'class_sessions'.
  * 
- * @param {string} slotId - UUID do horário (class_slots).
+ * @security
+ * - Role: Admin/Reception/Coach.
+ * - RLS: Service Role (via adminClient).
+ * 
+ * @param {string} slotId - UUID do horário.
  * @param {string} date - Data da aula (YYYY-MM-DD).
- * @param {string[]} studentIds - UUIDs dos alunos presentes.
- * @returns {Promise<{success?: boolean, pointsAwarded?: number, error?: string}>}
+ * @param {string[]} studentIds - UUIDs dos alunos PRESENTES.
  */
 export async function closeClassAction(slotId: string, date: string, studentIds: string[]) {
   const ctx = await getAdminContext();
   if ("error" in ctx) return { error: ctx.error };
 
-  if (!studentIds.length) return { error: "Selecione ao menos um aluno presente." };
+  // Allows closing empty classes (all students marked as missed)
+  // if (!studentIds.length) ... removed to allow zero attendance closure
 
   // 1. Get ALL WOD IDs for this date (Operational Day)
   const cleanDate = date.trim();
@@ -957,15 +1171,20 @@ export async function closeClassAction(slotId: string, date: string, studentIds:
     )
   );
   
-  // STEP 5: Persist finalization marker in box_settings
-  // Format: finalized_{date}_{slotId}
-  await ctx.adminClient
-    .from("box_settings")
+  // STEP 5: Persist finalization marker in class_sessions (NEW SSoT)
+  const { error: sessionError } = await ctx.adminClient
+    .from("class_sessions")
     .upsert({ 
-      key: `finalized_${cleanDate}_${slotId}`, 
-      value: "true",
-      updated_at: new Date().toISOString()
-    });
+      class_slot_id: slotId, 
+      date: cleanDate,
+      coach_id: ctx.user.id,
+      finalized_at: new Date().toISOString()
+    }, { onConflict: "class_slot_id, date" });
+
+  if (sessionError) {
+    console.error("Error saving class session:", sessionError);
+    // We don't return error here because points/checkins were already processed
+  }
 
   revalidatePath("/admin/turmas");
   revalidatePath("/coach");
@@ -975,10 +1194,13 @@ export async function closeClassAction(slotId: string, date: string, studentIds:
 /**
  * MARCADOR DE FALTA (Manual): Altera o status de um check-in para 'missed'.
  * 
- * Utilizado para 'No-Shows' ou exclusão manual de presença.
- * Define `validated_at` para sincronizar o estado com o App do Aluno (Bloqueio de edição).
+/**
+ * MARCA FALTA (No-Show): Transiciona um check-in para o estado 'missed' com pontuação zerada.
  * 
- * @param {string} checkInId - UUID do check_in.
+ * @SSoT: Esta ação garante persistência imediata sem depender do fechamento final.
+ * 
+ * @security Role: Admin/Reception/Coach.
+ * @param {string} checkInId - UUID do registro de check-in.
  */
 export async function markAsAbsentAction(checkInId: string) {
   const ctx = await getAdminContext();
@@ -1001,6 +1223,35 @@ export async function markAsAbsentAction(checkInId: string) {
   return { success: true };
 }
 
+/**
+ * REMOVE MARCADOR DE FALTA: Reverte um check-in 'missed' para 'checked' (Pendente).
+ * 
+ * Permite ao Admin ou Coach corrigir erros onde um aluno foi marcado como ausente por engano.
+ * Limpa `validated_at` para permitir que o ciclo de fechamento de aula processe o aluno novamente.
+ * 
+ * @param {string} checkInId - O UUID do registro de check-in a ser restaurado.
+ * @returns {Promise<{success?: boolean, error?: string}>}
+ */
+export async function unmarkAsAbsentAction(checkInId: string) {
+  const ctx = await getAdminContext();
+  if ("error" in ctx) return { error: ctx.error };
+
+  const { error } = await ctx.adminClient
+    .from("check_ins")
+    .update({ 
+      status: "checked", 
+      score_points: 0,
+      validated_at: null
+    })
+    .eq("id", checkInId);
+
+  if (error) return { error: "Erro ao remover falta: " + error.message };
+
+  revalidatePath("/admin/turmas");
+  revalidatePath("/coach");
+  return { success: true };
+}
+
 // ═══════════════════════════════════════════════════════════════
 // COACH PORTAL UTILITIES: MANUAL CHECK-IN & REOPENING
 // ═══════════════════════════════════════════════════════════════
@@ -1008,7 +1259,8 @@ export async function markAsAbsentAction(checkInId: string) {
 /**
  * BUSCA RÁPIDA DE ALUNOS (Coach Portal): Pesquisa alunos por nome ou parte dele.
  * 
- * @param {string} query - Termo de busca (min. 2 caracteres).
+ * @param {string} query - Termo de busca (mínimo 2 caracteres).
+ * @returns {Promise<{data?: any[], error?: string}>} Retorna lista de alunos com ID e Avatar.
  */
 export async function searchStudentsCoachAction(query: string) {
   const ctx = await getAdminContext();
@@ -1028,16 +1280,20 @@ export async function searchStudentsCoachAction(query: string) {
 }
 
 /**
- * CHECK-IN MANUAL (Coach Portal): Adiciona um aluno diretamente na aula.
+ * CHECK-IN MANUAL (Coach Portal): Adiciona um aluno diretamente na aula com validação imediata.
  * 
- * Fluxo Crítico:
- * 1. Garante que o aluno tenha um check-in 'confirmed'.
- * 2. Atribui pontos instantaneamente via RPC.
- * 3. Define `validated_at` para indicar validação imediata pelo Coach.
+ * @operation
+ * 1. Recupera o WOD da data informada.
+ * 2. Previne duplicidade de check-in.
+ * 3. Faz UPSERT para transicionar status (ex: 'missed' -> 'confirmed') ou criar novo.
+ * 4. Atribui pontos instantaneamente via RPC `increment_points`.
+ * 5. Define `validated_at` em UTC para sincronia com o App do Aluno.
  * 
- * @param {string} slotId - UUID do horário.
- * @param {string} date - Data (YYYY-MM-DD).
- * @param {string} studentId - UUID do aluno.
+ * @security Role: Admin/Reception/Coach.
+ * 
+ * @param {string} slotId - UUID do horário (class_slots).
+ * @param {string} date - Data da aula (YYYY-MM-DD).
+ * @param {string} studentId - UUID do aluno (profiles).
  */
 export async function manualCheckinAction(slotId: string, date: string, studentId: string) {
   const ctx = await getAdminContext();
@@ -1101,15 +1357,28 @@ export async function manualCheckinAction(slotId: string, date: string, studentI
 }
 
 /**
- * REABERTURA DE AULA (Safety First): Reverte o estado de uma aula finalizada.
+ * REABERTURA DE AULA (Emergency Path): Reverte o estado de uma aula finalizada.
  * 
- * Procedimento de Segurança:
- * 1. Retorna status de 'confirmed'/'missed' para 'checked' (Pendente).
- * 2. Estorna os pontos creditados (increment_points com valor negativo).
- * 3. Limpa `validated_at` e o marcador em `box_settings`.
+ * @operation
+ * 1. Retorna status para 'checked' (Pendente).
+ * 2. ESTORNA pontos creditados (decrement via RPC).
+ * 3. Remove marcador de 'class_sessions'.
  * 
+ * @security Altíssimo Risco. Role: Admin/Coach.
  * @param {string} slotId - UUID do horário.
  * @param {string} date - Data da reabertura.
+ */
+/**
+ * REABERTURA DE AULA (Emergência): Reverte o estado de uma aula já finalizada.
+ * 
+ * @SSoT (Rollback):
+ * 1. Estorna pontos creditados (decrement_points).
+ * 2. Limpa marcador de finalização (class_sessions).
+ * 3. Retorna check-ins para status 'checked'.
+ * 
+ * @security Altíssimo Risco. Role: Admin/Coach.
+ * @param {string} slotId - UUID do horário.
+ * @param {string} date - Data da aula (YYYY-MM-DD).
  */
 export async function reopenClassAction(slotId: string, date: string) {
   const ctx = await getAdminContext();
@@ -1118,7 +1387,6 @@ export async function reopenClassAction(slotId: string, date: string) {
   const cleanDate = date.trim();
 
   // STEP 1: Get ALL WOD IDs for this date (Operational Day)
-  // This handles the edge case of duplicate WODs.
   const { data: wods } = await ctx.adminClient
     .from("wods")
     .select("id")
@@ -1150,7 +1418,6 @@ export async function reopenClassAction(slotId: string, date: string) {
   const pointsValue = pointRule?.points ?? 10;
 
   // STEP 4: Identify all students who were 'confirmed' and received points.
-  // Deduplicate by student_id to avoid double-subtracting if they had check-ins across multiple WODs.
   const confirmedStudentIds = Array.from(new Set(
     existingCheckins
       .filter(c => c.status === "confirmed")
@@ -1163,7 +1430,6 @@ export async function reopenClassAction(slotId: string, date: string) {
   );
 
   if (!hasFinalized) {
-    // Already open across all relevant WODs — return success
     revalidatePath("/coach");
     return { success: true, confirmedIds: [] };
   }
@@ -1182,11 +1448,12 @@ export async function reopenClassAction(slotId: string, date: string) {
 
   if (updateError) return { error: "Erro ao reabrir: " + updateError.message };
   
-  // STEP 5.1: Clear finalization marker from box_settings
+  // STEP 5.1: Clear finalization marker from class_sessions (NEW SSoT)
   await ctx.adminClient
-    .from("box_settings")
+    .from("class_sessions")
     .delete()
-    .eq("key", `finalized_${cleanDate}_${slotId}`);
+    .eq("class_slot_id", slotId)
+    .eq("date", cleanDate);
 
   // STEP 6: Subtract points only once per student who was confirmed
   if (confirmedStudentIds.length > 0) {
@@ -1200,6 +1467,28 @@ export async function reopenClassAction(slotId: string, date: string) {
   revalidatePath("/coach");
   revalidatePath("/admin/turmas");
   return { success: true, confirmedIds: confirmedStudentIds };
+}
+
+/**
+ * EXCLUSÃO DEFINITIVA (Admin): Remove o registro de check-in fisicamente do banco.
+ * 
+ * @security Altíssimo Risco. Role: Admin/Reception.
+ * @param {string} checkInId - UUID do registro de check_in.
+ */
+export async function deleteCheckinAction(checkInId: string) {
+  const ctx = await getAdminContext();
+  if ("error" in ctx) return { error: ctx.error };
+
+  const { error } = await ctx.adminClient
+    .from("check_ins")
+    .delete()
+    .eq("id", checkInId);
+
+  if (error) return { error: "Erro ao excluir check-in: " + error.message };
+
+  revalidatePath("/admin/turmas");
+  revalidatePath("/coach");
+  return { success: true };
 }
 
 

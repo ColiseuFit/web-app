@@ -2,6 +2,18 @@
 
 import { useEffect } from "react";
 
+/**
+ * INTERCEPTOR DE AÇÕES CRÍTICAS (ConfirmModal).
+ * 
+ * @architecture
+ * - Design Neo-Brutalista: Bordas de 4px, sombras sólidas (16px) e alto contraste.
+ * - Hierarquia Visual: `isDanger=true` aplica o tema Red Coliseu (#E31B23).
+ * - Backdrop Blur: Desfoque de 8px para isolação cognitiva.
+ * 
+ * @technical
+ * - Scroll Locking: Manipulação direta de `document.body.style.overflow`.
+ * - Event Handling: Previne navegação acidental durante confirmações críticas.
+ */
 interface ConfirmModalProps {
   title: string;
   message: string;
@@ -37,8 +49,8 @@ export default function ConfirmModal({
       left: 0,
       right: 0,
       bottom: 0,
-      backgroundColor: "rgba(0,0,0,0.85)",
-      backdropFilter: "blur(4px)",
+      backgroundColor: "rgba(255,255,255,0.4)",
+      backdropFilter: "blur(8px)",
       zIndex: 3000,
       display: "flex",
       alignItems: "center",
@@ -46,70 +58,93 @@ export default function ConfirmModal({
       padding: "20px"
     }}>
       <div style={{
-        backgroundColor: "var(--surface-lowest)",
-        border: "1px solid var(--border-glow)",
+        backgroundColor: "#FFFFFF",
+        border: "4px solid #000000",
         width: "100%",
-        maxWidth: "340px",
+        maxWidth: "420px",
         position: "relative",
-        boxShadow: "0 0 50px rgba(0,0,0,0.5)"
+        boxShadow: "16px 16px 0px 0px rgba(0,0,0,1)",
+        padding: "40px 32px"
       }}>
-        {/* Linha de topo brutalista */}
-        <div style={{ height: "4px", background: isDanger ? "var(--red)" : "var(--lvl-blue)", width: "100%" }} />
+        {/* Ícone de Alerta Brutalista */}
+        <div style={{
+          position: "absolute",
+          top: "-24px",
+          left: "32px",
+          background: isDanger ? "#E31B23" : "#000000",
+          color: "#FFF",
+          padding: "8px 16px",
+          border: "4px solid #000000",
+          fontWeight: 900,
+          fontSize: "12px",
+          letterSpacing: "0.1em",
+          boxShadow: "4px 4px 0px #000000"
+        }}>
+          ATENÇÃO
+        </div>
 
-        <div style={{ padding: "32px 24px" }}>
-          <h3 className="font-display" style={{ 
-            fontSize: "24px", 
-            lineHeight: 1, 
-            marginBottom: "12px",
-            color: isDanger ? "var(--red)" : "var(--text)"
-          }}>
-            {title.toUpperCase()}
-          </h3>
-          <p style={{ 
-            fontSize: "12px", 
-            color: "var(--text-dim)", 
-            lineHeight: 1.5,
-            letterSpacing: "0.02em",
-            marginBottom: "32px"
-          }}>
-            {message}
-          </p>
+        <h3 style={{ 
+          fontFamily: "'Outfit', sans-serif",
+          fontSize: "28px", 
+          fontWeight: 900,
+          lineHeight: 1.1, 
+          marginBottom: "16px",
+          color: "#000000",
+          textTransform: "uppercase"
+        }}>
+          {title}
+        </h3>
+        
+        <p style={{ 
+          fontSize: "14px", 
+          color: "#333333", 
+          lineHeight: 1.6,
+          fontWeight: 700,
+          marginBottom: "40px"
+        }}>
+          {message}
+        </p>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-            <button
-              onClick={onConfirm}
-              style={{
-                padding: "16px",
-                background: isDanger ? "var(--red)" : "var(--surface-highest)",
-                color: "#fff",
-                border: "none",
-                fontWeight: 900,
-                fontSize: "11px",
-                letterSpacing: "0.25em",
-                cursor: "pointer",
-                textTransform: "uppercase",
-                fontFamily: "var(--font-display)"
-              }}
-            >
-              {confirmLabel}
-            </button>
-            <button
-              onClick={onCancel}
-              style={{
-                padding: "16px",
-                background: "transparent",
-                color: "var(--text-muted)",
-                border: "1px solid var(--border-glow)",
-                fontWeight: 800,
-                fontSize: "10px",
-                letterSpacing: "0.2em",
-                cursor: "pointer",
-                textTransform: "uppercase"
-              }}
-            >
-              {cancelLabel}
-            </button>
-          </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+          <button
+            onClick={onConfirm}
+            style={{
+              padding: "18px",
+              background: isDanger ? "#E31B23" : "#000000",
+              color: "#FFFFFF",
+              border: "4px solid #000000",
+              fontWeight: 900,
+              fontSize: "14px",
+              letterSpacing: "0.1em",
+              cursor: "pointer",
+              textTransform: "uppercase",
+              fontFamily: "'Outfit', sans-serif",
+              transition: "transform 0.1s ease",
+              boxShadow: "4px 4px 0px #000000"
+            }}
+            onMouseDown={e => e.currentTarget.style.transform = "translate(2px, 2px)"}
+            onMouseUp={e => e.currentTarget.style.transform = "none"}
+          >
+            {confirmLabel}
+          </button>
+          
+          <button
+            onClick={onCancel}
+            style={{
+              padding: "16px",
+              background: "#FFFFFF",
+              color: "#000000",
+              border: "4px solid #000000",
+              fontWeight: 900,
+              fontSize: "14px",
+              letterSpacing: "0.1em",
+              cursor: "pointer",
+              textTransform: "uppercase",
+              fontFamily: "'Outfit', sans-serif"
+            }}
+          >
+            {cancelLabel}
+          </button>
         </div>
       </div>
     </div>

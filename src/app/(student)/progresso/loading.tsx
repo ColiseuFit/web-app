@@ -1,17 +1,24 @@
-"use client";
-
 /**
- * Skeleton Loader para a Página de Progresso do Aluno.
- * Simula os 3 módulos: Gauge de Compromisso, Matriz de PRs, e Metas.
- *
- * @technical
- * - O gauge circular é renderizado como placeholder circular de mesmas dimensões.
- * - A animação escalonada (staggered) cria sensação de "carregamento vivo".
- * - Espelha a estrutura real para zero layout shift (CLS).
+ * ProgressoSkeleton:
+ * Recreates the student progress view with "Neo-Brutalist Light" tokens.
+ * 
+ * @architecture
+ * - Server Component Skeleton: Pure Server Component to avoid module factory 
+ *   initialization errors in Turbopack/Next.js HMR. 
+ * - Ensures instant hydration and zero-CLS (Cumulative Layout Shift) in production.
  */
 export default function ProgressoSkeleton() {
   return (
     <div style={{ backgroundColor: "var(--bg)", minHeight: "100vh", paddingBottom: "100px" }}>
+      <style>
+        {`
+          @keyframes skeletonPulse {
+            0% { opacity: 0.6; }
+            50% { opacity: 0.25; }
+            100% { opacity: 0.6; }
+          }
+        `}
+      </style>
       <div style={{ maxWidth: "480px", margin: "0 auto", padding: "0 16px" }}>
 
         {/* Title Skeleton */}
@@ -27,7 +34,7 @@ export default function ProgressoSkeleton() {
             animation: "skeletonPulse 1.5s infinite ease-in-out"
           }} />
           <div style={{
-            height: "12px", width: "220px",
+            height: "10px", width: "220px",
             background: "var(--surface-low)",
             animation: "skeletonPulse 1.5s infinite ease-in-out"
           }} />
@@ -162,14 +169,7 @@ export default function ProgressoSkeleton() {
           </div>
         </div>
       </div>
-
-      <style jsx>{`
-        @keyframes skeletonPulse {
-          0% { opacity: 0.6; }
-          50% { opacity: 0.25; }
-          100% { opacity: 0.6; }
-        }
-      `}</style>
     </div>
   );
 }
+

@@ -1,18 +1,24 @@
-"use client";
-
 /**
- * Skeleton Loader para a Página Inicial do Aluno (Dashboard).
- * Simula o layout do cabeçalho, carrossel de dias e WOD.
- * enquanto os dados reais são carregados do servidor.
- *
- * @technical
- * - Segue o padrão Iron Monolith: sem telas em branco.
- * - As dimensões dos blocos espelham os componentes reais
- *   para evitar layout shift (CLS).
+ * DashboardSkeleton:
+ * Recreates the student dashboard layout with "Neo-Brutalist Light" tokens.
+ * 
+ * @architecture
+ * - Server Component Skeleton: Pure Server Component to avoid module factory 
+ *   initialization errors in Turbopack/Next.js HMR. 
+ * - Ensures instant hydration and zero-CLS (Cumulative Layout Shift) in production.
  */
 export default function DashboardSkeleton() {
   return (
     <div style={{ backgroundColor: "var(--bg)", minHeight: "100vh", paddingBottom: "100px" }}>
+      <style>
+        {`
+          @keyframes skeletonPulse {
+            0% { opacity: 0.6; }
+            50% { opacity: 0.25; }
+            100% { opacity: 0.6; }
+          }
+        `}
+      </style>
       <div style={{ maxWidth: "480px", margin: "0 auto", padding: "0 16px" }}>
 
         {/* Header Skeleton (Avatar + Nome + Level) */}
@@ -143,14 +149,6 @@ export default function DashboardSkeleton() {
           </div>
         </div>
       </div>
-
-      <style jsx>{`
-        @keyframes skeletonPulse {
-          0% { opacity: 0.6; }
-          50% { opacity: 0.25; }
-          100% { opacity: 0.6; }
-        }
-      `}</style>
     </div>
   );
 }

@@ -1,7 +1,21 @@
 "use client";
 
+/**
+ * CoachDashboardClient: O Centro Operacional em Tempo Real para Instrutores.
+ * 
+ * @architecture
+ * - Padrão Iron Monolith: UI brutalista otimizada para uso em dispositivos móveis no chão do box.
+ * - SSoT de Presença: Persistência imediata de No-Show/Check-in no banco de dados.
+ * - Lógica de Score Gate: Gerencia o fechamento de turmas e distribuição de pontos via `actions.ts`.
+ * - Sincronização Otimista: Utiliza `togglingIds` para feedback visual instantâneo sem depender de latência de rede.
+ * 
+ * @design 
+ * - Legibilidade Extrema: Alto contraste e elementos táteis ideais para professores operando entre treinos.
+ * - Zero CLS: Estrutura rígida de cards para evitar distrações visuais durante a aula.
+ */
+
 import { useState, useRef } from "react";
-import { getSlotCheckins, closeClassAction, markAsAbsentAction, manualCheckinAction, reopenClassAction, searchStudentsCoachAction } from "@/app/(admin)/admin/turmas/actions";
+import { getSlotCheckins, closeClassAction, markAsAbsentAction, unmarkAsAbsentAction, manualCheckinAction, reopenClassAction, searchStudentsCoachAction } from "@/app/(admin)/admin/turmas/actions";
 import { useRouter } from "next/navigation";
 import { Search, Plus, UserPlus, CheckCircle, Users, Activity, Loader2, Maximize, AlertTriangle, UserX, RotateCcw } from "lucide-react";
 import { getLevelInfo, LevelInfo } from "@/lib/constants/levels";
@@ -15,6 +29,7 @@ interface ClassSlot {
   time_start: string;
   capacity: number;
   coach_name?: string;
+  is_substitution?: boolean;
 }
 
 interface CheckinData {
@@ -22,9 +37,22 @@ interface CheckinData {
   student_id: string;
   status: string;
   profiles: {
-    full_name: string;
+    full_name: string | null;
+    display_name?: string | null;
+    first_name?: string | null;
+    last_name?: string | null;
     level: string;
   };
+}
+
+/** Gets the best display name for a student — mirrors CloseClassModal (SSoT). */
+function getCoachDisplayName(profiles: CheckinData["profiles"]): string {
+  return (
+    profiles.display_name ||
+    profiles.full_name ||
+    [profiles.first_name, profiles.last_name].filter(Boolean).join(" ") ||
+    "Aluno"
+  );
 }
 
 export default function CoachDashboardClient({ 
@@ -47,6 +75,8 @@ export default function CoachDashboardClient({
   // Statuses for closing process
   const [isClosing, setIsClosing] = useState<string | null>(null);
   const [selectedStudents, setSelectedStudents] = useState<Record<string, Set<string>>>({});
+  const [togglingIds, setTogglingIds] = useState<Set<string>>(new Set());
+
   
   const [finishedSlots, setFinishedSlots] = useState<Record<string, boolean>>(initialFinishedSlots);
   const [reopenedSlots, setReopenedSlots] = useState<string[]>([]);
@@ -72,9 +102,15 @@ export default function CoachDashboardClient({
   });
 
   // Helper function to refresh checkins for a slot
+  /**
+   * Refreshes the attendance list for a specific slot.
+   * Synchronizes internal status with the `class_checkins` source of truth.
+   * 
+   * @param {string} slotId - The ID of the class slot.
+   */
   const refreshCheckins = async (slotId: string) => {
     try {
-      const response = await getSlotCheckins(slotId);
+      const response = await getSlotCheckins(slotId, todayDateStr);
       if (!response.error && response.data) {
         setSlotCheckins(prev => ({ ...prev, [slotId]: response.data as any }));
         
@@ -93,7 +129,10 @@ export default function CoachDashboardClient({
     }
   };
 
-  // Togles expanding a class card and fetching if not cached
+  /**
+   * Expands/Collapses a class card.
+   * Triggers a fresh data fetch on first expand to ensure real-time accuracy.
+   */
   const handleToggleExpand = async (slotId: string) => {
     if (expandedSlot === slotId) {
       setExpandedSlot(null);
@@ -110,18 +149,82 @@ export default function CoachDashboardClient({
     }
   };
 
-  const handleToggleStudent = (slotId: string, studentId: string) => {
+  /**
+   * Alternância de Presença Otimista (Attendance Toggle).
+   * 
+   * @operation
+   * 1. Atualiza o estado local imediatamente (`selectedStudents`) para feedback visual.
+   * 2. Inicia salvamento em background via `markAsAbsentAction` ou `unmarkAsAbsentAction`.
+   * 3. Sincroniza com a fonte de verdade (DB) após a resposta para garantir paridade.
+   * 4. Bloqueia interação simultânea no mesmo aluno via `togglingIds` (Race Condition avoidance).
+   * 
+   * @param {string} slotId - ID da turma no contexto.
+   * @param {string} studentId - ID do perfil do aluno alvo.
+   */
+  const handleToggleStudent = async (slotId: string, studentId: string) => {
+    const checks = slotCheckins[slotId] || [];
+    const checkin = checks.find(c => c.student_id === studentId);
+    
+    if (!checkin) return;
+
+    const isCurrentlySelected = selectedStudents[slotId]?.has(studentId);
+    const checkinId = checkin.id;
+
+    // Optimistic UI
     setSelectedStudents(prev => {
       const draft = new Set(prev[slotId] || new Set());
-      if (draft.has(studentId)) {
-        draft.delete(studentId);
-      } else {
-        draft.add(studentId);
-      }
+      if (isCurrentlySelected) draft.delete(studentId);
+      else draft.add(studentId);
       return { ...prev, [slotId]: draft };
     });
+
+    // Background Save
+    setTogglingIds(prev => {
+      const next = new Set(prev);
+      next.add(checkinId);
+      return next;
+    });
+
+    try {
+      const res = isCurrentlySelected 
+        ? await markAsAbsentAction(checkinId) 
+        : await unmarkAsAbsentAction(checkinId);
+
+      if (res.error) {
+        // Rollback on error
+        setSelectedStudents(prev => {
+          const draft = new Set(prev[slotId] || new Set());
+          if (isCurrentlySelected) draft.add(studentId);
+          else draft.delete(studentId);
+          return { ...prev, [slotId]: draft };
+        });
+        console.error("Erro ao persistir presença:", res.error);
+      } else {
+        // Sync with DB
+        await refreshCheckins(slotId);
+      }
+    } finally {
+      setTogglingIds(prev => {
+        const next = new Set(prev);
+        next.delete(checkinId);
+        return next;
+      });
+    }
   };
 
+  /**
+   * Finalização de Sessão de Aula (Class Closure).
+   * 
+   * @lifecycle
+   * 1. Validação de Presença Mínima: Impede fechamento de aulas vazias (limpeza de dados).
+   * 2. Gatilho de Reconhecimento: Aciona `closeClassAction` que processa:
+   *    - Promoção de Pontos/XP (Score Engine).
+   *    - Atualização de Frequência (Analytics).
+   *    - Liberação de Resultados (WOD Results Unlocking).
+   * 3. Travamento Visual: Define `finishedSlots` para impedir edições acidentais pós-aula.
+   * 
+   * @param {ClassSlot} slot - Objeto da turma sendo encerrada.
+   */
   const handleCloseClass = async (slot: ClassSlot) => {
     const selectedIds = Array.from(selectedStudents[slot.id] || []);
     if (selectedIds.length === 0) {
@@ -199,10 +302,12 @@ export default function CoachDashboardClient({
             onConfirm: () => setConfirmModal(prev => ({ ...prev, isOpen: false }))
           });
         } else {
-          // Remove from local state
+          // Update local state to reflect 'missed' status instead of removing
           setSlotCheckins(prev => ({
             ...prev,
-            [slotId]: (prev[slotId] || []).filter(c => c.id !== checkInId)
+            [slotId]: (prev[slotId] || []).map(c => 
+              c.id === checkInId ? { ...c, status: "missed" } : c
+            )
           }));
           // Also remove from selection if it was there
           setSelectedStudents(prev => {
@@ -217,6 +322,17 @@ export default function CoachDashboardClient({
     });
   };
 
+  /**
+   * Reabertura de Aula Finalizada (Admin Dangerous Action).
+   * 
+   * @security
+   * - Ação Administrativa Crítica: Exige confirmação explícita via modal.
+   * - Rollback Financeiro/Métrico: Estorna pontos distribuídos e invalida status de aula processada.
+   * - Recuperação de SSoT: Retorna todos os alunos para o status 'checked/confirmed' 
+   *   para permitir correção de erros operacionais do instrutor.
+   * 
+   * @param {string} slotId - ID do slot a ser reaberto.
+   */
   const handleReopen = async (slotId: string) => {
     setConfirmModal({
       isOpen: true,
@@ -236,7 +352,7 @@ export default function CoachDashboardClient({
             [slotId]: new Set(res.confirmedIds)
           }));
           
-          const response = await getSlotCheckins(slotId);
+          const response = await getSlotCheckins(slotId, todayDateStr);
           if (!response.error && response.data) {
             setSlotCheckins(prev => ({ ...prev, [slotId]: response.data as any }));
           }
@@ -275,6 +391,12 @@ export default function CoachDashboardClient({
     }, 400);
   };
 
+  /**
+   * Performs a manual check-in for a student not in the original list.
+   * 
+   * @param {string} slotId - The target slot.
+   * @param {string} studentId - The student to add.
+   */
   const handleManualCheckin = async (slotId: string, studentId: string) => {
     setIsLoadingCheckins(true);
     const res = await manualCheckinAction(slotId, todayDateStr, studentId);
@@ -308,9 +430,33 @@ export default function CoachDashboardClient({
 
       <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
         {todaySlots.length === 0 && (
-          <div style={{ background: "#FFF", border: "3px solid #000", boxShadow: "4px 4px 0px #000", padding: "24px", textAlign: "center" }}>
-            <Activity size={32} style={{ margin: "0 auto 12px", opacity: 0.3 }} />
-            <p className="font-headline" style={{ margin: 0 }}>Nenhuma turma agendada para este dia.</p>
+          <div style={{ 
+            background: "#FFF", 
+            border: "4px solid #000", 
+            boxShadow: "8px 8px 0px #000", 
+            padding: "60px 24px", 
+            textAlign: "center",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: "16px"
+          }}>
+            <div style={{ 
+              width: "64px", 
+              height: "64px", 
+              background: "#F3F4F6", 
+              borderRadius: "50%", 
+              display: "flex", 
+              alignItems: "center", 
+              justifyContent: "center",
+              border: "3px solid #000"
+            }}>
+              <Activity size={32} style={{ opacity: 0.2 }} />
+            </div>
+            <div>
+              <p className="font-headline" style={{ margin: 0, fontSize: "18px", fontWeight: 900 }}>FOLGA OU DIA SEM TURMAS</p>
+              <p style={{ fontSize: "12px", color: "#666", marginTop: "4px" }}>Nenhuma aula agendada para este dia no sistema.</p>
+            </div>
           </div>
         )}
 
@@ -351,8 +497,36 @@ export default function CoachDashboardClient({
                   <div className="font-display" style={{ fontSize: "24px", fontWeight: 900, lineHeight: 1 }}>
                     {slot.time_start.slice(0, 5)}
                   </div>
-                  <div className="font-headline" style={{ fontSize: "14px", opacity: 0.95, textTransform: "uppercase", marginTop: "4px" }}>
+                  <div className="font-headline" style={{ 
+                    fontSize: "14px", 
+                    opacity: 0.95, 
+                    textTransform: "uppercase", 
+                    marginTop: "4px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px"
+                  }}>
                     {slot.name}
+                    <span style={{ opacity: 0.5 }}>•</span>
+                    <span style={{ 
+                      fontSize: "12px", 
+                      fontWeight: 800, 
+                      color: slot.is_substitution ? "var(--red)" : "inherit"
+                    }}>
+                      {slot.coach_name === "Sem instrutor" ? "SEM INSTRUTOR" : slot.coach_name?.split(' ')[0]}
+                    </span>
+                    {slot.is_substitution && (
+                      <span style={{ 
+                        fontSize: "9px", 
+                        background: "var(--red)", 
+                        color: "#FFF", 
+                        padding: "1px 6px", 
+                        borderRadius: "2px",
+                        fontWeight: 900
+                      }}>
+                        SUB
+                      </span>
+                    )}
                   </div>
                 </div>
                 
@@ -400,7 +574,7 @@ export default function CoachDashboardClient({
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", paddingBottom: "16px", borderBottom: "2px dashed #000" }}>
                         <div style={{ fontSize: "12px", fontWeight: 800, color: "#000" }} className="font-headline">
                           <Users size={14} style={{ display: "inline", marginRight: "6px", verticalAlign: "-2px" }} />
-                          {checks.length} / {slot.capacity} PRESENTES
+                          {checks.filter(c => c.status !== "missed").length} / {slot.capacity} PRESENTES
                         </div>
                         {checks.length === 0 && (
                           <div style={{ fontSize: "10px", color: "var(--red)", fontWeight: 800 }}>NENHUM CHECK-IN</div>
@@ -494,85 +668,66 @@ export default function CoachDashboardClient({
                             const alreadyConfirmed = c.status === "confirmed";
 
                             return (
-                              <div 
+                              <button 
                                 key={c.id}
+                                disabled={alreadyConfirmed || isFinished}
+                                onClick={() => handleToggleStudent(slot.id, c.student_id)}
                                 style={{
+                                  width: "100%",
                                   display: "flex",
                                   alignItems: "center",
-                                  gap: "8px"
+                                  justifyContent: "space-between",
+                                  padding: "12px",
+                                  border: "3px solid #000",
+                                  minHeight: "58px",
+                                  background: isSelected ? (alreadyConfirmed ? "#F0F0F0" : "#F0FDF4") : "#FEF2F2",
+                                  boxShadow: isSelected ? (alreadyConfirmed ? "4px 4px 0px #AAA" : "4px 4px 0px #16A34A") : "4px 4px 0px #DC2626",
+                                  color: "#000",
+                                  opacity: isFinished ? 0.8 : (togglingIds.has(c.id) ? 0.6 : 1),
+                                  textAlign: "left",
+                                  cursor: (alreadyConfirmed || isFinished || togglingIds.has(c.id)) ? "default" : "pointer",
+                                  transition: "all 0.1s ease",
+                                  outline: "none"
                                 }}
                               >
-                                <button 
-                                  disabled={alreadyConfirmed}
-                                  onClick={() => handleToggleStudent(slot.id, c.student_id)}
-                                  style={{
-                                    flex: 1,
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "space-between",
-                                    padding: "12px",
-                                    border: "2px solid #000",
-                                    height: "58px",
-                                    boxSizing: "border-box",
-                                    background: isSelected ? (alreadyConfirmed ? "#F0F0F0" : "var(--yellow)") : "#FFF",
-                                    color: "#000",
-                                    opacity: alreadyConfirmed ? 0.85 : 1,
-                                    textAlign: "left",
-                                    cursor: alreadyConfirmed ? "default" : "pointer",
-                                    transition: "all 0.1s ease"
-                                  }}
-                                >
-                                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                                    <div style={{ width: "4px", height: "32px", background: getLevelInfo(c.profiles.level, dynamicLevels).color }} />
-                                    <div>
-                                      <div className="font-headline" style={{ fontSize: "16px", fontWeight: 800 }}>
-                                        {c.profiles.full_name.split(' ').slice(0, 2).join(' ')}
-                                      </div>
-                                      <div style={{ 
-                                        fontSize: "10px", 
-                                        fontWeight: 800, 
-                                        marginTop: "2px", 
-                                        letterSpacing: "0.05em",
-                                        color: c.profiles.level?.toLowerCase() === 'iniciante' ? "#888888" : getLevelInfo(c.profiles.level, dynamicLevels).color,
-                                        textTransform: "uppercase"
-                                      }}>
-                                        {getLevelInfo(c.profiles.level, dynamicLevels).label}
-                                      </div>
+                                <div style={{ display: "flex", alignItems: "center", gap: "12px", minWidth: 0, opacity: togglingIds.has(c.id) ? 0.5 : 1 }}>
+                                  <div style={{ width: "6px", height: "30px", background: getLevelInfo(c.profiles.level, dynamicLevels).color, flexShrink: 0 }} />
+                                  <div style={{ minWidth: 0 }}>
+                                    <div className="font-headline" style={{ fontSize: "16px", fontWeight: 900, display: "flex", alignItems: "center", gap: "8px", textTransform: "uppercase", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                      {getCoachDisplayName(c.profiles).split(" ").slice(0, 2).join(" ")}
+                                    </div>
+                                    <div style={{ display: "flex", alignItems: "center", gap: "4px", marginTop: "2px" }}>
+                                      {isSelected ? (
+                                        <span style={{ fontSize: "9px", fontWeight: 900, color: "#16A34A", textTransform: "uppercase", display: "flex", alignItems: "center", gap: "3px" }}>
+                                          <CheckCircle size={10} /> PRESENTE
+                                        </span>
+                                      ) : (
+                                        <span style={{ fontSize: "9px", fontWeight: 900, color: "#DC2626", textTransform: "uppercase", display: "flex", alignItems: "center", gap: "3px" }}>
+                                          <UserX size={10} /> FALTA (NO-SHOW)
+                                        </span>
+                                      )}
                                     </div>
                                   </div>
-                                  
-                                  {alreadyConfirmed ? (
-                                    <CheckCircle size={20} color="var(--green)" />
-                                  ) : (
-                                    <div style={{ width: "24px", height: "24px", borderRadius: "50%", border: "2px solid #000", background: isSelected ? "#000" : "#FFF", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                      {isSelected && <CheckCircle size={14} color="#FFF" />}
-                                    </div>
-                                  )}
-                                </button>
+                                </div>
 
-                                {!alreadyConfirmed && (
-                                  <button
-                                    onClick={() => handleMarkAbsent(slot.id, c.id, c.profiles.full_name)}
-                                    title="Marcar Falta (No-Show)"
-                                    style={{
-                                      width: "48px",
-                                      height: "58px", // Mesma altura da linha principal
-                                      boxSizing: "border-box",
-                                      background: "#FFF",
-                                      border: "2px solid #000",
-                                      display: "flex",
-                                      alignItems: "center",
-                                      justifyContent: "center",
-                                      cursor: "pointer",
-                                      transition: "background 0.2s"
-                                    }}
-                                    onMouseOver={(e) => e.currentTarget.style.background = "var(--red)"}
-                                    onMouseOut={(e) => e.currentTarget.style.background = "#FFF"}
-                                  >
-                                    <UserX size={20} color="var(--red)" />
-                                  </button>
-                                )}
-                              </div>
+                                <div style={{ 
+                                  width: "28px", 
+                                  height: "28px", 
+                                  border: "2px solid #000", 
+                                  background: isSelected ? (alreadyConfirmed ? "#CCC" : "#16A34A") : "#FFF", 
+                                  color: isSelected ? "#FFF" : "#000", 
+                                  display: "flex", 
+                                  alignItems: "center", 
+                                  justifyContent: "center",
+                                  flexShrink: 0
+                                }}>
+                                  {togglingIds.has(c.id) ? (
+                                    <Loader2 size={16} className="animate-spin" />
+                                  ) : (
+                                    isSelected ? <CheckCircle size={18} /> : <div style={{ width: 12, height: 2, background: "#CCC" }} />
+                                  )}
+                                </div>
+                              </button>
                             );
                           })}
                         </div>

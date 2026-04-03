@@ -1,11 +1,14 @@
-"use client";
-
 import { Maximize, Activity } from "lucide-react";
 
 /**
  * Coach Portal Skeleton Loader: 
  * Ensures the "Iron Monolith" aesthetic is visible even during data fetching.
  * Zero-tolerance for blank screens.
+ * 
+ * @architecture
+ * - Server Component Skeleton: Pure Server Component to avoid module factory 
+ *   initialization errors in Turbopack/Next.js HMR. 
+ * - Ensures instant hydration and zero-CLS (Cumulative Layout Shift) in production.
  */
 export default function CoachLoading() {
   // Simulate 3 slots

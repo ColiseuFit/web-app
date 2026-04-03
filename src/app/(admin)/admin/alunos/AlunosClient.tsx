@@ -1,18 +1,26 @@
 "use client";
 
-import { useState, useRef } from "react";
-import { Search, Plus, Phone, X, UserPlus, ChevronDown, Pencil, Trash2, User, Mail, Calendar, CreditCard, Info, Activity, ShieldCheck, Lock as LockIcon, Mail as MailIcon } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { Search, Plus, Phone, X, UserPlus, ChevronDown, Pencil, Trash2, User, Mail, Calendar, CreditCard, Info, Activity, ShieldCheck, Lock as LockIcon, Mail as MailIcon, ChevronLeft, ChevronRight } from "lucide-react";
 import { createStudent, updateStudent, deleteStudent, getStudentEvaluations, deletePhysicalEvaluation, updateStudentAuth } from "../../actions";
 import PhysicalEvaluationForm from "./PhysicalEvaluationForm";
 import { getLevelInfo, LevelInfo } from "@/lib/constants/levels";
 
 /**
- * AlunosClient: Comprehensive Student Management CRM.
- *
+ * AlunosClient: Central de Inteligência e Gestão de Alunos (CRM).
+ * 
  * @architecture
- * - Handles complex state encompassing data tables, inline search, and a slide-out drawer (Drawer UI).
- * - Mutates data exclusively via Server Actions.
- * - Integrates Physical Evaluation modules within the student drawer.
+ * - Padronização Iron Monolith: UI de alta fidelidade com tokens CSS nativos e Lucide-React.
+ * - SSoT de Navegação: O estado de filtros e paginação é sincronizado via URL (query params), 
+ *   permitindo compartilhamento de links e persistência ao recarregar.
+ * - Camada de Persistência: Todas as operações de escrita (CRUD, IAM/Segurança, Biometria) 
+ *   são centralizadas em Server Actions no arquivo raiz `../actions.ts`.
+ * 
+ * @lifecycle
+ * 1. Hidratação: Recebe lista paginada e metadados do servidor (`TurmasPage` context).
+ * 2. Interação: Drawer multifuncional (Perfil -> Ficha -> Segurança).
+ * 3. Feedback: Optimistic UI e mensagens de erro validadas via Zod no servidor.
  */
 
 interface Student {
@@ -44,11 +52,25 @@ function formatDate(dateStr: string): string {
 
 export default function AlunosClient({ 
   students, 
-  dynamicLevels 
+  dynamicLevels,
+  currentPage,
+  totalPages,
+  totalCount,
+  currentSearch,
+  currentLevel
 }: { 
   students: Student[], 
-  dynamicLevels?: Record<string, LevelInfo> 
+  dynamicLevels?: Record<string, LevelInfo>,
+  currentPage: number,
+  totalPages: number,
+  totalCount: number,
+  currentSearch: string,
+  currentLevel: string
 }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
   // Use dynamic levels prioritized, fallback to static defaults if needed
   const levelsList = dynamicLevels 
     ? Object.values(dynamicLevels).sort((a, b) => (a.order || 0) - (b.order || 0)) 
@@ -56,8 +78,9 @@ export default function AlunosClient({
 
   const LEVEL_FILTERS = ["Todos", ...levelsList.map(l => l.key)];
 
-  const [search, setSearch] = useState("");
-  const [levelFilter, setLevelFilter] = useState("Todos");
+  // Local state for immediate feedback, synced with URL
+  const [search, setSearch] = useState(currentSearch);
+  const [levelFilter, setLevelFilter] = useState(currentLevel);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [showForm, setShowForm] = useState(false);
@@ -73,17 +96,45 @@ export default function AlunosClient({
   const formRef = useRef<HTMLFormElement>(null);
   const editFormRef = useRef<HTMLFormElement>(null);
 
-  // Filter logic
-  const filtered = students.filter((s) => {
-    const matchesSearch =
-      s.full_name.toLowerCase().includes(search.toLowerCase()) ||
-      (s.display_name && s.display_name.toLowerCase().includes(search.toLowerCase())) ||
-      (s.phone && s.phone.includes(search));
+  // URL Update Logic (Debounced Search)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (search) params.set("search", search);
+      else params.delete("search");
+      
+      params.set("page", "1"); // Reset to page 1 on search
+      router.push(`${pathname}?${params.toString()}`);
+    }, 500);
 
-    const matchesLevel = levelFilter === "Todos" || s.level === levelFilter;
+    return () => clearTimeout(timer);
+  }, [search, pathname, router, searchParams]);
 
-    return matchesSearch && matchesLevel;
-  });
+  // Level Update Logic
+  const handleLevelChange = (val: string) => {
+    setLevelFilter(val);
+    const params = new URLSearchParams(searchParams.toString());
+    if (val !== "Todos") params.set("level", val);
+    else params.delete("level");
+    
+    params.set("page", "1");
+    router.push(`${pathname}?${params.toString()}`);
+  };
+
+  /**
+   * handlePageChange: Orquestrador de Paginação.
+   * 
+   * @operation
+   * Atualiza os query params 'page' na URL. Isso dispara a re-execução do 
+   * Server Component correspondente (page.tsx), mantendo a integridade do 
+   * data-fetching no lado do servidor (limit/offset do Supabase).
+   */
+  const handlePageChange = (newPage: number) => {
+    if (newPage < 1 || newPage > totalPages) return;
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("page", newPage.toString());
+    router.push(`${pathname}?${params.toString()}`);
+  };
 
   async function handleSubmit(formData: FormData) {
     setLoading(true);
@@ -245,7 +296,7 @@ export default function AlunosClient({
           <input type="search" placeholder="Buscar por nome ou telefone..." value={search} onChange={(e) => setSearch(e.target.value)} style={{ paddingLeft: "44px", border: "2px solid #000", fontWeight: 500 }} />
         </div>
         <div style={{ position: "relative", minWidth: "200px" }}>
-          <select value={levelFilter} onChange={(e) => setLevelFilter(e.target.value)} style={{ appearance: "none", paddingRight: "40px", border: "2px solid #000", fontWeight: 700, textTransform: "uppercase", fontSize: "12px", letterSpacing: "0.05em" }}>
+          <select value={levelFilter} onChange={(e) => handleLevelChange(e.target.value)} style={{ appearance: "none", paddingRight: "40px", border: "2px solid #000", fontWeight: 700, textTransform: "uppercase", fontSize: "12px", letterSpacing: "0.05em" }}>
             {LEVEL_FILTERS.map((l) => (
               <option key={l} value={l}>{l === "Todos" ? "Filtrar por Nível" : `Nível: ${getLevelInfo(l, dynamicLevels).label}`}</option>
             ))}
@@ -255,8 +306,8 @@ export default function AlunosClient({
       </div>
 
       {/* ── STUDENTS TABLE ── */}
-      <div className="admin-card" style={{ padding: 0, overflow: "hidden" }}>
-        {filtered.length === 0 ? (
+      <div className="admin-card" style={{ padding: 0, overflow: "hidden", marginBottom: 24 }}>
+        {students.length === 0 ? (
           <div style={{ padding: "64px 20px", textAlign: "center", color: "#666", fontSize: "14px" }}>Nenhum resultado encontrado.</div>
         ) : (
           <div style={{ overflowX: "auto" }}>
@@ -272,7 +323,7 @@ export default function AlunosClient({
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((student) => (
+                {students.map((student: Student) => (
                   <tr key={student.id}>
                     <td style={{ paddingLeft: "24px" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
@@ -306,6 +357,57 @@ export default function AlunosClient({
           </div>
         )}
       </div>
+
+      {/* ── PAGINATION CONTROLS ── */}
+      {totalPages > 1 && (
+        <div style={{ 
+          display: "flex", 
+          justifyContent: "space-between", 
+          alignItems: "center", 
+          marginBottom: 60,
+          background: "#FFF",
+          border: "3px solid #000",
+          padding: "16px 24px",
+          boxShadow: "8px 8px 0px rgba(0,0,0,1)"
+        }}>
+          <div style={{ fontSize: 13, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+            Mostrando {students.length} de {totalCount} resultado{totalCount !== 1 ? "s" : ""}
+          </div>
+          <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+            <button 
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage <= 1}
+              style={{
+                padding: "10px 16px",
+                border: "2px solid #000",
+                background: currentPage <= 1 ? "#F3F4F6" : "#FFF",
+                cursor: currentPage <= 1 ? "not-allowed" : "pointer",
+                display: "flex", alignItems: "center", gap: 8,
+                fontSize: 12, fontWeight: 900
+              }}
+            >
+              <ChevronLeft size={18} /> ANTERIOR
+            </button>
+            <div style={{ fontSize: 13, fontWeight: 900, background: "#000", color: "#FFF", padding: "10px 20px" }}>
+              PÁGINA {currentPage} DE {totalPages}
+            </div>
+            <button 
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage >= totalPages}
+              style={{
+                padding: "10px 16px",
+                border: "2px solid #000",
+                background: currentPage >= totalPages ? "#F3F4F6" : "#FFF",
+                cursor: currentPage >= totalPages ? "not-allowed" : "pointer",
+                display: "flex", alignItems: "center", gap: 8,
+                fontSize: 12, fontWeight: 900
+              }}
+            >
+              PRÓXIMA <ChevronRight size={18} />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── STUDENT PROFILE MODAL (IRON MONOLITH STYLE) ── */}
       {selectedStudent && (

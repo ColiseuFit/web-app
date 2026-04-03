@@ -14,15 +14,29 @@ import {
 } from "@/lib/validations/security_schemas";
 
 /**
- * BUSCA DE DISPONIBILIDADE (SSoT): Recupera as turmas de uma data e calcula o estado operacional.
+ * Student App Lifecycle Engine (Server Actions).
  * 
- * Lógica de Visibilidade:
- * 1. Filtra por `day_of_week`.
- * 2. `is_past`: Define se passou do horário inicial + 15 minutos (Tolerância Coliseu).
- * 3. `is_finished`: Verifica se o Coach validou a aula via `validated_at` na tabela `check_ins`.
+ * @architecture
+ * - Padrão Neo-Brutalist Light: Foco em feedback instantâneo e dados de alta legibilidade.
+ * - SSoT de Disponibilidade: Lógica que cruza `class_slots` com `check_ins` para calcular vagas.
+ * - Gate de Pontuação: Check-ins iniciam como `checked` (0 pts) e aguardam validação do Coach.
+ * 
+ * @security
+ * - RBAC: Todas as ações validam `auth.uid()` via context do Supabase Server.
+ * - Integridade: Bloqueios geolocalizados (Timezone) e temporais (Tolerância de 15min).
+ * - Esquemas: Validação estrita via Zod para prevenir injeção de dados corrompidos.
+ */
+
+/**
+ * BUSCA DE DISPONIBILIDADE (SSoT): Recupera as turmas e calcula o estado operacional.
+ * 
+ * @logic
+ * 1. Filtra por `day_of_week` (Grade estrutural).
+ * 2. `is_past`: Define se passou do horário inicial + 15 minutos (Regra de Box).
+ * 3. `is_finished`: Determina se a aula já foi processada via motor de Score (check_ins validado).
  * 
  * @security 
- * - Alinhado com `America/Sao_Paulo` via `getTodayDate()`.
+ * - Alinhado com `America/Sao_Paulo` (UTC Alignment).
  * 
  * @param {string} date - Data alvo (YYYY-MM-DD).
  */
@@ -74,20 +88,20 @@ export async function getAvailableSlots(date: string): Promise<{ data?: { id: st
 }
 
 /**
- * SINALIZAÇÃO DE PRESENÇA (Check-in): Registro de intenção de treino do aluno.
+ * SINALIZAÇÃO DE PRESENÇA (Check-in): Intenção de treino do aluno.
  * 
- * Regras Operacionais (SSoT):
- * 1. **Pendente**: Inicialmente entra como status `checked`.
- * 2. **Bloqueios**: Feriados (`box_holidays`) ou duplicidade (1 check-in/aluno/WOD).
- * 3. **Validação**: A Pontuação só é creditada se o Coach validar a aula (`closeClassAction`).
+ * @SSoT Rules:
+ * 1. **Pendente**: Inicialmente entra como status `checked` (Pontos Diferidos).
+ * 2. **Bloqueios de Agenda**: Valida contra `box_holidays` (Data-scoped override).
+ * 3. **Unicidade**: Impede múltiplos check-ins por data/aluno (Prevenção de farming).
  * 
  * @security
- * - Validação de schema via Zod (`checkInSchema`).
- * - Proteção via RLS no Supabase (policy per-user).
+ * - Zod Schema: `checkInSchema`.
+ * - Supabase RLS: `auth.uid() = student_id` (Policy enforcement).
  * 
  * @param {string} wodId - UUID do WOD.
- * @param {string} timeSlot - Horário (ex: "08:00").
- * @param {string} classSlotId - UUID da grade de horários.
+ * @param {string} timeSlot - Horário selecionado.
+ * @param {string} classSlotId - UUID da grade horária.
  */
 export async function performCheckIn(wodId: string, timeSlot?: string, classSlotId?: string) {
   // 0. Validation

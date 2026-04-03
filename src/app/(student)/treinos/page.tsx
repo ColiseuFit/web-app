@@ -10,19 +10,19 @@ export const metadata: Metadata = {
 };
 
 /**
- * Página de Atividade (Timeline) do Aluno.
- * Consome dados de check-ins e WODs para construir uma linha do tempo histórica.
- *
+ * Página de Atividade (Timeline) do Atleta.
+ * 
+ * @architecture
+ * - SSoT de Histórico: Agrega `check_ins` com seus respectivos `wods` (Relational Join hydration).
+ * - Algoritmo de Score: Mapeia status `confirmed` para 50 pontos (SSoT operacional).
+ * - UTC Persistence: Transforma `wod.date` em objetos Date UTC para garantir que o dia de treino não mude entre fusos.
+ * 
  * @security
- * - Sessão validada no servidor (Server Component).
- * - RLS garante que o aluno veja apenas seus próprios check-ins.
+ * - RBAC: Sessão validada no servidor; RLS garante que o aluno veja apenas sua própria timeline.
+ * - Integrity Check: Filtra `status != 'missed'` para manter o foco em treinos realizados/pendentes.
  * 
  * @technical
- * - Data Transformation: Converte o `date` de string (ISO) para objeto Date UTC para evitar shifts de timezone.
- * - Performance: Utiliza multi-fetch se necessário (atualmente single query complexa com join).
- * - UI: Utiliza `ActivityDashboard` para renderizar a lista de cards brutalistas.
- *
- * @returns {Promise<JSX.Element>} Timeline de atividades do atleta.
+ * - UI: Utiliza `ActivityDashboard` para renderização de cards em lista virtual (Neo-Brutalist Light).
  */
 export default async function TreinosPage() {
   const supabase = await createClient();
@@ -69,7 +69,11 @@ export default async function TreinosPage() {
     const wod = checkin.wods;
     if (!wod) return null;
     
-    // Convert to Date to format correctly
+    /**
+     * NORMALIZAÇÃO DE DATA (UTC SSoT)
+     * @logic Concatena `T00:00:00Z` para forçar o interpretador a tratar como UTC puro, 
+     * evitando o shift de 1 dia comum em timezones negativos (ex: BRT).
+     */
     const wodDate = new Date(wod.date + "T00:00:00Z");
     const formattedDate = !isNaN(wodDate.getTime()) 
       ? wodDate.toLocaleDateString("pt-BR", { day: "2-digit", month: "short", timeZone: "UTC" }).toUpperCase()

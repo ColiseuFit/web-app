@@ -2,17 +2,26 @@ import { z } from "zod";
 import { ALL_LEVELS } from "../constants/levels";
 
 /**
- * 🔐 SECURITY SCHEMAS: Centralized validation for the Coliseu platform.
- * Follows the senior engineering profile for strict typing and friction reduction.
+ * 🔐 SECURITY SCHEMAS: Gatekeeper Central da Plataforma Coliseu.
+ * 
+ * @architecture
+ * - Camada de Integridade: Define a estrutura rígida para todas as Server Actions e APIs.
+ * - SSoT de Validação: Única fonte de verdade para formatos de UUID, Datas e Enums operacionais.
+ * - Prevenção de Injeção: Bloqueia payloads malformados antes de atingirem a camada de persistência.
+ * 
+ * @technical
+ * - Zod Engine: Utiliza inferência estrita de tipos para garantir paridade TS entre Client/Server.
+ * - UUID Enforcement: Garante que identificadores estrangeiros sejam strings válidas do Supabase.
  */
-
-// 1. Schema para Login de Usuário
 export const loginSchema = z.object({
   email: z.string().email("E-mail inválido"),
   password: z.string().min(6, "A senha deve ter pelo menos 6 caracteres"),
 });
 
-// 2. Schema para Criação de Aluno (Admin/Recepção)
+/**
+ * 2. Student Creation Schema: Admin/Recepção flow.
+ * Ensures strict profile metadata and default level assignment.
+ */
 export const createStudentSchema = z.object({
   email: z.string().email("E-mail inválido"),
   password: z.string().min(8, "A senha deve ter pelo menos 8 caracteres para maior segurança"),
@@ -20,19 +29,25 @@ export const createStudentSchema = z.object({
   level: z.enum(ALL_LEVELS.map(l => l.key) as [string, ...string[]]).default("iniciante"),
 });
 
-// 3. Schema para Check-in no WOD
+/**
+ * 3. WOD Check-in Schema: Atomic attendance intent.
+ */
 export const checkInSchema = z.object({
   wodId: z.string().uuid("ID do WOD inválido"),
   timeSlot: z.string().min(4, "Horário inválido").optional(),
   classSlotId: z.string().uuid("ID da turma inválido").optional(),
 });
 
-// 4. Schema para Cancelamento de Check-in
+/**
+ * 4. Cancellation Schema: Reverts attendance intent.
+ */
 export const cancelCheckInSchema = z.object({
   wodId: z.string().uuid("ID do WOD inválido"),
 });
 
-// 5. Schema para Recorde Pessoal (PR)
+/**
+ * 5. Personal Record (PR) Schema: Track performance metrics.
+ */
 export const personalRecordSchema = z.object({
   movement_key: z.string().min(2, "Selecione um movimento"),
   value: z.number().positive("O valor deve ser positivo"),
@@ -53,7 +68,9 @@ export const goalSchema = z.object({
   goalId: z.string().uuid().optional(),
 });
 
-// 8. Schema para Programação de WOD (Admin/Coach)
+/**
+ * 8. WOD Programation Schema: Admin/Coach planning tool.
+ */
 export const wodSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data inválida"),
   title: z.string().min(2, "Tipo de WOD (AMRAP, For Time, etc.)"),
@@ -68,7 +85,9 @@ export const wodSchema = z.object({
   result_type: z.enum(["time", "reps", "load", "rounds"]).optional(),
 });
 
-// 9. Schema para Grade de Horários (Admin - Gestão de Turmas)
+/**
+ * 9. Grid Slot Schema: Operational class definition.
+ */
 export const classSlotSchema = z.object({
   name: z.string().min(2, "Nome da modalidade obrigatório"),
   day_of_week: z.number().int().min(0, "Dia inválido").max(6, "Dia inválido"),
@@ -76,9 +95,12 @@ export const classSlotSchema = z.object({
   duration_minutes: z.number().int().default(60),
   capacity: z.number().int().min(1, "Mínimo 1 vaga").max(50, "Máximo 50 vagas").default(20),
   coach_name: z.string().optional(),
+  default_coach_id: z.string().uuid().optional().nullable(),
 });
 
-// 10. Schema para Avaliações Físicas (Biometria e Composição)
+/**
+ * 10. Physical Evaluation Schema: Biometrics & Anthropometry.
+ */
 export const physicalEvaluationSchema = z.object({
   id: z.string().uuid().optional(),
   student_id: z.string().uuid("ID do aluno obrigatório"),

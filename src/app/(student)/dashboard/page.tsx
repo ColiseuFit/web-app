@@ -12,6 +12,7 @@ import { getLevelInfo } from "@/lib/constants/levels";
 import { getCachedLevels } from "@/lib/constants/levels_actions";
 import { AlertTriangle } from "lucide-react";
 import { getTodayDate, getWeekDates } from "@/lib/date-utils";
+import { DAY_SHORT, ACTIVE_DAYS } from "@/lib/constants/calendar";
 
 // import RecentPRs from "@/components/progress/RecentPRs"; (Removed: moving to Progress page)
 
@@ -24,9 +25,18 @@ interface PageProps {
 }
 
 /**
- * Página Principal do Aluno (Home).
- * Centraliza o WOD do dia e o acesso à reserva de turma.
- * Suporta navegação por data via query param `?date=YYYY-MM-DD`.
+ * Página Principal do Aluno (Dashboard/Home).
+ * 
+ * @architecture
+ * - Padrão Neo-Brutalist Light: Estética de alto contraste, fundo claro e bordas rígidas (Iron Monolith Evolution).
+ * - Hidratação em Paralelo: Utiliza `Promise.all` para buscar Perfil, WOD, Carrossel Semanal e Bloqueios simultaneamente.
+ * - SSoT de WOD: O estado do treino é derivado da `selectedDate` vinda dos searchParams ou `getTodayDate()`.
+ * - Segurança: Validação de sessão obrigatória; redireciona para `/login` se inexistente.
+ * 
+ * @lifecycle
+ * 1. Resolve `searchParams` para determinar a data de foco.
+ * 2. Agrega dados técnicos (`getCachedLevels`) e operacionais (`box_holidays`).
+ * 3. Cruza dados do WOD com tokens de nível do aluno para exibição personalizada no `WodView`.
  */
 export default async function AppDashboard({ searchParams }: PageProps) {
   const supabase = await createClient();
@@ -68,17 +78,15 @@ export default async function AppDashboard({ searchParams }: PageProps) {
   }
 
   const weekDates = getWeekDates();
-
-  // Formatação do carrossel semanal
-  const DAY_LABELS = ["SEG", "TER", "QUA", "QUI", "SEX", "SÁB"];
   const BENCHMARKS = ["FRAN", "CINDY", "MURPH", "KAREN", "DT", "GRACE", "HELEN", "ANNIE", "AMANDA", "BARBARA"];
-  
   const wodsByDate = Object.fromEntries((weekWods || []).map((w) => [w.date, w]));
+
   const carouselWods = weekDates.map((date, i) => {
     const found = wodsByDate[date];
+    const dayNum = ACTIVE_DAYS[i]; // getWeekDates returns Mon-Sat
     return {
       date,
-      dayLabel: DAY_LABELS[i],
+      dayLabel: DAY_SHORT[dayNum],
       isToday: date === today,
       isRest: false,
       title: found?.title || "PROGRAMAÇÃO...",

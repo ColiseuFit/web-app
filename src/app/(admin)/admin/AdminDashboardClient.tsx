@@ -1,24 +1,26 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { Users, UserCheck, TrendingUp, Phone, Plus } from "lucide-react";
 import Link from "next/link";
 import { getLevelInfo, type LevelInfo } from "@/lib/constants/levels";
 
 /**
- * AdminDashboardClient: Central Hub & Analytics Interface.
+ * AdminDashboardClient: Centro de Comando e Analytics Executivo.
  *
  * @architecture
- * - Renders the primary entry point for Box Owners / Managers.
- * - This is a pure Client Component. Data fetching and RLS validations are handled upstream
- *   in the Server Component (`/admin/page.tsx`), passing sanitized props downwards.
+ * - Ponto de Entrada Principal: Centraliza a visão operacional dos gestores e donos do box.
+ * - SSoT de Métricas: Consome KPIs pré-calculados no servidor (`getCachedKPIs`) para 
+ *   garantir carregamento instantâneo e consistência de dados.
+ * - Desacoplamento: Componente puramente visual (Client-Presentational). Toda a 
+ *   lógica de segurança (RLS) e busca pesada é abstraída no Server Component pai.
  * 
  * @design 
- * - Iron Monolith (Clean B&W operational view). Prioritizes high legibility and data density
- *   over complex animations. Uses strictly defined CSS Variables.
+ * - Padrão Iron Monolith: Estética de alto contraste (P&B) para máxima legibilidade 
+ *   em ambientes de box (alta luminosidade). Prioriza densidade de informação útil.
  *
- * @param {StatCard[]} stats - Aggregated KPI cards (e.g., Total Students, Active Check-ins).
- * @param {RecentStudent[]} recentStudents - Array detailing the latest 8 sign-ups + their today's check-in status.
- * @param {number} totalStudents - Aggregate sum of active platform members.
+ * @param {StatCard[]} stats - Cards de KPI (Total de Alunos, Presenças Hoje, Retenção).
+ * @param {RecentStudent[]} recentStudents - Lista das últimas 8 matrículas com status de check-in.
  */
 
 interface StatCard {
@@ -72,6 +74,11 @@ function formatDate(dateStr: string): string {
 }
 
 export default function AdminDashboardClient({ stats, recentStudents, totalStudents, dynamicLevels }: Props) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   return (
     <div className="admin-container-fluid">
       {/* ── PAGE HEADER ── */}
@@ -81,7 +88,7 @@ export default function AdminDashboardClient({ stats, recentStudents, totalStude
             Gestão do Box
           </h1>
           <p style={{ fontSize: "14px", color: "#666", fontWeight: 500, margin: 0 }}>
-            Painel Geral de Gestão • {new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" })}
+            Painel Geral de Gestão • {mounted ? new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" }) : "--:--"}
           </p>
         </div>
         <Link
@@ -232,7 +239,7 @@ export default function AdminDashboardClient({ stats, recentStudents, totalStude
           <div className="admin-card" style={{ borderStyle: "dashed" }}>
              <h3 style={{ fontSize: "14px", fontWeight: 800, margin: "0 0 4px" }}>LOG DE ACESSO</h3>
              <p style={{ fontSize: "12px", color: "#666", margin: 0 }}>
-               Último acesso: {new Date().toLocaleTimeString("pt-BR")}
+               Último acesso: {mounted ? new Date().toLocaleTimeString("pt-BR") : "--:--"}
              </p>
           </div>
         </div>

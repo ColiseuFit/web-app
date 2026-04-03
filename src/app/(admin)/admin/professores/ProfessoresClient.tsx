@@ -1,5 +1,20 @@
 "use client";
 
+/**
+ * ProfessoresClient: Portal de Gestão de Equipe e IAM (Identity Access Management).
+ * 
+ * @architecture
+ * - Padronização Iron Monolith: UI de alta fidelidade focada em operações administrativas críticas.
+ * - Ciclo de Vida IAM: 
+ *   1. Promoção: Transforma um aluno existente em Coach via `user_roles`.
+ *   2. Onboarding: Criação direta de novos perfis com credenciais automáticas (`coliseu123`).
+ * - SSoT de Permissões: Todas as mudanças de role impactam imediatamente as políticas de RLS 
+ *   do Supabase em todo o ecossistema (App, Admin, Coach Portal).
+ * 
+ * @lifecycle
+ * Utiliza Server Actions para mutação de dados e revalidação de cache (`getCoaches`).
+ */
+
 import React, { useState, useTransition, useRef, useEffect } from "react";
 import { Search, Plus, UserPlus, Trash2, Shield, Loader2, X, User as UserIcon, Mail, Phone, Check } from "lucide-react";
 import { searchUsersForCoach, toggleCoachRole, getCoaches, createNewCoach } from "./actions";
@@ -70,6 +85,20 @@ export default function ProfessoresClient({ initialCoaches }: { initialCoaches: 
     return () => { if (searchTimeout.current) clearTimeout(searchTimeout.current); };
   }, [searchTerm, isDrawerOpen]);
 
+  /**
+   * handleToggleRole: Orquestrador de Promoção/Democração Técnica.
+   * 
+   * @operation
+   * Interage com a tabela `user_roles` para adicionar ou remover a role 'coach'.
+   * 
+   * @security
+   * - Restrição: Apenas Admins podem promover novos Coaches.
+   * - Persistência: Usa revalidatePath no servidor para garantir paridade visual 
+   *   entre a lista local e o banco de dados.
+   * 
+   * @param {string} userId - UUID do perfil alvo no Supabase Auth.
+   * @param {string | null} currentRole - Role atual para determinar a direção da transição.
+   */
   async function handleToggleRole(userId: string, currentRole: string | null) {
     if (!confirm(currentRole === USER_ROLES.COACH ? "Deseja remover as permissões de Professor deste usuário?" : "Deseja promover este usuário a Professor?")) return;
 
@@ -86,6 +115,14 @@ export default function ProfessoresClient({ initialCoaches }: { initialCoaches: 
     });
   }
 
+  /**
+   * Creates a new Coach profile from scratch.
+   * 
+   * @lifecycle
+   * 1. Calls `createNewCoach` to handle Auth + DB insertion.
+   * 2. Displays the generated frictionless password (`coliseu123`) to the Admin.
+   * 3. Refreshes the local cache and resets form state.
+   */
   const handleCreateCoach = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newName || !newEmail) return showToast("Preencha os campos obrigatórios", "error");
@@ -397,13 +434,13 @@ export default function ProfessoresClient({ initialCoaches }: { initialCoaches: 
                       </div>
                       
                       <div style={{ background: "#000", color: "#FFF", padding: 24, border: "4px solid #000", boxShadow: "12px 12px 0px rgba(16, 185, 129, 0.2)" }}>
-                        <p style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", color: "#666", margin: "0 0 12px", textAlign: "center" }}>SENHA TEMPORÁRIA DE ACESSO</p>
+                        <p style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", color: "#666", margin: "0 0 12px", textAlign: "center" }}>SENHA PADRÃO DE ACESSO</p>
                         <p style={{ fontSize: 32, fontWeight: 900, letterSpacing: 8, margin: 0, textAlign: "center", fontFamily: "monospace" }}>{createdPassword}</p>
                       </div>
 
                       <div style={{ padding: 16, background: "rgba(16, 185, 129, 0.1)", borderLeft: "4px solid #10b981" }}>
                         <p style={{ fontSize: 12, color: "#065f46", fontWeight: 700, lineHeight: 1.5, margin: 0 }}>
-                          Forneça esta senha ao professor para o primeiro login. O sistema exigirá a troca imediata após o acesso.
+                          Forneça esta senha padrão ao professor para o primeiro login no Portal. Ele poderá alterar esta senha posteriormente no aplicativo.
                         </p>
                       </div>
 
