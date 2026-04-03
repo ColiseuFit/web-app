@@ -86,7 +86,7 @@ export default function CloseClassModal({ slot, onClose, onSuccess }: CloseClass
 
   const loadCheckins = useCallback(async () => {
     setLoading(true);
-    const res = await getSlotCheckins(slot.id);
+    const res = await getSlotCheckins(slot.id, today);
     if (res.data) {
       setCheckins(res.data);
       // Logic: Selected = not missed
