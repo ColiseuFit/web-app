@@ -11,9 +11,9 @@ import LevelBadge from "@/components/LevelBadge";
 import { getLevelInfo } from "@/lib/constants/levels";
 import { getCachedLevels } from "@/lib/constants/levels_actions";
 import { AlertTriangle } from "lucide-react";
-import { getTodayDate, getWeekDates } from "@/lib/date-utils";
+import { getTodayDate, getWeekDates, getMinWeekOffset } from "@/lib/date-utils";
 import { getBoxSettings } from "@/lib/constants/settings_actions";
-import { DAY_SHORT, ACTIVE_DAYS } from "@/lib/constants/calendar";
+import { DAY_SHORT, ACTIVE_DAYS, SYSTEM_START_DATE } from "@/lib/constants/calendar";
 
 // import RecentPRs from "@/components/progress/RecentPRs"; (Removed: moving to Progress page)
 
@@ -51,7 +51,9 @@ export default async function AppDashboard({ searchParams }: PageProps) {
   if (!user) redirect("/login");
 
   const params = await searchParams;
-  const weekOffset = parseInt(params.weekOffset || "0", 10);
+  const rawWeekOffset = parseInt(params.weekOffset || "0", 10);
+  const minOffset = getMinWeekOffset(SYSTEM_START_DATE);
+  const weekOffset = Math.max(rawWeekOffset, minOffset);
   
   const today = getTodayDate();
   const selectedDate = params.date || today;
@@ -95,7 +97,7 @@ export default async function AppDashboard({ searchParams }: PageProps) {
   if (finalSelectedWod) {
     const { data: checkin, error: checkinError } = await supabase
       .from("check_ins")
-      .select("id, status, result, class_slot_id") // Removido 'date' que não existe na tabela
+      .select("id, status, result, class_slot_id, class_slots(time_start)") 
       .eq("student_id", user.id)
       .eq("wod_id", finalSelectedWod.id)
       .neq("status", "missed")
@@ -110,9 +112,11 @@ export default async function AppDashboard({ searchParams }: PageProps) {
         .eq("date", finalSelectedDate) // Usando a data do dashboard/WOD
         .maybeSingle();
       
+      const checkinData = checkin as any;
       userCheckin = {
         ...checkin,
         status: checkin.status,
+        time: checkinData.class_slots?.time_start ? String(checkinData.class_slots.time_start).slice(0, 5) : null,
         isClassFinished: !!session?.finalized_at
       };
     }
@@ -124,7 +128,7 @@ export default async function AppDashboard({ searchParams }: PageProps) {
 
   const carouselWods = weekDates.map((date, i) => {
     const found = wodsByDate[date];
-    const dayNum = ACTIVE_DAYS[i]; // getWeekDates returns Mon-Sat
+    const dayNum = ACTIVE_DAYS[i]; // getWeekDates returns Mon-Sun (7 days)
     return {
       date,
       dayLabel: DAY_SHORT[dayNum],

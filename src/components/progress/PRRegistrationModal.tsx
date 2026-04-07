@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { X, Lock, CheckCircle } from "lucide-react";
 import { upsertPersonalRecord } from "@/app/(student)/actions";
 import { hapticSelect, hapticConfirm } from "@/lib/haptic";
+import AlertModal from "../AlertModal";
 
 import { getLevelInfo, ALL_LEVELS } from "@/lib/constants/levels";
 
@@ -20,6 +21,7 @@ export default function PRRegistrationModal({ onClose, onSuccess, initialLevel }
   const [unit, setUnit] = useState<"kg" | "time" | "reps">("kg");
   const [level, setLevel] = useState<string>(initialLevel || "L1");
   const [loading, setLoading] = useState(false);
+  const [alertMsg, setAlertMsg] = useState<string | null>(null);
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
@@ -50,11 +52,21 @@ export default function PRRegistrationModal({ onClose, onSuccess, initialLevel }
       hapticConfirm();
       onSuccess();
     } else {
-      alert("Erro ao registrar: " + result.error);
+      setAlertMsg(result.error || "Erro ao registrar PR. Tente novamente.");
     }
   };
 
   return (
+    <>
+    {alertMsg && (
+      <AlertModal
+        type="error"
+        title="ERRO AO REGISTRAR"
+        message={alertMsg}
+        buttonLabel="ENTENDI"
+        onClose={() => setAlertMsg(null)}
+      />
+    )}
     <div style={{
       position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
       backgroundColor: "rgba(255,255,255,0.98)", zIndex: 3000,
@@ -262,5 +274,6 @@ export default function PRRegistrationModal({ onClose, onSuccess, initialLevel }
         }
       `}</style>
     </div>
+    </>
   );
 }

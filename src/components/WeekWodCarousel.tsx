@@ -5,6 +5,8 @@ import { ChevronLeft, ChevronRight, ArrowLeft, ArrowRight } from "lucide-react";
 import { hapticSelect } from "@/lib/haptic";
 import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { SYSTEM_START_DATE } from "@/lib/constants/calendar";
+import { getMinWeekOffset } from "@/lib/date-utils";
 
 interface WodDay {
   date: string;
@@ -49,8 +51,9 @@ export default function WeekWodCarousel({ wods, selectedDate, weekOffset, maxWee
     router.push(`/dashboard?weekOffset=${newOffset}`);
   };
 
+  const minWeekOffset = getMinWeekOffset(SYSTEM_START_DATE);
   const canGoNext = weekOffset < (maxWeeks - 1);
-  const canGoPrev = weekOffset > -4; // Limite arbitrário para o passado
+  const canGoPrev = weekOffset > minWeekOffset;
 
   return (
     <div style={{ position: "relative", margin: "0 0 24px" }}>

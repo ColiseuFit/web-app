@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { CheckCircle, Edit3, Dumbbell, AlertTriangle } from "lucide-react";
+import { CheckCircle, Edit3, Dumbbell, AlertTriangle, Trophy } from "lucide-react";
+import Link from "next/link";
 import CheckInModal from "./CheckInModal";
 import ConfirmModal from "./ConfirmModal";
+import AlertModal from "./AlertModal";
 import { cancelCheckIn } from "@/app/(student)/actions";
 
 interface CheckInButtonProps {
@@ -11,8 +13,10 @@ interface CheckInButtonProps {
   date: string;
   alreadyChecked: boolean;
   status?: string;
+  result?: string | null;
   isClassFinished?: boolean;
   holiday?: any;
+  time?: string | null;
 }
 
 /**
@@ -29,11 +33,12 @@ interface CheckInButtonProps {
  * 
  * @param {CheckInButtonProps} props - Dados de estado local e handlers de ação.
  */
-export default function CheckInButton({ wodId, date, alreadyChecked, status, isClassFinished, holiday }: CheckInButtonProps) {
+export default function CheckInButton({ wodId, date, alreadyChecked, status, result, isClassFinished, holiday, time }: CheckInButtonProps) {
   const [open, setOpen] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [done, setDone] = useState(alreadyChecked);
   const [loading, setLoading] = useState(false);
+  const [alertMsg, setAlertMsg] = useState<string | null>(null);
 
   // Sincroniza o estado interno se a prop mudar
   useEffect(() => {
@@ -49,7 +54,7 @@ export default function CheckInButton({ wodId, date, alreadyChecked, status, isC
     if (result.success) {
       setDone(false);
     } else {
-      alert(result.error);
+      setAlertMsg(result.error || "Erro ao cancelar check-in. Tente novamente.");
     }
   };
 
@@ -133,7 +138,7 @@ export default function CheckInButton({ wodId, date, alreadyChecked, status, isC
                 textTransform: "uppercase",
                 fontFamily: "var(--font-display)"
               }}>
-                {isClassFinished ? "AULA CONCLUÍDA" : "CHECKIN CONFIRMADO"}
+                {isClassFinished ? "AULA CONCLUÍDA" : `CHECKIN PARA AS ${time || "--:--"}`}
               </span>
             </div>
 
@@ -168,12 +173,72 @@ export default function CheckInButton({ wodId, date, alreadyChecked, status, isC
             maxWidth: "80%"
           }}>
             {isClassFinished 
-              ? "Sua aula foi validada e os pontos já foram creditados no seu perfil."
-              : "Sua vaga está garantida. Você pode alterar seu horário até o início da aula."}
+              ? (result 
+                  ? "Score registrado! Veja seu histórico e evolução na aba de Atividades."
+                  : "Aula finalizada! Clique no botão abaixo para lançar seu desempenho.")
+              : `Sua vaga está garantida para a aula das ${time || "--:--"}. Você pode alterar seu horário até o início da aula.`}
           </div>
         </div>
 
-        {/* Botão de Ação Principal (Mudar Horário) */}
+        {/* Botão de Ação Principal (Mudar Horário ou Registrar Resultado) */}
+        {isClassFinished && !result && (
+          <Link
+            href="/treinos"
+            style={{
+              width: "100%",
+              padding: "20px",
+              background: "var(--nb-yellow, #FFEF61)",
+              border: "2px solid #000",
+              boxShadow: "6px 6px 0px #000",
+              color: "#000",
+              fontSize: "13px",
+              fontWeight: 900,
+              letterSpacing: "0.2em",
+              textTransform: "uppercase",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "12px",
+              transition: "transform 0.1s ease, box-shadow 0.1s ease",
+              fontFamily: "var(--font-display)",
+              marginTop: "8px",
+              textDecoration: "none"
+            }}
+          >
+            <Trophy size={18} />
+            REGISTRAR MEU RESULTADO
+          </Link>
+        )}
+
+        {isClassFinished && result && (
+           <Link
+            href="/treinos"
+            style={{
+              width: "100%",
+              padding: "20px",
+              background: "#FFF",
+              border: "2px solid #000",
+              boxShadow: "6px 6px 0px #000",
+              color: "#000",
+              fontSize: "13px",
+              fontWeight: 900,
+              letterSpacing: "0.15em",
+              textTransform: "uppercase",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "12px",
+              fontFamily: "var(--font-display)",
+              marginTop: "8px",
+              textDecoration: "none"
+            }}
+          >
+            <Trophy size={18} color="#B8860B" strokeWidth={3} />
+            <span>MEU SCORE: <strong style={{ color: "var(--nb-red, #E31B23)" }}>{result}</strong></span>
+          </Link>
+        )}
         {!isClassFinished && (
           <button
             onClick={() => setOpen(true)}
@@ -220,6 +285,16 @@ export default function CheckInButton({ wodId, date, alreadyChecked, status, isC
             onConfirm={handleCancel}
             onCancel={() => setShowConfirm(false)}
             isDanger={true}
+          />
+        )}
+
+        {alertMsg && (
+          <AlertModal
+            type="error"
+            title="AÇÃO BLOQUEADA"
+            message={alertMsg}
+            buttonLabel="ENTENDI"
+            onClose={() => setAlertMsg(null)}
           />
         )}
 
@@ -274,6 +349,16 @@ export default function CheckInButton({ wodId, date, alreadyChecked, status, isC
             setOpen(false);
             setDone(true);
           }}
+        />
+      )}
+
+      {alertMsg && (
+        <AlertModal
+          type="error"
+          title="CHECK-IN BLOQUEADO"
+          message={alertMsg}
+          buttonLabel="ENTENDI"
+          onClose={() => setAlertMsg(null)}
         />
       )}
     </>

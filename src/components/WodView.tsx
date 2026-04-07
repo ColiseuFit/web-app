@@ -21,7 +21,7 @@ interface Wod {
 interface WodViewProps {
   wod: Wod | null;
   selectedDate: string;
-  checkin: { id: string; status: string; result: string | null; isClassFinished?: boolean } | null;
+  checkin: { id: string; status: string; result: string | null; isClassFinished?: boolean; time?: string | null } | null;
   studentLevel: string;
   holiday: any;
 }
@@ -212,8 +212,11 @@ export default function WodView({
                 wodId={wod.id} 
                 date={selectedDate}
                 alreadyChecked={!!checkin} 
+                status={checkin?.status}
+                result={checkin?.result}
                 isClassFinished={checkin?.isClassFinished}
                 holiday={holiday}
+                time={checkin?.time}
             />
           </div>
         </div>

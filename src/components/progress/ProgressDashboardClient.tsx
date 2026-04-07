@@ -11,6 +11,7 @@ import {
   createGoal,
   updateWeeklyTarget 
 } from "@/app/(student)/actions";
+import AlertModal from "../AlertModal";
 
 interface PR {
   id: string;
@@ -64,6 +65,7 @@ export default function ProgressDashboardClient({
   const [goals, setGoals] = useState<Goal[]>(initialGoals);
   const [target, setTarget] = useState(targetFrequency);
   const [showPRModal, setShowPRModal] = useState(false);
+  const [alertMsg, setAlertMsg] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
 
@@ -79,7 +81,7 @@ export default function ProgressDashboardClient({
       const result = await updateWeeklyTarget(newTarget);
       if (result?.error) {
         setTarget(previousTarget);
-        alert("Erro ao atualizar meta: " + result.error);
+        setAlertMsg(result.error || "Erro ao atualizar meta. Tente novamente.");
       }
     });
   };
@@ -95,7 +97,7 @@ export default function ProgressDashboardClient({
         setGoals((prev) =>
           prev.map((g) => (g.id === id ? { ...g, is_completed: currentStatus } : g))
         );
-        alert("Erro ao atualizar meta: " + result.error);
+        setAlertMsg(result.error || "Erro ao atualizar meta. Tente novamente.");
       }
     });
   };
@@ -106,7 +108,7 @@ export default function ProgressDashboardClient({
     startTransition(async () => {
       const result = await createGoal(title);
       if (result?.error) {
-        alert("Erro ao criar meta: " + result.error);
+        setAlertMsg(result.error || "Erro ao criar meta. Tente novamente.");
       } else if (result?.data) {
         // Adding with real ID from server to avoid UUID mismatch on immediate toggle
         setGoals(prev => [...prev, result.data as Goal]);
@@ -120,6 +122,16 @@ export default function ProgressDashboardClient({
 
   return (
     <>
+      {alertMsg && (
+        <AlertModal
+          type="error"
+          title="ERRO NO PROGRESSO"
+          message={alertMsg}
+          buttonLabel="ENTENDI"
+          onClose={() => setAlertMsg(null)}
+        />
+      )}
+
       {showPRModal && (
         <PRRegistrationModal 
           onClose={() => setShowPRModal(false)}

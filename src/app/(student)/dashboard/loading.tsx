@@ -42,9 +42,9 @@ export default function DashboardSkeleton() {
           </div>
         </div>
 
-        {/* Week Carousel Skeleton (6 dias) */}
+        {/* Week Carousel Skeleton (7 dias) */}
         <div style={{ display: "flex", gap: "6px", marginBottom: "16px", padding: "0 4px" }}>
-          {[1, 2, 3, 4, 5, 6].map((i) => (
+          {[1, 2, 3, 4, 5, 6, 7].map((i) => (
             <div key={i} style={{
               flex: 1, height: "72px",
               background: "var(--surface-lowest)",

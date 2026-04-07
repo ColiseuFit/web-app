@@ -2,8 +2,14 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
-import { getTodayDate, isTimePast } from "@/lib/date-utils";
-
+import { 
+  getTodayDate, 
+  isTimePast, 
+  checkIsSlotBlocked, 
+  resolveSlotCoach, 
+  calculateSlotOccupancy,
+  Holiday 
+} from "@/lib/date-utils";
 import {
   checkInSchema,
   cancelCheckInSchema,
@@ -34,13 +40,29 @@ import {
  * 1. Filtra por `day_of_week` (Grade estrutural).
  * 2. `is_past`: Define se passou do horário inicial + 15 minutos (Regra de Box).
  * 3. `is_finished`: Determina se a aula já foi processada via motor de Score (check_ins validado).
+ * 4. `is_blocked`: Cruza com `box_holidays` (Feriados e Bloqueios granulares).
+ * 5. `occupied_count`: Soma check-ins (hoje/passado) ou matrículas fixas (futuro).
  * 
  * @security 
  * - Alinhado com `America/Sao_Paulo` (UTC Alignment).
  * 
  * @param {string} date - Data alvo (YYYY-MM-DD).
  */
-export async function getAvailableSlots(date: string): Promise<{ data?: { id: string; name: string; time_start: string; capacity: number; is_past: boolean; is_finished: boolean }[]; error?: string }> {
+export async function getAvailableSlots(date: string): Promise<{ 
+  data?: { 
+    id: string; 
+    name: string; 
+    time_start: string; 
+    capacity: number; 
+    is_past: boolean; 
+    is_finished: boolean;
+    is_blocked: boolean;
+    block_description: string | null;
+    coach_name: string;
+    occupied_count: number;
+  }[]; 
+  error?: string 
+}> {
   const supabase = await createClient();
   
   const dateObj = new Date(date + "T12:00:00Z"); 
@@ -48,10 +70,18 @@ export async function getAvailableSlots(date: string): Promise<{ data?: { id: st
   const todayStr = getTodayDate();
   const isToday = date === todayStr;
 
-  // 1. Buscar todas as turmas ativas do dia
+  // 1. Buscar todas as turmas ativas do dia, incluindo substituições para resolver o Coach
   const { data: slots, error } = await supabase
     .from("class_slots")
-    .select("*")
+    .select(`
+      *,
+      profiles:default_coach_id (full_name),
+      class_substitutions (
+        substitute_coach_id,
+        profiles:substitute_coach_id (full_name),
+        date
+      )
+    `)
     .eq("day_of_week", dayOfWeek)
     .eq("is_active", true)
     .order("time_start", { ascending: true });
@@ -59,8 +89,13 @@ export async function getAvailableSlots(date: string): Promise<{ data?: { id: st
   if (error) return { error: error.message };
   if (!slots) return { data: [] };
 
-  // 2. Buscar quais dessas turmas já foram "Finalizadas" pelo Coach na data solicitada
-  // SSoT: Uma aula está finalizada se houver um registro na tabela `class_sessions` com `finalized_at` não nulo.
+  // 2. SSoT: Buscar Bloqueios / Feriados Granulares
+  const { data: holidays } = await supabase
+    .from("box_holidays")
+    .select("*")
+    .eq("date", date);
+
+  // 3. SSoT: Buscar finalizações de aula
   const { data: finishedSessions } = await supabase
     .from("class_sessions")
     .select("class_slot_id")
@@ -69,20 +104,56 @@ export async function getAvailableSlots(date: string): Promise<{ data?: { id: st
 
   const finishedSlotIds = new Set(finishedSessions?.map(s => s.class_slot_id) || []);
 
-  // 3. Processar metadados
+  // 4. SSoT: Occupancy (Data-agnostic calculation)
+  // Fetch both fixed enrollments and actual check-ins for this specific date
+  const { data: enrollments } = await supabase
+    .from("class_enrollments")
+    .select("class_slot_id, student_id");
+
+  const { data: checkIns } = await supabase
+    .from("check_ins")
+    .select("class_slot_id, student_id, wods!inner(date)")
+    .eq("wods.date", date)
+    .neq("status", "missed");
+
+  // Group by slotId for efficient lookup
+  const studentsBySlot: Record<string, { enroll: string[], checkin: string[] }> = {};
+  
+  enrollments?.forEach(e => {
+    if (!studentsBySlot[e.class_slot_id]) studentsBySlot[e.class_slot_id] = { enroll: [], checkin: [] };
+    studentsBySlot[e.class_slot_id].enroll.push(e.student_id);
+  });
+
+  checkIns?.forEach(c => {
+    if (!c.class_slot_id) return;
+    if (!studentsBySlot[c.class_slot_id]) studentsBySlot[c.class_slot_id] = { enroll: [], checkin: [] };
+    studentsBySlot[c.class_slot_id].checkin.push(c.student_id);
+  });
+
+  // 5. Processar metadados com SSoT compartilhado
   const enrichedData = slots.map(slot => {
     let isPast = false;
     
     if (date < todayStr) {
-      // Se a data selecionada é anterior a hoje, tudo é passado
       isPast = true;
-    } else if (date === todayStr) {
-      // Se for hoje, aplica a regra de tolerância de 15 minutos
+    } else if (isToday) {
       isPast = isTimePast(slot.time_start, 15);
     }
-    // Se for data futura (date > todayStr), isPast continua false
 
     const isFinished = finishedSlotIds.has(slot.id);
+    
+    // Resolve Bloqueio Granular (SSoT date-utils)
+    const blockRule = checkIsSlotBlocked(slot.id, slot.time_start, date, (holidays || []) as Holiday[]);
+    
+    // Resolve the active coach for this slot (considering substitutions)
+    const coachData = resolveSlotCoach(slot, date);
+    
+    // Resolve Occupancy with shared SSoT logic
+    const slotData = studentsBySlot[slot.id];
+    const occupied_count = calculateSlotOccupancy(
+      slotData?.enroll || [],
+      slotData?.checkin || []
+    );
 
     return {
       id: slot.id,
@@ -90,7 +161,11 @@ export async function getAvailableSlots(date: string): Promise<{ data?: { id: st
       time_start: slot.time_start,
       capacity: slot.capacity,
       is_past: isPast,
-      is_finished: isFinished
+      is_finished: isFinished,
+      is_blocked: !!blockRule,
+      block_description: blockRule?.description || null,
+      coach_name: coachData.name,
+      occupied_count
     };
   });
 
@@ -103,15 +178,18 @@ export async function getAvailableSlots(date: string): Promise<{ data?: { id: st
  * @SSoT Rules:
  * 1. **Pendente**: Inicialmente entra como status `checked` (Pontos Diferidos).
  * 2. **Bloqueios de Agenda**: Valida contra `box_holidays` (Data-scoped override).
- * 3. **Unicidade**: Impede múltiplos check-ins por data/aluno (Prevenção de farming).
+ * 3. **Trocar Horário**: Permite mudar de slot (UPDATE) se o treino NÃO foi validado.
+ * 4. **Proteção de Histórico**: Impede alteração ou cancelamento após `validated_at` (vaga consumida).
  * 
  * @security
  * - Zod Schema: `checkInSchema`.
  * - Supabase RLS: `auth.uid() = student_id` (Policy enforcement).
+ * - Multi-tenant: Bloqueio implícito via RLS por `student_id`.
  * 
  * @param {string} wodId - UUID do WOD.
- * @param {string} timeSlot - Horário selecionado.
- * @param {string} classSlotId - UUID da grade horária.
+ * @param {string} timeSlot - Horário selecionado (HH:MM:SS).
+ * @param {string} classSlotId - UUID da grade horária vinculada.
+ * @returns {Promise<{success?: boolean, error?: string, message?: string}>}
  */
 export async function performCheckIn(wodId: string, timeSlot?: string, classSlotId?: string) {
   // 0. Validation
@@ -128,43 +206,79 @@ export async function performCheckIn(wodId: string, timeSlot?: string, classSlot
   }
 
   const todayStr = getTodayDate();
-  const { data: holiday } = await supabase
+  
+  // 0.1 Fetch ALL holidays for the operational date (SSoT)
+  // We need to check if THIS specific slot or period is blocked.
+  const { data: holidays } = await supabase
     .from("box_holidays")
-    .select("description")
-    .eq("date", todayStr)
-    .maybeSingle();
+    .select("*")
+    .eq("date", todayStr);
 
-  if (holiday) {
-    return { error: `O box está fechado hoje: ${holiday.description}` };
+  // 0.2 If we have a classSlotId, we must fetch its start time to validate blocks
+  let slotTime = "00:00:00";
+  if (classSlotId) {
+    const { data: slot } = await supabase
+      .from("class_slots")
+      .select("time_start")
+      .eq("id", classSlotId)
+      .single();
+    if (slot) slotTime = slot.time_start;
+  }
+
+  const blockRule = checkIsSlotBlocked(
+    classSlotId || "", 
+    slotTime, 
+    todayStr, 
+    (holidays || []) as Holiday[]
+  );
+
+  if (blockRule) {
+    return { error: `Operação Bloqueada: ${blockRule.description}` };
   }
 
   // 1. Verificar se já existe check-in para este WOD
   const { data: existing } = await supabase
     .from("check_ins")
-    .select("id")
+    .select("id, validated_at")
     .eq("student_id", user.id)
     .eq("wod_id", wodId)
     .maybeSingle();
 
   if (existing) {
-    return { error: "Você já realizou o check-in para este treino." };
-  }
+    // Se o treino já foi validado pelo professor, o aluno não pode mais trocar o horário/cancelar sozinho.
+    if (existing.validated_at) {
+      return { error: "Este treino já foi validado pelo professor. Não é possível trocar o horário agora." };
+    }
 
-  // 2. Criar a sinalização de Check-in (Pontos zerados até validação do Coach)
-  const { error: checkinError } = await supabase
-    .from("check_ins")
-    .insert({
-      student_id: user.id,
-      wod_id: wodId,
-      class_slot_id: classSlotId,
-      time_slot: timeSlot,
-      status: "checked",
-      score_points: 0, 
-      validated_at: null
-    });
+    // UPDATE: O aluno já tem check-in para este WOD, então apenas atualizamos para o novo horário (Troca de Horário)
+    const { error: updateError } = await supabase
+      .from("check_ins")
+      .update({
+        class_slot_id: classSlotId,
+        time_slot: timeSlot,
+      })
+      .eq("id", existing.id);
 
-  if (checkinError) {
-    return { error: "Erro ao sinalizar presença: " + checkinError.message };
+    if (updateError) {
+      return { error: "Erro ao trocar horário: " + updateError.message };
+    }
+  } else {
+    // 2. Criar a sinalização de Check-in (Nova sinalização - INSERT)
+    const { error: checkinError } = await supabase
+      .from("check_ins")
+      .insert({
+        student_id: user.id,
+        wod_id: wodId,
+        class_slot_id: classSlotId,
+        time_slot: timeSlot,
+        status: "checked",
+        score_points: 0, 
+        validated_at: null
+      });
+
+    if (checkinError) {
+      return { error: "Erro ao sinalizar presença: " + checkinError.message };
+    }
   }
 
   // A Pontuação NÃO é incrementada aqui automaticamente conforme nova regra de negócio.
@@ -381,20 +495,21 @@ export async function deleteGoal(goalId: string) {
  * @architecture
  * - Fluxo "Activity-First": O lançamento foi migrado do Dashboard para a aba Atividade.
  * - Gate de Confirmação: Esta ação só é permitida na UI se o `status` do check-in for 'confirmed'.
- * - Integridade: O dado é salvo como String, mas validado via schema para evitar XSS ou dados corrompidos.
+ * - UTC Enforcement: O salvamento não altera datas nativas, mantendo SSoT da tabela `check_ins`.
  * 
  * @security
- * - Validação de schema via `wodResultSchema` (checkInId e result).
+ * - Validação Híbrida: Utiliza `wodResultSchema` para barrar XSS ou formatos irregulares.
  * - RLS: Match de `student_id` garante que o aluno só altere seu próprio registro.
  * - SSoT: Centralizado na tabela `check_ins`.
  * 
- * @param {string} checkInId - UUID do registro de check-in (`public.check_ins`).
- * @param {string} result - Valor formatado (ex: "12:34", "150", "80").
+ * @param {string} checkInId - UUID do registro mestre de check-in (`public.check_ins`).
+ * @param {string} result - Valor bruto string formatado (ex: "12:34", "150", "300", "5+12").
+ * @param {string} performanceLevel - Nível Coliseu seguido ("branco", "verde", "azul", "vermelho", "preto").
  * @returns {Promise<{success?: boolean, error?: string}>}
- * @revalidates /dashboard (atualiza badges) e /treinos (atualiza feed de atividades).
+ * @throws {Error} Retorna erro tratado em caso de payload inválido ou sem autenticação.
  */
-export async function updateWodResult(checkInId: string, result: string) {
-  const validation = wodResultSchema.safeParse({ checkInId, result });
+export async function updateWodResult(checkInId: string, result: string, performanceLevel: string) {
+  const validation = wodResultSchema.safeParse({ checkInId, result, performanceLevel });
   if (!validation.success) return { error: "Dados de resultado inválidos." };
 
   const supabase = await createClient();
@@ -404,7 +519,10 @@ export async function updateWodResult(checkInId: string, result: string) {
   // 1. Atualizar o resultado no registro de check-in confirmado
   const { error } = await supabase
     .from("check_ins")
-    .update({ result: validation.data.result })
+    .update({ 
+      result: validation.data.result,
+      performance_level: validation.data.performanceLevel
+    })
     .eq("id", checkInId)
     .eq("student_id", user.id);
 
@@ -412,5 +530,161 @@ export async function updateWodResult(checkInId: string, result: string) {
 
   revalidatePath("/dashboard");
   revalidatePath("/treinos");
+  revalidatePath("/profile");
   return { success: true };
+}
+
+/**
+ * BUSCA DE HISTÓRICO PAGINADA (Load More Feed).
+ * 
+ * @architecture
+ * - O(1) Time: Limitador SQL garante performance constante durante o scrolling infinito.
+ * - UTC Enforcement: Datas oriundas da tabela `wods` (YYYY-MM-DD) convertidas forçadamente com `T00:00:00Z` e lidas em `UTC` para paridade visual Client/Server e evitar off-by-one errors de fuso.
+ * 
+ * @ssot
+ * - Hierarquia da Proficiência (SSoT do Coach):
+ *   1. `class_sessions`: Coach real que finalizou a aula (Checkout Administrativo).
+ *   2. `class_substitutions`: Coach substituto destacado para aquele dia/horário.
+ *   3. `class_slots`: Coach padrão da grade letiva.
+ * 
+ * @param {number} page - A página a recuperar (zero-indexed). Usa-se zero-based para query nativa SQL `range(start, end)`.
+ * @param {number} limit - Extensão do lote por chamada (default 10).
+ * @returns {Promise<{ success: boolean; history: any[]; hasMore: boolean; }>}
+ */
+export async function getPaginatedHistory(page: number, limit: number = 10) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { success: false, history: [], hasMore: false };
+
+  // Fetch points rule
+  const { data: pointRule } = await supabase
+    .from("points_rules")
+    .select("points")
+    .eq("key", "check_in")
+    .single();
+  const rulePoints = pointRule?.points ?? 10;
+
+  // Fetch student level
+  const { data: student } = await supabase
+    .from("students")
+    .select("level")
+    .eq("id", user.id)
+    .single();
+  const studentProfileLevel = student?.level || "branco";
+
+  const { data: checkins, error } = await supabase
+    .from("check_ins")
+    .select(`
+      id,
+      created_at,
+      status,
+      result,
+      performance_level,
+      score_points,
+      is_excellence,
+      wods (
+        id,
+        title,
+        wod_content,
+        type_tag,
+        date,
+        time_cap,
+        tags,
+        result_type
+      ),
+      class_slots (
+        time_start,
+        coach_name,
+        profiles:default_coach_id (
+          display_name,
+          full_name,
+          first_name
+        ),
+        class_sessions (
+          date,
+          profiles:coach_id (
+            display_name,
+            full_name,
+            first_name
+          )
+        ),
+        class_substitutions (
+          date,
+          profiles:substitute_coach_id (
+            display_name,
+            full_name,
+            first_name
+          )
+        )
+      )
+    `)
+    .eq("student_id", user.id)
+    .neq("status", "missed")
+    .order("created_at", { ascending: false })
+    .range(page * limit, (page + 1) * limit - 1);
+
+  if (error) {
+    console.error("Pagination fetch error:", error);
+    return { success: false, history: [], hasMore: false };
+  }
+
+  const realHistory = (checkins || []).map((checkin: any) => {
+    const wod = Array.isArray(checkin.wods) ? checkin.wods[0] : checkin.wods;
+    if (!wod) return null;
+    
+    const wodDate = new Date(wod.date + "T00:00:00Z");
+    const formattedDate = !isNaN(wodDate.getTime()) 
+      ? wodDate.toLocaleDateString("pt-BR", { day: "2-digit", month: "short", timeZone: "UTC" }).toUpperCase()
+      : "DATA";
+
+    const sessionForDay = checkin.class_slots?.class_sessions?.find(
+      (s: any) => s.date === wod.date
+    );
+
+    const subForDay = checkin.class_slots?.class_substitutions?.find(
+      (s: any) => s.date === wod.date
+    );
+
+    const resolveName = (profile: any) => profile?.display_name || profile?.full_name || profile?.first_name || null;
+
+    // SSoT Precedence: Session (Finalized) > Substitution > Default
+    const coachName = resolveName(sessionForDay?.profiles)
+      || resolveName(subForDay?.profiles)
+      || resolveName(checkin.class_slots?.profiles)
+      || checkin.class_slots?.coach_name 
+      || "Equipe Coliseu";
+
+    const displayPoints = checkin.score_points > 0 
+      ? checkin.score_points 
+      : (checkin.status === "confirmed" ? rulePoints : 0);
+    
+    const metrics: any[] = [];
+    if (wod.time_cap && String(wod.time_cap).trim() !== "" && String(wod.time_cap) !== "0") {
+      metrics.push({ label: "TIME CAP", value: String(wod.time_cap).replace(/ min/i, ""), unit: "min" });
+    }
+
+    return {
+      id: checkin.id,
+      date: formattedDate,
+      isoDate: wod.date,
+      title: wod.title || "Treino do Dia",
+      description: wod.wod_content ? wod.wod_content.slice(0, 100) + (wod.wod_content.length > 100 ? "..." : "") : "Treino programado pelo coach.",
+      rawContent: wod.wod_content || "",
+      typeTag: wod.type_tag || "WOD",
+      resultType: wod.result_type || "reps",
+      coach: coachName,
+      points: displayPoints,
+      result: checkin.result || null,
+      performanceLevel: checkin.performance_level || null,
+      studentLevel: studentProfileLevel,
+      status: checkin.status,
+      time: checkin.class_slots?.time_start ? String(checkin.class_slots.time_start).slice(0, 5) : null,
+      tags: wod.tags || [],
+      isExcellence: !!checkin.is_excellence,
+      metrics: metrics,
+      achievements: []
+    };
+  }).filter((item): item is NonNullable<typeof item> => item !== null);
+
+  return { success: true, history: realHistory, hasMore: (checkins?.length || 0) === limit };
 }

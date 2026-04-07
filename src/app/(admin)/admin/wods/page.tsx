@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import WodsClient from "./WodsClient";
-import { generateWeekCalendar } from "@/lib/date-utils";
+import { generateWeekCalendar, getMinWeekOffset } from "@/lib/date-utils";
+import { SYSTEM_START_DATE } from "@/lib/constants/calendar";
 
 /**
  * WODs Management (Server Component): Operational WOD editor for Coaches/Admin.
@@ -15,7 +16,9 @@ export interface WodsPageProps {
 
 export default async function WodsPage({ searchParams }: WodsPageProps) {
   const params = await searchParams;
-  const weekOffset = parseInt(params.weekOffset || "0", 10);
+  const rawWeekOffset = parseInt(params.weekOffset || "0", 10);
+  const minOffset = getMinWeekOffset(SYSTEM_START_DATE);
+  const weekOffset = Math.max(rawWeekOffset, minOffset);
   
   const weekDates = generateWeekCalendar(undefined, weekOffset, 7);
   const startDate = weekDates[0].date;

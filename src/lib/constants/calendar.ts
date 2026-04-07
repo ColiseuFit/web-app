@@ -36,13 +36,37 @@ export const DAY_SHORT: Record<number, string> = {
 };
 
 /**
- * Operational business days configuration (Monday to Saturday).
- * Sunday (0) is considered a rest day for the WOD engine.
+ * Operational business days configuration (Monday to Sunday).
+ * Sunday (0) is included to support optional weekend classes.
  */
-export const ACTIVE_DAYS = [1, 2, 3, 4, 5, 6];
+export const ACTIVE_DAYS = [1, 2, 3, 4, 5, 6, 0];
 
 /**
  * Visual order for grid displays.
  * Starts with Monday (1) as the gym cycle week, ending with Sunday (0).
  */
 export const GRID_DISPLAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
+
+/**
+ * @SSoT MARCO ZERO — Data de Início Operacional do Sistema.
+ * 
+ * Define o limite retroativo de navegação no calendário. Nenhuma rota ou componente
+ * deve exibir ou processar datas anteriores a este valor.
+ * 
+ * @rationale
+ * Antes desta data, o Box não utilizava o sistema Coliseu V2. Portanto, não existem
+ * WODs, check-ins ou grades de aulas no banco de dados. Exibir semanas anteriores
+ * causaria grades em branco e invalidaria o processo de fechamento de presenças.
+ * 
+ * @consumers (onde este valor é utilizado)
+ * - `src/lib/date-utils.ts` → `getMinWeekOffset(SYSTEM_START_DATE)` — Cálculo do limite de semanas.
+ * - `src/app/(admin)/admin/turmas/page.tsx` — Guard de URL no servidor.
+ * - `src/app/(admin)/admin/wods/page.tsx` — Guard de URL no servidor.
+ * - `src/app/(student)/dashboard/page.tsx` — Guard de URL no servidor.
+ * - `src/app/(admin)/admin/turmas/TurmasClient.tsx` — Desabilita botão "Semana Anterior" na UI.
+ * - `src/app/(admin)/admin/wods/WodsClient.tsx` — Desabilita botão "Semana Anterior" na UI.
+ * - `src/components/WeekWodCarousel.tsx` — Restringe navegação no carrossel do Aluno.
+ * 
+ * @change v1.0 — 2026-04-01 (Lançamento Coliseu V2)
+ */
+export const SYSTEM_START_DATE = "2026-04-01";

@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { Zap, Clock, Weight, Award, User, Target, Trophy, CheckCircle2 } from "lucide-react";
 import { updateWodResult } from "@/app/(student)/actions";
+import { LEVEL_CONFIG, getLevelInfo, ALL_LEVELS } from "@/lib/constants/levels";
 
 interface ActivityMetric {
   label: string;
@@ -41,6 +42,9 @@ interface ActivityFeedCardProps {
   resultType?: string;
   typeTag?: string;
   status?: string;
+  time?: string;
+  performanceLevel?: string | null;
+  studentLevel?: string | null;
 }
 
 // ─── TYPED RESULT INPUT ──────────────────────────────────────────────────────
@@ -63,13 +67,24 @@ interface ActivityFeedCardProps {
  * @param checkInId  - UUID do registro de check-in a ser atualizado.
  * @param resultType - Tipo de resultado ("time" | "reps" | "load").
  */
-function ResultEntryBlock({ checkInId, resultType }: { checkInId: string; resultType: string }) {
+function ResultEntryBlock({ 
+  checkInId, 
+  resultType, 
+  defaultLevel 
+}: { 
+  checkInId: string; 
+  resultType: string; 
+  defaultLevel?: string | null 
+}) {
   // Estados para inputs separados de tempo
   const [min, setMin] = useState("");
   const [sec, setSec] = useState("");
   
   // Estado para reps/carga
   const [numericValue, setNumericValue] = useState("");
+
+  // Estado para Nível de Performance (Coliseu Levels)
+  const [selectedLevel, setSelectedLevel] = useState<string>(defaultLevel || "iniciante");
   
   const [saving, setSaving] = useState(false);
   const [savedResult, setSavedResult] = useState<string | null>(null);
@@ -101,18 +116,23 @@ function ResultEntryBlock({ checkInId, resultType }: { checkInId: string; result
       finalValueRes = `${formattedM}:${formattedS}`;
       displayValue = `${finalValueRes} MIN`;
     } else {
-      if (!numericValue.trim() || isNaN(Number(numericValue))) {
-        setError("Digite um número válido.");
+      if (!numericValue.trim()) {
+        setError("Digite um valor válido.");
+        return;
+      }
+      if (resultType !== "rounds" && isNaN(Number(numericValue))) {
+        setError("Digite apenas números.");
         return;
       }
       finalValueRes = numericValue.trim();
-      displayValue = `${finalValueRes} ${resultType === "load" ? "KG" : "REP"}`;
+      const unitMap: Record<string, string> = { load: "KG", rounds: "RDS", reps: "REP" };
+      displayValue = `${finalValueRes} ${unitMap[resultType] ?? "REP"}`;
     }
 
     setSaving(true);
     setSavedResult(displayValue);
 
-    const res = await updateWodResult(checkInId, finalValueRes);
+    const res = await updateWodResult(checkInId, finalValueRes, selectedLevel);
     setSaving(false);
     if (!res.success) {
       setSavedResult(null);
@@ -124,103 +144,201 @@ function ResultEntryBlock({ checkInId, resultType }: { checkInId: string; result
     return (
       <div style={{
         marginTop: "20px",
-        padding: "14px 18px",
+        padding: "20px",
         background: "#000",
         border: "2px solid #000",
-        boxShadow: "4px 4px 0px var(--red)",
+        boxShadow: "4px 4px 0px var(--nb-red, #E31B23)",
         display: "flex",
         alignItems: "center",
-        gap: "10px",
+        justifyContent: "space-between",
+        animation: "slideInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
+        position: "relative",
+        overflow: "hidden"
       }}>
-        <CheckCircle2 size={18} color="#FFF" strokeWidth={2.5} />
-        <div>
-          <div style={{ fontSize: "9px", fontWeight: 900, color: "rgba(255,255,255,0.5)", letterSpacing: "0.1em" }}>RESULTADO SALVO</div>
-          <div style={{ fontSize: "16px", fontWeight: 950, color: "#FFF", letterSpacing: "-0.02em" }}>{savedResult}</div>
+        {/* Subtle victory glow */}
+        <div style={{
+          position: "absolute",
+          top: "-50%",
+          left: "-20%",
+          width: "100%",
+          height: "200%",
+          background: "radial-gradient(circle, rgba(227,27,35,0.15) 0%, transparent 70%)",
+          zIndex: 0
+        }} />
+
+        <div style={{ display: "flex", alignItems: "center", gap: "12px", zIndex: 1 }}>
+          <div style={{
+            width: "40px",
+            height: "40px",
+            borderRadius: "50%",
+            background: "var(--nb-red, #E31B23)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            border: "2px solid #FFF",
+            boxShadow: "0 0 15px rgba(227,27,35,0.4)"
+          }}>
+            <CheckCircle2 size={24} color="#FFF" strokeWidth={3} />
+          </div>
+          <div>
+            <div style={{ fontSize: "9px", fontWeight: 900, color: "rgba(255,255,255,0.6)", letterSpacing: "0.15em", textTransform: "uppercase" }}>MISSÃO CUMPRIDA</div>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+               <div style={{ fontSize: "18px", fontWeight: 950, color: "#FFF", letterSpacing: "-0.02em" }}>{savedResult}</div>
+               <span style={{
+                 background: getLevelInfo(selectedLevel).color,
+                 color: getLevelInfo(selectedLevel).textColor,
+                 fontSize: "9px",
+                 fontWeight: 900,
+                 padding: "2px 6px",
+                 textTransform: "uppercase",
+                 boxShadow: "2px 2px 0px rgba(255,255,255,0.2)"
+               }}>
+                 {getLevelInfo(selectedLevel).label}
+               </span>
+            </div>
+          </div>
         </div>
+
+        <Trophy size={32} color="rgba(255,255,255,0.1)" strokeWidth={2} style={{ zIndex: 1 }} />
       </div>
     );
   }
 
-  // ── Renderização do Input conforme o tipo ───────────────────────────────────
   return (
     <div style={{
       marginTop: "20px",
-      padding: "18px",
+      padding: "20px",
       background: "var(--nb-yellow, #FFEF61)",
-      border: "2px solid #000",
-      boxShadow: "4px 4px 0px #000",
+      border: "3px solid #000",
+      boxShadow: "6px 6px 0px #000",
+      position: "relative",
+      animation: "entranceUp 0.5s ease-out"
     }}>
-      <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px" }}>
-        <Trophy size={16} strokeWidth={2.5} />
-        <span style={{ fontSize: "10px", fontWeight: 950, letterSpacing: "0.12em", textTransform: "uppercase" }}>
-          LANÇAR SEU RESULTADO
+      <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "20px" }}>
+        <div style={{
+          background: "#000",
+          width: "24px",
+          height: "24px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center"
+        }}>
+          <Trophy size={14} color="var(--nb-yellow, #FFEF61)" strokeWidth={3} />
+        </div>
+        <span style={{ fontSize: "11px", fontWeight: 950, letterSpacing: "0.1em", textTransform: "uppercase", color: "#000" }}>
+          NÍVEL DE EXECUÇÃO
         </span>
       </div>
 
-      <div style={{ display: "flex", gap: "8px", alignItems: "flex-end" }}>
+      {/* Nível Selector */}
+      <div style={{
+        display: "flex",
+        flexWrap: "wrap",
+        gap: "8px",
+        paddingBottom: "12px",
+        marginBottom: "16px",
+      }}>
+        {ALL_LEVELS.map((level) => {
+          const isSelected = selectedLevel === level.key;
+          return (
+            <button
+              key={level.key}
+              type="button"
+              onClick={() => setSelectedLevel(level.key)}
+              style={{
+                flexShrink: 0,
+                padding: "8px 12px",
+                background: isSelected ? level.color : "#FFF",
+                color: isSelected ? level.btnTextColor : "#000",
+                border: "2px solid #000",
+                fontSize: "10px",
+                fontWeight: 900,
+                textTransform: "uppercase",
+                letterSpacing: "0.05em",
+                cursor: "pointer",
+                boxShadow: isSelected ? "2px 2px 0px #000" : "3px 3px 0px #000",
+                transform: isSelected ? "translate(1px, 1px)" : "none",
+                transition: "all 0.1s ease"
+              }}
+            >
+              {level.label}
+            </button>
+          );
+        })}
+      </div>
+
+      <div style={{ fontSize: "9px", fontWeight: 900, color: "rgba(0,0,0,0.5)", marginBottom: "8px", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+        RESULTADO DO WOD ({selectedLevel.toUpperCase()})
+      </div>
+
+      <div style={{ display: "flex", gap: "10px", alignItems: "flex-end" }}>
         {resultType === "time" ? (
-          <div style={{ display: "flex", gap: "8px", flex: 1, alignItems: "center" }}>
+          <div style={{ display: "flex", gap: "10px", flex: 1, alignItems: "center" }}>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: "8px", fontWeight: 900, color: "rgba(0,0,0,0.4)", marginBottom: "4px" }}>MIN</div>
+              <div style={{ fontSize: "9px", fontWeight: 900, color: "rgba(0,0,0,0.5)", marginBottom: "6px", textAlign: "center" }}>MINUTOS</div>
               <input
-                type="number"
-                inputMode="numeric"
+                type="tel"
                 placeholder="00"
                 value={min}
                 onChange={(e) => { setMin(e.target.value.replace(/\D/g, "").slice(0, 2)); setError(null); }}
                 style={{
                   width: "100%",
-                  padding: "12px",
+                  padding: "14px",
                   border: "2px solid #000",
-                  fontSize: "18px",
-                  fontWeight: 900,
+                  fontSize: "22px",
+                  fontWeight: 950,
                   textAlign: "center",
                   background: "#FFF",
-                  outline: "none"
+                  outline: "none",
+                  boxShadow: "inset 4px 4px 0px rgba(0,0,0,0.05)"
                 }}
               />
             </div>
-            <span style={{ fontSize: "18px", fontWeight: 900, paddingTop: "16px" }}>:</span>
+            <span style={{ fontSize: "24px", fontWeight: 950, paddingTop: "20px", color: "#000" }}>:</span>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: "8px", fontWeight: 900, color: "rgba(0,0,0,0.4)", marginBottom: "4px" }}>SEG</div>
+              <div style={{ fontSize: "9px", fontWeight: 900, color: "rgba(0,0,0,0.5)", marginBottom: "6px", textAlign: "center" }}>SEGUNDOS</div>
               <input
-                type="number"
-                inputMode="numeric"
+                type="tel"
                 placeholder="00"
                 value={sec}
                 onChange={(e) => { setSec(e.target.value.replace(/\D/g, "").slice(0, 2)); setError(null); }}
                 style={{
                   width: "100%",
-                  padding: "12px",
+                  padding: "14px",
                   border: "2px solid #000",
-                  fontSize: "18px",
-                  fontWeight: 900,
+                  fontSize: "22px",
+                  fontWeight: 950,
                   textAlign: "center",
                   background: "#FFF",
-                  outline: "none"
+                  outline: "none",
+                  boxShadow: "inset 4px 4px 0px rgba(0,0,0,0.05)"
                 }}
               />
             </div>
           </div>
         ) : (
-          <div style={{ flex: 1, position: "relative" }}>
-            <div style={{ fontSize: "8px", fontWeight: 900, color: "rgba(0,0,0,0.4)", marginBottom: "4px" }}>
-              {resultType === "load" ? "CARGA (KG)" : "REPETIÇÕES"}
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: "9px", fontWeight: 900, color: "rgba(0,0,0,0.5)", marginBottom: "6px" }}>
+              {resultType === "load" ? "CARGA MÁXIMA (KG)" : resultType === "rounds" ? "ROUNDS + REPS" : "TOTAL DE REPETIÇÕES"}
             </div>
             <input
-              type="number"
-              inputMode="numeric"
-              placeholder="0"
+              type={resultType === "rounds" ? "text" : "tel"}
+              placeholder={resultType === "rounds" ? "Ex: 5+12" : "0"}
               value={numericValue}
-              onChange={(e) => { setNumericValue(e.target.value.replace(/\D/g, "")); setError(null); }}
+              onChange={(e) => { 
+                const val = e.target.value;
+                setNumericValue(resultType === "rounds" ? val.replace(/[^\d+]/g, "") : val.replace(/\D/g, "")); 
+                setError(null); 
+              }}
               style={{
                 width: "100%",
-                padding: "12px",
+                padding: "14px",
                 border: "2px solid #000",
-                fontSize: "18px",
-                fontWeight: 900,
+                fontSize: "22px",
+                fontWeight: 950,
                 background: "#FFF",
-                outline: "none"
+                outline: "none",
+                boxShadow: "inset 4px 4px 0px rgba(0,0,0,0.05)"
               }}
             />
           </div>
@@ -230,27 +348,60 @@ function ResultEntryBlock({ checkInId, resultType }: { checkInId: string; result
           onClick={handleSave}
           disabled={saving}
           style={{
-            height: "50px", // Alinhado com a altura do input
-            padding: "0 24px",
+            height: "58px",
+            padding: "0 28px",
             background: "#000",
             color: "#FFF",
-            border: "2px solid #000",
+            border: "none",
             fontWeight: 950,
-            fontSize: "11px",
-            letterSpacing: "0.1em",
+            fontSize: "12px",
+            letterSpacing: "0.15em",
             cursor: saving ? "not-allowed" : "pointer",
-            transition: "transform 0.1s active"
+            transition: "all 0.1s ease",
+            boxShadow: "4px 4px 0px rgba(0,0,0,0.2)",
+            position: "relative",
+            overflow: "hidden"
           }}
+          onMouseDown={(e) => { if(!saving) e.currentTarget.style.transform = "translate(2px, 2px)"; }}
+          onMouseUp={(e) => { if(!saving) e.currentTarget.style.transform = "translate(0, 0)"; }}
         >
-          {saving ? "..." : "SALVAR"}
+          {saving ? (
+            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              <div className="nb-spinner" />
+              <span>SALVANDO</span>
+            </div>
+          ) : "SALVAR"}
         </button>
       </div>
 
       {error && (
-        <p style={{ fontSize: "10px", fontWeight: 700, color: "var(--red)", marginTop: "8px" }}>
+        <div style={{ 
+          marginTop: "12px", 
+          padding: "8px 12px", 
+          background: "rgba(227,27,35,0.1)", 
+          borderLeft: "4px solid var(--nb-red, #E31B23)",
+          fontSize: "10px", 
+          fontWeight: 800, 
+          color: "var(--nb-red, #E31B23)",
+          textTransform: "uppercase"
+        }}>
           {error}
-        </p>
+        </div>
       )}
+
+      <style dangerouslySetInnerHTML={{ __html: `
+        .nb-spinner {
+          width: 14px;
+          height: 14px;
+          border: 2px solid rgba(255,255,255,0.3);
+          border-top-color: #FFF;
+          border-radius: 50%;
+          animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+      `}} />
     </div>
   );
 }
@@ -280,6 +431,9 @@ export const ActivityFeedCard: React.FC<ActivityFeedCardProps> = ({
   resultType,
   typeTag,
   status,
+  time,
+  performanceLevel,
+  studentLevel,
 }) => {
 
   const getIcon = (iconName: string) => {
@@ -341,7 +495,7 @@ export const ActivityFeedCard: React.FC<ActivityFeedCardProps> = ({
           )}
         </div>
         <span style={{ fontSize: "10px", fontWeight: 900, color: "#000", opacity: 0.4, letterSpacing: "0.05em" }}>
-          {date.toUpperCase()}
+          {date.toUpperCase()}{time ? ` • ${time}` : ""}
         </span>
       </div>
 
@@ -350,8 +504,16 @@ export const ActivityFeedCard: React.FC<ActivityFeedCardProps> = ({
         <h4 className="font-display" style={{ fontSize: "24px", fontWeight: 950, color: "#000", textTransform: "uppercase", lineHeight: 0.9, marginBottom: "8px" }}>
           {title}
         </h4>
-        <p style={{ fontSize: "13px", color: "#000", fontWeight: 500, marginBottom: "16px", lineHeight: "1.4", opacity: 0.8 }}>
-          {description}
+        <p style={{ 
+          fontSize: "13px", 
+          color: "#000", 
+          fontWeight: 500, 
+          marginBottom: "16px", 
+          lineHeight: "1.4", 
+          opacity: 0.8,
+          whiteSpace: "pre-wrap" 
+        }}>
+          {description?.replace(/\\n/g, "\n")}
         </p>
 
         {/* Score Badge (resultado já salvo) */}
@@ -361,23 +523,37 @@ export const ActivityFeedCard: React.FC<ActivityFeedCardProps> = ({
             fontWeight: 900,
             color: "#FFF",
             background: "#000",
-            padding: "10px 16px",
+            padding: "12px 18px",
             border: "2px solid #000",
             boxShadow: "4px 4px 0px var(--red)",
             display: "inline-flex",
             alignItems: "center",
-            gap: "8px",
+            gap: "10px",
             marginBottom: "16px",
-            letterSpacing: "0.05em"
+            letterSpacing: "0.1em",
+            textTransform: "uppercase"
           }}>
-            <CheckCircle2 size={14} strokeWidth={2.5} />
-            SCORE FINAL: <span style={{ color: "#FFF" }}>{result}</span>
+            <Trophy size={16} color="var(--nb-yellow, #FFEF61)" strokeWidth={3} />
+            SCORE FINAL: <span style={{ color: "var(--nb-red, #E31B23)", marginLeft: "4px", marginRight: "8px" }}>{result}</span>
+            <span style={{
+               background: getLevelInfo(performanceLevel).color,
+               color: getLevelInfo(performanceLevel).textColor,
+               fontSize: "9px",
+               padding: "2px 6px",
+               boxShadow: "2px 2px 0px rgba(255,255,255,0.2)"
+            }}>
+              {getLevelInfo(performanceLevel).label}
+            </span>
           </div>
         )}
 
         {/* Input tipado (só para confirmados sem resultado) */}
         {showResultEntry && (
-          <ResultEntryBlock checkInId={id} resultType={resultType || "reps"} />
+          <ResultEntryBlock 
+            checkInId={id} 
+            resultType={resultType || "reps"} 
+            defaultLevel={studentLevel} 
+          />
         )}
 
         <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginTop: "12px" }}>
@@ -390,25 +566,27 @@ export const ActivityFeedCard: React.FC<ActivityFeedCardProps> = ({
       </div>
 
       {/* ── METRICS GRID ── */}
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: `repeat(${metrics.length}, 1fr)`,
-        gap: "16px",
-        marginBottom: (achievements.length > 0 || coach || points) ? "24px" : "0",
-        paddingTop: "20px",
-        borderTop: "2px solid #F0F0F0"
-      }}>
-        {metrics.map((metric, i) => (
-          <div key={i} style={{ textAlign: "left" }}>
-            <div className="font-display" style={{ fontSize: "24px", fontWeight: 900, color: "#000", lineHeight: 1 }}>
-              {metric.value}<span style={{ fontSize: "12px", fontWeight: 900, opacity: 0.4, marginLeft: "4px" }}>{metric.unit}</span>
+      {metrics && metrics.length > 0 && (
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: `repeat(${metrics.length}, 1fr)`,
+          gap: "16px",
+          marginBottom: (achievements.length > 0 || coach || points) ? "24px" : "0",
+          paddingTop: "20px",
+          borderTop: "2px solid #F0F0F0"
+        }}>
+          {metrics.map((metric, i) => (
+            <div key={i} style={{ textAlign: "left" }}>
+              <div className="font-display" style={{ fontSize: "24px", fontWeight: 900, color: "#000", lineHeight: 1 }}>
+                {metric.value}<span style={{ fontSize: "12px", fontWeight: 900, opacity: 0.4, marginLeft: "4px" }}>{metric.unit}</span>
+              </div>
+              <div style={{ fontSize: "9px", fontWeight: 900, color: "#000", textTransform: "uppercase", letterSpacing: "0.1em", marginTop: "4px", opacity: 0.5 }}>
+                {metric.label}
+              </div>
             </div>
-            <div style={{ fontSize: "9px", fontWeight: 900, color: "#000", textTransform: "uppercase", letterSpacing: "0.1em", marginTop: "4px", opacity: 0.5 }}>
-              {metric.label}
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
       {/* ── FOOTER ── */}
       {(achievements.length > 0 || coach || points) && (

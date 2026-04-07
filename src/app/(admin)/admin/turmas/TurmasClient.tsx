@@ -46,7 +46,7 @@ import {
   BarChart3
 } from "lucide-react";
 import { LEVEL_CONFIG } from "@/lib/constants/levels";
-import { getTodayDate } from "@/lib/date-utils";
+import { getTodayDate, checkIsSlotBlocked, getMinWeekOffset } from "@/lib/date-utils";
 import ClassCommandCenter from "./ClassCommandCenter";
 import {
   upsertClassSlot,
@@ -72,7 +72,7 @@ import {
   markAsAbsentAction,
   unmarkAsAbsentAction
 } from "./actions";
-import { DAY_LABELS, DAY_SHORT, ACTIVE_DAYS } from "@/lib/constants/calendar";
+import { DAY_LABELS, DAY_SHORT, ACTIVE_DAYS, SYSTEM_START_DATE } from "@/lib/constants/calendar";
 
 /**
  * TurmasClient: Dashboard de alta performance para gestão da grade horária.
@@ -191,25 +191,7 @@ interface Holiday {
  * @returns O objeto Holiday aplicado ou null se a aula estiver ativa.
  */
 function checkIsBlocked(slot: ClassSlot, dateStr: string, holidays: Holiday[]): Holiday | null {
-  const rules = holidays.filter(h => h.date === dateStr);
-  if (!rules.length) return null;
-
-  // Priority 1: Slot block
-  const slotBlock = rules.find(h => h.block_type === 'slot' && h.class_slot_id === slot.id);
-  if (slotBlock) return slotBlock;
-
-  // Priority 2: Period block
-  const periodBlock = rules.find(h => {
-    if (h.block_type !== 'period' || !h.start_time || !h.end_time) return false;
-    // Compare time strings (HH:MM:SS format from DB) — lexicographic comparison is valid for time
-    const slotTime = slot.time_start.slice(0, 5); // HH:MM
-    return slotTime >= h.start_time.slice(0, 5) && slotTime < h.end_time.slice(0, 5);
-  });
-  if (periodBlock) return periodBlock;
-
-  // Priority 3: Full-day block
-  const fullDayBlock = rules.find(h => h.block_type === 'full_day');
-  return fullDayBlock || null;
+  return checkIsSlotBlocked(slot.id, slot.time_start, dateStr, holidays);
 }
 
 /**
@@ -284,8 +266,13 @@ export default function TurmasClient({
   const [activeTab, setActiveTab] = useState<"grid" | "checkins" | "settings" | "enrollments">("grid");
 
   const handleNavigateWeek = (targetOffset: number, isRelative: boolean = true) => {
+    const minOffset = getMinWeekOffset(SYSTEM_START_DATE);
     const params = new URLSearchParams(searchParams.toString());
-    const newOffset = isRelative ? currentWeekOffset + targetOffset : targetOffset;
+    let newOffset = isRelative ? currentWeekOffset + targetOffset : targetOffset;
+    
+    // Guard: Prevent going before system start
+    if (newOffset < minOffset) newOffset = minOffset;
+
     if (newOffset === 0) {
       params.delete("weekOffset");
     } else {
@@ -1101,14 +1088,25 @@ export default function TurmasClient({
                   <button 
                     onClick={() => handleNavigateWeek(-1)}
                     title="Semana Anterior"
+                    disabled={currentWeekOffset <= getMinWeekOffset(SYSTEM_START_DATE)}
                     style={{ 
                       background: "#222", border: "1px solid #444", color: "#FFF", 
-                      cursor: "pointer", padding: "6px 10px", borderRadius: 4,
+                      cursor: currentWeekOffset <= getMinWeekOffset(SYSTEM_START_DATE) ? "default" : "pointer", 
+                      padding: "6px 10px", borderRadius: 4,
                       display: "flex", alignItems: "center", justifyContent: "center",
-                      transition: "all 0.15s ease"
+                      transition: "all 0.15s ease",
+                      opacity: currentWeekOffset <= getMinWeekOffset(SYSTEM_START_DATE) ? 0.3 : 1
                     }}
-                    onMouseEnter={e => { e.currentTarget.style.background = "#333"; e.currentTarget.style.borderColor = "#666"; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = "#222"; e.currentTarget.style.borderColor = "#444"; }}
+                    onMouseEnter={e => { 
+                      if (currentWeekOffset > getMinWeekOffset(SYSTEM_START_DATE)) {
+                        e.currentTarget.style.background = "#333"; e.currentTarget.style.borderColor = "#666"; 
+                      }
+                    }}
+                    onMouseLeave={e => { 
+                      if (currentWeekOffset > getMinWeekOffset(SYSTEM_START_DATE)) {
+                        e.currentTarget.style.background = "#222"; e.currentTarget.style.borderColor = "#444"; 
+                      }
+                    }}
                   >
                     <ChevronLeft size={18} />
                   </button>
@@ -1303,12 +1301,9 @@ export default function TurmasClient({
                             const coachDisplay = subCoach ? subCoach.full_name : slot.coach_name;
                             const isSubstituted = !!subCoach;
                             
-                            const enrollmentCount = (enrollmentCounts && enrollmentCounts[slot.id]) || 0;
-                            const checkinCount = (occupancy && occupancy[`${slot.id}-${dateStr}`]) || 0;
+                            const countToShow = (occupancy && occupancy[`${slot.id}-${dateStr}`]) || 0;
                             const isToday = dateStr === todayDateStr;
                             const isPast = dateStr < todayDateStr;
-                            
-                            const countToShow = (isToday || isPast) ? (checkinCount || 0) : enrollmentCount;
 
                             const matchingWod = wods.find(w => 
                               w.date === dateStr && 

@@ -30,6 +30,8 @@ interface ClassSlot {
   capacity: number;
   coach_name?: string;
   is_substitution?: boolean;
+  is_blocked?: boolean;
+  block_description?: string | null;
 }
 
 interface CheckinData {
@@ -474,8 +476,27 @@ export default function CoachDashboardClient({
               transition: "all 0.2s ease-out",
               borderRadius: "0px",
               overflow: "visible",
-              opacity: isFinished ? 0.85 : 1
+              opacity: (isFinished || slot.is_blocked) ? 0.85 : 1
             }}>
+              {/* Blocked Slot Banner */}
+              {slot.is_blocked && (
+                <div style={{
+                  background: "#000",
+                  color: "var(--red)",
+                  padding: "4px 12px",
+                  fontSize: "11px",
+                  fontWeight: 900,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.1em",
+                  borderBottom: "3px solid #000",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px"
+                }}>
+                  <AlertTriangle size={14} />
+                  CANCELADA: {slot.block_description || "BLOQUEIO DE AGENDA"}
+                </div>
+              )}
               {/* Box Head (Tap to Expand) */}
               <button 
                 onClick={() => handleToggleExpand(slot.id)}
@@ -545,6 +566,20 @@ export default function CoachDashboardClient({
                       ENCERRADA
                     </span>
                   )}
+                  {slot.is_blocked && (
+                    <span style={{ 
+                      fontSize: "10px", 
+                      fontWeight: 900, 
+                      background: "var(--red)", 
+                      color: "#FFF", 
+                      padding: "4px 10px", 
+                      border: "2px solid #000",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.1em"
+                    }}>
+                      CANCELADA
+                    </span>
+                  )}
                   <div style={{ 
                     width: "32px", 
                     height: "32px", 
@@ -581,8 +616,8 @@ export default function CoachDashboardClient({
                         )}
                       </div>
 
-                      {/* Search Bar for manual checkin (only if not finished) */}
-                      {!isFinished && (
+                      {/* Search Bar for manual checkin (only if not finished/blocked) */}
+                      {!isFinished && !slot.is_blocked && (
                         <div style={{ position: "relative", marginBottom: "16px" }}>
                           <div style={{ position: "relative" }}>
                             <input 
@@ -734,7 +769,7 @@ export default function CoachDashboardClient({
                       )}
 
                       {/* Botão de Fechamento */}
-                      {checks.length > 0 && !isFinished && (
+                      {checks.length > 0 && !isFinished && !slot.is_blocked && (
                          <button
                            disabled={isClosing === slot.id}
                            onClick={() => handleCloseClass(slot)}

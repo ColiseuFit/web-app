@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { ActivityFeedCard } from "@/components/activity/ActivityFeedCard";
-import { Flame, Zap, BarChart3, Dumbbell, History, Target } from "lucide-react";
+import { Flame, Zap, BarChart3, Dumbbell, History, Target, Loader } from "lucide-react";
 import { getTodayDate } from "@/lib/date-utils";
+import { getPaginatedHistory } from "@/app/(student)/actions";
 
 /**
  * Componente AnimatedNumber
@@ -61,6 +62,8 @@ interface ActivityItem {
   coach?: string;
   points?: number;
   result?: string | null;
+  performanceLevel?: string | null;
+  studentLevel?: string | null;
   status?: string;
   tags?: string[];
   metrics: { label: string; value: string | number; unit?: string }[];
@@ -73,8 +76,38 @@ export default function ActivityDashboard({ history = [] }: { history?: Activity
   const [isBroken, setIsBroken] = useState(false);
   const activePeriodLow = activePeriod.toLowerCase();
 
-  // Feed Unificado usa estritamente o histórico passado pelo banco
-  const unifiedFeed = history;
+  // ── PAGINAÇÃO (Load More) ──
+  // Feed local inicializado com os 10 primeiros WODs vindos do servidor (SSR page 0).
+  const [feed, setFeed] = useState<ActivityItem[]>(history);
+  const [currentPage, setCurrentPage] = useState(1); // próxima página a buscar
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  // Se o servidor retornou exatamente 10 itens, assume que pode ter mais.
+  const [hasMore, setHasMore] = useState(history.length === 10);
+
+  /**
+   * Carrega o próximo bloco de 10 WODs e faz append no feed local.
+   */
+  async function loadMore() {
+    if (isLoadingMore || !hasMore) return;
+    setIsLoadingMore(true);
+    try {
+      const res = await getPaginatedHistory(currentPage, 10);
+      if (res.success && res.history.length > 0) {
+        setFeed(prev => [...prev, ...(res.history as ActivityItem[])]);
+        setCurrentPage(p => p + 1);
+        setHasMore(res.hasMore);
+      } else {
+        setHasMore(false);
+      }
+    } catch {
+      setHasMore(false);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }
+
+  // Feed Unificado usa estritamente o feed local (estado gerenciado pelo Load More)
+  const unifiedFeed = feed;
 
   let chartData: { label: string; value: number }[] = [];
   
@@ -452,31 +485,51 @@ export default function ActivityDashboard({ history = [] }: { history?: Activity
           ))}
         </div>
 
-        <button style={{
-          width: "100%",
-          padding: "20px",
-          background: "#FFF",
-          border: "3px solid #000",
-          color: "#000",
-          fontSize: "11px",
-          fontWeight: 950,
-          textTransform: "uppercase",
-          letterSpacing: "0.2em",
-          cursor: "pointer",
-          boxShadow: "6px 6px 0px #000",
-          transition: "all 0.2s",
-        }}
-        onMouseEnter={(e) => { e.currentTarget.style.transform = "translate(2px, 2px)"; e.currentTarget.style.boxShadow = "4px 4px 0px #000"; }}
-        onMouseLeave={(e) => { e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "6px 6px 0px #000"; }}
-        >
-          VER TODO O HISTÓRICO
-        </button>
+        {hasMore && (
+          <button
+            onClick={loadMore}
+            disabled={isLoadingMore}
+            style={{
+              width: "100%",
+              padding: "20px",
+              background: isLoadingMore ? "#e5e5e5" : "#FFF",
+              border: "3px solid #000",
+              color: "#000",
+              fontSize: "11px",
+              fontWeight: 950,
+              textTransform: "uppercase",
+              letterSpacing: "0.2em",
+              cursor: isLoadingMore ? "wait" : "pointer",
+              boxShadow: "6px 6px 0px #000",
+              transition: "all 0.2s",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "10px",
+            }}
+            onMouseEnter={(e) => { if (!isLoadingMore) { e.currentTarget.style.transform = "translate(2px, 2px)"; e.currentTarget.style.boxShadow = "4px 4px 0px #000"; }}}
+            onMouseLeave={(e) => { e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "6px 6px 0px #000"; }}
+          >
+            {isLoadingMore ? (
+              <>
+                <Loader size={14} strokeWidth={3} style={{ animation: "spin 1s linear infinite" }} />
+                CARREGANDO...
+              </>
+            ) : (
+              "CARREGAR MAIS ANTIGOS"
+            )}
+          </button>
+        )}
       </div>
 
       <style jsx>{`
           @keyframes entrancePop {
               from { opacity: 0; transform: scale(0.9) translateY(10px); }
               to { opacity: 1; transform: scale(1) translateY(0); }
+          }
+          @keyframes spin {
+              from { transform: rotate(0deg); }
+              to { transform: rotate(360deg); }
           }
       `}</style>
     </div>

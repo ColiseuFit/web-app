@@ -83,10 +83,10 @@ export function formatDisplayDate(dateStr: string): string {
 }
 
 /**
- * Retorna uma lista dos dias de uma determinada semana (Segunda a Sábado) no formato YYYY-MM-DD.
+ * Retorna uma lista dos dias de uma determinada semana (Segunda a Domingo) no formato YYYY-MM-DD.
  * 
  * @param {number} offset - Deslocamento em semanas a partir da data atual (0 = atual, 1 = próxima, -1 = anterior)
- * @returns {string[]} Array de 6 datas representando a semana de treinos.
+ * @returns {string[]} Array de 7 datas representando a semana completa de treinos.
  */
 export function getWeekDates(offset: number = 0): string[] {
   const today = getTodayDate();
@@ -99,10 +99,48 @@ export function getWeekDates(offset: number = 0): string[] {
   // Aplica o offset de semanas (offset * 7 dias)
   const mondayMs = todayDateObj.getTime() - (daysFromMonday * 86400000) + (offset * 7 * 86400000);
   
-  return Array.from({ length: 6 }, (_, i) => {
+  return Array.from({ length: 7 }, (_, i) => {
     const d = new Date(mondayMs + i * 86400000);
     return d.toISOString().split("T")[0];
   });
+}
+
+/**
+ * MARCO ZERO — Calcula o offset mínimo de navegação baseado em `SYSTEM_START_DATE`.
+ * 
+ * @rationale
+ * Impede que usuários naveguem para semanas anteriores à data de lançamento operacional
+ * do Box, onde não existem aulas, WODs ou check-ins registrados. Sem este limite,
+ * a grade de aulas exibiria "histórico infinito" em branco, o que é operacionalmente
+ * incorreto e prejudica o fechamento obrigatório de presença.
+ * 
+ * @example
+ * // Se hoje é 21/04/2026 e o sistema iniciou em 01/04/2026:
+ * // getMinWeekOffset("2026-04-01") retorna -3 (3 semanas atrás)
+ * 
+ * @security
+ * O offset retornado é validado no lado do servidor (Server Component) para impedir
+ * manipulação via URL (ex: `?weekOffset=-999`).
+ * 
+ * @param {string} startDateStr - Data de início do sistema (SSoT: `SYSTEM_START_DATE` de `calendar.ts`).
+ * @returns {number} Valor negativo (ou zero) do limite de semanas retroativo permitido.
+ */
+export function getMinWeekOffset(startDateStr: string): number {
+  const today = getTodayDate();
+  const todayDateObj = new Date(today + "T00:00:00Z");
+  const startDateObj = new Date(startDateStr + "T00:00:00Z");
+
+  // Alinhamos ambas as datas para suas respectivas Segundas-feiras (Monday)
+  const todayDay = todayDateObj.getUTCDay();
+  const todayMondayMs = todayDateObj.getTime() - ((todayDay === 0 ? 6 : todayDay - 1) * 86400000);
+  
+  const startDay = startDateObj.getUTCDay();
+  const startMondayMs = startDateObj.getTime() - ((startDay === 0 ? 6 : startDay - 1) * 86400000);
+
+  const diffMs = startMondayMs - todayMondayMs;
+  
+  // Retorna o número de semanas de diferença (geralmente negativo se estivermos no futuro do start)
+  return Math.round(diffMs / (86400000 * 7));
 }
 
 /**
@@ -138,3 +176,99 @@ export function generateWeekCalendar(baseDateStr?: string, offset: number = 0, d
   });
 }
 
+
+/**
+ * SSoT: Lógica de Precedência de Bloqueios (Feriados e Exceções).
+ * Determina se um horário específico está cancelado e qual a regra aplicável.
+ */
+export interface Holiday {
+  id: string;
+  date: string;
+  description: string;
+  block_type: 'full_day' | 'period' | 'slot';
+  start_time: string | null;
+  end_time: string | null;
+  class_slot_id: string | null;
+}
+
+/**
+ * Verifica se uma aula está bloqueada baseada na hierarquia de regras:
+ * 1. Bloqueio por Slot (ID específico)
+ * 2. Bloqueio por Período (Intervalo de tempo)
+ * 3. Bloqueio de Dia Inteiro
+ */
+export function checkIsSlotBlocked(
+  slotId: string, 
+  timeStart: string, 
+  dateStr: string, 
+  holidays: Holiday[]
+): Holiday | null {
+  const rules = holidays.filter(h => h.date === dateStr);
+  if (!rules.length) return null;
+
+  // 1. Prioridade: Bloqueio por Slot específico
+  const slotBlock = rules.find(h => h.block_type === 'slot' && h.class_slot_id === slotId);
+  if (slotBlock) return slotBlock;
+
+  // 2. Prioridade: Bloqueio por Período
+  const periodBlock = rules.find(h => {
+    if (h.block_type !== 'period' || !h.start_time || !h.end_time) return false;
+    // Compara strings HH:MM (DB retorna HH:MM:SS)
+    const slotTime = timeStart.slice(0, 5); 
+    const blockStart = h.start_time.slice(0, 5);
+    const blockEnd = h.end_time.slice(0, 5);
+    return slotTime >= blockStart && slotTime < blockEnd;
+  });
+  if (periodBlock) return periodBlock;
+
+  // 3. Prioridade: Bloqueio de Dia Inteiro (Feriado)
+  const fullDayBlock = rules.find(h => h.block_type === 'full_day');
+  return fullDayBlock || null;
+}
+
+/**
+ * SSoT: Resolve o Professor Responsável por uma aula considerando a hierarquia operacional.
+ * 
+ * @hierarchy
+ * A resolução segue a precedência abaixo (ordem decrescente de especificidade):
+ * 1. **Substituição ativa** (`class_substitutions`): Professor substituto confirmado para a data.
+ * 2. **Perfil padrão** (`profiles` via `default_coach_id`): Coach titular da grade.
+ * 3. **Legado** (`coach_name`): Nome textual legado (pré-vinculação de perfil).
+ * 
+ * @note Quando esta função retorna `isSubstitution: true`, a UI pode exibir
+ * um indicador visual (ex: badge "SUB") para que o aluno saiba que o horário
+ * tem um professor diferente do habitual.
+ * 
+ * @param slot - Slot da grade (`class_slots`) com joins de `class_substitutions` e `profiles`.
+ * @param {string} dateStr - Data alvo no formato YYYY-MM-DD.
+ * @returns {{ name: string, isSubstitution: boolean }} Nome resolvido e flag de substituição.
+ */
+export function resolveSlotCoach(slot: any, dateStr: string): { name: string, isSubstitution: boolean } {
+  // Check for substitution for this specific date
+  const substitutions = slot.class_substitutions || [];
+  const activeSub = substitutions.find((sub: any) => sub.date === dateStr);
+  
+  if (activeSub) {
+    return {
+      name: activeSub.profiles?.full_name || activeSub.coach_profile?.full_name || "Professor Substituto",
+      isSubstitution: true
+    };
+  }
+
+  // Fallback to default coach profile or legacy name
+  const name = slot.profiles?.full_name || slot.coach_profile?.full_name || slot.coach_name || "Sem instrutor";
+  return { name, isSubstitution: false };
+}
+/**
+ * SSoT: Cálculo Unificado de Ocupação.
+ * Combina alunos com matrícula fixa (enrollments) e check-ins reais do dia,
+ * garantindo que um mesmo aluno não seja contado duas vezes.
+ * 
+ * @param enrollmentIds - IDs dos alunos matriculados fixos na turma.
+ * @param checkinIds - IDs dos alunos que realizaram check-in para aquela data específica.
+ * @returns {number} O total de alunos únicos ocupando a turma.
+ */
+export function calculateSlotOccupancy(enrollmentIds: string[] = [], checkinIds: string[] = []): number {
+  const uniqueStudents = new Set([...enrollmentIds, ...checkinIds]);
+  return uniqueStudents.size;
+}

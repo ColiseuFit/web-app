@@ -1518,9 +1518,19 @@ export async function manualCheckinAction(slotId: string, date: string, studentI
 
   const pointsValue = pointRule?.points ?? 10;
 
+  // 3.1 Check if the class is already closed (SSoT)
+  const { data: session } = await ctx.adminClient
+    .from("class_sessions")
+    .select("finalized_at")
+    .eq("class_slot_id", slotId)
+    .eq("date", cleanDate)
+    .maybeSingle();
+
+  const isClosed = !!session?.finalized_at;
+
   // 4. Upsert check-in: Update if exists (e.g., from 'missed' to 'confirmed'), or Insert new
-  // IMPORTANT (SSoT): Manual check-in sets status to 'confirmed' (pre-validated)
-  // but DOES NOT award points yet. Points are awarded in closeClassAction.
+  // IMPORTANT (SSoT): Manual check-in sets status to 'confirmed' (pre-validated).
+  // If the class is already closed, we award points immediately.
   const { error: upsertError } = await ctx.adminClient
     .from("check_ins")
     .upsert({
@@ -1529,8 +1539,8 @@ export async function manualCheckinAction(slotId: string, date: string, studentI
       class_slot_id: slotId,
       wod_id: wod.id,
       status: "confirmed",
-      score_points: 0, // Differential points: awarded only on closeClass
-      validated_at: null, // Not officially validated until closing
+      score_points: isClosed ? pointsValue : 0, 
+      validated_at: isClosed ? new Date().toISOString() : null,
       created_at: existing?.id ? undefined : `${date}T${new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}:00`
     });
 
@@ -1539,6 +1549,14 @@ export async function manualCheckinAction(slotId: string, date: string, studentI
       return { error: "Este aluno já possui check-in em outro horário para este treino." };
     }
     return { error: "Erro ao registrar presença: " + upsertError.message };
+  }
+
+  // 4.1 If closed, increment the balance immediately
+  if (isClosed) {
+    await ctx.adminClient.rpc("increment_points", { 
+      user_id: studentId, 
+      amount: pointsValue 
+    });
   }
   
   // 5. Auto-Cleanup (SSoT): If student was in the waitlist for THIS slot, remove them.

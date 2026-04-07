@@ -4,7 +4,8 @@ import { getCoaches } from "../professores/actions";
 import { getHolidays } from "./actions";
 import { getBoxSettings } from "@/lib/constants/settings_actions";
 
-import { getTodayDate, getWeekDates } from "@/lib/date-utils";
+import { getTodayDate, getWeekDates, calculateSlotOccupancy, getMinWeekOffset } from "@/lib/date-utils";
+import { SYSTEM_START_DATE } from "@/lib/constants/calendar";
 
 /**
  * Turmas Page (Server Component): Arquiteto de Dados da Grade Semanal.
@@ -40,7 +41,9 @@ export default async function TurmasPage(props: {
   const level = searchParams?.level || "";
   const unenroll = searchParams?.unenroll === "true";
   const page = parseInt(searchParams?.page || "1");
-  const weekOffset = parseInt(searchParams?.weekOffset || "0");
+  const rawWeekOffset = parseInt(searchParams?.weekOffset || "0");
+  const minOffset = getMinWeekOffset(SYSTEM_START_DATE);
+  const weekOffset = Math.max(rawWeekOffset, minOffset);
   const pageSize = 50;
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
@@ -179,27 +182,51 @@ export default async function TurmasPage(props: {
     );
   }
 
-  // Pre-process occupancy & enrollment counts for the GRID
-  // Key: slot_id-date
-  const occupancyMap: Record<string, number> = {};
+  // 8. SSoT: Consolidated Occupancy Map
+  // Key: slot_id-date -> count
+  const consolidatedOccupancyMap: Record<string, number> = {};
+  
+  // Group enrollment student IDs per slot
+  const slotEnrollmentIds: Record<string, string[]> = {};
+  allEnrollments?.forEach((en: any) => {
+    if (en.class_slot_id) {
+      if (!slotEnrollmentIds[en.class_slot_id]) slotEnrollmentIds[en.class_slot_id] = [];
+      slotEnrollmentIds[en.class_slot_id].push(en.student_id);
+    }
+  });
+
+  // Group check-in student IDs per slot and date
+  const slotCheckinIds: Record<string, string[]> = {};
   occupancy?.forEach((ci: any) => {
     const slotId = ci.class_slot_id;
     const date = ci.wods?.date;
     if (slotId && date) {
       const key = `${slotId}-${date}`;
-      occupancyMap[key] = (occupancyMap[key] || 0) + 1;
+      if (!slotCheckinIds[key]) slotCheckinIds[key] = [];
+      slotCheckinIds[key].push(ci.student_id);
     }
   });
 
+  // Calculate consolidated count for every slot across the week dates
+  slots?.forEach((slot: any) => {
+    weekDates.forEach((date) => {
+      const key = `${slot.id}-${date}`;
+      const enrollIds = slotEnrollmentIds[slot.id] || [];
+      const checkinIds = slotCheckinIds[key] || [];
+      consolidatedOccupancyMap[key] = calculateSlotOccupancy(enrollIds, checkinIds);
+    });
+  });
+
+  // enrollmentMap specifically for the Structural tab (just fixed counts)
   const enrollmentMap: Record<string, number> = {};
-  allEnrollments?.forEach((en: any) => {
-    if (en.class_slot_id) enrollmentMap[en.class_slot_id] = (enrollmentMap[en.class_slot_id] || 0) + 1;
+  Object.keys(slotEnrollmentIds).forEach(slotId => {
+    enrollmentMap[slotId] = slotEnrollmentIds[slotId].length;
   });
 
   return (
     <TurmasClient
       initialSlots={slots || []}
-      occupancy={occupancyMap}
+      occupancy={consolidatedOccupancyMap}
       enrollmentCounts={enrollmentMap}
       wods={weeklyWods || []}
       coaches={coaches || []}

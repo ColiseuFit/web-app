@@ -136,10 +136,21 @@ export const updatePasswordSchema = z.object({
   path: ["confirm_password"],
 });
 
-// 13. Schema para Resultado de WOD (Aluno)
+/**
+ * 13. Schema para Resultado de WOD (Aluno)
+ * 
+ * @architecture
+ * - Single Source of Truth (SSoT) para submissão de performance em Atividades.
+ * - Suporta variações brutas em String permitindo compatibilidade universal com "time", "reps", "load" e notações "rounds" (AMRAP como "5+12").
+ * 
+ * @security
+ * - Obriga `checkInId` válido (RLS validará a propriedade deste check-in em runtime).
+ * - Impede submissões com scores vazias (`min(1)`).
+ */
 export const wodResultSchema = z.object({
   checkInId: z.string().uuid("ID do check-in inválido"),
   result: z.string().min(1, "O resultado não pode estar vazio"),
+  performanceLevel: z.string().min(1, "O nível de performance é obrigatório"),
 });
 
 export type LoginInput = z.infer<typeof loginSchema>;

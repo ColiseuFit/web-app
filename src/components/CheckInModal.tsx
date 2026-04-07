@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, Loader2 } from "lucide-react";
+import { X, Loader2, Info } from "lucide-react";
 import { performCheckIn, getAvailableSlots } from "@/app/(student)/actions";
 import { hapticSelect, hapticConfirm } from "@/lib/haptic";
 import PointsToast from "./PointsToast";
 import { getTodayDate } from "@/lib/date-utils";
+import AlertModal from "./AlertModal";
 
 interface CheckInModalProps {
   wodId: string;
@@ -19,9 +20,12 @@ interface DynamicSlot {
   time_start: string;
   capacity: number;
   name: string;
-  occupancy?: number;
-  is_past?: boolean;
-  is_finished?: boolean;
+  occupied_count: number;
+  is_past: boolean;
+  is_finished: boolean;
+  is_blocked: boolean;
+  block_description: string | null;
+  coach_name: string;
 }
 
 /**
@@ -37,10 +41,12 @@ import { createPortal } from "react-dom";
  * @architecture
  * - Padrão "Mobile-First": Layout otimizado para interação por toque com botões largos.
  * - SSoT de Disponibilidade: Carrega slots via `getAvailableSlots` (Server Action).
+ * - **Trocar Horário**: Reutiliza a interface de seleção para atualizar check-ins existentes (SSoT).
  * 
  * @security
  * - Bloqueio de Slots Passados: Usa tolerância de 15 minutos para o dia atual.
  * - Bloqueio de Aula Finalizada: Slots já encerrados pelo Coach aparecem como indisponíveis (SSoT).
+ * - Proteção de Estado: Exibe AlertModal para bloqueios de negócio (Feriados, Lotação).
  * 
  * @param {CheckInModalProps} props - Propriedades de controle de visibilidade e dados do WOD.
  */
@@ -52,6 +58,7 @@ wodId, date, onClose, onSuccess }: CheckInModalProps) {
   const [loadingSlots, setLoadingSlots] = useState(true);
   const [loadingSubmit, setLoadingSubmit] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [alertMsg, setAlertMsg] = useState<string | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -59,15 +66,18 @@ wodId, date, onClose, onSuccess }: CheckInModalProps) {
       setLoadingSlots(true);
       const res = await getAvailableSlots(date);
       if (res.data) {
-        // Exibir TODOS os slots, incluindo passados/finalizados (renderizados como desabilitados)
+        // Exibir TODOS os slots, incluindo passados/finalizados/bloqueados
         setSlots(res.data.map(s => ({
           id: s.id,
           time_start: s.time_start.slice(0, 5),
           capacity: s.capacity,
           name: s.name,
-          occupancy: 0,
+          occupied_count: s.occupied_count,
           is_past: s.is_past,
-          is_finished: s.is_finished
+          is_finished: s.is_finished,
+          is_blocked: s.is_blocked,
+          block_description: s.block_description,
+          coach_name: s.coach_name
         })));
       }
       setLoadingSlots(false);
@@ -120,11 +130,21 @@ wodId, date, onClose, onSuccess }: CheckInModalProps) {
       hapticConfirm();
       onSuccess();
     } else {
-      alert(result.error);
+      setAlertMsg(result.error || "Erro ao realizar check-in. Tente novamente.");
     }
   };
 
   const modalContent = (
+    <>
+    {alertMsg && (
+      <AlertModal
+        type="error"
+        title="AVISO DO BOX"
+        message={alertMsg}
+        buttonLabel="ENTENDI"
+        onClose={() => setAlertMsg(null)}
+      />
+    )}
     <div style={{
       position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
       backgroundColor: "rgba(0,0,0,0.8)", zIndex: 9999,
@@ -192,23 +212,51 @@ wodId, date, onClose, onSuccess }: CheckInModalProps) {
             </div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: "12px", paddingBottom: "32px" }}>
+              
+              {/* BANNER DE INSTRUÇÃO */}
+              <div style={{ 
+                padding: "12px 16px", background: "#F5F5F5", borderLeft: "4px solid #000",
+                marginBottom: "8px", display: "flex", alignItems: "flex-start", gap: "12px"
+              }}>
+                <div style={{ padding: "4px", background: "#000", borderRadius: "0px", color: "#FFF" }}>
+                  <Info size={14} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <p style={{ fontSize: "11px", fontWeight: 800, color: "#000", lineHeight: 1.3 }}>
+                    Escolha uma turma abaixo para garantir sua vaga.
+                  </p>
+                  <p style={{ fontSize: "9px", fontWeight: 600, color: "rgba(0,0,0,0.5)", marginTop: "2px" }}>
+                    Você pode trocar seu horário ou cancelar até o início da aula.
+                  </p>
+                </div>
+              </div>
+
               {slots.map((slot) => {
                 const isSelected = selectedSlotId === slot.id;
                 const period = getPeriod(slot.time_start);
-                const isDisabled = slot.is_past || slot.is_finished;
-                const disabledLabel = slot.is_finished ? "ENCERRADA" : "EXPIRADA";
+                
+                // Hierarquia de Indisponibilidade
+                const isDisabled = slot.is_past || slot.is_finished || slot.is_blocked;
+                const isFull = slot.occupied_count >= slot.capacity;
+                const actuallyDisabled = isDisabled || (isFull && !isSelected);
+
+                let statusLabel = "";
+                if (slot.is_blocked) statusLabel = slot.block_description?.toUpperCase() || "CANCELADA";
+                else if (slot.is_finished) statusLabel = "ENCERRADA";
+                else if (slot.is_past) statusLabel = "EXPIRADA";
+                else if (isFull) statusLabel = "LOTADA";
 
                 return (
                   <div
                     key={slot.id}
-                    onClick={() => !isDisabled && handleSlotSelect(slot.id, slot.time_start)}
+                    onClick={() => !actuallyDisabled && handleSlotSelect(slot.id, slot.time_start)}
                     style={{
                       padding: "18px 20px",
                       background: isDisabled ? "#f0f0f0" : isSelected ? "var(--nb-red)" : "#FFF",
-                      border: "2px solid #000",
-                      boxShadow: isDisabled ? "none" : isSelected ? "none" : "4px 4px 0px #000",
-                      cursor: isDisabled ? "not-allowed" : "pointer",
-                      opacity: isDisabled ? 0.6 : 1,
+                      border: "3px solid #000",
+                      boxShadow: actuallyDisabled ? "none" : isSelected ? "none" : "6px 6px 0px #000",
+                      cursor: actuallyDisabled ? "not-allowed" : "pointer",
+                      opacity: actuallyDisabled ? (slot.is_blocked ? 0.7 : 0.6) : 1,
                       transition: "all 0.1s ease",
                       transform: isSelected ? "translate(2px, 2px)" : "none",
                       display: "flex", justifyContent: "space-between", alignItems: "center",
@@ -216,47 +264,54 @@ wodId, date, onClose, onSuccess }: CheckInModalProps) {
                       overflow: "hidden",
                     }}
                   >
-                    {/* Linha de risco nos disabled */}
-                    {isDisabled && (
+                    {/* Linha de risco nos expirados/encerrados, mas NÃO nos bloqueados por feriado (para legibilidade) */}
+                    {(slot.is_past || slot.is_finished) && (
                       <div style={{
-                        position: "absolute",
-                        top: "50%",
-                        left: 0,
-                        right: 0,
-                        height: "2px",
-                        background: "rgba(0,0,0,0.25)",
-                        pointerEvents: "none",
+                        position: "absolute", top: "50%", left: 0, right: 0, height: "2px",
+                        background: "rgba(0,0,0,0.15)", pointerEvents: "none",
                       }} />
                     )}
 
                     <div style={{ flex: 1 }}>
                       <div className="font-display" style={{
-                        fontSize: "28px", fontWeight: 900, lineHeight: 1,
-                        color: isDisabled ? "rgba(0,0,0,0.35)" : isSelected ? "#FFF" : "#000",
-                        textDecoration: isDisabled ? "line-through" : "none",
+                        fontSize: "32px", fontWeight: 900, lineHeight: 1,
+                        color: actuallyDisabled ? "rgba(0,0,0,0.35)" : isSelected ? "#FFF" : "#000",
+                        textDecoration: (slot.is_past || slot.is_finished) ? "line-through" : "none",
                       }}>
                         {slot.time_start}
                       </div>
                       <div style={{
-                        fontSize: "9px", fontWeight: 900, letterSpacing: "0.1em", marginTop: "4px",
-                        color: isDisabled ? "rgba(0,0,0,0.3)" : isSelected ? "rgba(255,255,255,0.8)" : "rgba(0,0,0,0.5)",
+                        fontSize: "10px", fontWeight: 900, letterSpacing: "0.05em", marginTop: "6px",
+                        color: isDisabled ? "rgba(0,0,0,0.4)" : isSelected ? "rgba(255,255,255,0.9)" : "#000",
+                        display: "flex", alignItems: "center", gap: "6px"
                       }}>
-                        {slot.name.toUpperCase()} • {period}
+                         <span style={{ opacity: 0.6 }}>{slot.name.toUpperCase()}</span>
+                         <span>•</span>
+                         <span style={{ color: isSelected ? "#FFF" : "var(--nb-red)", fontWeight: 950 }}>{slot.coach_name.toUpperCase()}</span>
                       </div>
                     </div>
 
                     <div style={{ textAlign: "right", display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "4px" }}>
-                      {isDisabled ? (
+                      {statusLabel ? (
                         <div style={{
-                          fontSize: "8px", fontWeight: 900, letterSpacing: "0.15em",
-                          color: "rgba(0,0,0,0.4)", background: "rgba(0,0,0,0.08)",
-                          padding: "3px 6px", border: "1px solid rgba(0,0,0,0.15)",
+                          fontSize: "9px", fontWeight: 950, letterSpacing: "0.1em",
+                          color: (slot.is_blocked || isFull) ? "#FFF" : "rgba(0,0,0,0.4)", 
+                          background: slot.is_blocked ? "var(--nb-red)" : isFull ? "#000" : "rgba(0,0,0,0.08)",
+                          padding: "4px 8px", border: "2px solid #000",
                         }}>
-                          {disabledLabel}
+                          {statusLabel}
                         </div>
                       ) : (
-                        <div style={{ fontSize: "11px", fontWeight: 900, color: isSelected ? "#FFF" : "#000", letterSpacing: "0.05em" }}>
-                          {slot.capacity} VAGAS
+                        <div style={{ 
+                          fontSize: "12px", fontWeight: 950, 
+                          color: isSelected ? "#FFF" : "#000", 
+                          letterSpacing: "-0.02em",
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "flex-end"
+                        }}>
+                          <span style={{ fontSize: "16px", lineHeight: 1 }}>{slot.occupied_count}/{slot.capacity}</span>
+                          <span style={{ fontSize: "8px", opacity: 0.6, letterSpacing: "0.1em" }}>VAGAS OCUPADAS</span>
                         </div>
                       )}
                     </div>
@@ -314,6 +369,7 @@ wodId, date, onClose, onSuccess }: CheckInModalProps) {
         `}} />
       </div>
     </div>
+    </>
   );
 
   return createPortal(modalContent, document.body);

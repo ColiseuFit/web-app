@@ -31,6 +31,7 @@ O projeto utiliza um stack moderno focado em performance extrema e isolamento de
 2. **Estética Funcional (Neo-Brutalism):** Design de alto contraste (Nike/Adidas style), focado em ação e clareza visual.
 3. **SSoT (Single Source of Truth):** Toda aula ou resultado depende do marcador `validated_at`. Nada é deletado, apenas invalidado ou inacessível.
 4. **Resiliência UTC-3:** Operações de tempo centralizadas para garantir paridade entre fuso do servidor e do box.
+5. **Feedback Engine (NB):** Substituição de alertas nativos por interface Neo-Brutalista imersiva.
 
 ---
 
@@ -43,6 +44,6 @@ O projeto utiliza um stack moderno focado em performance extrema e isolamento de
 
 ---
 ---
-**Versão do Sistema:** 2.6.5 (Audit 1.0.2 Locked)  
-**Status da Auditoria:** 🏛️ LEGACY PROOF (Protocolo 1.0.2) - 100% Concluído  
+**Versão do Sistema:** 2.7.0 (Audit 1.0.3 Locked)  
+**Status da Auditoria:** 🏛️ LEGACY PROOF (Protocolo 1.0.3) - 100% Concluído  
 **Equipe:** Antigravity AI & Coliseu Engineering Team

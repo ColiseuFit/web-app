@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import CoachDashboardClient from "./CoachDashboardClient";
-import { getTodayDate } from "@/lib/date-utils";
+import { getTodayDate, checkIsSlotBlocked, resolveSlotCoach } from "@/lib/date-utils";
 import { getCachedLevels } from "@/lib/constants/levels_actions";
 import DateNavigator from "@/components/coach/DateNavigator";
 
@@ -46,18 +46,27 @@ export default async function CoachPage({ searchParams }: { searchParams: Promis
     `)
     .eq("day_of_week", dayOfWeek)
     .order("time_start", { ascending: true });
+  
+  // Fetch holidays for SSoT blocking logic
+  const { data: holidays } = await supabase
+    .from("box_holidays")
+    .select("*")
+    .eq("date", activeDateStr);
 
-  // Sanitize slots to pick the right coach (Default vs Substitution)
+  // Sanitize slots to pick the right coach (Default vs Substitution) and check for blocks
   const slots = (rawSlots || []).map(slot => {
     const substitutions = (slot.class_substitutions as any[]) || [];
-    const activeSub = substitutions.find((sub: any) => sub.date === activeDateStr);
-    const coachProfileName = (slot.coach_profile as any)?.full_name;
-    const coachName = activeSub?.coach_profile?.full_name || coachProfileName || slot.coach_name || "Sem instrutor";
+    
+    // Use centralized SSoT helpers
+    const coachData = resolveSlotCoach(slot, activeDateStr);
+    const blockRule = checkIsSlotBlocked(slot.id, slot.time_start, activeDateStr, holidays || []);
     
     return {
       ...slot,
-      coach_name: coachName, // Logic SSoT overrides legacy field
-      is_substitution: !!activeSub
+      coach_name: coachData.name,
+      is_substitution: coachData.isSubstitution,
+      is_blocked: !!blockRule,
+      block_description: blockRule?.description || null
     };
   });
 

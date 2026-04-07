@@ -8,6 +8,8 @@ import {
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { SYSTEM_START_DATE } from "@/lib/constants/calendar";
+import { getMinWeekOffset } from "@/lib/date-utils";
 import { upsertWod, deleteWod } from "../../actions";
 import BenchmarkLibraryModal from "@/components/admin/BenchmarkLibraryModal";
 
@@ -77,10 +79,15 @@ export default function WodsClient({ initialWods, weekDates, weekOffset }: WodsC
   const searchParams = useSearchParams();
 
   function goToWeek(offset: number) {
+    const minOffset = getMinWeekOffset(SYSTEM_START_DATE);
+    const newOffset = Math.max(offset, minOffset);
     const params = new URLSearchParams(searchParams.toString());
-    params.set("weekOffset", offset.toString());
+    params.set("weekOffset", newOffset.toString());
     router.push(`?${params.toString()}`);
   }
+
+  const minOffset = getMinWeekOffset(SYSTEM_START_DATE);
+  const canGoPrev = weekOffset > minOffset;
 
   const [selectedDate, setSelectedDate] = useState(
     weekDates.find((d) => d.isToday)?.date ?? weekDates[0].date
@@ -196,8 +203,16 @@ export default function WodsClient({ initialWods, weekDates, weekOffset }: WodsC
         <div style={{ display: "flex", gap: "8px" }}>
           <button 
             onClick={() => goToWeek(weekOffset - 1)}
+            disabled={!canGoPrev}
             className="admin-btn admin-btn-ghost"
-            style={{ width: "40px", height: "40px", padding: 0, justifyContent: "center" }}
+            style={{ 
+              width: "40px", 
+              height: "40px", 
+              padding: 0, 
+              justifyContent: "center",
+              opacity: canGoPrev ? 1 : 0.3,
+              cursor: canGoPrev ? "pointer" : "not-allowed"
+            }}
             title="Semana Anterior"
           >
             <ChevronLeft size={20} />
