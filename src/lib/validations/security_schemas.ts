@@ -153,6 +153,17 @@ export const wodResultSchema = z.object({
   performanceLevel: z.string().min(1, "O nível de performance é obrigatório"),
 });
 
+// 14. Schema para Pré-cadastro (Leads)
+export const preRegistrationSchema = z.object({
+  full_name: z.string().min(3, "Nome completo é obrigatório"),
+  email: z.string().email("E-mail inválido"),
+  phone: z.string().min(10, "Telefone inválido"),
+  cpf: z.string().optional(),
+  birth_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data inválida").optional().or(z.literal("")),
+  bio: z.string().optional(),
+});
+
+
 export type LoginInput = z.infer<typeof loginSchema>;
 export type CreateStudentInput = z.infer<typeof createStudentSchema>;
 export type CheckInInput = z.infer<typeof checkInSchema>;
@@ -165,3 +176,4 @@ export type PhysicalEvaluationInput = z.infer<typeof physicalEvaluationSchema>;
 export type UpdateAuthInput = z.infer<typeof updateAuthSchema>;
 export type UpdatePasswordInput = z.infer<typeof updatePasswordSchema>;
 export type WodResultInput = z.infer<typeof wodResultSchema>;
+export type PreRegistrationInput = z.infer<typeof preRegistrationSchema>;

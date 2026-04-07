@@ -57,3 +57,54 @@ export async function logout() {
   await supabase.auth.signOut();
   redirect("/login");
 }
+
+import { preRegistrationSchema } from "@/lib/validations/security_schemas";
+
+/**
+ * Cria um pré-cadastro (Lead) a partir do fluxo de onboarding público.
+ * 
+ * @security
+ * - Roda no lado do servidor para garantir segurança.
+ * - Validação obrigatória via Zod `preRegistrationSchema`.
+ * - Como é público, não requer sessão, e explora a política de RLS que permite insert anônimo.
+ */
+export async function createPreRegistration(formData: FormData) {
+  const rawData = {
+    full_name: formData.get("full_name"),
+    email: formData.get("email"),
+    phone: formData.get("phone"),
+    cpf: formData.get("cpf") || undefined,
+    birth_date: formData.get("birth_date") || undefined,
+    bio: formData.get("bio") || undefined,
+  };
+
+  const validation = preRegistrationSchema.safeParse(rawData);
+  if (!validation.success) {
+    return { error: "Dados inválidos: " + validation.error.issues[0].message };
+  }
+
+  const dataToInsert = validation.data;
+  
+  // Clean empty strings for optional dates
+  if (dataToInsert.birth_date === "") {
+    delete dataToInsert.birth_date;
+  }
+
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("pre_registrations")
+    .insert([
+      {
+        ...dataToInsert,
+        status: "pending",
+      }
+    ]);
+
+  if (error) {
+    console.error("[createPreRegistration] Error:", error);
+    return { error: "Erro ao criar pré-cadastro: " + error.message };
+  }
+
+  return { success: true };
+}

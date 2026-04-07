@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Search, Plus, Phone, X, UserPlus, ChevronDown, Pencil, Trash2, User, Mail, Calendar, CreditCard, Info, Activity, ShieldCheck, Lock as LockIcon, Mail as MailIcon, ChevronLeft, ChevronRight } from "lucide-react";
-import { createStudent, updateStudent, deleteStudent, getStudentEvaluations, deletePhysicalEvaluation, updateStudentAuth } from "../../actions";
+import { createStudent, updateStudent, deleteStudent, getStudentEvaluations, deletePhysicalEvaluation, updateStudentAuth, updatePreRegistration } from "../../actions";
 import PhysicalEvaluationForm from "./PhysicalEvaluationForm";
 import { getLevelInfo, LevelInfo } from "@/lib/constants/levels";
 
@@ -53,6 +53,7 @@ function formatDate(dateStr: string): string {
 
 export default function AlunosClient({ 
   students, 
+  preRegistrations = [],
   dynamicLevels,
   currentPage,
   totalPages,
@@ -61,6 +62,7 @@ export default function AlunosClient({
   currentLevel
 }: { 
   students: Student[], 
+  preRegistrations?: any[],
   dynamicLevels?: Record<string, LevelInfo>,
   currentPage: number,
   totalPages: number,
@@ -82,10 +84,12 @@ export default function AlunosClient({
   // Local state for immediate feedback, synced with URL
   const [search, setSearch] = useState(currentSearch);
   const [levelFilter, setLevelFilter] = useState(currentLevel);
+  const [viewMode, setViewMode] = useState<"alunos" | "leads">("alunos");
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [loadingLeadId, setLoadingLeadId] = useState<string | null>(null);
   const [message, setMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);
   
   // Evaluation States
@@ -93,6 +97,16 @@ export default function AlunosClient({
   const [evaluations, setEvaluations] = useState<any[]>([]);
   const [loadingEvals, setLoadingEvals] = useState(false);
   const [selectedEval, setSelectedEval] = useState<any | null>(null);
+  const [selectedLead, setSelectedLead] = useState<any | null>(null);
+  const [isEditingLead, setIsEditingLead] = useState(false);
+
+  // Auto-hide success messages
+  useEffect(() => {
+    if (message?.type === "success") {
+      const timer = setTimeout(() => setMessage(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [message]);
 
   const formRef = useRef<HTMLFormElement>(null);
   const editFormRef = useRef<HTMLFormElement>(null);
@@ -161,7 +175,7 @@ export default function AlunosClient({
       // Let the modal stay open so the user sees it's saved.
       // The revalidatePath will update the list in the background.
     } else {
-      alert(result.error || "Erro desconhecido ao salvar.");
+      setMessage({ type: "error", text: result.error || "Erro desconhecido ao salvar." });
     }
     setLoading(false);
   }
@@ -173,7 +187,53 @@ export default function AlunosClient({
     if (result?.success) {
       setSelectedStudent(null);
     } else {
-      alert(result.error);
+      setMessage({ type: "error", text: result.error || "Erro ao excluir aluno." });
+    }
+    setLoading(false);
+  }
+
+  // --- Lead Management Handlers ---
+
+  async function handleApproveLead(id: string) {
+    const { approvePreRegistration } = await import("../../actions");
+    setLoadingLeadId(id);
+    const result = await approvePreRegistration(id);
+    if (result.success && result.password) {
+      setMessage({ 
+        type: "success", 
+        text: `Aluno aprovado! Senha inicial gerada: ${result.password} (Copie e entregue ao aluno)` 
+      });
+    } else if (result.success) {
+      setMessage({ type: "success", text: "Pré-cadastro aprovado e aluno criado com sucesso!" });
+    } else {
+      setMessage({ type: "error", text: result.error || "Erro ao aprovar pré-cadastro." });
+    }
+    setLoadingLeadId(null);
+  }
+
+  async function handleRejectLead(id: string) {
+    if (!confirm("Tem certeza que deseja REJEITAR este pré-cadastro?")) return;
+    const { rejectPreRegistration } = await import("../../actions");
+    setLoadingLeadId(id);
+    const result = await rejectPreRegistration(id);
+    if (result.success) {
+      // Background revalidation will refresh the list
+    } else {
+      setMessage({ type: "error", text: result.error || "Erro ao rejeitar pré-cadastro." });
+    }
+    setLoadingLeadId(null);
+  }
+
+  async function handleUpdateLead(formData: FormData) {
+    if (!selectedLead) return;
+    setLoading(true);
+    const result = await updatePreRegistration(selectedLead.id, formData);
+    if (result.success) {
+      setIsEditingLead(false);
+      setSelectedLead(null);
+      setMessage({ type: "success", text: "Pré-cadastro atualizado com sucesso!" });
+    } else {
+      setMessage({ type: "error", text: result.error || "Erro ao atualizar pré-cadastro." });
     }
     setLoading(false);
   }
@@ -202,10 +262,10 @@ export default function AlunosClient({
     setLoading(true);
     const result = await updateStudentAuth(selectedStudent.id, formData);
     if (result?.success) {
-      alert("Credenciais atualizadas com sucesso!");
+      setMessage({ type: "success", text: "Credenciais atualizadas com sucesso!" });
       setDrawerView("profile");
     } else {
-      alert(result.error || "Erro ao atualizar credenciais.");
+      setMessage({ type: "error", text: result.error || "Erro ao atualizar credenciais." });
     }
     setLoading(false);
   }
@@ -225,13 +285,13 @@ export default function AlunosClient({
   return (
     <div className="admin-container-fluid">
       {/* ── PAGE HEADER ── */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 600, letterSpacing: "-0.02em", margin: 0 }}>
             Alunos
           </h1>
           <p style={{ fontSize: 13, color: "var(--admin-text-secondary)", marginTop: 2 }}>
-            {students.length} membros cadastrados
+            Central de alunos e admissões
           </p>
         </div>
         <button
@@ -243,8 +303,46 @@ export default function AlunosClient({
         </button>
       </div>
 
+      {/* ── TABS ── */}
+      <div style={{ display: "flex", gap: "24px", paddingBottom: "12px", marginBottom: "24px", borderBottom: "3px solid #000" }}>
+        <button
+          onClick={() => setViewMode("alunos")}
+          style={{
+            background: "none", border: "none",
+            fontSize: "13px", fontWeight: 900,
+            color: viewMode === "alunos" ? "#000" : "#666",
+            borderBottom: viewMode === "alunos" ? "4px solid #DF2127" : "none",
+            paddingBottom: "8px", marginBottom: "-15px",
+            cursor: "pointer",
+            textTransform: "uppercase", letterSpacing: "0.05em"
+          }}
+        >
+          Membros Ativos ({totalCount})
+        </button>
+        <button
+          onClick={() => setViewMode("leads")}
+          style={{
+            background: "none", border: "none",
+            fontSize: "13px", fontWeight: 900,
+            color: viewMode === "leads" ? "#000" : "#666",
+            borderBottom: viewMode === "leads" ? "4px solid #DF2127" : "none",
+            paddingBottom: "8px", marginBottom: "-15px",
+            cursor: "pointer",
+            textTransform: "uppercase", letterSpacing: "0.05em",
+            display: "flex", gap: "6px", alignItems: "center"
+          }}
+        >
+          Pré-cadastros
+          {preRegistrations.length > 0 && (
+            <span style={{ background: "#DF2127", color: "#FFF", padding: "2px 6px", borderRadius: "12px", fontSize: "11px", fontWeight: 800 }}>
+              {preRegistrations.length}
+            </span>
+          )}
+        </button>
+      </div>
+
       {/* ── NEW STUDENT FORM ── */}
-      {showForm && (
+      {showForm && viewMode === "alunos" && (
         <div className="admin-card" style={{ marginBottom: 24, animation: "fadeIn 0.2s ease" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 20 }}>
             <UserPlus size={18} />
@@ -290,8 +388,11 @@ export default function AlunosClient({
         </div>
       )}
 
-      {/* ── SEARCH & FILTERS ── */}
-      <div style={{ display: "flex", gap: "16px", marginBottom: "32px", alignItems: "center" }}>
+      {/* ── ALUNOS VIEW ── */}
+      {viewMode === "alunos" && (
+        <>
+          {/* ── SEARCH & FILTERS ── */}
+          <div style={{ display: "flex", gap: "16px", marginBottom: "32px", alignItems: "center" }}>
         <div style={{ flex: 1, position: "relative" }}>
           <Search size={18} style={{ position: "absolute", left: "14px", top: "50%", transform: "translateY(-50%)", color: "#000" }} />
           <input type="search" placeholder="Buscar por nome ou telefone..." value={search} onChange={(e) => setSearch(e.target.value)} style={{ paddingLeft: "44px", border: "2px solid #000", fontWeight: 500 }} />
@@ -359,54 +460,122 @@ export default function AlunosClient({
         )}
       </div>
 
-      {/* ── PAGINATION CONTROLS ── */}
-      {totalPages > 1 && (
-        <div style={{ 
-          display: "flex", 
-          justifyContent: "space-between", 
-          alignItems: "center", 
-          marginBottom: 60,
-          background: "#FFF",
-          border: "3px solid #000",
-          padding: "16px 24px",
-          boxShadow: "8px 8px 0px rgba(0,0,0,1)"
-        }}>
-          <div style={{ fontSize: 13, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-            Mostrando {students.length} de {totalCount} resultado{totalCount !== 1 ? "s" : ""}
-          </div>
-          <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-            <button 
-              onClick={() => handlePageChange(currentPage - 1)}
-              disabled={currentPage <= 1}
-              style={{
-                padding: "10px 16px",
-                border: "2px solid #000",
-                background: currentPage <= 1 ? "#F3F4F6" : "#FFF",
-                cursor: currentPage <= 1 ? "not-allowed" : "pointer",
-                display: "flex", alignItems: "center", gap: 8,
-                fontSize: 12, fontWeight: 900
-              }}
-            >
-              <ChevronLeft size={18} /> ANTERIOR
-            </button>
-            <div style={{ fontSize: 13, fontWeight: 900, background: "#000", color: "#FFF", padding: "10px 20px" }}>
-              PÁGINA {currentPage} DE {totalPages}
+          {/* ── PAGINATION CONTROLS ── */}
+          {totalPages > 1 && (
+            <div style={{ 
+              display: "flex", 
+              justifyContent: "space-between", 
+              alignItems: "center", 
+              marginBottom: 60,
+              background: "#FFF",
+              border: "3px solid #000",
+              padding: "16px 24px",
+              boxShadow: "8px 8px 0px rgba(0,0,0,1)"
+            }}>
+              <div style={{ fontSize: 13, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                Mostrando {students.length} de {totalCount} resultado{totalCount !== 1 ? "s" : ""}
+              </div>
+              <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+                <button 
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage <= 1}
+                  style={{
+                    padding: "10px 16px",
+                    border: "2px solid #000",
+                    background: currentPage <= 1 ? "#F3F4F6" : "#FFF",
+                    cursor: currentPage <= 1 ? "not-allowed" : "pointer",
+                    display: "flex", alignItems: "center", gap: 8,
+                    fontSize: 12, fontWeight: 900
+                  }}
+                >
+                  <ChevronLeft size={18} /> ANTERIOR
+                </button>
+                <div style={{ fontSize: 13, fontWeight: 900, background: "#000", color: "#FFF", padding: "10px 20px" }}>
+                  PÁGINA {currentPage} DE {totalPages}
+                </div>
+                <button 
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage >= totalPages}
+                  style={{
+                    padding: "10px 16px",
+                    border: "2px solid #000",
+                    background: currentPage >= totalPages ? "#F3F4F6" : "#FFF",
+                    cursor: currentPage >= totalPages ? "not-allowed" : "pointer",
+                    display: "flex", alignItems: "center", gap: 8,
+                    fontSize: 12, fontWeight: 900
+                  }}
+                >
+                  PRÓXIMA <ChevronRight size={18} />
+                </button>
+              </div>
             </div>
-            <button 
-              onClick={() => handlePageChange(currentPage + 1)}
-              disabled={currentPage >= totalPages}
-              style={{
-                padding: "10px 16px",
-                border: "2px solid #000",
-                background: currentPage >= totalPages ? "#F3F4F6" : "#FFF",
-                cursor: currentPage >= totalPages ? "not-allowed" : "pointer",
-                display: "flex", alignItems: "center", gap: 8,
-                fontSize: 12, fontWeight: 900
-              }}
-            >
-              PRÓXIMA <ChevronRight size={18} />
-            </button>
-          </div>
+          )}
+        </>
+      )}
+
+      {/* ── LEADS VIEW ── */}
+      {viewMode === "leads" && (
+        <div className="admin-card" style={{ padding: 0, overflow: "hidden", marginBottom: 24 }}>
+          {preRegistrations.length === 0 ? (
+            <div style={{ padding: "64px 20px", textAlign: "center", color: "#666", fontSize: "14px" }}>Nenhum pré-cadastro pendente.</div>
+          ) : (
+            <div style={{ overflowX: "auto" }}>
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th style={{ paddingLeft: "24px" }}>Candidato</th>
+                    <th>Contato</th>
+                    <th>Data Solicitação</th>
+                    <th style={{ width: "160px" }}>Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {preRegistrations.map((lead: any) => (
+                    <tr key={lead.id}>
+                      <td style={{ paddingLeft: "24px" }}>
+                        <div style={{ fontWeight: 800, fontSize: "14px", color: "#000" }}>{lead.full_name}</div>
+                      </td>
+                      <td>
+                        <div style={{ fontSize: "13px", fontWeight: 600 }}>{lead.phone}</div>
+                        <div style={{ fontSize: "11px", color: "#666" }}>{lead.email}</div>
+                      </td>
+                      <td style={{ fontSize: "13px" }}>{formatDate(lead.created_at)}</td>
+                      <td>
+                        {loadingLeadId === lead.id ? (
+                          <span style={{ fontSize: "12px", fontWeight: 700, color: "#666" }}>Processando...</span>
+                        ) : (
+                          <div style={{ display: "flex", gap: "8px" }}>
+                            <button 
+                              onClick={() => { setSelectedLead(lead); setIsEditingLead(true); }}
+                              className="admin-btn admin-btn-ghost" 
+                              style={{ width: "36px", height: "36px", padding: 0 }}
+                              title="Editar Dados"
+                            >
+                              <Pencil size={16} />
+                            </button>
+                            <button 
+                              onClick={() => handleApproveLead(lead.id)} 
+                              className="admin-btn admin-btn-primary" 
+                              style={{ padding: "6px 12px", fontSize: "11px", backgroundColor: "#000", color: "#FFF" }}
+                            >
+                              Aceitar
+                            </button>
+                            <button 
+                              onClick={() => handleRejectLead(lead.id)} 
+                              className="admin-btn admin-btn-ghost" 
+                              style={{ padding: "6px 12px", fontSize: "11px", color: "#DC2626" }}
+                            >
+                              Rejeitar
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
 
@@ -741,6 +910,182 @@ export default function AlunosClient({
                 </div>
               )}
             </div>
+          </div>
+        </div>
+      )}
+      {/* ── NOTIFICATION OVERLAY (NEO-BRUTALIST MODAL) ── */}
+      {message && (
+        <div style={{
+          position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: "rgba(0,0,0,0.8)",
+          backdropFilter: "blur(8px)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          zIndex: 10000, padding: 20,
+          animation: "fadeIn 0.2s ease-out"
+        }}>
+          <div style={{
+            background: "#FFF",
+            width: "100%",
+            maxWidth: "400px",
+            border: "4px solid #000",
+            boxShadow: "16px 16px 0px #000",
+            padding: "32px",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            textAlign: "center",
+            animation: "slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)"
+          }}>
+            <style>{`
+              @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+              @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+            `}</style>
+
+            <div style={{ 
+              width: 64, height: 64, 
+              background: message.type === "success" ? "#22C55E" : "#EF4444",
+              border: "3px solid #000",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              marginBottom: 24,
+              boxShadow: "4px 4px 0px #000"
+            }}>
+              {message.type === "success" ? <ShieldCheck color="white" size={32} /> : <Info color="white" size={32} />}
+            </div>
+
+            <h3 style={{ 
+              fontSize: 20, fontWeight: 900, textTransform: "uppercase", 
+              margin: "0 0 12px 0", letterSpacing: "0.05em",
+              color: "#000"
+            }}>
+              {message.type === "success" ? "Sucesso" : "Atenção"}
+            </h3>
+
+            <p style={{ 
+              fontSize: 14, fontWeight: 700, color: "#444", 
+              margin: "0 0 32px 0", lineHeight: 1.5 
+            }}>
+              {message.text}
+            </p>
+
+            <button 
+              onClick={() => setMessage(null)}
+              className="admin-btn admin-btn-primary"
+              style={{ 
+                width: "100%", 
+                height: 56, 
+                fontSize: 14, 
+                fontWeight: 900,
+                backgroundColor: "#000",
+                color: "#FFF"
+              }}
+            >
+              ENTENDIDO
+            </button>
+          </div>
+        </div>
+      )}
+      {/* ── EDIT LEAD MODAL ── */}
+      {isEditingLead && selectedLead && (
+        <div style={{
+          position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: "rgba(0,0,0,0.8)",
+          backdropFilter: "blur(4px)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          zIndex: 9999, padding: 20
+        }}>
+          <div style={{
+            background: "#FFF", 
+            width: "100%", 
+            maxWidth: "500px", 
+            border: "4px solid #000",
+            boxShadow: "16px 16px 0px #000",
+            padding: "32px",
+            animation: "modalAppear 0.2s ease-out"
+          }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
+              <h2 style={{ fontSize: 18, fontWeight: 900, textTransform: "uppercase", margin: 0 }}>Editar Pré-cadastro</h2>
+              <button 
+                onClick={() => { setIsEditingLead(false); setSelectedLead(null); }} 
+                style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            <form action={handleUpdateLead} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <div>
+                <label style={{ display: "block", fontSize: 11, fontWeight: 900, textTransform: "uppercase", marginBottom: 6 }}>Nome Completo</label>
+                <input 
+                  type="text" 
+                  name="full_name" 
+                  required 
+                  defaultValue={selectedLead.full_name} 
+                  style={{ width: "100%", padding: 12, border: "2px solid #000", fontWeight: 700 }} 
+                />
+              </div>
+
+              <div>
+                <label style={{ display: "block", fontSize: 11, fontWeight: 900, textTransform: "uppercase", marginBottom: 6 }}>E-mail</label>
+                <input 
+                  type="email" 
+                  name="email" 
+                  required 
+                  defaultValue={selectedLead.email} 
+                  style={{ width: "100%", padding: 12, border: "2px solid #000", fontWeight: 700 }} 
+                />
+              </div>
+
+              <div>
+                <label style={{ display: "block", fontSize: 11, fontWeight: 900, textTransform: "uppercase", marginBottom: 6 }}>Telefone</label>
+                <input 
+                  type="text" 
+                  name="phone" 
+                  required 
+                  defaultValue={selectedLead.phone} 
+                  style={{ width: "100%", padding: 12, border: "2px solid #000", fontWeight: 700 }} 
+                />
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div>
+                  <label style={{ display: "block", fontSize: 11, fontWeight: 900, textTransform: "uppercase", marginBottom: 6 }}>CPF</label>
+                  <input 
+                    type="text" 
+                    name="cpf" 
+                    defaultValue={selectedLead.cpf} 
+                    style={{ width: "100%", padding: 12, border: "2px solid #000", fontWeight: 700 }} 
+                  />
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: 11, fontWeight: 900, textTransform: "uppercase", marginBottom: 6 }}>Nascimento</label>
+                  <input 
+                    type="date" 
+                    name="birth_date" 
+                    defaultValue={selectedLead.birth_date ? selectedLead.birth_date.split('T')[0] : ""} 
+                    style={{ width: "100%", padding: 12, border: "2px solid #000", fontWeight: 700 }} 
+                  />
+                </div>
+              </div>
+
+              <div style={{ marginTop: 20, display: "flex", gap: 12 }}>
+                <button 
+                  type="button" 
+                  onClick={() => { setIsEditingLead(false); setSelectedLead(null); }} 
+                  className="admin-btn admin-btn-ghost" 
+                  style={{ flex: 1, height: 48 }}
+                >
+                  CANCELAR
+                </button>
+                <button 
+                  type="submit" 
+                  disabled={loading} 
+                  className="admin-btn admin-btn-primary" 
+                  style={{ flex: 1, height: 48, backgroundColor: "#000", color: "#FFF" }}
+                >
+                  {loading ? "SALVANDO..." : "SALVAR ALTERAÇÕES"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

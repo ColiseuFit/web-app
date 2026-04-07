@@ -77,7 +77,11 @@ export async function createStudent(formData: FormData) {
   });
 
   if (authError) {
-    return { error: "Erro ao criar credenciais: " + authError.message };
+    let errorMessage = "Ocorreu um erro ao criar a conta de acesso.";
+    if (authError.message.includes("already been registered")) {
+      errorMessage = "Este e-mail já está sendo utilizado por outro aluno.";
+    }
+    return { error: errorMessage };
   }
 
   const userId = authData.user.id;
@@ -92,7 +96,7 @@ export async function createStudent(formData: FormData) {
     });
 
   if (profileError) {
-    return { error: "Erro ao criar perfil: " + profileError.message };
+    return { error: "Não foi possível criar o perfil do aluno no banco de dados." };
   }
 
   // 3. Atribui a Role correta
@@ -104,7 +108,7 @@ export async function createStudent(formData: FormData) {
     });
 
   if (roleError) {
-    return { error: "Erro ao atribuir role: " + roleError.message };
+    return { error: "Falha ao definir o nível de acesso (role) do aluno." };
   }
 
   revalidatePath("/admin");
@@ -173,7 +177,7 @@ export async function updateStudent(studentId: string, formData: FormData) {
     .update(updates)
     .eq("id", studentId);
 
-  if (error) return { error: "Erro ao atualizar: " + error.message };
+  if (error) return { error: "Não foi possível atualizar as informações do perfil." };
 
   revalidatePath("/admin/alunos");
   revalidatePath("/profile");
@@ -242,7 +246,7 @@ export async function deleteStudent(studentId: string) {
   // 1. Delete from Auth (this will trigger cascade deletion in profiles if configured, 
   // but we manually handle the profiles table to ensure RLS/Triggers compliance)
   const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(studentId);
-  if (authError) return { error: "Erro ao remover credenciais: " + authError.message };
+  if (authError) return { error: "Não foi possível remover completamente as credenciais de acesso." };
 
   revalidatePath("/admin/alunos");
   return { success: true };
@@ -296,7 +300,11 @@ export async function updateStudentAuth(studentId: string, formData: FormData) {
   
   if (authError) {
     console.error("[updateStudentAuth] Auth Error:", authError);
-    return { error: "Erro no servidor de autenticação: " + authError.message };
+    let errorMessage = "Falha ao atualizar as informações de login.";
+    if (authError.message.includes("already been registered")) {
+      errorMessage = "O novo e-mail informado já está em uso por outro usuário.";
+    }
+    return { error: errorMessage };
   }
 
   revalidatePath("/admin/alunos");
@@ -349,7 +357,7 @@ export async function upsertWod(formData: FormData) {
     .from("wods")
     .upsert(payload, { onConflict: "date" });
 
-  if (error) return { error: "Erro ao salvar WOD: " + error.message };
+  if (error) return { error: "Falha ao salvar as informações do treino (WOD)." };
 
   revalidatePath("/admin/wods");
   revalidatePath("/dashboard");
@@ -382,7 +390,7 @@ export async function deleteWod(date: string) {
     .delete()
     .eq("date", date);
 
-  if (error) return { error: "Erro ao remover treino: " + error.message };
+  if (error) return { error: "Não foi possível remover o treino selecionado." };
 
   revalidatePath("/admin/wods");
   revalidatePath("/dashboard");
@@ -433,7 +441,7 @@ export async function upsertPhysicalEvaluation(data: any) {
 
   if (res.error) {
     console.error("[upsertPhysicalEvaluation] DB Error:", res.error);
-    return { error: "Falha na persistência: " + res.error.message };
+    return { error: "Erro ao salvar a avaliação física." };
   }
 
   revalidatePath("/admin/alunos");
@@ -456,7 +464,7 @@ export async function getStudentEvaluations(studentId: string) {
 
   if (error) {
     console.error("[getStudentEvaluations] Error:", error);
-    return { error: "Erro ao buscar histórico: " + error.message };
+    return { error: "Não foi possível carregar o histórico de avaliações." };
   }
   return { evaluations: data };
 }
@@ -476,7 +484,7 @@ export async function deletePhysicalEvaluation(id: string) {
   const res = await supabase.from("physical_evaluations").delete().eq("id", id);
   if (res.error) {
     console.error("[deletePhysicalEvaluation] Error:", res.error);
-    return { error: "Erro ao excluir registro: " + res.error.message };
+    return { error: "Falha ao excluir o registro da avaliação." };
   }
   
   revalidatePath("/admin/alunos");
@@ -552,3 +560,203 @@ export async function uploadEvaluationPhoto(formData: FormData) {
   }
 }
 
+/**
+ * Converts a pre-registration lead into a full student account.
+ * 
+ * @security
+ * - Role Requirement: Only 'admin' or 'reception' roles can execute this action.
+ * - RLS Bypass: Uses `SUPABASE_SERVICE_ROLE_KEY` to create Auth credential and insert cross-table rows.
+ * 
+ * @param {string} preRegistrationId - The UUID of the pre-registration lead.
+ * @returns {Promise<{ success?: boolean; error?: string }>} An object indicating success or failure.
+ */
+export async function approvePreRegistration(preRegistrationId: string) {
+  const supabase = await createClient();
+  const { data: { user: currentUser } } = await supabase.auth.getUser();
+  if (!currentUser) return { error: "Sem sessão logada." };
+
+  const { data: roleData } = await supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", currentUser.id)
+    .single();
+
+  if (!roleData || (roleData.role !== "admin" && roleData.role !== "reception")) {
+    return { error: "Acesso negado. Apenas Recepção ou Admin." };
+  }
+
+  // 1. Fetch the lead data
+  const { data: lead, error: leadError } = await supabase
+    .from("pre_registrations")
+    .select("*")
+    .eq("id", preRegistrationId)
+    .single();
+
+  if (leadError || !lead) {
+    return { error: "Lead não encontrado." };
+  }
+
+  if (lead.status !== "pending") {
+    return { error: "Lead já processado." };
+  }
+
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim().split(' ')[0];
+  if (!serviceRoleKey) {
+    return { error: "Erro: SUPABASE_SERVICE_ROLE_KEY não encontrada." };
+  }
+
+  const supabaseAdmin = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    serviceRoleKey,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  );
+
+  // 2. Create Auth Credential (generate 6 chars random password)
+  const randomSuffix = Math.random().toString(36).substring(2, 8);
+  const userPassword = `Coliseu@${randomSuffix}`;
+  
+  const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+    email: lead.email,
+    password: userPassword,
+    email_confirm: true,
+  });
+
+  if (authError) {
+    let errorMessage = "Erro ao criar credenciais de acesso.";
+    if (authError.message.includes("already been registered")) {
+      errorMessage = "Este e-mail já está cadastrado em outro perfil de aluno.";
+    } else if (authError.message.includes("Password should be")) {
+      errorMessage = "A senha padrão não atende aos requisitos de segurança.";
+    }
+    return { error: errorMessage || authError.message };
+  }
+
+  const userId = authData.user.id;
+
+  // 3. Create Profile
+  // We split full_name into first and last name as a basic heuristic
+  const nameParts = lead.full_name.trim().split(" ");
+  const firstName = nameParts[0];
+  const lastName = nameParts.length > 1 ? nameParts.slice(1).join(" ") : null;
+
+  const { error: profileError } = await supabaseAdmin
+    .from("profiles")
+    .insert({
+      id: userId,
+      full_name: lead.full_name,
+      first_name: firstName,
+      last_name: lastName,
+      phone: lead.phone,
+      cpf: lead.cpf,
+      birth_date: lead.birth_date,
+      level: "branco", // Default starting level
+    });
+
+  if (profileError) {
+    return { error: "Ocorreu uma falha ao vincular os dados pessoais do aluno." };
+  }
+
+  // 4. Assign Role
+  const { error: roleError } = await supabaseAdmin
+    .from("user_roles")
+    .insert({
+      user_id: userId,
+      role: "student",
+    });
+
+  if (roleError) {
+    return { error: "Falha ao definir as permissões de acesso do novo aluno." };
+  }
+
+  // 5. Update Pre-registration Status
+  await supabaseAdmin
+    .from("pre_registrations")
+    .update({ status: "approved" })
+    .eq("id", preRegistrationId);
+
+  revalidatePath("/admin/alunos");
+  return { success: true, password: userPassword };
+}
+
+/**
+ * Rejects a pre-registration lead, marking it as 'rejected'.
+ * 
+ * @security
+ * - Role Requirement: Only 'admin' or 'reception' roles.
+ * 
+ * @param {string} preRegistrationId - The UUID of the lead to reject.
+ * @returns {Promise<{ success?: boolean; error?: string }>} Form operation status.
+ */
+export async function rejectPreRegistration(preRegistrationId: string) {
+  const supabase = await createClient();
+  const { data: { user: currentUser } } = await supabase.auth.getUser();
+  if (!currentUser) return { error: "Sem sessão logada." };
+
+  const { data: roleData } = await supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", currentUser.id)
+    .single();
+
+  if (!roleData || (roleData.role !== "admin" && roleData.role !== "reception")) {
+    return { error: "Acesso negado." };
+  }
+
+  // We can use standard supabase update since RLS allows update for admin/reception
+  const { error } = await supabase
+    .from("pre_registrations")
+    .update({ status: "rejected" })
+    .eq("id", preRegistrationId);
+
+  if (error) {
+    return { error: "Não foi possível arquivar este pré-cadastro no momento." };
+  }
+
+  revalidatePath("/admin/alunos");
+  return { success: true };
+}
+/**
+ * Updates a pre-registration lead data.
+ * 
+ * @security
+ * - Role Requirement: Only 'admin' or 'reception' roles.
+ * 
+ * @param {string} preRegistrationId - The UUID of the lead to update.
+ * @param {FormData} formData - The data to update (full_name, email, phone, cpf, birth_date).
+ * @returns {Promise<{ success?: boolean; error?: string }>} Form operation status.
+ */
+export async function updatePreRegistration(preRegistrationId: string, formData: FormData) {
+  const supabase = await createClient();
+  const { data: { user: currentUser } } = await supabase.auth.getUser();
+  if (!currentUser) return { error: "Sem sessão logada." };
+
+  const { data: roleData } = await supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", currentUser.id)
+    .single();
+
+  if (!roleData || (roleData.role !== "admin" && roleData.role !== "reception")) {
+    return { error: "Acesso negado." };
+  }
+
+  const updates = {
+    full_name: formData.get("full_name") as string,
+    email: formData.get("email") as string,
+    phone: formData.get("phone") as string,
+    cpf: formData.get("cpf") as string,
+    birth_date: formData.get("birth_date") as string || null,
+  };
+
+  const { error } = await supabase
+    .from("pre_registrations")
+    .update(updates)
+    .eq("id", preRegistrationId);
+
+  if (error) {
+    return { error: "Erro ao atualizar pré-cadastro: " + error.message };
+  }
+
+  revalidatePath("/admin/alunos");
+  return { success: true };
+}

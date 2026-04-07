@@ -76,11 +76,17 @@ export default async function AlunosPage({
   // 3. Execute with pagination and sorting
   const [
     { data: profilesRes, error: profilesError, count: totalCount },
+    { data: preRegistrationsRes },
     dynamicLevels
   ] = await Promise.all([
     query
       .order("full_name", { ascending: true })
       .range(from, to),
+    supabase
+      .from("pre_registrations")
+      .select("*")
+      .eq("status", "pending")
+      .order("created_at", { ascending: false }),
     getCachedLevels()
   ]);
 
@@ -110,6 +116,7 @@ export default async function AlunosPage({
   return (
     <AlunosClient 
       students={students} 
+      preRegistrations={preRegistrationsRes || []}
       dynamicLevels={dynamicLevels}
       currentPage={page}
       totalPages={totalPages}

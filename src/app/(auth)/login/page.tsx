@@ -5,6 +5,7 @@ import { login } from "../actions";
 import Link from "next/link";
 import Image from "next/image";
 import { LoginCarousel, slides, AUTOPLAY_INTERVAL } from "@/components/auth/LoginCarousel";
+import { PreRegistrationForm } from "@/components/auth/PreRegistrationForm";
 import { motion, AnimatePresence } from "framer-motion";
 
 /**
@@ -26,7 +27,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [currentSlide, setCurrentSlide] = useState(0);
-  const [view, setView] = useState<"landing" | "login">("landing");
+  const [view, setView] = useState<"landing" | "login" | "pre-register" | "pre-register-success">("landing");
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -68,7 +69,7 @@ export default function LoginPage() {
       <div
         className="login-image-panel relative overflow-hidden"
         style={{
-          height: view === "login" ? "clamp(80px, 15vh, 180px)" : "clamp(180px, 42vh, 60%)",
+          height: view === "login" || view === "pre-register" ? "clamp(80px, 15vh, 180px)" : "clamp(180px, 42vh, 60%)",
           flexShrink: 0,
           transition: "height 0.5s cubic-bezier(0.16, 1, 0.3, 1)"
         }}
@@ -95,11 +96,11 @@ export default function LoginPage() {
           ══════════════════════════════════════════════════════ */}
       <div
         className="login-content-panel flex flex-col bg-[#050505]"
-        style={{ flex: 1, overflowY: view === "login" ? "auto" : "hidden", overflowX: "hidden" }}
+        style={{ flex: 1, overflowY: view === "login" || view === "pre-register" ? "auto" : "hidden", overflowX: "hidden" }}
       >
         {/* Padded inner — full height flex-col */}
         <div
-          className={`flex flex-col h-full transition-all duration-700 ${view === "login" ? "login-inner-form" : "login-inner-landing"}`}
+          className={`flex flex-col h-full transition-all duration-700 ${view === "login" || view === "pre-register" ? "login-inner-form" : "login-inner-landing"}`}
           style={{ 
             padding: "clamp(16px, 3vh, 28px) 24px",
             justifyContent: view === "landing" ? "space-between" : "flex-start"
@@ -215,7 +216,7 @@ export default function LoginPage() {
                   {/* MATRICULAR */}
                   <button
                     type="button"
-                    onClick={() => window.open("https://wa.me/5573999911525", "_blank")}
+                    onClick={() => setView("pre-register")}
                     style={{
                       width: "100%",
                       display: "flex",
@@ -415,6 +416,65 @@ export default function LoginPage() {
                       COLISEU © {new Date().getFullYear()}
                     </p>
                   </form>
+                </motion.div>
+              )}
+              {/* PRE-REGISTER FORM */}
+              {view === "pre-register" && (
+                <PreRegistrationForm 
+                  onBack={() => setView("landing")} 
+                  onSuccess={() => setView("pre-register-success")} 
+                />
+              )}
+
+              {/* SUCCESS MESSAGE */}
+              {view === "pre-register-success" && (
+                <motion.div
+                  key="success-form"
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                  className="flex flex-col items-center justify-center flex-1 text-center"
+                  style={{ gap: "24px", paddingTop: "40px" }}
+                >
+                  <div style={{
+                    width: "80px", height: "80px", borderRadius: "50%", background: "rgba(227,27,35,0.1)",
+                    display: "flex", alignItems: "center", justifyContent: "center", color: "#E31B23"
+                  }}>
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="square">
+                      <path d="M20 6L9 17l-5-5" />
+                    </svg>
+                  </div>
+                  
+                  <div>
+                    <h2 style={{ fontSize: "24px", fontWeight: 900, fontFamily: "Outfit, sans-serif", color: "white", textTransform: "uppercase", letterSpacing: "0.05em", margin: "0 0 8px 0" }}>Solicitação Enviada!</h2>
+                    <p style={{ fontSize: "14px", color: "rgba(255,255,255,0.6)", margin: 0, lineHeight: 1.5 }}>
+                      Recebemos seus dados. Nossa equipe avaliará e entrará em contato em breve via WhatsApp.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setView("landing")}
+                    style={{
+                      marginTop: "20px",
+                      padding: "16px 32px",
+                      background: "white",
+                      color: "#050505",
+                      border: "none",
+                      fontSize: "12px",
+                      fontFamily: "Outfit, sans-serif",
+                      fontWeight: 900,
+                      letterSpacing: "0.2em",
+                      textTransform: "uppercase",
+                      cursor: "pointer",
+                      transition: "all 0.2s"
+                    }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.8)"; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "white"; }}
+                  >
+                    VOLTAR PARA INÍCIO
+                  </button>
                 </motion.div>
               )}
             </AnimatePresence>
