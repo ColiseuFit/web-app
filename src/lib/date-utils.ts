@@ -83,11 +83,12 @@ export function formatDisplayDate(dateStr: string): string {
 }
 
 /**
- * Retorna uma lista dos dias da semana atual (Segunda a Sábado) no formato YYYY-MM-DD.
+ * Retorna uma lista dos dias de uma determinada semana (Segunda a Sábado) no formato YYYY-MM-DD.
  * 
+ * @param {number} offset - Deslocamento em semanas a partir da data atual (0 = atual, 1 = próxima, -1 = anterior)
  * @returns {string[]} Array de 6 datas representando a semana de treinos.
  */
-export function getWeekDates(): string[] {
+export function getWeekDates(offset: number = 0): string[] {
   const today = getTodayDate();
   const todayDateObj = new Date(today + "T00:00:00Z");
   
@@ -95,10 +96,45 @@ export function getWeekDates(): string[] {
   // Se for Domingo (0), recuamos 6 dias para pegar a Segunda anterior
   const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; 
   
-  const mondayMs = todayDateObj.getTime() - daysFromMonday * 86400000;
+  // Aplica o offset de semanas (offset * 7 dias)
+  const mondayMs = todayDateObj.getTime() - (daysFromMonday * 86400000) + (offset * 7 * 86400000);
   
   return Array.from({ length: 6 }, (_, i) => {
     const d = new Date(mondayMs + i * 86400000);
     return d.toISOString().split("T")[0];
   });
 }
+
+/**
+ * Gera um calendário semanal estruturado a partir de uma data base, garantindo aderência ao fuso de Brasília.
+ * 
+ * @param {string} baseDateStr - Data base no formato YYYY-MM-DD. Se nulo, usa a data atual local.
+ * @param {number} offset - Deslocamento em semanas.
+ * @param {number} daysToGenerate - Quantidade de dias para gerar (default 7 para admin, 6 para estudante).
+ * @returns {Array<{label: string, date: string, isToday: boolean}>}
+ */
+export function generateWeekCalendar(baseDateStr?: string, offset: number = 0, daysToGenerate: number = 7) {
+  const referenceDateStr = baseDateStr || getTodayDate();
+  const referenceObj = new Date(referenceDateStr + "T00:00:00Z");
+  
+  const dayOfWeek = referenceObj.getUTCDay();
+  const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+  const mondayMs = referenceObj.getTime() - (daysFromMonday * 86400000) + (offset * 7 * 86400000);
+  
+  const todayLocal = getTodayDate();
+
+  return Array.from({ length: daysToGenerate }, (_, i) => {
+    const d = new Date(mondayMs + i * 86400000);
+    const dateStr = d.toISOString().split("T")[0];
+    
+    // Obter sigla do dia da semana (ex: 'seg', 'ter', 'qua') usando UTC para não pular
+    const label = d.toLocaleDateString('pt-BR', { weekday: 'short', timeZone: 'UTC' }).replace('.', '');
+
+    return {
+      label: label,
+      date: dateStr,
+      isToday: dateStr === todayLocal,
+    };
+  });
+}
+

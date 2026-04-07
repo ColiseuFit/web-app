@@ -4,28 +4,11 @@ Bem-vindo à "Monolito de Ferro", a infraestrutura digital de elite do Coliseu. 
 
 ---
 
-## 📚 ÍNDICE DE DOCUMENTAÇÃO E PLAYBOOKS
+## 🚀 ESTRUTURA DO PROJETO
 
-A documentação segue o protocolo "Legacy Proof", garantindo manutenibilidade e excelência operacional:
+O Coliseu Clube V2 é construído sobre uma arquitetura de Monolito de Ferro, focada em performance extrema, isolamento de dados e estética Neo-Brutalista.
 
-### 🏛️ Mapeamento Operacional
-- [PLAYBOOK: Admin Hub (Painel Geral)](docs/PLAYBOOKS/ADMIN_HUB.md) - Controle de KPIs, matrículas e visão macro do box.
-- [PLAYBOOK: Portal do Coach (Live Operations)](docs/PLAYBOOKS/COACH_PORTAL.md) - **[ESTADO DA ARTE]** Gestão em tempo real, validação de presenças e busca rápida de alunos.
-- [PLAYBOOK: Gestão de Turmas](docs/PLAYBOOKS/CLASSES_MANAGEMENT.md) - **[IRON TABS]** Arquitetura dedicada em 4 pilares (Grade, Check-ins, CRM e Bloqueios).
-- [PLAYBOOK: App do Aluno (Experience)](docs/PLAYBOOKS/STUDENT_APP.md) - **[ATHLETIC NEO-BRUTALISM]** Rebranding total, Streaks e Engine de adaptação de WOD.
-- [PLAYBOOK: Fechamento de Aula](docs/PLAYBOOKS/FECHAMENTO_AULA.md) - Procedimento SSoT para validação de resultados e entrega de pontos.
-
-### ⚙️ Engenharia e Regras
-- [PLAYBOOK: WOD Engine](docs/PLAYBOOKS/ADMIN_WOD_ENGINE.md) - **[NOVO]** Detalhamento técnico do builder e lógica de escalonamento (L1-L5).
-- [PLAYBOOK: Gestão de Alunos](docs/PLAYBOOKS/ADMIN_STUDENT_MANAGEMENT.md) - CRUD avançado e Drawer de edição com validação Zod.
-- [PLAYBOOK: Gestão de Professores](docs/PLAYBOOKS/ADMIN_COACH_MANAGEMENT.md) - **[NOVO]** Concessão de acessos à equipe, promoção e senha padrão `coliseu123`.
-- [PLAYBOOK: Sistema de Pontuação](docs/PLAYBOOKS/PONTUACAO.md) - Economia de pontos (Points), ranking e Score Engine.
-- [PLAYBOOK: Coliseu Levels](docs/PLAYBOOKS/coliseu-levels.md) - Regras de progressão e SSoT dos níveis atléticos.
-
-### 📐 Arquitetura & Design
-- [GUIA: Iron Monolith Architecture](docs/PLAYBOOKS/IRON_MONOLITH_GUIDE.md) - **[FILOSOFIA 2.0]** Estética Brutalista Light & Dark, tokens CSS e paridade visual.
-- [ARCHITECTURE: Iron Engine](docs/ARCHITECTURE/ACTIVITY_ENGINE.md) - Engenharia de dados e arquitetura de componentes Server/Client.
-- [SQL SCHEMA: Contratos de Dados](docs/schema.sql) - Definição de Tabelas, RLS e Policies de segurança.
+---
 
 ## 🛠️ ARQUITETURA DO SISTEMA
 

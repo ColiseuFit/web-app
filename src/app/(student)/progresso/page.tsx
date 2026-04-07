@@ -11,6 +11,8 @@ export const metadata: Metadata = {
   title: "Meu Progresso",
 };
 
+import { getTodayDate } from "@/lib/date-utils";
+
 /**
  * Página de Progresso e Metas
  * Centraliza o Monitor de Compromisso, Recordes (PRs) e Objetivos Técnicos.
@@ -33,11 +35,11 @@ export default async function ProgressPage() {
   if (!user) redirect("/login");
 
   // 1. Data Fetching
-  const now = new Date();
-  const dayOfWeek = now.getUTCDay();
+  const todayStr = getTodayDate();
+  const todayMs = new Date(todayStr + "T00:00:00Z");
+  const dayOfWeek = todayMs.getUTCDay();
   const diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-  const monday = new Date(now.getTime() - diffToMonday * 86400000);
-  monday.setUTCHours(0, 0, 0, 0);
+  const monday = new Date(todayMs.getTime() - diffToMonday * 86400000);
 
   const [
     { data: profile },

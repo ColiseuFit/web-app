@@ -31,6 +31,8 @@ Fotos login/
 .vercel/
 .vscode/
 *.log
+*.tsbuildinfo
+*.js.map
 
 # Documentação Privada (Local apenas)
 *.obsidian
@@ -52,5 +54,6 @@ antigravity/
 brain/
 *.md.tmp
 task.md
+walkthrough.md
 brainstorm_plataforma.md
 test_login.js

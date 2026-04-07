@@ -12,6 +12,7 @@ import { getLevelInfo } from "@/lib/constants/levels";
 import { getCachedLevels } from "@/lib/constants/levels_actions";
 import { AlertTriangle } from "lucide-react";
 import { getTodayDate, getWeekDates } from "@/lib/date-utils";
+import { getBoxSettings } from "@/lib/constants/settings_actions";
 import { DAY_SHORT, ACTIVE_DAYS } from "@/lib/constants/calendar";
 
 // import RecentPRs from "@/components/progress/RecentPRs"; (Removed: moving to Progress page)
@@ -21,7 +22,7 @@ export const metadata: Metadata = {
 };
 
 interface PageProps {
-  searchParams: Promise<{ date?: string }>;
+  searchParams: Promise<{ date?: string; weekOffset?: string }>;
 }
 
 /**
@@ -45,6 +46,7 @@ export default async function AppDashboard({ searchParams }: PageProps) {
   if (!user) redirect("/login");
 
   const params = await searchParams;
+  const weekOffset = parseInt(params.weekOffset || "0", 10);
   
   const today = getTodayDate();
   const selectedDate = params.date || today;
@@ -55,29 +57,48 @@ export default async function AppDashboard({ searchParams }: PageProps) {
     { data: selectedWod },
     { data: weekWods },
     { data: holiday },
-    dynamicLevels
+    dynamicLevels,
+    boxSettings
   ] = await Promise.all([
     supabase.from("profiles").select("*").eq("id", user.id).single(),
     supabase.from("wods").select("*").eq("date", selectedDate).order("created_at", { ascending: false }).limit(1).maybeSingle(),
-    supabase.from("wods").select("id, date, title, tags").in("date", getWeekDates()),
+    supabase.from("wods").select("id, date, title, tags").in("date", getWeekDates(weekOffset)),
     supabase.from("box_holidays").select("*").eq("date", selectedDate).maybeSingle(),
-    getCachedLevels()
+    getCachedLevels(),
+    getBoxSettings()
   ]);
 
-  // 6. Check-in (Dependent on selectedWod)
+  // ── Visibility Logic ──
+  const visibilityWeeks = parseInt(boxSettings.wod_visibility_weeks || "1", 10);
+  const todayObj = new Date(today + "T00:00:00Z");
+  const dayOfWeek = todayObj.getUTCDay();
+  const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+  const currentMonday = new Date(todayObj.getTime() - daysFromMonday * 86400000);
+  
+  // Max date is the end of the Nth week (Sunday)
+  const maxDateVisible = new Date(currentMonday.getTime() + (visibilityWeeks * 7) * 86400000 - 86400000);
+  const selectedDateObj = new Date(selectedDate + "T00:00:00Z");
+  
+  const isVisible = selectedDateObj <= maxDateVisible;
+  
+  // If user is trying to see a forbidden future date, force to today
+  const finalSelectedDate = isVisible ? selectedDate : today;
+  const finalSelectedWod = isVisible ? selectedWod : null;
+
+  // 6. Check-in (Dependent on finalSelectedWod)
   let userCheckin = null;
-  if (selectedWod) {
+  if (finalSelectedWod) {
     const { data: checkin } = await supabase
       .from("check_ins")
       .select("id, status, result")
       .eq("student_id", user.id)
-      .eq("wod_id", selectedWod.id)
+      .eq("wod_id", finalSelectedWod.id)
       .neq("status", "missed")
       .maybeSingle();
     userCheckin = checkin;
   }
 
-  const weekDates = getWeekDates();
+  const weekDates = getWeekDates(weekOffset);
   const BENCHMARKS = ["FRAN", "CINDY", "MURPH", "KAREN", "DT", "GRACE", "HELEN", "ANNIE", "AMANDA", "BARBARA"];
   const wodsByDate = Object.fromEntries((weekWods || []).map((w) => [w.date, w]));
 
@@ -177,7 +198,12 @@ export default async function AppDashboard({ searchParams }: PageProps) {
 
 
         <div style={{ animation: "slideInUp 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards", opacity: 0 }}>
-          <WeekWodCarousel wods={carouselWods} selectedDate={selectedDate} />
+          <WeekWodCarousel 
+            wods={carouselWods} 
+            selectedDate={selectedDate} 
+            weekOffset={weekOffset}
+            maxWeeks={visibilityWeeks}
+          />
         </div>
 
         <section 
@@ -203,8 +229,8 @@ export default async function AppDashboard({ searchParams }: PageProps) {
           </div>
 
           <WodView 
-            wod={selectedWod} 
-            selectedDate={selectedDate} 
+            wod={finalSelectedWod} 
+            selectedDate={finalSelectedDate} 
             checkin={userCheckin}
             studentLevel={profile?.level || "branco"}
             holiday={holiday}

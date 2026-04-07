@@ -5,6 +5,7 @@ import { X, Loader2 } from "lucide-react";
 import { performCheckIn, getAvailableSlots } from "@/app/(student)/actions";
 import { hapticSelect, hapticConfirm } from "@/lib/haptic";
 import PointsToast from "./PointsToast";
+import { getTodayDate } from "@/lib/date-utils";
 
 interface CheckInModalProps {
   wodId: string;
@@ -84,7 +85,7 @@ export default function CheckInModal({ wodId, date, onClose, onSuccess }: CheckI
     timeZone: "UTC"
   }).format(dateObj).replace("-feira", "");
 
-  const todayStr = new Date().toLocaleDateString("en-CA");
+  const todayStr = getTodayDate();
   const isToday = date === todayStr;
 
   const handleSlotSelect = (id: string, time: string) => {

@@ -66,6 +66,7 @@ export async function updateBoxSettingsAction(settings: Record<string, string>) 
   revalidatePath("/admin/settings");
   revalidatePath("/admin/turmas");
   revalidatePath("/(student)/dashboard", "layout"); // Update name/whatsapp if changed
+  revalidatePath("/(student)/treinos", "page");
   
   return { success: true };
 }

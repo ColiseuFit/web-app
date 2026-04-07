@@ -1,20 +1,22 @@
 "use client";
 
 import { useState } from "react";
-import { Settings as SettingsIcon, Zap, ShieldCheck, Trophy, Star } from "lucide-react";
+import { Settings as SettingsIcon, Zap, ShieldCheck, Trophy, Star, Dumbbell } from "lucide-react";
 import GeneralSettingsManager from "./GeneralSettingsManager";
 import LevelsManager from "./LevelsManager";
 import PointsSettingsManager from "./PointsSettingsManager";
+import WodSettingsManager from "./WodSettingsManager";
 
 interface SettingsTabsProps {
   initialSettings: Record<string, string>;
 }
 
 export default function SettingsTabs({ initialSettings }: SettingsTabsProps) {
-  const [activeTab, setActiveTab] = useState<"geral" | "metodologia" | "pontuacao" | "seguranca">("geral");
+  const [activeTab, setActiveTab] = useState<"geral" | "wod" | "metodologia" | "pontuacao" | "seguranca">("geral");
 
   const TABS = [
     { id: "geral", label: "Geral", icon: SettingsIcon },
+    { id: "wod", label: "WOD", icon: Dumbbell },
     { id: "metodologia", label: "Metodologia", icon: Zap },
     { id: "pontuacao", label: "Pontuação", icon: Star },
     { id: "seguranca", label: "Segurança", icon: ShieldCheck }
@@ -76,6 +78,10 @@ export default function SettingsTabs({ initialSettings }: SettingsTabsProps) {
 
         {activeTab === "geral" && (
           <GeneralSettingsManager initialSettings={initialSettings} />
+        )}
+
+        {activeTab === "wod" && (
+          <WodSettingsManager initialSettings={initialSettings} />
         )}
 
         {activeTab === "metodologia" && (

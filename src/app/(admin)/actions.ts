@@ -345,25 +345,9 @@ export async function upsertWod(formData: FormData) {
     updated_at: new Date().toISOString(),
   };
 
-  const { data: existingWod } = await supabase
+  const { error } = await supabase
     .from("wods")
-    .select("id")
-    .eq("date", payload.date)
-    .maybeSingle();
-
-  let error;
-  if (existingWod) {
-    const { error: updateError } = await supabase
-      .from("wods")
-      .update(payload)
-      .eq("id", existingWod.id);
-    error = updateError;
-  } else {
-    const { error: insertError } = await supabase
-      .from("wods")
-      .insert(payload);
-    error = insertError;
-  }
+    .upsert(payload, { onConflict: "date" });
 
   if (error) return { error: "Erro ao salvar WOD: " + error.message };
 

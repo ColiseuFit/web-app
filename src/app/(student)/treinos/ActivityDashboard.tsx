@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { ActivityFeedCard } from "@/components/activity/ActivityFeedCard";
 import { Flame, Zap, BarChart3, Dumbbell, History, Target } from "lucide-react";
+import { getTodayDate } from "@/lib/date-utils";
 
 /**
  * Componente AnimatedNumber
@@ -76,11 +77,10 @@ export default function ActivityDashboard({ history = [] }: { history?: Activity
 
   let chartData: { label: string; value: number }[] = [];
   
-  // ── DATA CALCULATION FOR FREQUENCY CHART E STREAK ──
   // Assume server time / local time approx
-  const now = new Date();
-  const currentMonthStr = String(now.getMonth() + 1).padStart(2, '0');
-  const currentYearStr = String(now.getFullYear());
+  const todayStr = getTodayDate();
+  const [currentYearStr, currentMonthStr] = todayStr.split('-');
+  const todayMs = new Date(todayStr + "T12:00:00Z").getTime();
   
   const getDailyStatus = (isoDayStr: string) => {
     const checkinsOnDay = history.filter((h: any) => h.isoDate === isoDayStr);
@@ -92,11 +92,11 @@ export default function ActivityDashboard({ history = [] }: { history?: Activity
 
   if (activePeriodLow === "semana") {
     for (let i = 6; i >= 0; i--) {
-       const d = new Date(now);
-       d.setDate(d.getDate() - i);
+       const ms = todayMs - i * 86400000;
+       const d = new Date(ms);
        const iso = d.toISOString().split('T')[0];
        const dayNames = ["D", "S", "T", "Q", "Q", "S", "S"];
-       chartData.push({ label: dayNames[d.getDay()], value: getDailyStatus(iso) });
+       chartData.push({ label: dayNames[d.getUTCDay()], value: getDailyStatus(iso) });
     }
   } else if (activePeriodLow === "ano") {
     const months = ["JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET", "OUT", "NOV", "DEZ"];
@@ -108,8 +108,8 @@ export default function ActivityDashboard({ history = [] }: { history?: Activity
   } else if (activePeriodLow === "tudo") {
     const years = [currentYearStr]; // Start with current year or expand based on real data span
     const lastItemIso = history.length > 0 ? history[history.length - 1].isoDate : undefined;
-    const startYear = lastItemIso ? parseInt(lastItemIso.split('-')[0]) : now.getFullYear();
-    for (let y = startYear; y <= now.getFullYear(); y++) {
+    const startYear = lastItemIso ? parseInt(lastItemIso.split('-')[0]) : parseInt(currentYearStr);
+    for (let y = startYear; y <= parseInt(currentYearStr); y++) {
        const yStr = String(y);
        if (!years.includes(yStr)) years.push(yStr);
     }
@@ -119,7 +119,7 @@ export default function ActivityDashboard({ history = [] }: { history?: Activity
     });
   } else {
     // Mês
-    const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    const daysInMonth = new Date(parseInt(currentYearStr), parseInt(currentMonthStr), 0).getDate();
     for (let d = 1; d <= daysInMonth; d++) {
        const dStr = String(d).padStart(2, '0');
        const iso = `${currentYearStr}-${currentMonthStr}-${dStr}`;
@@ -130,9 +130,8 @@ export default function ActivityDashboard({ history = [] }: { history?: Activity
   // Calculate real streak
   let currentStreak = 0;
   let isStreakBroken = false;
-  const todayMillis = new Date().setHours(0,0,0,0);
   for (let i = 0; i < 365; i++) {
-     const d = new Date(todayMillis - i * 86400000);
+     const d = new Date(todayMs - i * 86400000);
      const iso = d.toISOString().split('T')[0];
      if (history.some((h: any) => h.isoDate === iso && (h.status === 'confirmed' || h.status === 'checked'))) {
         currentStreak++;

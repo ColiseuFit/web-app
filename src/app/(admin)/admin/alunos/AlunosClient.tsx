@@ -47,6 +47,7 @@ function formatDate(dateStr: string): string {
     day: "2-digit",
     month: "2-digit",
     year: "2-digit",
+    timeZone: "America/Sao_Paulo"
   });
 }
 
@@ -611,7 +612,7 @@ export default function AlunosClient({
                         </div>
                         <div>
                           <p style={{ fontSize: 11, fontWeight: 800, color: "#666", textTransform: "uppercase", marginBottom: 4 }}>Data Nascimento</p>
-                          <p style={{ fontSize: 15, fontWeight: 900, margin: 0 }}>{selectedStudent.birth_date ? new Date(selectedStudent.birth_date).toLocaleDateString("pt-BR") : "NÃO INFORMADO"}</p>
+                          <p style={{ fontSize: 15, fontWeight: 900, margin: 0 }}>{selectedStudent.birth_date ? new Date(selectedStudent.birth_date).toLocaleDateString("pt-BR", { timeZone: "UTC" }) : "NÃO INFORMADO"}</p>
                         </div>
                         <div>
                           <p style={{ fontSize: 11, fontWeight: 800, color: "#666", textTransform: "uppercase", marginBottom: 4 }}>Gênero</p>
@@ -667,7 +668,7 @@ export default function AlunosClient({
                       {evaluations.map(e => (
                         <div key={e.id} className="admin-card" style={{ padding: 20, border: "3px solid #000", display: "flex", justifyContent: "space-between", alignItems: "center", boxShadow: "8px 8px 0px rgba(0,0,0,0.05)" }}>
                           <div>
-                            <div style={{ fontSize: 16, fontWeight: 900 }}>{new Date(e.evaluation_date).toLocaleDateString("pt-BR")}</div>
+                            <div style={{ fontSize: 16, fontWeight: 900 }}>{new Date(e.evaluation_date).toLocaleDateString("pt-BR", { timeZone: "UTC" })}</div>
                             <div style={{ fontSize: 11, color: "#666", fontWeight: 800, marginTop: 4, textTransform: "uppercase" }}>{e.protocol || "PROTOCOLO N/A"} • {e.weight}kg • BF: {e.body_fat || "—"}%</div>
                           </div>
                           <div style={{ display: "flex", gap: 8 }}>

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { Users, UserCheck, TrendingUp, Phone, Plus } from "lucide-react";
 import Link from "next/link";
 import { getLevelInfo, type LevelInfo } from "@/lib/constants/levels";
-
+import { getTodayDate } from "@/lib/date-utils";
 /**
  * AdminDashboardClient: Centro de Comando e Analytics Executivo.
  *
@@ -70,6 +70,7 @@ function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString("pt-BR", {
     day: "2-digit",
     month: "short",
+    timeZone: "America/Sao_Paulo"
   });
 }
 
@@ -88,7 +89,7 @@ export default function AdminDashboardClient({ stats, recentStudents, totalStude
             Gestão do Box
           </h1>
           <p style={{ fontSize: "14px", color: "#666", fontWeight: 500, margin: 0 }}>
-            Painel Geral de Gestão • {mounted ? new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" }) : "--:--"}
+            Painel Geral de Gestão • {mounted ? new Date(getTodayDate() + "T12:00:00Z").toLocaleDateString("pt-BR", { timeZone: "UTC", weekday: "long", day: "numeric", month: "long" }) : "--:--"}
           </p>
         </div>
         <Link

@@ -294,8 +294,8 @@ export default function TurmasClient({
   // ── DRAWER STATE ──
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingSlot, setEditingSlot] = useState<ClassSlot | null>(null);
-  const todayDay = new Date().getDay(); 
-  const todayDateStr = new Date().toISOString().split('T')[0];
+  const todayDateStr = getTodayDate();
+  const todayDay = new Date(todayDateStr + "T12:00:00Z").getUTCDay();
 
   // ── Drawer form state ──
   const [formName, setFormName] = useState("CrossTraining");
@@ -1716,7 +1716,7 @@ export default function TurmasClient({
                     <div key={h.id} style={{ display: "flex", alignItems: "center", gap: 20, padding: "16px 24px", background: "#FFF", border: "2px solid #000" }}>
                       {/* Date */}
                       <div style={{ minWidth: 90, fontSize: 15, fontWeight: 900, fontFamily: "monospace" }}>
-                        {new Date(h.date + 'T12:00:00').toLocaleDateString("pt-BR")}
+                        {new Date(h.date + 'T12:00:00Z').toLocaleDateString("pt-BR", { timeZone: "UTC" })}
                       </div>
                       {/* Badge */}
                       <div style={{ padding: "3px 8px", background: typeColors[blockType], color: "#FFF", fontSize: 9, fontWeight: 900, letterSpacing: "0.08em", whiteSpace: "nowrap" }}>

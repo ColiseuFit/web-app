@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import WodsClient from "./WodsClient";
+import { generateWeekCalendar } from "@/lib/date-utils";
 
 /**
  * WODs Management (Server Component): Operational WOD editor for Coaches/Admin.
@@ -8,29 +9,15 @@ import WodsClient from "./WodsClient";
  * @data Fetches WODs for the current week window (default 7 days).
  */
 
-const DAYS_OF_WEEK = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
-
-function getWeekDates(): { label: string; date: string; isToday: boolean }[] {
-  const today = new Date();
-  const dayOfWeek = today.getDay();
-  const monday = new Date(today);
-  monday.setDate(today.getDate() - ((dayOfWeek + 6) % 7));
-
-  const days = [];
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(monday);
-    d.setDate(monday.getDate() + i);
-    days.push({
-      label: DAYS_OF_WEEK[d.getDay()],
-      date: d.toISOString().split("T")[0],
-      isToday: d.toDateString() === today.toDateString(),
-    });
-  }
-  return days;
+export interface WodsPageProps {
+  searchParams: Promise<{ weekOffset?: string }>;
 }
 
-export default async function WodsPage() {
-  const weekDates = getWeekDates();
+export default async function WodsPage({ searchParams }: WodsPageProps) {
+  const params = await searchParams;
+  const weekOffset = parseInt(params.weekOffset || "0", 10);
+  
+  const weekDates = generateWeekCalendar(undefined, weekOffset, 7);
   const startDate = weekDates[0].date;
   const endDate = weekDates[6].date;
 
@@ -50,6 +37,7 @@ export default async function WodsPage() {
     <WodsClient 
       initialWods={wods || []} 
       weekDates={weekDates} 
+      weekOffset={weekOffset}
     />
   );
 }

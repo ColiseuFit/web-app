@@ -1,10 +1,13 @@
 "use client";
 
-import { useState, useTransition, useMemo } from "react";
+import { useState, useTransition, useMemo, useEffect } from "react";
 import {
   Calendar, Plus, Save, Dumbbell, Clock, X, Trash2,
-  Flame, Zap, Timer, ChevronDown, Eye, Pencil, Copy, BookOpen
+  Flame, Zap, Timer, ChevronDown, Eye, Pencil, Copy, BookOpen,
+  ChevronLeft, ChevronRight, RotateCcw, Settings
 } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { upsertWod, deleteWod } from "../../actions";
 import BenchmarkLibraryModal from "@/components/admin/BenchmarkLibraryModal";
 
@@ -44,6 +47,7 @@ interface Wod {
 interface WodsClientProps {
   initialWods: Wod[];
   weekDates: { label: string; date: string; isToday: boolean }[];
+  weekOffset: number;
 }
 
 /** All supported workout modalities */
@@ -68,10 +72,28 @@ const RESULT_TYPES = [
 /** Active editor tab */
 type EditorTab = "warmup" | "skill" | "wod";
 
-export default function WodsClient({ initialWods, weekDates }: WodsClientProps) {
+export default function WodsClient({ initialWods, weekDates, weekOffset }: WodsClientProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  function goToWeek(offset: number) {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("weekOffset", offset.toString());
+    router.push(`?${params.toString()}`);
+  }
+
   const [selectedDate, setSelectedDate] = useState(
     weekDates.find((d) => d.isToday)?.date ?? weekDates[0].date
   );
+
+  // Sync selectedDate when weekDates (navigation) changes
+  useEffect(() => {
+    // If we're on the current week (offset 0), try to keep Today selected.
+    // Otherwise, select the first day of the new week window.
+    const today = weekDates.find(d => d.isToday);
+    setSelectedDate(today?.date ?? weekDates[0].date);
+    setShowEditor(false);
+  }, [weekDates]);
   const [showEditor, setShowEditor] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [activeTab, setActiveTab] = useState<EditorTab>("warmup");
@@ -135,6 +157,7 @@ export default function WodsClient({ initialWods, weekDates }: WodsClientProps) 
     startTransition(async () => {
       const result = await upsertWod(formData);
       if (result.success) {
+        router.refresh();
         setShowEditor(false);
       } else {
         alert(result.error);
@@ -159,6 +182,60 @@ export default function WodsClient({ initialWods, weekDates }: WodsClientProps) 
 
   return (
     <div className="admin-container-fluid">
+      {/* ── NAVIGATION BAR ── */}
+      <div style={{ 
+        display: "flex", 
+        alignItems: "center", 
+        gap: "12px", 
+        marginBottom: "24px",
+        padding: "12px 16px",
+        background: "#F9FAFB",
+        border: "2px solid #000",
+        borderRadius: "4px"
+      }}>
+        <div style={{ display: "flex", gap: "8px" }}>
+          <button 
+            onClick={() => goToWeek(weekOffset - 1)}
+            className="admin-btn admin-btn-ghost"
+            style={{ width: "40px", height: "40px", padding: 0, justifyContent: "center" }}
+            title="Semana Anterior"
+          >
+            <ChevronLeft size={20} />
+          </button>
+          
+          <button 
+            onClick={() => goToWeek(0)}
+            className="admin-btn admin-btn-ghost"
+            style={{ height: "40px", fontSize: "12px", fontWeight: 800 }}
+            disabled={weekOffset === 0}
+          >
+            <RotateCcw size={16} />
+            HOJE
+          </button>
+
+          <button 
+            onClick={() => goToWeek(weekOffset + 1)}
+            className="admin-btn admin-btn-ghost"
+            style={{ width: "40px", height: "40px", padding: 0, justifyContent: "center" }}
+            title="Próxima Semana"
+          >
+            <ChevronRight size={20} />
+          </button>
+        </div>
+
+        <div style={{ flex: 1, textAlign: "center" }}>
+          <span style={{ fontSize: "13px", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+            {weekOffset === 0 ? "Semana Atual" : 
+             weekOffset > 0 ? `Em ${weekOffset} ${weekOffset === 1 ? 'semana' : 'semanas'}` : 
+             `${Math.abs(weekOffset)} ${Math.abs(weekOffset) === 1 ? 'semana' : 'semanas'} atrás`}
+          </span>
+        </div>
+
+        <div style={{ fontSize: "12px", fontWeight: 600, color: "#666" }}>
+          {new Date(weekDates[0].date + "T00:00:00Z").toLocaleDateString('pt-BR', { timeZone: 'UTC', day: '2-digit', month: 'short' })} — {new Date(weekDates[6].date + "T00:00:00Z").toLocaleDateString('pt-BR', { timeZone: 'UTC', day: '2-digit', month: 'short', year: 'numeric' })}
+        </div>
+      </div>
+
       {/* ── PAGE HEADER ── */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: "32px" }}>
         <div>
@@ -170,6 +247,16 @@ export default function WodsClient({ initialWods, weekDates }: WodsClientProps) 
           </p>
         </div>
         <div style={{ display: "flex", gap: "12px" }}>
+          <Link
+            href="/admin/settings?tab=wod"
+            className="admin-btn admin-btn-ghost"
+            style={{ height: "48px", border: "2px solid #000" }}
+            title="Configurações de Visibilidade"
+          >
+            <Settings size={20} />
+            <span style={{ display: "none" }}>CONFIGS</span>
+          </Link>
+
           {currentWod && !showEditor && (
             <button
               onClick={handleDelete}

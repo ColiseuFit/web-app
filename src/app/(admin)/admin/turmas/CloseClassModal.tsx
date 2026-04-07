@@ -12,7 +12,7 @@ import {
   markAsAbsentAction, unmarkAsAbsentAction
 } from "./actions";
 import { getLevelInfo } from "@/lib/constants/levels";
-
+import { getTodayDate } from "@/lib/date-utils";
 /**
  * CloseClassModal: Admin-side class closing interface.
  * 
@@ -76,7 +76,7 @@ export default function CloseClassModal({ slot, onClose, onSuccess }: CloseClass
 
   const [toast, setToast] = useState<ToastState | null>(null);
   const toastTimer = useRef<any>(null);
-  const today = new Date().toISOString().split("T")[0];
+  const today = getTodayDate();
 
   const showToast = useCallback((message: string, type: ToastType = "error") => {
     setToast({ message, type });
