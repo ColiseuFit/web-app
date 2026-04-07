@@ -57,9 +57,10 @@ interface ActivityItem {
   description: string;
   hashtags?: string[];
   typeTag?: string;
+  resultType?: string;
   coach?: string;
   points?: number;
-  result?: string;
+  result?: string | null;
   status?: string;
   tags?: string[];
   metrics: { label: string; value: string | number; unit?: string }[];

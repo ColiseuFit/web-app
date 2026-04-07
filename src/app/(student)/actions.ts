@@ -376,15 +376,22 @@ export async function deleteGoal(goalId: string) {
 }
 
 /**
- * Salva o resultado final do WOD (Tempo, Reps ou Carga).
- * Só pode ser feito após o Coach confirmar a presença do aluno.
+ * ATUALIZAÇÃO DE RESULTADO (WOD Score): Registra o desempenho (Tempo, Reps ou Carga).
+ * 
+ * @architecture
+ * - Fluxo "Activity-First": O lançamento foi migrado do Dashboard para a aba Atividade.
+ * - Gate de Confirmação: Esta ação só é permitida na UI se o `status` do check-in for 'confirmed'.
+ * - Integridade: O dado é salvo como String, mas validado via schema para evitar XSS ou dados corrompidos.
  * 
  * @security
- * - Validação de schema via `wodResultSchema`.
- * - RLS garante que o aluno só atualize seu próprio check-in.
+ * - Validação de schema via `wodResultSchema` (checkInId e result).
+ * - RLS: Match de `student_id` garante que o aluno só altere seu próprio registro.
+ * - SSoT: Centralizado na tabela `check_ins`.
  * 
- * @param {string} checkInId - UUID do registro de check-in.
- * @param {string} result - String contendo o score (ex: "12:30", "150 reps").
+ * @param {string} checkInId - UUID do registro de check-in (`public.check_ins`).
+ * @param {string} result - Valor formatado (ex: "12:34", "150", "80").
+ * @returns {Promise<{success?: boolean, error?: string}>}
+ * @revalidates /dashboard (atualiza badges) e /treinos (atualiza feed de atividades).
  */
 export async function updateWodResult(checkInId: string, result: string) {
   const validation = wodResultSchema.safeParse({ checkInId, result });
@@ -394,7 +401,7 @@ export async function updateWodResult(checkInId: string, result: string) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "Não autenticado." };
 
-  // 1. Atualizar o resultado
+  // 1. Atualizar o resultado no registro de check-in confirmado
   const { error } = await supabase
     .from("check_ins")
     .update({ result: validation.data.result })

@@ -57,7 +57,8 @@ export default async function TreinosPage() {
         type_tag,
         date,
         time_cap,
-        tags
+        tags,
+        result_type
       )
     `)
     .eq("student_id", user.id)
@@ -87,9 +88,10 @@ export default async function TreinosPage() {
       description: wod.wod_content ? wod.wod_content.slice(0, 100) + (wod.wod_content.length > 100 ? "..." : "") : "Treino programado pelo coach.",
       rawContent: wod.wod_content || "",
       typeTag: wod.type_tag || "WOD",
+      resultType: wod.result_type || "reps",
       coach: "Coliseu",
       points: checkin.status === 'confirmed' ? 50 : 0,
-      result: checkin.result || (checkin.status === 'confirmed' ? "SEM RESULTADO" : "PENDENTE"),
+      result: checkin.result || null,
       status: checkin.status,
       tags: wod.tags || [],
       isExcellence: !!checkin.is_excellence,

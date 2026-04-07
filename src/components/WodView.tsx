@@ -1,10 +1,9 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { CheckCircle, CalendarDays, Edit3, Dumbbell, Trophy } from "lucide-react";
+import React, { useState } from "react";
+import { CalendarDays, Dumbbell } from "lucide-react";
 import CheckInButton from "./CheckInButton";
 import { getLevelInfo, ALL_LEVELS } from "@/lib/constants/levels";
-import { updateWodResult } from "@/app/(student)/actions";
 
 interface Wod {
   id: string;
@@ -49,23 +48,6 @@ export default function WodView({
   holiday
 }: WodViewProps) {
   const [activeLevel, setActiveLevel] = useState(getLevelInfo(studentLevel).id);
-  const [resultVal, setResultVal] = useState(checkin?.result || "");
-  const [saving, setSaving] = useState(false);
-
-  // Reset result when checkin changes
-  useEffect(() => {
-    setResultVal(checkin?.result || "");
-  }, [checkin]);
-
-  const handleSaveResult = async () => {
-    if (!checkin || !resultVal || saving) return;
-    setSaving(true);
-    const res = await updateWodResult(checkin.id, resultVal);
-    setSaving(false);
-    if (!res.success) {
-      alert("Erro ao salvar: " + res.error);
-    }
-  };
 
   const getAdaptedContent = (baseContent: string, levelId: string) => {
     if (!baseContent) return "TREINO NÃO DISPONÍVEL PARA ESTE NÍVEL.";
@@ -215,72 +197,7 @@ export default function WodView({
             </div>
           </div>
 
-          {/* RESULT ENTRY SECTION (COACH-LED FLOW) */}
-          {checkin && checkin.status !== 'missed' && (
-            <div style={{ padding: "0 24px 32px 24px", animation: "nbEntrancePop 0.9s ease-out" }}>
-              <div style={{ 
-                background: checkin.status === 'confirmed' ? "var(--nb-yellow)" : "#f0f0f0", 
-                border: "2px solid #000", 
-                padding: "20px",
-                boxShadow: "4px 4px 0px #000",
-                display: "flex",
-                flexDirection: "column",
-                gap: "12px"
-              }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                  {checkin.status === 'confirmed' ? <Trophy size={18} strokeWidth={2.5} /> : <Edit3 size={18} strokeWidth={2.5} />}
-                  <span className="font-headline" style={{ fontSize: "11px", fontWeight: 900, letterSpacing: "0.1em" }}>
-                    {checkin.status === 'confirmed' ? "LANÇAR SEU RESULTADO" : "AGUARDANDO O COACH"}
-                  </span>
-                </div>
 
-                {checkin.status === 'confirmed' ? (
-                   <>
-                     <p style={{ fontSize: "11px", fontWeight: 600, color: "rgba(0,0,0,0.6)", lineHeight: 1.3 }}>
-                        Aula finalizada! Insira seu tempo, reps ou carga abaixo para computar seu volume de treino.
-                     </p>
-                     <div style={{ display: "flex", gap: "8px" }}>
-                        <input 
-                          type="text" 
-                          placeholder="EX: 12:34 OU 150 REPS"
-                          value={resultVal}
-                          onChange={(e) => setResultVal(e.target.value)}
-                          style={{
-                            flex: 1,
-                            padding: "12px",
-                            border: "2px solid #000",
-                            fontSize: "14px",
-                            fontWeight: 900,
-                            outline: "none",
-                            background: "#FFF"
-                          }}
-                        />
-                        <button 
-                          onClick={handleSaveResult}
-                          disabled={saving}
-                          style={{
-                            padding: "0 20px",
-                            background: "#000",
-                            color: "#FFF",
-                            border: "none",
-                            fontWeight: 900,
-                            fontSize: "11px",
-                            cursor: saving ? "not-allowed" : "pointer",
-                            opacity: saving ? 0.7 : 1
-                          }}
-                        >
-                          {saving ? "..." : "SALVAR"}
-                        </button>
-                     </div>
-                   </>
-                ) : (
-                   <p style={{ fontSize: "11px", fontWeight: 600, color: "rgba(0,0,0,0.5)", lineHeight: 1.3 }}>
-                      O campo de resultado será liberado assim que o Coach confirmar sua presença na aula.
-                   </p>
-                )}
-              </div>
-            </div>
-          )}
 
           <style dangerouslySetInnerHTML={{ __html: `
             @keyframes nbEntrancePop {
