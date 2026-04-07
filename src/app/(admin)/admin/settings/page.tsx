@@ -1,4 +1,4 @@
-import { getBoxSettings } from "@/lib/constants/settings_actions";
+import { getBoxSettings, getPointsRules, getLevels } from "@/lib/constants/settings_actions";
 import SettingsTabs from "./SettingsTabs";
 
 /**
@@ -7,10 +7,15 @@ import SettingsTabs from "./SettingsTabs";
  * @architecture
  * - Server Component fetched initial values from SSoT (Supabase).
  * - Delegates interactivity to SettingsTabs (Client Component).
+ * - Implements parallel pre-fetching for instantaneous page load.
  */
 export default async function SettingsPage() {
-  // Fetch initial settings from DB
-  const initialSettings = await getBoxSettings();
+  // Fetch initial settings from DB in parallel
+  const [initialSettings, initialRules, initialLevels] = await Promise.all([
+    getBoxSettings(),
+    getPointsRules(),
+    getLevels()
+  ]);
 
   return (
     <div className="admin-container-fluid">
@@ -24,7 +29,11 @@ export default async function SettingsPage() {
         </p>
       </div>
 
-      <SettingsTabs initialSettings={initialSettings} />
+      <SettingsTabs 
+        initialSettings={initialSettings} 
+        initialRules={initialRules}
+        initialLevels={initialLevels}
+      />
     </div>
   );
 }

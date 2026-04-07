@@ -32,6 +32,7 @@ export default async function TurmasPage(props: {
     level?: string;
     unenroll?: string;
     page?: string;
+    weekOffset?: string;
   }>;
 }) {
   const searchParams = await props.searchParams;
@@ -39,6 +40,7 @@ export default async function TurmasPage(props: {
   const level = searchParams?.level || "";
   const unenroll = searchParams?.unenroll === "true";
   const page = parseInt(searchParams?.page || "1");
+  const weekOffset = parseInt(searchParams?.weekOffset || "0");
   const pageSize = 50;
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
@@ -68,7 +70,7 @@ export default async function TurmasPage(props: {
     .order("time_start", { ascending: true });
 
   // 2. Weekly Occupancy (Check-ins for all days in the current week)
-  const weekDates = getWeekDates();
+  const weekDates = getWeekDates(weekOffset);
   const { data: occupancy } = await supabase
     .from("check_ins")
     .select("class_slot_id, status, wods!inner(date)")
@@ -213,6 +215,7 @@ export default async function TurmasPage(props: {
       currentSearch={search}
       currentLevel={level}
       currentUnenroll={unenroll}
+      currentWeekOffset={weekOffset}
     />
   );
 }

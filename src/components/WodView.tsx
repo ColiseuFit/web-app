@@ -22,12 +22,32 @@ interface Wod {
 interface WodViewProps {
   wod: Wod | null;
   selectedDate: string;
-  checkin: { id: string; status: string; result: string | null } | null;
+  checkin: { id: string; status: string; result: string | null; isClassFinished?: boolean } | null;
   studentLevel: string;
   holiday: any;
 }
 
-export default function WodView({ wod, selectedDate, checkin, studentLevel, holiday }: WodViewProps) {
+/**
+ * WodView: O "Coração Técnico" do aplicativo do aluno.
+ * Traduz o banco de treinos em uma experiência de alta performance e motivação.
+ * 
+ * @architecture
+ * - Integra com `CheckInButton` para gerenciar a frequência.
+ * - Renderiza resultados de Score pós-validação (SSoT).
+ * - Adaptação de Níveis: Mapeia tokens de nível do perfil para rótulos técnicos customizados.
+ * 
+ * @design
+ * - Brutalist Grid: Divisões claras entre blocos (Mobilidade, Aquecimento, WOD).
+ * 
+ * @param {WodViewProps} props - Dados hidratados do WOD, check-in e perfil.
+ */
+export default function WodView({ 
+  wod, 
+  selectedDate, 
+  checkin, 
+  studentLevel,
+  holiday
+}: WodViewProps) {
   const [activeLevel, setActiveLevel] = useState(getLevelInfo(studentLevel).id);
   const [resultVal, setResultVal] = useState(checkin?.result || "");
   const [saving, setSaving] = useState(false);
@@ -275,6 +295,7 @@ export default function WodView({ wod, selectedDate, checkin, studentLevel, holi
                 wodId={wod.id} 
                 date={selectedDate}
                 alreadyChecked={!!checkin} 
+                isClassFinished={checkin?.isClassFinished}
                 holiday={holiday}
             />
           </div>

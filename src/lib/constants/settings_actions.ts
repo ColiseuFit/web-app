@@ -4,8 +4,10 @@ import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 
 /**
- * Fetches all box settings from the database.
- * Returns a Record<string, string> for easy access.
+ * getBoxSettings: Recupera todas as configurações do box da tabela `box_settings`.
+ * Essencial para o funcionamento do Dashboard e regras de check-in (SSoT).
+ * 
+ * @returns {Promise<Record<string, string>>} Mapa de chave/valor para acesso imediato.
  */
 export async function getBoxSettings() {
   const supabase = await createClient();
@@ -26,12 +28,14 @@ export async function getBoxSettings() {
 }
 
 /**
- * Updates or inserts multiple box settings in batch.
- * Now standardized on canonical keys:
- * - box_capacity_limit
- * - box_cancellation_hours
+ * updateBoxSettingsAction: Atualiza ou insere configurações em massa.
+ * Implementa lógica de sincronização (SSoT) para manter paridade entre configurações 
+ * de box e regras de pontuação legadas.
  * 
- * @param settings Object with key-value pairs to update.
+ * @security
+ * - Revalida caminhos críticos após a atualização.
+ * 
+ * @param {Record<string, string>} settings - Objeto com pares chave-valor.
  */
 export async function updateBoxSettingsAction(settings: Record<string, string>) {
   const supabase = await createClient();
@@ -97,7 +101,10 @@ export async function updatePointsRule(id: string, points: number) {
 }
 
 /**
- * Fetches all points rules from the database.
+ * getPointsRules: Recupera todas as regras de pontuação ativa.
+ * Define o SSoT para o sistema de gamificação.
+ * 
+ * @returns {Promise<any[]>} Lista ordenada de regras.
  */
 export async function getPointsRules() {
   const supabase = await createClient();
@@ -108,6 +115,26 @@ export async function getPointsRules() {
 
   if (error) {
     console.error("Error fetching points rules:", error);
+    return [];
+  }
+
+  return data;
+}
+
+/**
+ * getLevels: Recupera a metodologia de níveis técnicos do Box.
+ * 
+ * @returns {Promise<any[]>} Lista de níveis configurados.
+ */
+export async function getLevels() {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("levels")
+    .select("*")
+    .order("order_index", { ascending: true });
+
+  if (error) {
+    console.error("Error fetching levels:", error);
     return [];
   }
 

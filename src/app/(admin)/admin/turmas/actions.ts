@@ -403,10 +403,12 @@ export async function getSlotEnrollments(slotId: string) {
         full_name,
         level,
         avatar_url,
-        phone
+        phone,
+        user_roles!inner(role)
       )
     `)
     .eq("class_slot_id", slotId)
+    .eq("profiles.user_roles.role", "student")
     .order("enrolled_at", { ascending: true });
 
   if (error) return { error: "Erro ao buscar matrículas: " + error.message };
@@ -455,6 +457,17 @@ export async function enrollStudent(slotId: string, studentId: string) {
 
   if (slot && count !== null && count >= slot.capacity) {
     return { error: "Turma lotada. Capacidade máxima atingida." };
+  }
+
+  // 1. Validar se o perfil é de um ALUNO (student)
+  const { data: roleCheck } = await ctx.adminClient
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", studentId)
+    .single();
+
+  if (!roleCheck || roleCheck.role !== "student") {
+    return { error: "Apenas perfis de Alunos podem ser matriculados nesta turma." };
   }
 
   const { error } = await ctx.adminClient
@@ -853,10 +866,26 @@ export async function removeFromWaitlist(waitlistId: string) {
  * - Disparado manualmente pelo Admin ou automaticamente em fluxos de desmatrícula.
  * 
  * @security Role: Admin/Reception.
+ * @param {string} slotId - UUID do horário.
+ * @param {boolean} isManual - Se true, força a promoção ignorando a configuração de auto-promoção.
  */
-export async function triggerWaitlistPromotion(slotId: string) {
+export async function triggerWaitlistPromotion(slotId: string, isManual: boolean = false) {
   const ctx = await getAdminContext();
   if ("error" in ctx) return { error: ctx.error };
+
+  // Se não foi disparo manual, checa a configuração global de auto-promoção
+  if (!isManual) {
+    const { data: setting } = await ctx.adminClient
+      .from("box_settings")
+      .select("value")
+      .eq("key", "auto_promote_waitlist")
+      .single();
+    
+    // Se estiver explicitamente como "false", aborta a automação invisível
+    if (setting?.value === "false") {
+      return { message: "Auto-promoção desativada nas configurações globais." };
+    }
+  }
 
   // Get the first person in waitlist
   const { data: waitlist } = await ctx.adminClient
@@ -1112,64 +1141,63 @@ export async function closeClassAction(slotId: string, date: string, studentIds:
 
   const pointsValue = pointRule?.points ?? 10;
 
-  // STEP 2: Mark ALL 'checked' (pending) students in this slot as 'missed' first.
-  // This avoids the buggy `.not.in()` filter syntax in PostgREST.
-  await ctx.adminClient
+  // STEP 3: Progressively update student states based on the final selection.
+  // We use two batches: one for those present, and one for those absent.
+  
+  // 3a. ABSENT: Any student who was 'checked' or 'confirmed' but is NOT in the final studentIds list.
+  // If they were already 'confirmed' (manual), we MUST subtract their points if they had any.
+  const { data: toMarkAbsent } = await ctx.adminClient
     .from("check_ins")
-    .update({ 
-      status: "missed", 
-      score_points: 0,
-      validated_at: new Date().toISOString()
-    })
+    .select("id, student_id, score_points, status")
     .eq("class_slot_id", slotId)
-    .eq("status", "checked")
-    .in("wod_id", wodIds);
+    .in("wod_id", wodIds)
+    .not("student_id", "in", `(${studentIds.join(",")})`);
 
-  // STEP 3: Overwrite ONLY the selected students as 'confirmed' with their points.
-  // Any student not in this list remains 'missed' from step 2.
-  const { error: updateError } = await ctx.adminClient
+  if (toMarkAbsent && toMarkAbsent.length > 0) {
+    for (const ci of toMarkAbsent) {
+      if (ci.status === "confirmed" && ci.score_points > 0) {
+        await ctx.adminClient.rpc("decrement_points", { user_id: ci.student_id, amount: ci.score_points });
+      }
+    }
+
+    const absentIds = toMarkAbsent.map(ci => ci.id);
+    await ctx.adminClient
+      .from("check_ins")
+      .update({ 
+        status: "missed", 
+        score_points: 0,
+        validated_at: new Date().toISOString()
+      })
+      .in("id", absentIds);
+  }
+
+  // 3b. PRESENT: All students in the studentIds list.
+  // We award points ONLY to those who don't have them yet (score_points = 0).
+  const { data: toConfirm } = await ctx.adminClient
     .from("check_ins")
-    .update({
-      status: "confirmed",
-      score_points: pointsValue,
-      validated_at: new Date().toISOString()
-    })
+    .select("id, student_id, score_points, status")
     .eq("class_slot_id", slotId)
-    .in("student_id", studentIds)
-    .neq("status", "confirmed") // Avoid double-confirming already confirmed (manual checkins)
-    .in("wod_id", wodIds);
+    .in("wod_id", wodIds)
+    .in("student_id", studentIds);
 
-  if (updateError) return { error: "Erro ao fechar aula: " + updateError.message };
+  if (toConfirm && toConfirm.length > 0) {
+    for (const ci of toConfirm) {
+      // Award points only if not already awarded
+      if (ci.score_points === 0) {
+        await ctx.adminClient.rpc("increment_points", { user_id: ci.student_id, amount: pointsValue });
+      }
+    }
 
-  // STEP 4: Award points ONLY to students who were NOT already 'confirmed' (manual checkins already received points).
-  // Check which students were updated (i.e., went from 'missed' to 'confirmed' in step 3).
-  // Simple approach: award to all selected, but only if their check-in was NOT previously confirmed.
-  const { data: confirmedCheckins } = await ctx.adminClient
-    .from("check_ins")
-    .select("student_id, status")
-    .eq("class_slot_id", slotId)
-    .in("student_id", studentIds)
-    .eq("status", "confirmed")
-    .in("wod_id", wodIds);
-
-  // Students that were manually added ('confirmed' before closeClass) already have points.
-  // We only award points to those who transitioned from 'checked' -> 'confirmed' now.
-  const { data: alreadyHadPoints } = await ctx.adminClient
-    .from("check_ins")
-    .select("student_id")
-    .eq("class_slot_id", slotId)
-    .in("student_id", studentIds)
-    .eq("status", "confirmed")
-    .gt("score_points", 0)
-    .lt("validated_at", new Date().toISOString()) // validated before now means it was manual
-    .in("wod_id", wodIds);
-
-  // Award points to ALL selected students (idempotent via increment - manual checkins already counted)
-  await Promise.allSettled(
-    studentIds.map(stId =>
-      ctx.adminClient.rpc("increment_points", { user_id: stId, amount: pointsValue })
-    )
-  );
+    const confirmIds = toConfirm.map(ci => ci.id);
+    await ctx.adminClient
+      .from("check_ins")
+      .update({
+        status: "confirmed",
+        score_points: pointsValue,
+        validated_at: new Date().toISOString()
+      })
+      .in("id", confirmIds);
+  }
   
   // STEP 5: Persist finalization marker in class_sessions (NEW SSoT)
   const { error: sessionError } = await ctx.adminClient
@@ -1253,6 +1281,151 @@ export async function unmarkAsAbsentAction(checkInId: string) {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// CHECK-IN MANAGEMENT: DELETE & MIGRATE (SSoT OPERATIONS)
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * REMOÇÃO DE CHECK-IN: Exclui permanentemente o registro de presença de um aluno.
+ * 
+ * @SSoT Garante sincronia global:
+ * 1. Exclui o registro em `check_ins` (fonte de verdade de presença diária).
+ * 2. Dispara `triggerWaitlistPromotion` para preencher a vaga liberada.
+ * 3. Revalida caminhos Admin, Coach e Aluno.
+ * 
+ * @security Role: Admin/Reception/Coach.
+ * @param {string} checkInId - UUID do check-in a ser removido.
+ * @returns {Promise<{success?: boolean, error?: string}>}
+ */
+export async function deleteCheckinAction(checkInId: string) {
+  const ctx = await getAdminContext();
+  if ("error" in ctx) return { error: ctx.error };
+
+  // 1. Buscar o check-in para obter o slot de origem (necessário para promoção da waitlist)
+  const { data: checkin, error: fetchError } = await ctx.adminClient
+    .from("check_ins")
+    .select("id, class_slot_id, student_id, score_points, status")
+    .eq("id", checkInId)
+    .single();
+
+  if (fetchError || !checkin) return { error: "Check-in não encontrado." };
+
+  // 2. Se o aluno tinha pontos confirmados, estornar
+  if (checkin.status === "confirmed" && checkin.score_points > 0) {
+    await ctx.adminClient.rpc("decrement_points", {
+      user_id: checkin.student_id,
+      amount: checkin.score_points
+    });
+  }
+
+  // 3. Excluir o registro de check-in (SSoT: remove da fonte de verdade)
+  const { error: deleteError } = await ctx.adminClient
+    .from("check_ins")
+    .delete()
+    .eq("id", checkInId);
+
+  if (deleteError) return { error: "Erro ao remover check-in: " + deleteError.message };
+
+  // 4. Auto-Healing: Promover próximo da lista de espera para a vaga liberada
+  if (checkin.class_slot_id) {
+    await triggerWaitlistPromotion(checkin.class_slot_id);
+  }
+
+  // 5. Revalidação global (Admin + Coach + Dashboard do Aluno)
+  revalidatePath("/admin/turmas");
+  revalidatePath("/coach");
+  return { success: true };
+}
+
+/**
+ * MIGRAÇÃO DE CHECK-IN: Transfere atomicamente um check-in para outra turma.
+ * 
+ * @SSoT Garante sincronia global:
+ * 1. Valida capacidade de check-ins no slot de destino para a data.
+ * 2. Atualiza o `class_slot_id` do check-in existente (operação atômica).
+ * 3. Dispara `triggerWaitlistPromotion` para o slot de ORIGEM (vaga liberada).
+ * 4. Revalida caminhos Admin, Coach e Aluno.
+ * 
+ * @design O administrador pode fazer override de capacidade (operação privilegiada).
+ * 
+ * @security Role: Admin/Reception/Coach.
+ * @param {string} checkInId - UUID do check-in a ser migrado.
+ * @param {string} targetSlotId - UUID do slot de destino.
+ * @param {string} date - Data da aula (YYYY-MM-DD) para validação de capacidade.
+ * @returns {Promise<{success?: boolean, error?: string}>}
+ */
+export async function migrateCheckinAction(checkInId: string, targetSlotId: string, date: string) {
+  const ctx = await getAdminContext();
+  if ("error" in ctx) return { error: ctx.error };
+
+  // 1. Buscar o check-in atual para obter o slot de origem
+  const { data: checkin, error: fetchError } = await ctx.adminClient
+    .from("check_ins")
+    .select("id, class_slot_id, student_id, wod_id")
+    .eq("id", checkInId)
+    .single();
+
+  if (fetchError || !checkin) return { error: "Check-in não encontrado." };
+  if (checkin.class_slot_id === targetSlotId) return { error: "O aluno já está nesta turma." };
+
+  // 2. Verificar se o aluno já tem check-in no slot de destino (mesmo WOD)
+  const { data: existing } = await ctx.adminClient
+    .from("check_ins")
+    .select("id")
+    .eq("class_slot_id", targetSlotId)
+    .eq("student_id", checkin.student_id)
+    .eq("wod_id", checkin.wod_id)
+    .maybeSingle();
+
+  if (existing) return { error: "O aluno já possui check-in na turma de destino." };
+
+  // 3. Validar capacidade do slot de destino (soft check — Admin pode fazer override)
+  const { data: targetSlot } = await ctx.adminClient
+    .from("class_slots")
+    .select("capacity")
+    .eq("id", targetSlotId)
+    .single();
+
+  const cleanDate = date.trim();
+  const { data: wods } = await ctx.adminClient
+    .from("wods")
+    .select("id")
+    .eq("date", cleanDate);
+
+  const wodIds = (wods || []).map(w => w.id);
+
+  if (wodIds.length > 0 && targetSlot) {
+    const { count } = await ctx.adminClient
+      .from("check_ins")
+      .select("id", { count: "exact", head: true })
+      .eq("class_slot_id", targetSlotId)
+      .in("wod_id", wodIds);
+
+    if (count !== null && count >= targetSlot.capacity) {
+      return { error: `Turma de destino lotada (${count}/${targetSlot.capacity}). Libere uma vaga antes.` };
+    }
+  }
+
+  // 4. Mutação Atômica: Atualizar o slot do check-in
+  const originSlotId = checkin.class_slot_id;
+  const { error: updateError } = await ctx.adminClient
+    .from("check_ins")
+    .update({ class_slot_id: targetSlotId })
+    .eq("id", checkInId);
+
+  if (updateError) return { error: "Erro ao migrar check-in: " + updateError.message };
+
+  // 5. Auto-Healing: Promover próximo da waitlist no slot de ORIGEM
+  if (originSlotId) {
+    await triggerWaitlistPromotion(originSlotId);
+  }
+
+  // 6. Revalidação global (Admin + Coach + Dashboard do Aluno)
+  revalidatePath("/admin/turmas");
+  revalidatePath("/coach");
+  return { success: true };
+}
+
+// ═══════════════════════════════════════════════════════════════
 // COACH PORTAL UTILITIES: MANUAL CHECK-IN & REOPENING
 // ═══════════════════════════════════════════════════════════════
 
@@ -1310,17 +1483,30 @@ export async function manualCheckinAction(slotId: string, date: string, studentI
 
   if (!wod) return { error: `WOD não encontrado para a data: ${cleanDate}. Crie um WOD primeiro.` };
 
-  // 2. Check if check-in already exists for this WOD/Slot
+  // 2. Check if check-in already exists for this student on this WOD (any slot)
+  // SSoT: A student can only have one check-in per WOD.
   const { data: existing } = await ctx.adminClient
     .from("check_ins")
-    .select("id, status")
-    .eq("class_slot_id", slotId)
+    .select(`
+      id, 
+      status, 
+      class_slot_id,
+      class_slots (
+        time
+      )
+    `)
     .eq("student_id", studentId)
     .eq("wod_id", wod.id)
     .maybeSingle();
 
-  if (existing && existing.status === "confirmed") {
-    return { error: "Aluno já confirmado nesta aula." };
+  if (existing) {
+    if (existing.class_slot_id !== slotId) {
+      const time = (existing.class_slots as any)?.time || "outro horário";
+      return { error: `Este aluno já possui check-in realizado às ${time} hoje.` };
+    }
+    if (existing.status === "confirmed") {
+      return { error: "Aluno já confirmado nesta aula." };
+    }
   }
 
   // 3. Get Points value
@@ -1333,23 +1519,35 @@ export async function manualCheckinAction(slotId: string, date: string, studentI
   const pointsValue = pointRule?.points ?? 10;
 
   // 4. Upsert check-in: Update if exists (e.g., from 'missed' to 'confirmed'), or Insert new
+  // IMPORTANT (SSoT): Manual check-in sets status to 'confirmed' (pre-validated)
+  // but DOES NOT award points yet. Points are awarded in closeClassAction.
   const { error: upsertError } = await ctx.adminClient
     .from("check_ins")
     .upsert({
-      id: existing?.id, // Use existing ID if found to update
+      id: existing?.id, 
       student_id: studentId,
       class_slot_id: slotId,
       wod_id: wod.id,
       status: "confirmed",
-      score_points: pointsValue,
-      validated_at: new Date().toISOString(),
+      score_points: 0, // Differential points: awarded only on closeClass
+      validated_at: null, // Not officially validated until closing
       created_at: existing?.id ? undefined : `${date}T${new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}:00`
     });
 
-  if (upsertError) return { error: "Erro ao registrar presença: " + upsertError.message };
-
-  // 5. Increment points
-  await ctx.adminClient.rpc("increment_points", { user_id: studentId, amount: pointsValue });
+  if (upsertError) {
+    if (upsertError.code === "23505") {
+      return { error: "Este aluno já possui check-in em outro horário para este treino." };
+    }
+    return { error: "Erro ao registrar presença: " + upsertError.message };
+  }
+  
+  // 5. Auto-Cleanup (SSoT): If student was in the waitlist for THIS slot, remove them.
+  // Waitlist is for the SLOT (recurrent intent), but if they got a spot today, we clear the intent.
+  await ctx.adminClient
+    .from("class_waitlist")
+    .delete()
+    .eq("class_slot_id", slotId)
+    .eq("student_id", studentId);
 
   revalidatePath("/coach");
   revalidatePath("/admin/turmas");
@@ -1401,7 +1599,7 @@ export async function reopenClassAction(slotId: string, date: string) {
   // STEP 2: Fetch existing check-ins for THIS slot across ALL those WOD IDs.
   const { data: existingCheckins } = await ctx.adminClient
     .from("check_ins")
-    .select("wod_id, status, student_id")
+    .select("id, wod_id, status, student_id, score_points")
     .eq("class_slot_id", slotId)
     .in("wod_id", wodIds);
 
@@ -1409,20 +1607,9 @@ export async function reopenClassAction(slotId: string, date: string) {
     return { error: "Nenhum check-in encontrado para esta turma nesta data." };
   }
 
-  // STEP 3: Get points per class to subtract
-  const { data: pointRule } = await ctx.adminClient
-    .from("points_rules")
-    .select("points")
-    .eq("key", "check_in")
-    .single();
-  const pointsValue = pointRule?.points ?? 10;
-
-  // STEP 4: Identify all students who were 'confirmed' and received points.
-  const confirmedStudentIds = Array.from(new Set(
-    existingCheckins
-      .filter(c => c.status === "confirmed")
-      .map(c => c.student_id)
-  ));
+  // STEP 3: Identify students who actually RECEIVED points (score_points > 0)
+  const studentsWithPoints = existingCheckins
+    .filter(c => c.status === "confirmed" && c.score_points > 0);
 
   // Determine if there's anything to finalize (idempotency check)
   const hasFinalized = existingCheckins.some(
@@ -1434,7 +1621,7 @@ export async function reopenClassAction(slotId: string, date: string) {
     return { success: true, confirmedIds: [] };
   }
 
-  // STEP 5: Revert all statuses to 'checked' and clear points across ALL relevant WODs for this slot.
+  // STEP 4: Revert all statuses to 'checked' and clear points across ALL relevant WODs for this slot.
   const { error: updateError } = await ctx.adminClient
     .from("check_ins")
     .update({ 
@@ -1448,47 +1635,31 @@ export async function reopenClassAction(slotId: string, date: string) {
 
   if (updateError) return { error: "Erro ao reabrir: " + updateError.message };
   
-  // STEP 5.1: Clear finalization marker from class_sessions (NEW SSoT)
+  // STEP 4.1: Clear finalization marker from class_sessions (NEW SSoT)
   await ctx.adminClient
     .from("class_sessions")
     .delete()
     .eq("class_slot_id", slotId)
     .eq("date", cleanDate);
 
-  // STEP 6: Subtract points only once per student who was confirmed
-  if (confirmedStudentIds.length > 0) {
+  // STEP 5: Rollback points for students who received them
+  if (studentsWithPoints.length > 0) {
     await Promise.allSettled(
-      confirmedStudentIds.map(studentId => 
-        ctx.adminClient.rpc("increment_points", { user_id: studentId, amount: -pointsValue })
+      studentsWithPoints.map(ci => 
+        ctx.adminClient.rpc("decrement_points", { 
+          user_id: ci.student_id, 
+          amount: ci.score_points 
+        })
       )
     );
   }
 
   revalidatePath("/coach");
   revalidatePath("/admin/turmas");
-  return { success: true, confirmedIds: confirmedStudentIds };
+  return { success: true, confirmedIds: studentsWithPoints.map(s => s.student_id) };
 }
 
-/**
- * EXCLUSÃO DEFINITIVA (Admin): Remove o registro de check-in fisicamente do banco.
- * 
- * @security Altíssimo Risco. Role: Admin/Reception.
- * @param {string} checkInId - UUID do registro de check_in.
- */
-export async function deleteCheckinAction(checkInId: string) {
-  const ctx = await getAdminContext();
-  if ("error" in ctx) return { error: ctx.error };
 
-  const { error } = await ctx.adminClient
-    .from("check_ins")
-    .delete()
-    .eq("id", checkInId);
 
-  if (error) return { error: "Erro ao excluir check-in: " + error.message };
-
-  revalidatePath("/admin/turmas");
-  revalidatePath("/coach");
-  return { success: true };
-}
 
 

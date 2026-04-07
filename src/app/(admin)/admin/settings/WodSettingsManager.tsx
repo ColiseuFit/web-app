@@ -9,8 +9,15 @@ interface WodSettingsManagerProps {
 }
 
 /**
- * WodSettingsManager: Controls WOD-specific business rules.
- * Currently manages student visibility window.
+ * WodSettingsManager: Orquestra a aba de "WOD" nas configurações do Box.
+ * Gerencia a regra de visibilidade temporal, controlando até que ponto os alunos 
+ * podem visualizar a programação futura no Dashboard.
+ * 
+ * @security
+ * - Persistência via `updateBoxSettingsAction`.
+ * - SSoT: A configuração impacta diretamente a query de visibilidade no Dashboard do aluno.
+ * 
+ * @param {WodSettingsManagerProps} props - Propriedades iniciais contendo o mapa de configurações.
  */
 export default function WodSettingsManager({ initialSettings }: WodSettingsManagerProps) {
   const [isPending, startTransition] = useTransition();

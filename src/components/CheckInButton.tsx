@@ -10,14 +10,26 @@ interface CheckInButtonProps {
   wodId: string;
   date: string;
   alreadyChecked: boolean;
+  status?: string;
+  isClassFinished?: boolean;
   holiday?: any;
 }
 
 /**
- * Botão de Check-in que abre o modal de seleção de turma.
- * Suporta cancelamento e alteração de horário com modais customizados.
+ * CheckInButton: O ponto focal de interação do Aluno com o Box.
+ * Implementa lógica visual complexa para refletir o estado de frequência em tempo real.
+ * 
+ * @design
+ * - Neo-Brutalist Light (Iron Monolith): Bordas de 3px, sombras duras e cores vibrantes.
+ * - Estados Feedback: "FAZER CHECKIN" (Azul), "CONFIRMADO" (Verde), "AULA CONCLUÍDA" (Preto/Cinza).
+ * 
+ * @logic-ssot
+ * - Se `checkin.isClassFinished` for true: O botão entra em estado "AULA CONCLUÍDA" e bloqueia alterações de horário.
+ * - Caso contrário: Aluno pode alterar horário através do `CheckInModal`.
+ * 
+ * @param {CheckInButtonProps} props - Dados de estado local e handlers de ação.
  */
-export default function CheckInButton({ wodId, date, alreadyChecked, holiday }: CheckInButtonProps) {
+export default function CheckInButton({ wodId, date, alreadyChecked, status, isClassFinished, holiday }: CheckInButtonProps) {
   const [open, setOpen] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [done, setDone] = useState(alreadyChecked);
@@ -71,73 +83,133 @@ export default function CheckInButton({ wodId, date, alreadyChecked, holiday }: 
       <div style={{
         display: "flex",
         flexDirection: "column",
-        background: "rgba(255,255,255,0.02)",
-        borderTop: "1px solid var(--border-glow)",
+        background: "#fff",
+        borderTop: "3px solid #000",
+        padding: "24px",
+        gap: "16px"
       }}>
+        {/* Status Card */}
         <div style={{
           display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "16px 20px",
+          flexDirection: "column",
+          gap: "12px",
+          padding: "20px",
+          background: isClassFinished ? "rgba(184, 134, 11, 0.05)" : "rgba(76, 175, 80, 0.05)",
+          border: "2px solid #000",
+          boxShadow: "4px 4px 0px #000",
+          position: "relative",
+          overflow: "hidden"
         }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <div style={{ display: "flex", flexDirection: "column" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <CheckCircle size={16} color="#4CAF50" />
-                <span style={{ fontSize: "10px", fontWeight: 800, letterSpacing: "0.15em", color: "#4CAF50", textTransform: "uppercase" }}>
-                  CHECK-IN REALIZADO
-                </span>
+          {/* Marca d'água discreta de fundo */}
+          <div style={{
+            position: "absolute",
+            right: "-10px",
+            bottom: "-10px",
+            opacity: 0.05,
+            transform: "rotate(-15deg)"
+          }}>
+            <Dumbbell size={80} color="#000" />
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <div style={{
+                width: "32px",
+                height: "32px",
+                borderRadius: "50%",
+                background: isClassFinished ? "#B8860B" : "#4CAF50",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                border: "2px solid #000"
+              }}>
+                <CheckCircle size={18} color="#fff" />
               </div>
-              <span style={{ fontSize: "8px", fontWeight: 700, color: "var(--text-muted)", letterSpacing: "0.05em", marginTop: "2px" }}>
-                Aguardando validação do Coach para ganhar Pontos
+              <span style={{ 
+                fontSize: "14px", 
+                fontWeight: 900, 
+                letterSpacing: "0.1em", 
+                color: "#000", 
+                textTransform: "uppercase",
+                fontFamily: "var(--font-display)"
+              }}>
+                {isClassFinished ? "AULA CONCLUÍDA" : "CHECKIN CONFIRMADO"}
               </span>
             </div>
+
+            {!isClassFinished && (
+              <button
+                onClick={() => setShowConfirm(true)}
+                disabled={loading}
+                style={{
+                  background: "#000",
+                  border: "none",
+                  color: "#fff",
+                  fontSize: "9px",
+                  fontWeight: 900,
+                  padding: "6px 12px",
+                  cursor: loading ? "not-allowed" : "pointer",
+                  opacity: loading ? 0.5 : 1,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.15em",
+                  fontFamily: "var(--font-display)"
+                }}
+              >
+                {loading ? "..." : "CANCELAR"}
+              </button>
+            )}
           </div>
           
-          <button
-            onClick={() => setShowConfirm(true)}
-            disabled={loading}
-            style={{
-              background: "none",
-              border: "none",
-              color: "var(--text-muted)",
-              fontSize: "9px",
-              fontWeight: 700,
-              textDecoration: "underline",
-              padding: "4px 8px",
-              cursor: loading ? "not-allowed" : "pointer",
-              opacity: loading ? 0.5 : 1,
-              textTransform: "uppercase",
-              letterSpacing: "0.1em"
-            }}
-          >
-            {loading ? "CANCELANDO..." : "CANCELAR"}
-          </button>
+          <div style={{ 
+            fontSize: "10px", 
+            fontWeight: 700, 
+            color: "#444", 
+            lineHeight: "1.4",
+            maxWidth: "80%"
+          }}>
+            {isClassFinished 
+              ? "Sua aula foi validada e os pontos já foram creditados no seu perfil."
+              : "Sua vaga está garantida. Você pode alterar seu horário até o início da aula."}
+          </div>
         </div>
 
-        <button
-          onClick={() => setOpen(true)}
-          style={{
-            width: "100%",
-            padding: "14px 20px",
-            background: "rgba(255,255,255,0.05)",
-            border: "none",
-            borderTop: "1px solid var(--border-glow)",
-            color: "var(--text)",
-            fontSize: "10px",
-            fontWeight: 800,
-            letterSpacing: "0.15em",
-            textTransform: "uppercase",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: "8px",
-          }}
-        >
-          <Edit3 size={16} />
-          ALTERAR HORÁRIO
-        </button>
+        {/* Botão de Ação Principal (Mudar Horário) */}
+        {!isClassFinished && (
+          <button
+            onClick={() => setOpen(true)}
+            style={{
+              width: "100%",
+              padding: "20px",
+              background: "#fff",
+              border: "2px solid #000",
+              boxShadow: "6px 6px 0px #000",
+              color: "#000",
+              fontSize: "13px",
+              fontWeight: 900,
+              letterSpacing: "0.2em",
+              textTransform: "uppercase",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "12px",
+              transition: "transform 0.1s ease, box-shadow 0.1s ease",
+              fontFamily: "var(--font-display)",
+              marginTop: "8px"
+            }}
+            onMouseDown={(e) => {
+              e.currentTarget.style.transform = "translate(2px, 2px)";
+              e.currentTarget.style.boxShadow = "4px 4px 0px #000";
+            }}
+            onMouseUp={(e) => {
+              e.currentTarget.style.transform = "translate(0, 0)";
+              e.currentTarget.style.boxShadow = "6px 6px 0px #000";
+            }}
+          >
+            <Edit3 size={18} />
+            MUDAR MEU HORÁRIO
+          </button>
+        )}
 
         {showConfirm && (
           <ConfirmModal

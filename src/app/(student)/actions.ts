@@ -60,18 +60,28 @@ export async function getAvailableSlots(date: string): Promise<{ data?: { id: st
   if (!slots) return { data: [] };
 
   // 2. Buscar quais dessas turmas já foram "Finalizadas" pelo Coach na data solicitada
-  // SSoT: Uma aula está finalizada se houver QUALQUER check-in validado para aquele slot/data.
-  const { data: finishedMarkers } = await supabase
-    .from("check_ins")
-    .select("class_slot_id, wods!inner(date)")
-    .eq("wods.date", date)
-    .not("validated_at", "is", null);
+  // SSoT: Uma aula está finalizada se houver um registro na tabela `class_sessions` com `finalized_at` não nulo.
+  const { data: finishedSessions } = await supabase
+    .from("class_sessions")
+    .select("class_slot_id")
+    .eq("date", date)
+    .not("finalized_at", "is", null);
 
-  const finishedSlotIds = new Set(finishedMarkers?.map(m => m.class_slot_id) || []);
+  const finishedSlotIds = new Set(finishedSessions?.map(s => s.class_slot_id) || []);
 
   // 3. Processar metadados
   const enrichedData = slots.map(slot => {
-    const isPast = isToday ? isTimePast(slot.time_start, 15) : false;
+    let isPast = false;
+    
+    if (date < todayStr) {
+      // Se a data selecionada é anterior a hoje, tudo é passado
+      isPast = true;
+    } else if (date === todayStr) {
+      // Se for hoje, aplica a regra de tolerância de 15 minutos
+      isPast = isTimePast(slot.time_start, 15);
+    }
+    // Se for data futura (date > todayStr), isPast continua false
+
     const isFinished = finishedSlotIds.has(slot.id);
 
     return {

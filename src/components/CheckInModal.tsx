@@ -30,7 +30,22 @@ interface DynamicSlot {
  */
 import { createPortal } from "react-dom";
 
-export default function CheckInModal({ wodId, date, onClose, onSuccess }: CheckInModalProps) {
+/**
+ * CheckInModal: Interface de agendamento e troca de turmas (Bottom Drawer).
+ * Orquestra a seleção de slots disponíveis cruzando regras de tempo e finalização de aula.
+ * 
+ * @architecture
+ * - Padrão "Mobile-First": Layout otimizado para interação por toque com botões largos.
+ * - SSoT de Disponibilidade: Carrega slots via `getAvailableSlots` (Server Action).
+ * 
+ * @security
+ * - Bloqueio de Slots Passados: Usa tolerância de 15 minutos para o dia atual.
+ * - Bloqueio de Aula Finalizada: Slots já encerrados pelo Coach aparecem como indisponíveis (SSoT).
+ * 
+ * @param {CheckInModalProps} props - Propriedades de controle de visibilidade e dados do WOD.
+ */
+export default function CheckInModal({ 
+wodId, date, onClose, onSuccess }: CheckInModalProps) {
   const [slots, setSlots] = useState<DynamicSlot[]>([]);
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);

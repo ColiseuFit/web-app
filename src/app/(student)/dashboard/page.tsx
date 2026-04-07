@@ -34,6 +34,11 @@ interface PageProps {
  * - SSoT de WOD: O estado do treino é derivado da `selectedDate` vinda dos searchParams ou `getTodayDate()`.
  * - Segurança: Validação de sessão obrigatória; redireciona para `/login` se inexistente.
  * 
+ * @business-logic
+ * - Visibilidade Temporal: Bloqueia a visualização de WODs futuros baseado na configuração `wod_visibility_weeks` do Box.
+ * - Check-in SSoT: Recupera o status de confirmação e cruza com `class_sessions.finalized_at` para determinar se a aula foi concluída,
+ *   impedindo qualquer alteração de check-in em aulas finalizadas pelo Coach.
+ * 
  * @lifecycle
  * 1. Resolve `searchParams` para determinar a data de foco.
  * 2. Agrega dados técnicos (`getCachedLevels`) e operacionais (`box_holidays`).
@@ -86,16 +91,31 @@ export default async function AppDashboard({ searchParams }: PageProps) {
   const finalSelectedWod = isVisible ? selectedWod : null;
 
   // 6. Check-in (Dependent on finalSelectedWod)
-  let userCheckin = null;
+  let userCheckin: any = null;
   if (finalSelectedWod) {
-    const { data: checkin } = await supabase
+    const { data: checkin, error: checkinError } = await supabase
       .from("check_ins")
-      .select("id, status, result")
+      .select("id, status, result, class_slot_id") // Removido 'date' que não existe na tabela
       .eq("student_id", user.id)
       .eq("wod_id", finalSelectedWod.id)
       .neq("status", "missed")
       .maybeSingle();
-    userCheckin = checkin;
+      
+    if (checkin) {
+      // Check if this specific class session is finished (SSoT)
+      const { data: session } = await supabase
+        .from("class_sessions")
+        .select("finalized_at")
+        .eq("class_slot_id", checkin.class_slot_id)
+        .eq("date", finalSelectedDate) // Usando a data do dashboard/WOD
+        .maybeSingle();
+      
+      userCheckin = {
+        ...checkin,
+        status: checkin.status,
+        isClassFinished: !!session?.finalized_at
+      };
+    }
   }
 
   const weekDates = getWeekDates(weekOffset);

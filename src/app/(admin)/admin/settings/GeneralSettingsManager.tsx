@@ -9,8 +9,14 @@ interface GeneralSettingsManagerProps {
 }
 
 /**
- * GeneralSettingsManager: Handles the "Geral" tab operations.
- * Centralizes Box identity and logistics.
+ * GeneralSettingsManager: Orquestra a aba "Geral" das configurações.
+ * Centraliza a identidade visual e as métricas logísticas globais da unidade.
+ * 
+ * @security
+ * - Persistência via `updateBoxSettingsAction`.
+ * - SSoT: Mapeia metadados JSON da tabela `organizations` para o estado local.
+ * 
+ * @param {GeneralSettingsManagerProps} props - Propriedades iniciais.
  */
 export default function GeneralSettingsManager({ initialSettings }: GeneralSettingsManagerProps) {
   const [isPending, startTransition] = useTransition();
@@ -22,6 +28,7 @@ export default function GeneralSettingsManager({ initialSettings }: GeneralSetti
     box_whatsapp: initialSettings.box_whatsapp || "",
     box_capacity_limit: initialSettings.box_capacity_limit || "20",
     box_cancellation_hours: initialSettings.box_cancellation_hours || "2",
+    auto_promote_waitlist: initialSettings.auto_promote_waitlist !== "false", // default true
     notif_birthday: initialSettings.notif_birthday === "true",
     notif_wod_tv: initialSettings.notif_wod_tv === "true",
     notif_weekly_report: initialSettings.notif_weekly_report === "true"
@@ -39,6 +46,7 @@ export default function GeneralSettingsManager({ initialSettings }: GeneralSetti
       // Convert booleans to strings for DB
       const payload = {
         ...settings,
+        auto_promote_waitlist: String(settings.auto_promote_waitlist),
         notif_birthday: String(settings.notif_birthday),
         notif_wod_tv: String(settings.notif_wod_tv),
         notif_weekly_report: String(settings.notif_weekly_report),
@@ -81,36 +89,6 @@ export default function GeneralSettingsManager({ initialSettings }: GeneralSetti
               value={settings.box_whatsapp} 
               onChange={(e) => handleChange("box_whatsapp", e.target.value)}
               placeholder="(11) 99999-9999" 
-              style={{ border: "2px solid #000", fontWeight: 700, width: "100%", padding: "12px", outline: "none" }} 
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* ── LOGÍSTICA ── */}
-      <div className="admin-card">
-        <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "24px", borderBottom: "2px solid #000", paddingBottom: "16px" }}>
-          <Users size={24} />
-          <h2 style={{ fontSize: "16px", fontWeight: 800, textTransform: "uppercase", margin: 0 }}>Logística & Capacidade</h2>
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
-          <div>
-            <label style={{ display: "block", fontSize: "11px", fontWeight: 900, marginBottom: "8px", color: "#666" }}>LIMITE DE ALUNOS POR TURMA</label>
-            <input 
-              type="number" 
-              value={settings.box_capacity_limit} 
-              onChange={(e) => handleChange("box_capacity_limit", e.target.value)}
-              min={1} max={100} 
-              style={{ border: "2px solid #000", fontWeight: 700, width: "100%", padding: "12px", outline: "none" }} 
-            />
-          </div>
-          <div>
-            <label style={{ display: "block", fontSize: "11px", fontWeight: 900, marginBottom: "8px", color: "#666" }}>TEMPO LIMITE P/ CANCELAMENTO (HORAS)</label>
-            <input 
-              type="number" 
-              value={settings.box_cancellation_hours} 
-              onChange={(e) => handleChange("box_cancellation_hours", e.target.value)}
-              min={1} max={72} 
               style={{ border: "2px solid #000", fontWeight: 700, width: "100%", padding: "12px", outline: "none" }} 
             />
           </div>

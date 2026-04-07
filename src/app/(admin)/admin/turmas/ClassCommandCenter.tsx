@@ -42,6 +42,8 @@ import {
   Zap,
   ChevronRight,
   ChevronLeft,
+  ArrowLeftRight,
+  Trash2,
 } from "lucide-react";
 import {
   getSlotCheckins,
@@ -53,6 +55,12 @@ import {
   unmarkAsAbsentAction,
   addSubstitution,
   reopenClassAction,
+  getSlotWaitlist,
+  removeFromWaitlist,
+  triggerWaitlistPromotion,
+  addToWaitlist,
+  deleteCheckinAction,
+  migrateCheckinAction,
 } from "./actions";
 import { getLevelInfo } from "@/lib/constants/levels";
 import { DAY_LABELS } from "@/lib/constants/calendar";
@@ -67,6 +75,7 @@ interface ClassSlot {
   capacity: number;
   coach_name?: string | null;
   default_coach_id?: string | null;
+  profiles?: { full_name: string } | null;
 }
 
 interface Enrollment {
@@ -112,6 +121,8 @@ interface ClassCommandCenterProps {
   coaches: { id: string; full_name: string | null }[];
   substitutions?: Record<string, { id: string; full_name: string }>;
   activeDate: string;
+  daySlots?: ClassSlot[];
+  occupancy?: Record<string, number>;
 }
 
 // ── Helpers ────────────────────────────────────────────────────
@@ -140,6 +151,8 @@ export default function ClassCommandCenter({
   coaches = [],
   substitutions = {},
   activeDate,
+  daySlots = [],
+  occupancy = {},
 }: ClassCommandCenterProps) {
   // ── Data State ──
   const [loadingEnrollments, setLoadingEnrollments] = useState(true);
@@ -160,6 +173,13 @@ export default function ClassCommandCenter({
   const [searchResults, setSearchResults] = useState<StudentResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [addingId, setAddingId] = useState<string | null>(null);
+  const [removingId, setRemovingId] = useState<string | null>(null);
+  const [showMigrateModal, setShowMigrateModal] = useState<string | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState<{ id: string; name: string } | null>(null);
+  const [isMigratingAction, setIsMigratingAction] = useState(false);
+  const [waitlist, setWaitlist] = useState<any[]>([]);
+  const [loadingWaitlist, setLoadingWaitlist] = useState(true);
+  const [promoting, setPromoting] = useState<string | null>(null);
  
   // ── Confirmation ──
   const [showConfirmEmpty, setShowConfirmEmpty] = useState(false);
@@ -178,11 +198,6 @@ export default function ClassCommandCenter({
 
   // ── Data Fetching ──
 
-  /**
-   * CARGA DE MATRÍCULAS: Recupera os alunos com vaga fixa neste horário.
-   * 
-   * @operation Sincroniza o estado local 'enrollments' com a tabela 'class_enrollments'.
-   */
   const loadEnrollments = useCallback(async () => {
     setLoadingEnrollments(true);
     const res = await getSlotEnrollments(slot.id);
@@ -190,11 +205,6 @@ export default function ClassCommandCenter({
     setLoadingEnrollments(false);
   }, [slot.id]);
 
-  /**
-   * CARGA DE CHECK-INS: Recupera a lista de presença operacional para a data ativa.
-   * 
-   * @operation Sincroniza 'checkins' com a tabela 'check_ins' filtrada por 'activeDate'.
-   */
   const loadCheckins = useCallback(async () => {
     setLoadingCheckins(true);
     const res = await getSlotCheckins(slot.id, today);
@@ -202,26 +212,22 @@ export default function ClassCommandCenter({
     setLoadingCheckins(false);
   }, [slot.id, today]);
 
+  const loadWaitlist = useCallback(async () => {
+    setLoadingWaitlist(true);
+    const res = await getSlotWaitlist(slot.id);
+    if (res.data) setWaitlist(res.data);
+    setLoadingWaitlist(false);
+  }, [slot.id]);
+
   useEffect(() => {
     loadEnrollments();
     loadCheckins();
-  }, [loadEnrollments, loadCheckins]);
+    loadWaitlist();
+  }, [loadEnrollments, loadCheckins, loadWaitlist]);
 
-  /**
-   * SUBSTITUIÇÃO DE PROFESSOR (Override).
-   * 
-   * @operation
-   * 1. Resolve Conflito: Se 'targetCoachId' === 'default_coach_id', remove a substituição do DB.
-   * 2. Persistência: Upsert na tabela 'class_substitutions' para a data específica.
-   * 3. Sincronização: Notifica o componente pai via 'onSuccess' para atualizar a grade visual.
-   * 
-   * @param {string | null} targetCoachId - UUID do novo instrutor ou default.
-   * @param {string | null} coachName - Nome para feedback imediato na UI.
-   */
   async function handleCoachSwap(targetCoachId: string | null, coachName: string | null) {
     setSwapping(true);
     try {
-      // Se o ID selecionado for igual ao ID padrão, removemos a substituição (null)
       const effectiveCoachId = targetCoachId === slot.default_coach_id ? null : targetCoachId;
       
       const res = await addSubstitution(slot.id, effectiveCoachId, activeDate);
@@ -232,7 +238,6 @@ export default function ClassCommandCenter({
         showToast(isReset ? "Professor redefinido para o padrão." : "Professor alterado para esta aula!", "success");
         setIsSwappingCoach(false);
         
-        // Se for reset, passamos undefined para remover do mapa local do pai
         onSuccess(effectiveCoachId ? { 
           id: slot.id, 
           date: activeDate, 
@@ -256,20 +261,14 @@ export default function ClassCommandCenter({
   
   const coachDisplay = (() => {
     if (activeSub && activeSub.id !== slot.default_coach_id) return activeSub.full_name;
-    
-    // Fallback to default coach relationship
     const dc = coaches.find(c => c.id === slot.default_coach_id);
     if (dc) return dc.full_name;
-    
-    // Fallback to legacy string field
     return slot.coach_name || null;
   })();
 
   const isSubstituted = !!activeSub && activeSub.id !== slot.default_coach_id;
-
   const activeDayLabel = activeDate ? DAY_LABELS[new Date(activeDate + 'T00:00:00').getDay()] : "";
 
-  // ── Search ──
   useEffect(() => {
     if (searchQuery.trim().length < 2) { setSearchResults([]); return; }
     const timer = setTimeout(async () => {
@@ -284,17 +283,6 @@ export default function ClassCommandCenter({
     return () => clearTimeout(timer);
   }, [searchQuery, checkins]);
 
-  // ── Handlers ──
-
-  /**
-   * ADICIONAR ALUNO (Manual): Insere um aluno na aula via busca rápida.
-   * 
-   * @operation 
-   * - Invoca 'manualCheckinAction' (Actions) que faz bypass de regras de horário.
-   * - Atribui pontos instantâneos e valida a presença (Confirmado).
-   * 
-   * @param {StudentResult} student - Objeto do aluno selecionado no dropdown.
-   */
   const handleAddStudent = async (student: StudentResult) => {
     setAddingId(student.id);
     const res = await manualCheckinAction(slot.id, today, student.id);
@@ -309,16 +297,6 @@ export default function ClassCommandCenter({
     setAddingId(null);
   };
 
-  /**
-   * ALTERAR FALTA/PRESENÇA (Attendance Toggle).
-   * 
-   * @operation 
-   * - Status 'missed': Invalida pontuação, mas mantém rastro para análise de no-show.
-   * - Status 'confirmed': Valida presença e prepara para pontuação final.
-   * - Concorrência: Proteção via `togglingIds` para evitar cliques duplos/race conditions.
-   * 
-   * @param {string} checkinId - UUID do check-in operacional.
-   */
   const handleToggleAbsent = async (checkinId: string) => {
     if (togglingIds.has(checkinId)) return;
     const checkin = checkins.find(c => c.id === checkinId);
@@ -339,14 +317,42 @@ export default function ClassCommandCenter({
     }
   };
 
-  /**
-   * FECHAMENTO DE AULA (Session Finalization).
-   * 
-   * @lifecycle
-   * - Gate de Pontuação: Aciona o motor que distribui XP/Score baseado na lista de presentes.
-   * - Lockdown: Cria registro em 'class_sessions', bloqueando futuras edições no app do aluno.
-   * - Limpeza: Descarta automaticamente alunos marcados com 'falta' no relatório final.
-   */
+  const handleDeleteCheckin = async (id: string) => {
+    setRemovingId(id);
+    try {
+      const res = await deleteCheckinAction(id);
+      if (!res.success) {
+        showToast(res.error || "Erro ao remover.");
+      } else {
+        showToast("Presença removida", "success");
+        setShowDeleteModal(null);
+        await loadCheckins();
+      }
+    } catch (e) {
+      showToast("Falha ao remover");
+    } finally {
+      setRemovingId(null);
+    }
+  };
+
+  const handleMigrateCheckin = async (targetSlotId: string) => {
+    if (!showMigrateModal) return;
+    
+    setIsMigratingAction(true);
+    try {
+      const res = await migrateCheckinAction(showMigrateModal, targetSlotId, today);
+      if (res.success) {
+        showToast("Aluno migrado com sucesso!", "success");
+        setShowMigrateModal(null);
+        await loadCheckins();
+      } else {
+        showToast(res.error || "Erro ao migrar.");
+      }
+    } finally {
+      setIsMigratingAction(false);
+    }
+  };
+
   const handleCloseClass = async () => {
     const presentIds = checkins
       .filter(c => c.status !== "missed")
@@ -386,14 +392,46 @@ export default function ClassCommandCenter({
     }
   };
 
-  // ── Derived ──
+  const handleRemoveFromWaitlist = async (id: string) => {
+    const res = await removeFromWaitlist(id);
+    if (res.success) {
+      showToast("Removido da lista de espera.", "success");
+      await loadWaitlist();
+    } else {
+      showToast(res.error || "Erro ao remover.");
+    }
+  };
+
+  const handlePromoteFromWaitlist = async () => {
+    setPromoting("all");
+    const res = await triggerWaitlistPromotion(slot.id, true);
+    if (res.success) {
+      showToast("Aluno promovido com sucesso!", "success");
+      await Promise.all([loadEnrollments(), loadWaitlist()]);
+    } else if (res.message) {
+      showToast(res.message, "warning");
+    } else {
+      showToast(res.error || "Erro na promoção.");
+    }
+    setPromoting(null);
+  };
+
+  const handleWaitlistCheckin = async (studentId: string, fullName: string) => {
+    setTogglingIds(prev => { const n = new Set(prev); n.add(studentId); return n; });
+    const res = await manualCheckinAction(slot.id, today, studentId);
+    if (res.success) {
+      showToast(`${fullName.split(" ")[0]} adicionado à aula de hoje.`, "success");
+      await Promise.all([loadCheckins(), loadWaitlist()]);
+    } else {
+      showToast(res.error || "Erro ao fazer check-in.");
+    }
+    setTogglingIds(prev => { const n = new Set(prev); n.delete(studentId); return n; });
+  };
+
   const presentCount = checkins.filter(c => c.status !== "missed").length;
-  const enrolledNotCheckedIn = enrollments.filter(
+  const enrollmentsNotCheckedIn = enrollments.filter(
     en => !checkins.some(c => c.student_id === en.student_id)
   );
-
-
-  // ── Render ─────────────────────────────────────────────────
 
   return (
     <div style={{
@@ -401,16 +439,16 @@ export default function ClassCommandCenter({
       background: "rgba(0,0,0,0.88)",
       backdropFilter: "blur(10px)",
       display: "flex", alignItems: "center", justifyContent: "center",
-      zIndex: 100, padding: 16
+      zIndex: 100, padding: "20px"
     }}>
       <div style={{
-        width: "100%", maxWidth: 1400,
+        width: "96%", maxWidth: 1800,
         background: "#FFF",
         border: "4px solid #000",
-        boxShadow: "40px 40px 0px rgba(0,0,0,0.2)",
+        boxShadow: "60px 60px 0px rgba(0,0,0,0.25)",
         position: "relative",
         display: "flex", flexDirection: "column",
-        maxHeight: "98vh",
+        maxHeight: "96vh",
       }}>
 
         {/* ── Toast ── */}
@@ -442,11 +480,11 @@ export default function ClassCommandCenter({
           display: "flex", justifyContent: "space-between", alignItems: "center"
         }}>
           <div>
-            <div style={{ fontSize: 9, fontWeight: 900, color: "rgba(255,255,255,0.5)", textTransform: "uppercase", letterSpacing: "0.25em", marginBottom: 4 }}>
-              {isClosed ? "AULA ENCERRADA" : "CENTRO DE COMANDO"}
+            <div style={{ fontSize: 9, fontWeight: 900, color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: "0.4em", marginBottom: 4 }}>
+              {isClosed ? "AULA ENCERRADA" : "PAINEL DA AULA"}
             </div>
-            <h2 style={{ fontSize: 24, fontWeight: 900, textTransform: "uppercase", margin: 0, display: "flex", alignItems: "center", gap: 12, letterSpacing: "-0.03em" }}>
-              {isClosed ? <Lock size={24} /> : <ShieldCheck size={24} />}
+            <h2 style={{ fontSize: 28, fontWeight: 900, textTransform: "uppercase", margin: 0, display: "flex", alignItems: "center", gap: 14, letterSpacing: "-0.04em" }}>
+              {isClosed ? <Lock size={28} /> : <ShieldCheck size={28} />}
               {slot.name}
             </h2>
             <div style={{ display: "flex", gap: 20, marginTop: 10, flexWrap: "wrap" }}>
@@ -541,44 +579,60 @@ export default function ClassCommandCenter({
         </div>
 
         {/* ── Body ── */}
-        <div style={{ flex: 1, overflowY: "auto", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 0 }}>
+        <div style={{ flex: 1, overflowY: "auto", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 0 }}>
 
-          {/* ── LEFT: Presença (Check-ins) ── */}
-          <div style={{ borderRight: "3px solid #000", display: "flex", flexDirection: "column" }}>
-
-            {/* Section Header */}
-            <div style={{ borderBottom: "3px solid #000", padding: "12px 14px", display: "flex", alignItems: "center", gap: 10, background: "#FFF" }}>
-              <ClipboardCheck size={18} />
-              <div style={{ fontSize: 13, fontWeight: 900 }}>LISTA DE PRESENÇA ({activeDayLabel})</div>
+          {/* ── COLUMN 1: Lista de Presença ── */}
+          <div style={{ borderRight: "3px solid #000", display: "flex", flexDirection: "column", background: "#FFF" }}>
+            <div style={{ borderBottom: "3px solid #000", padding: "14px 20px", display: "flex", alignItems: "center", gap: 10, background: "#FFF" }}>
+              <ClipboardCheck size={18} strokeWidth={2.5} color="#000" />
+              <div style={{ fontSize: 12, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.08em" }}>Presença ({activeDayLabel})</div>
             </div>
 
-            {/* Search / Add */}
             {!isClosed && (
-              <div style={{ padding: "12px 16px", borderBottom: "2px solid #E5E7EB", background: "#FAFAFA" }}>
+              <div style={{ padding: "16px", borderBottom: "2px solid #EEE", background: "#FAFAFA" }}>
                 <div style={{ position: "relative" }}>
-                  <Search size={16} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "#000" }} />
+                  <Search size={16} style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: "#000", opacity: 0.5 }} />
                   <input
-                    placeholder="Adicionar aluno ao check-in..."
+                    placeholder="Adicionar aluno..."
                     value={searchQuery}
                     onChange={e => setSearchQuery(e.target.value)}
-                    style={{ width: "100%", padding: "9px 12px 9px 36px", border: "2px solid #000", fontSize: 12, fontWeight: 700, outline: "none", background: "#FFF", boxSizing: "border-box" }}
+                    style={{ width: "100%", padding: "12px 12px 12px 42px", border: "3px solid #000", fontSize: 13, fontWeight: 700, outline: "none", background: "#FFF", boxSizing: "border-box" }}
                   />
-                  {searching && <Loader2 size={14} className="animate-spin" style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)" }} />}
+                  {searching && <Loader2 size={16} className="animate-spin" style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)" }} />}
                 </div>
                 {searchQuery.length >= 2 && !searching && (
-                  <div style={{ border: "2px solid #000", borderTop: "none", background: "#FFF", maxHeight: 180, overflowY: "auto" }}>
+                  <div style={{ border: "3px solid #000", borderTop: "none", background: "#FFF", maxHeight: 250, overflowY: "auto", boxShadow: "10px 10px 0 rgba(0,0,0,0.1)", zIndex: 10 }}>
                     {searchResults.length === 0 ? (
-                      <div style={{ padding: 16, textAlign: "center", fontSize: 11, fontWeight: 800, color: "#999" }}>NENHUM ALUNO ENCONTRADO</div>
+                      <div style={{ padding: 20, textAlign: "center", fontSize: 11, fontWeight: 800, color: "#999" }}>NENHUM ALUNO ENCONTRADO</div>
                     ) : searchResults.map(s => (
-                      <div key={s.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", borderBottom: "1px solid #F3F4F6" }}>
-                        <span style={{ fontSize: 12, fontWeight: 800 }}>{getDisplayName(s)}</span>
-                        <button
-                          onClick={() => handleAddStudent(s)}
-                          disabled={addingId === s.id}
-                          style={{ padding: "5px 12px", background: "#000", color: "#FFF", border: "none", fontWeight: 900, cursor: "pointer", fontSize: 11, display: "flex", alignItems: "center", gap: 6 }}
-                        >
-                          {addingId === s.id ? <Loader2 size={12} className="animate-spin" /> : <UserPlus size={13} />} ADD
-                        </button>
+                      <div key={s.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderBottom: "1px solid #EEE" }}>
+                        <span style={{ fontSize: 13, fontWeight: 800 }}>{getDisplayName(s)}</span>
+                        <div style={{ display: "flex", gap: 8 }}>
+                          <button
+                            onClick={() => handleAddStudent(s)}
+                            disabled={addingId === s.id}
+                            style={{ padding: "6px 12px", background: "#000", color: "#FFF", border: "none", fontWeight: 900, cursor: "pointer", fontSize: 11, display: "flex", alignItems: "center", gap: 6 }}
+                          >
+                            {addingId === s.id ? <Loader2 size={12} className="animate-spin" /> : <UserPlus size={14} />} PRESENÇA
+                          </button>
+                          <button
+                            onClick={async () => {
+                              setAddingId(s.id);
+                              const res = await addToWaitlist(slot.id, s.id);
+                              if (res.success) {
+                                showToast("Adicionado à fila.", "success");
+                                await loadWaitlist();
+                              } else {
+                                showToast(res.error || "Erro");
+                              }
+                              setAddingId(null);
+                            }}
+                            disabled={addingId === s.id}
+                            style={{ padding: "6px 12px", background: "#FFF", color: "#000", border: "2px solid #000", fontWeight: 900, cursor: "pointer", fontSize: 11, display: "flex", alignItems: "center", gap: 6 }}
+                          >
+                            {addingId === s.id ? <Loader2 size={12} className="animate-spin" /> : <Clock size={14} />} FILA
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -586,248 +640,607 @@ export default function ClassCommandCenter({
               </div>
             )}
 
-            {/* Checkins List */}
-            <div style={{ flex: 1, overflowY: "auto", padding: 16, display: "flex", flexDirection: "column", gap: 8 }}>
+            <div style={{ flex: 1, overflowY: "auto", padding: 20, display: "flex", flexDirection: "column", gap: 10 }}>
               {loadingCheckins ? (
-                <div style={{ padding: 40, textAlign: "center" }}><Loader2 size={28} className="animate-spin" style={{ margin: "0 auto", color: "#CCC" }} /></div>
+                <div style={{ padding: 60, textAlign: "center" }}><Loader2 size={32} className="animate-spin" style={{ margin: "0 auto", color: "#000", opacity: 0.1 }} /></div>
               ) : checkins.length === 0 ? (
-                <div style={{ padding: "40px 20px", textAlign: "center", border: "2px dashed #DDD", background: "#F9FAFB" }}>
-                  <Users size={32} style={{ color: "#CCC", margin: "0 auto 12px" }} />
-                  <div style={{ fontSize: 12, fontWeight: 800, color: "#999" }}>NENHUM CHECK-IN REGISTRADO</div>
+                <div style={{ padding: "60px 20px", textAlign: "center", border: "4px dashed #EEE", background: "#FAFAFA" }}>
+                  <Users size={40} style={{ color: "#DDD", margin: "0 auto 16px" }} />
+                  <div style={{ fontSize: 13, fontWeight: 900, color: "#999", textTransform: "uppercase" }}>Ninguém fez check-in ainda</div>
                 </div>
               ) : checkins.map(c => {
                 const isPresent = c.status !== "missed";
-                const isBusy = togglingIds.has(c.id);
-                const levelColor = getLevelInfo(c.profiles?.level || "INTRO").color;
+                const isAbsent = c.status === "missed";
+                const name = getDisplayName(c.profiles);
+                const levelInfo = getLevelInfo(c.profiles?.level || "INTRO");
                 return (
                   <div
                     key={c.id}
-                    onClick={() => !isClosed && handleToggleAbsent(c.id)}
                     style={{
-                      padding: "16px 24px",
-                      border: `2px solid ${isPresent ? "#000" : "#DC2626"}`,
-                      cursor: isClosed ? "default" : (isBusy ? "wait" : "pointer"),
+                      padding: "16px 20px",
+                      border: "3px solid #000",
                       background: isPresent ? "#FFF" : "#FEF2F2",
-                      boxShadow: `6px 6px 0 ${isPresent ? "rgba(0,0,0,0.08)" : "rgba(220,38,38,0.12)"}`,
+                      boxShadow: isPresent ? "6px 6px 0 rgba(0,0,0,0.05)" : "6px 6px 0 rgba(220,38,38,0.1)",
                       display: "flex", alignItems: "center", justifyContent: "space-between",
-                      opacity: isBusy ? 0.6 : 1,
-                      transition: "all 0.1s",
-                      borderLeft: `6px solid ${isPresent ? levelColor : "#DC2626"}`,
+                      borderLeft: `10px solid ${isPresent ? levelInfo.color : "#DC2626"}`,
                     }}
                   >
-                    <div style={{ display: "flex", alignItems: "center", gap: 14, minWidth: 0 }}>
-                      <div style={{ minWidth: 0 }}>
-                        <div style={{ fontSize: 14, fontWeight: 900, textTransform: "uppercase", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                          {getDisplayName(c.profiles)}
-                        </div>
-                        <div style={{ fontSize: 11, fontWeight: 900, marginTop: 4, color: isPresent ? "#16A34A" : "#DC2626" }}>
-                          {isPresent ? "● PRESENTE" : "● FALTA"}
-                        </div>
+                    <div style={{ flex: 1, minWidth: 0, marginRight: 16 }}>
+                      <div style={{ 
+                        fontSize: 16, 
+                        fontWeight: 900, 
+                        textTransform: "uppercase",
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis"
+                      }} title={name}>
+                        {name}
+                      </div>
+                      <div style={{ fontSize: 11, fontWeight: 900, marginTop: 4, color: isPresent ? "#16A34A" : "#DC2626", display: "flex", alignItems: "center", gap: 6 }}>
+                        {isPresent ? "PRESENÇA CONFIRMADA" : "FALTA NO SISTEMA"}
                       </div>
                     </div>
-                    {!isClosed && (
-                      <div
-                        style={{ flexShrink: 0, marginLeft: 8 }}
-                        title={isPresent ? "Marcar falta" : "Restaurar presença"}
+                    
+                    <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                      {/* Toggle Absence */}
+                      <button
+                        onClick={() => handleToggleAbsent(c.id)}
+                        disabled={isClosed || togglingIds.has(c.id)}
+                        title={isAbsent ? "Restaurar Presença" : "Marcar Falta"}
+                        style={{
+                          width: 46, height: 46,
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          background: isAbsent ? "#E5E7EB" : "#FEE2E2",
+                          color: isAbsent ? "#6B7280" : "#DC2626",
+                          border: "3px solid #000",
+                          cursor: isClosed ? "default" : "pointer",
+                          opacity: isClosed ? 0.4 : 1,
+                          transition: "all 0.1s",
+                          boxShadow: isAbsent ? "none" : "4px 4px 0 rgba(220,38,38,0.1)"
+                        }}
+                        onMouseEnter={e => { if (!isClosed && !isAbsent) { e.currentTarget.style.transform = "translate(-2px, -2px)"; e.currentTarget.style.boxShadow = "6px 6px 0 #DC2626"; } }}
+                        onMouseLeave={e => { e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = isAbsent ? "none" : "4px 4px 0 rgba(220,38,38,0.1)"; }}
                       >
-                        {isBusy
-                          ? <Loader2 size={16} className="animate-spin" />
-                          : isPresent
-                            ? <UserX size={16} color="#DC2626" />
-                            : <RefreshCw size={16} color="#16A34A" />
-                        }
-                      </div>
-                    )}
-                    {isClosed && (
-                      <div style={{ flexShrink: 0, marginLeft: 8 }}>
-                        {isPresent
-                          ? <CheckCircle size={16} color="#16A34A" />
-                          : <UserX size={16} color="#DC2626" />
-                        }
-                      </div>
-                    )}
+                        {togglingIds.has(c.id) ? <Loader2 size={20} className="animate-spin" /> : isAbsent ? <RotateCcw size={22} strokeWidth={2.5} /> : <UserX size={22} strokeWidth={2.5} />}
+                      </button>
+
+                      {!isClosed && (
+                        <>
+                          {/* Migrate Student */}
+                          <button
+                            onClick={() => setShowMigrateModal(c.id)}
+                            title="Migrar para outro horário"
+                            style={{
+                              width: 46, height: 46,
+                              display: "flex", alignItems: "center", justifyContent: "center",
+                              background: "#F3F4F6",
+                              color: "#374151",
+                              border: "2px solid #000",
+                              cursor: "pointer",
+                              transition: "all 0.1s",
+                              boxShadow: "4px 4px 0 rgba(0,0,0,0.1)"
+                            }}
+                            onMouseEnter={e => { e.currentTarget.style.transform = "translate(-2px, -2px)"; e.currentTarget.style.boxShadow = "6px 6px 0 #000"; }}
+                            onMouseLeave={e => { e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "4px 4px 0 rgba(0,0,0,0.1)"; }}
+                          >
+                            <ArrowLeftRight size={22} strokeWidth={2.5} />
+                          </button>
+
+                          {/* Remove Check-in */}
+                          <button
+                            onClick={() => setShowDeleteModal({ id: c.id, name })}
+                            disabled={removingId === c.id}
+                            title="Remover presença (liberar vaga)"
+                            style={{
+                              width: 46, height: 46,
+                              display: "flex", alignItems: "center", justifyContent: "center",
+                              background: "#FFF",
+                              color: "#9CA3AF",
+                              border: "3px solid #000",
+                              cursor: "pointer",
+                              transition: "all 0.1s",
+                              boxShadow: "4px 4px 0 rgba(0,0,0,0.05)"
+                            }}
+                            onMouseEnter={e => { e.currentTarget.style.transform = "translate(-2px, -2px)"; e.currentTarget.style.boxShadow = "6px 6px 0 #DC2626"; e.currentTarget.style.color = "#DC2626"; e.currentTarget.style.borderColor = "#DC2626"; }}
+                            onMouseLeave={e => { e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "4px 4px 0 rgba(0,0,0,0.05)"; e.currentTarget.style.color = "#9CA3AF"; e.currentTarget.style.borderColor = "#000"; }}
+                          >
+                            {removingId === c.id ? <Loader2 size={20} className="animate-spin" /> : <UserMinus size={22} strokeWidth={2.5} />}
+                          </button>
+                        </>
+                      )}
+                    </div>
                   </div>
                 );
               })}
             </div>
           </div>
 
-          {/* ── RIGHT: Matriculados Fixos ── */}
-          <div style={{ display: "flex", flexDirection: "column" }}>
-
-            {/* Section Header */}
-            <div style={{ padding: "14px 20px", borderBottom: "2px solid #000", background: "#F9FAFB" }}>
-              <div style={{ fontWeight: 900, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.1em", display: "flex", alignItems: "center", gap: 8 }}>
-                <Users size={14} /> MATRICULADOS FIXOS ({enrollments.length}/{slot.capacity})
+          {/* ── COLUMN 2: Matriculados Fixos ── */}
+          <div style={{ display: "flex", flexDirection: "column", background: "#FFF", borderLeft: "1px solid #E5E7EB" }}>
+            <div style={{ padding: "14px 20px", borderBottom: "3px solid #000", background: "#FFF" }}>
+              <div style={{ fontWeight: 900, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.08em", display: "flex", alignItems: "center", gap: 10 }}>
+                <Users size={18} strokeWidth={2.5} color="#000" /> Alunos Fixos ({enrollments.length}/{slot.capacity})
               </div>
-              <div style={{ fontSize: 10, color: "#999", marginTop: 2 }}>Alunos com reserva permanente neste horário</div>
             </div>
 
-            {/* Enrolled List */}
-            <div style={{ flex: 1, overflowY: "auto", padding: 16, display: "flex", flexDirection: "column", gap: 6 }}>
+            <div style={{ flex: 1, overflowY: "auto", padding: 20, display: "flex", flexDirection: "column", gap: 8 }}>
               {loadingEnrollments ? (
-                <div style={{ padding: 40, textAlign: "center" }}><Loader2 size={28} className="animate-spin" style={{ margin: "0 auto", color: "#CCC" }} /></div>
+                <div style={{ padding: 60, textAlign: "center" }}><Loader2 size={32} className="animate-spin" style={{ margin: "0 auto", color: "#000", opacity: 0.1 }} /></div>
               ) : enrollments.length === 0 ? (
-                <div style={{ padding: "40px 20px", textAlign: "center", border: "2px dashed #DDD", background: "#F9FAFB" }}>
-                  <Users size={32} style={{ color: "#CCC", margin: "0 auto 12px" }} />
-                  <div style={{ fontSize: 12, fontWeight: 800, color: "#999" }}>NENHUM ALUNO MATRICULADO</div>
-                  <div style={{ fontSize: 10, color: "#CCC", marginTop: 4 }}>Use a aba MATRÍCULAS para cadastrar</div>
+                <div style={{ padding: "60px 20px", textAlign: "center", border: "4px dashed #EEE", background: "#FAFAFA" }}>
+                  <Users size={40} style={{ color: "#DDD", margin: "0 auto 16px" }} />
+                  <div style={{ fontSize: 13, fontWeight: 900, color: "#999", textTransform: "uppercase" }}>Nenhum aluno matriculado</div>
                 </div>
               ) : enrollments.map(en => {
-                const hasCheckin = checkins.some(c => c.student_id === en.student_id);
                 const checkin = checkins.find(c => c.student_id === en.student_id);
-                const isPresent = hasCheckin && checkin?.status !== "missed";
-                const levelColor = getLevelInfo(en.profiles?.level || "INTRO").color;
+                const isPresent = !!checkin && checkin.status !== "missed";
+                const isMissed = !!checkin && checkin.status === "missed";
+                const levelInfo = getLevelInfo(en.profiles?.level || "INTRO");
 
                 return (
                   <div
                     key={en.id}
                     style={{
                       padding: "14px 20px",
-                      border: "2px solid #E5E7EB",
-                      background: isPresent ? "#F0FDF4" : hasCheckin ? "#FEF2F2" : "#FFF",
+                      border: "2px solid #EEE",
+                      background: isPresent ? "#F0FDF4" : isMissed ? "#FEF2F2" : "#FFF",
                       display: "flex", alignItems: "center", justifyContent: "space-between",
-                      borderLeft: `6px solid ${isPresent ? "#16A34A" : hasCheckin ? "#DC2626" : levelColor}`,
+                      borderLeft: `8px solid ${isPresent ? "#16A34A" : isMissed ? "#DC2626" : levelInfo.color}`,
                     }}
                   >
                     <div style={{ minWidth: 0 }}>
-                      <div style={{ fontSize: 14, fontWeight: 800, textTransform: "uppercase", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                        {getDisplayName(en.profiles)}
-                      </div>
-                      <div style={{ fontSize: 11, fontWeight: 900, marginTop: 2, color: isPresent ? "#16A34A" : hasCheckin ? "#DC2626" : "#9CA3AF" }}>
-                        {isPresent ? "✓ PRESENTE" : hasCheckin ? "✗ FALTA" : "○ SEM CHECK-IN"}
+                      <div style={{ fontSize: 14, fontWeight: 800, textTransform: "uppercase" }}>{getDisplayName(en.profiles)}</div>
+                      <div style={{ fontSize: 10, fontWeight: 900, marginTop: 4, color: isPresent ? "#16A34A" : isMissed ? "#DC2626" : "#AAA" }}>
+                        {isPresent ? "✓ PRESENTE" : isMissed ? "✗ FALTA" : "○ AGUARDANDO"}
                       </div>
                     </div>
-                    {/* Status icon */}
-                    <div style={{ flexShrink: 0, marginLeft: 8 }}>
-                      {isPresent
-                        ? <CheckCircle size={14} color="#16A34A" />
-                        : hasCheckin
-                          ? <UserX size={14} color="#DC2626" />
-                          : <UserMinus size={14} color="#D1D5DB" />
-                      }
-                    </div>
+                    {isPresent ? <CheckCircle size={16} color="#16A34A" /> : isMissed ? <UserX size={16} color="#DC2626" /> : <Clock size={16} color="#DDD" />}
                   </div>
                 );
               })}
+            </div>
+          </div>
 
-              {/* Enrolled not checked in — alert section */}
-              {!isClosed && enrolledNotCheckedIn.length > 0 && (
-                <div style={{ marginTop: 8, padding: "10px 14px", border: "2px dashed #EAB308", background: "#FEFCE8" }}>
-                  <div style={{ fontSize: 10, fontWeight: 900, color: "#A16207", textTransform: "uppercase", letterSpacing: "0.08em" }}>
-                    ⚠ {enrolledNotCheckedIn.length} matriculado(s) sem check-in
+          {/* ── COLUMN 3: Fila de Espera ── */}
+          <div style={{ borderLeft: "3px solid #000", display: "flex", flexDirection: "column", background: "#FAFAFA" }}>
+            <div style={{ padding: "14px 20px", borderBottom: "3px solid #000", background: "#F5F5F5" }}>
+              <div style={{ fontWeight: 900, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.08em", display: "flex", alignItems: "center", gap: 10 }}>
+                <Clock size={18} strokeWidth={2.5} color="#000" /> Fila de Espera ({waitlist.length})
+              </div>
+            </div>
+
+            <div style={{ flex: 1, overflowY: "auto", padding: 20, display: "flex", flexDirection: "column", gap: 8 }}>
+              {loadingWaitlist ? (
+                <div style={{ padding: 60, textAlign: "center" }}><Loader2 size={32} className="animate-spin" style={{ margin: "0 auto", color: "#000", opacity: 0.1 }} /></div>
+              ) : waitlist.length === 0 ? (
+                <div style={{ padding: "60px 20px", textAlign: "center", border: "4px dashed #DDD", background: "#F5F5F5" }}>
+                  <RotateCcw size={40} style={{ color: "#DDD", margin: "0 auto 16px" }} />
+                  <div style={{ fontSize: 13, fontWeight: 900, color: "#BBB", textTransform: "uppercase" }}>Fila Vazia</div>
+                </div>
+              ) : waitlist.map((w, idx) => (
+                <div
+                  key={w.id}
+                  style={{
+                    padding: "14px 18px",
+                    border: "2px solid #000",
+                    background: "#FFF",
+                    display: "flex", alignItems: "center", justifyContent: "space-between",
+                    boxShadow: "4px 4px 0 rgba(0,0,0,0.05)"
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
+                    <div style={{ width: 24, height: 24, background: "#000", color: "#FFF", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 900 }}>
+                      {idx + 1}
+                    </div>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: 14, fontWeight: 800, textTransform: "uppercase", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                        {getDisplayName(w.profiles)}
+                      </div>
+                      <div style={{ fontSize: 9, fontWeight: 700, color: "#999", textTransform: "uppercase", marginTop: 2 }}>
+                         {new Date(w.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                    </div>
                   </div>
+                  {!isClosed && (
+                    <div style={{ display: "flex", gap: 4 }}>
+                      <button
+                        onClick={() => handleWaitlistCheckin(w.student_id, getDisplayName(w.profiles))}
+                        disabled={togglingIds.has(w.student_id)}
+                        style={{ padding: 6, background: "#DCFCE7", color: "#16A34A", border: "2px solid #000", cursor: "pointer", borderRadius: 4 }}
+                        title="Check-in apenas hoje"
+                      >
+                         <UserPlus size={14} />
+                      </button>
+                      <button
+                        onClick={() => handleRemoveFromWaitlist(w.id)}
+                        style={{ padding: 6, background: "#FEF2F2", color: "#DC2626", border: "2px solid #000", cursor: "pointer", borderRadius: 4 }}
+                        title="Remover"
+                      >
+                        <UserMinus size={14} />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {!isClosed && waitlist.length > 0 && (
+              <div style={{ padding: 16, borderTop: "4px solid #000", background: "#FFF" }}>
+                <button
+                  disabled={promoting === "all" || enrollments.length >= slot.capacity}
+                  onClick={handlePromoteFromWaitlist}
+                  style={{
+                    width: "100%", padding: "16px",
+                    background: enrollments.length >= slot.capacity ? "#EEE" : "#000",
+                    color: enrollments.length >= slot.capacity ? "#AAA" : "#FFF",
+                    border: "3px solid #000", fontWeight: 900, fontSize: 13,
+                    textTransform: "uppercase", cursor: "pointer",
+                    display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+                    boxShadow: enrollments.length >= slot.capacity ? "none" : "6px 6px 0 #000"
+                  }}
+                >
+                  {promoting === "all" ? <Loader2 size={16} className="animate-spin" /> : <Zap size={16} />}
+                  Promover para Matrícula Fixa
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ── Footer / Scoreboard ── */}
+        <div style={{
+          borderTop: "3px solid #000",
+          background: "#FFF",
+          display: "grid",
+          gridTemplateColumns: "repeat(4, 1fr)"
+        }}>
+          <div style={{ padding: "18px 24px", borderRight: "3px solid #000", display: "flex", alignItems: "center", gap: 14 }}>
+            <div style={{ background: "#DCFCE7", color: "#16A34A", padding: "10px", display: "flex", border: "3px solid #000", boxShadow: "3px 3px 0 #000" }}>
+              <Users size={22} strokeWidth={2.5} />
+            </div>
+            <div>
+              <div style={{ fontSize: 9, fontWeight: 900, color: "#888", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 2 }}>Presentes</div>
+              <div style={{ fontSize: 26, fontWeight: 900, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>
+                <span style={{ color: "#16A34A" }}>{presentCount}</span>
+                <span style={{ color: "#D1D5DB", margin: "0 4px", fontSize: 18 }}>/</span>
+                <span style={{ color: "#111", fontSize: 20 }}>{slot.capacity}</span>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ padding: "18px 24px", borderRight: "3px solid #000", display: "flex", alignItems: "center", gap: 14 }}>
+            <div style={{ background: "#F3F4F6", color: "#000", padding: "10px", display: "flex", border: "3px solid #000", boxShadow: "3px 3px 0 #000" }}>
+              <CalendarCheck size={22} strokeWidth={2.5} />
+            </div>
+            <div>
+              <div style={{ fontSize: 9, fontWeight: 900, color: "#888", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 2 }}>Matriculados</div>
+              <div style={{ fontSize: 26, fontWeight: 900, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>
+                <span style={{ color: "#111" }}>{enrollments.length}</span>
+                <span style={{ color: "#D1D5DB", margin: "0 4px", fontSize: 18 }}>/</span>
+                <span style={{ color: "#888", fontSize: 20 }}>{slot.capacity}</span>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ padding: "18px 24px", borderRight: "3px solid #000", display: "flex", alignItems: "center", gap: 14 }}>
+            <div style={{ background: "#FEF2F2", color: "#DC2626", padding: "10px", display: "flex", border: "3px solid #000", boxShadow: "3px 3px 0 #000" }}>
+              <UserX size={22} strokeWidth={2.5} />
+            </div>
+            <div>
+              <div style={{ fontSize: 9, fontWeight: 900, color: "#888", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 2 }}>Ausentes</div>
+              <div style={{ fontSize: 26, fontWeight: 900, lineHeight: 1, fontVariantNumeric: "tabular-nums", color: checkins.filter(c => c.status === "missed").length > 0 ? "#DC2626" : "#111" }}>
+                {checkins.filter(c => c.status === "missed").length}
+              </div>
+            </div>
+          </div>
+
+          <div style={{ padding: "18px 24px", display: "flex", alignItems: "center", gap: 14 }}>
+            <div style={{ background: "#FFFBEB", color: "#D97706", padding: "10px", display: "flex", border: "3px solid #000", boxShadow: "3px 3px 0 #000" }}>
+              <Clock size={22} strokeWidth={2.5} />
+            </div>
+            <div>
+              <div style={{ fontSize: 9, fontWeight: 900, color: "#888", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 2 }}>Fila de Espera</div>
+              <div style={{ fontSize: 26, fontWeight: 900, lineHeight: 1, fontVariantNumeric: "tabular-nums", color: waitlist.length > 0 ? "#D97706" : "#111" }}>
+                {waitlist.length}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Action Bar ── */}
+        <div style={{
+          padding: "20px 28px",
+          borderTop: "3px solid #000",
+          background: "#F9FAFB",
+          display: "flex", gap: 16
+        }}>
+          <button
+            onClick={onClose}
+            style={{
+              padding: "0 28px",
+              height: 60,
+              background: "#FFF",
+              border: "3px solid #000",
+              fontWeight: 900,
+              fontSize: 14,
+              textTransform: "uppercase",
+              letterSpacing: "0.05em",
+              cursor: "pointer",
+              boxShadow: "4px 4px 0 rgba(0,0,0,0.15)",
+              transition: "all 0.1s"
+            }}
+            onMouseEnter={e => { e.currentTarget.style.transform = "translate(-2px, -2px)"; e.currentTarget.style.boxShadow = "6px 6px 0 rgba(0,0,0,0.2)"; }}
+            onMouseLeave={e => { e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "4px 4px 0 rgba(0,0,0,0.15)"; }}
+          >
+            Voltar
+          </button>
+
+          {!isClosed ? (
+            <button
+              onClick={handleCloseClass}
+              disabled={submitting}
+              style={{
+                flex: 1,
+                height: 60,
+                background: submitting ? "#333" : "#000",
+                color: "#FFF",
+                border: "3px solid #000",
+                fontWeight: 900,
+                fontSize: 17,
+                textTransform: "uppercase",
+                letterSpacing: "0.06em",
+                cursor: submitting ? "wait" : "pointer",
+                display: "flex", alignItems: "center", justifyContent: "center", gap: 12,
+                boxShadow: "6px 6px 0 #000",
+                transition: "all 0.1s"
+              }}
+              onMouseEnter={e => { if (!submitting) { e.currentTarget.style.background = "#1F2937"; e.currentTarget.style.transform = "translate(-2px, -2px)"; e.currentTarget.style.boxShadow = "8px 8px 0 #000"; } }}
+              onMouseLeave={e => { if (!submitting) { e.currentTarget.style.background = "#000"; e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "6px 6px 0 #000"; } }}
+            >
+              {submitting ? <Loader2 size={20} className="animate-spin" /> : <ShieldCheck size={20} />}
+              Confirmar Fechamento da Aula
+            </button>
+          ) : (
+            <button
+              onClick={() => setShowReopenConfirm(true)}
+              disabled={reopening}
+              style={{
+                flex: 1,
+                height: 60,
+                background: "#EF4444",
+                color: "#FFF",
+                border: "3px solid #000",
+                fontWeight: 900,
+                fontSize: 17,
+                textTransform: "uppercase",
+                letterSpacing: "0.06em",
+                cursor: reopening ? "wait" : "pointer",
+                display: "flex", alignItems: "center", justifyContent: "center", gap: 12,
+                boxShadow: "6px 6px 0 rgba(0,0,0,0.15)",
+                transition: "all 0.1s"
+              }}
+              onMouseEnter={e => { if (!reopening) { e.currentTarget.style.background = "#DC2626"; e.currentTarget.style.transform = "translate(-2px, -2px)"; } }}
+              onMouseLeave={e => { if (!reopening) { e.currentTarget.style.background = "#EF4444"; e.currentTarget.style.transform = "none"; } }}
+            >
+              {reopening ? <Loader2 size={20} className="animate-spin" /> : <Unlock size={20} />}
+              Reabrir Aula para Edição
+            </button>
+          )}
+        </div>
+
+        {/* Action Confirmation Modals */}
+        {showReopenConfirm && (
+          <ConfirmModal
+            title="Reabrir Aula"
+            message="Tem certeza que deseja reabrir esta aula? Isso removerá os pontos dos alunos presentes e permitirá novas edições."
+            confirmLabel="REABRIR AGORA"
+            onConfirm={handleReopenClass}
+            onCancel={() => setShowReopenConfirm(false)}
+            isDanger={true}
+          />
+        )}
+        {showConfirmEmpty && (
+          <ConfirmModal
+            title="Aviso"
+            message="Você está fechando uma aula sem alunos presentes. Deseja prosseguir?"
+            confirmLabel="SIM, FECHAR AULA VAZIA"
+            onConfirm={handleCloseClass}
+            onCancel={() => setShowConfirmEmpty(false)}
+            isDanger={true}
+          />
+        )}
+
+        {/* ── MODAL DE MIGRAÇÃO ── */}
+        {showMigrateModal && (
+          <div style={{
+            position: "fixed", inset: 0, zIndex: 1000,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            background: "rgba(0,0,0,0.85)", backdropFilter: "blur(4px)"
+          }}>
+            <div style={{
+              width: "90%", maxWidth: 1100, maxHeight: "85vh",
+              background: "#FFF", border: "4px solid #000",
+              boxShadow: "24px 24px 0 #000", padding: 40,
+              display: "flex", flexDirection: "column", position: "relative"
+            }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 32 }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 12 }}>
+                    <h3 style={{ fontSize: 28, fontWeight: 900, textTransform: "uppercase", letterSpacing: "-0.02em" }}>Migrar Aluno</h3>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <div style={{ background: "#000", color: "#FFF", padding: "4px 12px", fontSize: 12, fontWeight: 900, textTransform: "uppercase" }}>
+                        {DAY_LABELS[new Date(activeDate + "T12:00:00").getUTCDay()]}
+                      </div>
+                      <div style={{ background: "#F3F4F6", color: "#000", padding: "4px 12px", fontSize: 12, fontWeight: 900, border: "2px solid #000" }}>
+                        {new Date(activeDate + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" })}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <p style={{ fontSize: 15, color: "#4B5563", fontWeight: 700 }}>
+                    Selecione o novo horário de destino para este aluno na data acima.
+                  </p>
+                </div>
+                <button 
+                  onClick={() => setShowMigrateModal(null)} 
+                  style={{ 
+                    width: 44, height: 44, background: "#000", color: "#FFF", 
+                    display: "flex", alignItems: "center", justifyContent: "center", 
+                    border: "3px solid #000", cursor: "pointer", transition: "all 0.1s" 
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = "#FFF"; e.currentTarget.style.color = "#000"; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = "#000"; e.currentTarget.style.color = "#FFF"; }}
+                >
+                  <X size={24} strokeWidth={2.5} />
+                </button>
+              </div>
+              
+              <div style={{ 
+                display: "grid", 
+                gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", 
+                gap: 16, 
+                overflowY: "auto", 
+                padding: "4px 4px 20px 4px" 
+              }}>
+                {daySlots
+                  .filter(s => String(s.id) !== String(slot.id))
+                  .sort((a,b) => a.time_start.localeCompare(b.time_start))
+                  .map(target => (
+                    <button
+                      key={target.id}
+                      disabled={isMigratingAction}
+                      onClick={() => handleMigrateCheckin(target.id)}
+                      style={{
+                        padding: "20px 24px",
+                        textAlign: "left",
+                        background: "#FFF",
+                        border: "3px solid #000",
+                        display: "flex", alignItems: "center", justifyContent: "space-between",
+                        cursor: isMigratingAction ? "wait" : "pointer",
+                        transition: "all 0.1s",
+                        boxShadow: "4px 4px 0 #000"
+                      }}
+                      onMouseEnter={e => { if (!isMigratingAction) { e.currentTarget.style.transform = "translate(-2px, -2px)"; e.currentTarget.style.boxShadow = "8px 8px 0 #000"; e.currentTarget.style.background = "#F9FAFB"; } }}
+                      onMouseLeave={e => { if (!isMigratingAction) { e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "4px 4px 0 #000"; e.currentTarget.style.background = "#FFF"; } }}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                        <div style={{ background: "#000", color: "#FFF", padding: "8px 12px", fontSize: 18, fontWeight: 900, border: "2px solid #000" }}>
+                          {formatTime(target.time_start)}
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 13, fontWeight: 900, textTransform: "uppercase", color: "#000" }}>{target.name}</div>
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 4 }}>
+                            {(() => {
+                              const occKey = `${target.id}-${activeDate}`;
+                              const currentOcc = occupancy[occKey] || 0;
+                              const isFull = currentOcc >= target.capacity;
+                              return (
+                                <div style={{ 
+                                  fontSize: 10, fontWeight: 800, textTransform: "uppercase", 
+                                  background: isFull ? "#FEE2E2" : "#F3F4F6", 
+                                  color: isFull ? "#991B1B" : "#6B7280",
+                                  padding: "2px 6px", border: isFull ? "1px solid #DC2626" : "none"
+                                }}>
+                                  Ocupação: {currentOcc}/{target.capacity}
+                                </div>
+                              );
+                            })()}
+                            {(() => {
+                              const sub = substitutions[`${target.id}-${activeDate}`];
+                              const coachName = sub 
+                                ? sub.full_name 
+                                : (target.coach_name || target.profiles?.full_name);
+
+                              return (
+                                <div style={{ 
+                                  fontSize: 10, fontWeight: 800, color: coachName ? "#059669" : "#DC2626", 
+                                  textTransform: "uppercase", display: "flex", alignItems: "center", gap: 4 
+                                }}>
+                                  <User size={10} /> {coachName || "SEM PROFESSOR"}
+                                </div>
+                              );
+                            })()}
+                          </div>
+                        </div>
+                      </div>
+                      <ChevronRight size={20} strokeWidth={2.5} color="#9CA3AF" />
+                    </button>
+                  ))
+                }
+                {daySlots.filter(s => s.id !== slot.id).length === 0 && (
+                  <div style={{ padding: 24, textAlign: "center", background: "#F3F4F6", border: "2px dashed #D1D5DB", borderRadius: 4 }}>
+                    Nenhum outro horário disponível hoje.
+                  </div>
+                )}
+              </div>
+
+              {isMigratingAction && (
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, marginTop: 32, color: "#4B5563", fontWeight: 700 }}>
+                  <Loader2 className="animate-spin" />
+                  Processando Migração...
                 </div>
               )}
             </div>
           </div>
-        </div>
-        {/* ── Scoreboard ── */}
-        <div style={{
-          display: "grid", gridTemplateColumns: "repeat(3, 1fr)",
-          borderTop: "4px solid #000",
-          background: "#F9FAFB"
-        }}>
-          <div style={{ padding: "12px 24px", borderRight: "2px solid #E5E7EB" }}>
-            <div style={{ fontSize: 9, fontWeight: 900, color: "#666", textTransform: "uppercase", letterSpacing: "0.1em" }}>Presentes ({activeDayLabel})</div>
-            <div style={{ fontSize: 28, fontWeight: 900, color: "#16A34A", lineHeight: 1.1, marginTop: 2 }}>
-              {loadingCheckins ? "—" : presentCount}
-              <span style={{ fontSize: 14, color: "#9CA3AF", fontWeight: 700 }}> / {slot.capacity}</span>
-            </div>
-          </div>
-          <div style={{ padding: "12px 24px", borderRight: "2px solid #E5E7EB" }}>
-            <div style={{ fontSize: 9, fontWeight: 900, color: "#666", textTransform: "uppercase", letterSpacing: "0.1em" }}>Matriculados Fixos</div>
-            <div style={{ fontSize: 28, fontWeight: 900, color: "#2563EB", lineHeight: 1.1, marginTop: 2 }}>
-              {loadingEnrollments ? "—" : enrollments.length}
-              <span style={{ fontSize: 14, color: "#9CA3AF", fontWeight: 700 }}> / {slot.capacity}</span>
-            </div>
-          </div>
-          <div style={{ padding: "12px 24px" }}>
-            <div style={{ fontSize: 9, fontWeight: 900, color: "#666", textTransform: "uppercase", letterSpacing: "0.1em" }}>Ausentes Fixos</div>
-            <div style={{ fontSize: 28, fontWeight: 900, color: enrolledNotCheckedIn.length > 0 ? "#DC2626" : "#9CA3AF", lineHeight: 1.1, marginTop: 2 }}>
-              {loadingEnrollments || loadingCheckins ? "—" : enrolledNotCheckedIn.length}
-              <span style={{ fontSize: 14, color: "#9CA3AF", fontWeight: 700 }}> sem check-in</span>
-            </div>
-          </div>
-        </div>
+        )}
 
-        <div style={{ padding: "24px 48px", borderTop: "4px solid #000", background: "#F9FAFB", display: "flex", gap: 24, alignItems: "center" }}>
-          <button
-            onClick={onClose}
-            style={{ padding: "20px 32px", border: "4px solid #000", background: "#FFF", fontWeight: 900, fontSize: 15, cursor: "pointer", textTransform: "uppercase" }}
-          >
-            VOLTAR
-          </button>
- 
-          {!isClosed && !showConfirmEmpty && (
-            <button
-              disabled={submitting || loadingCheckins}
-              onClick={handleCloseClass}
-              style={{
-                flex: 1, padding: 24,
-                background: submitting ? "#666" : "#000",
-                color: "#FFF", border: "none",
-                fontWeight: 900, fontSize: 18,
-                cursor: submitting ? "wait" : "pointer",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                gap: 16, textTransform: "uppercase", letterSpacing: "0.05em",
-                boxShadow: "10px 10px 0 rgba(0,0,0,0.15)",
-                transition: "all 0.15s"
-              }}
-            >
-              {submitting
-                ? <><Loader2 size={24} className="animate-spin" /> PROCESSANDO...</>
-                : <><ShieldCheck size={28} /> CONFIRMAR FECHAMENTO DA AULA</>
-              }
-            </button>
-          )}
-          {isClosed && (
-            <div style={{ flex: 1, display: "grid", gridTemplateColumns: "1fr auto", gap: 16 }}>
-              <div style={{
-                padding: 24, background: "#F1F5F9", border: "2px solid #94A3B8",
-                display: "flex", alignItems: "center", justifyContent: "center", gap: 12,
-                color: "#475569", fontWeight: 900, textTransform: "uppercase"
-              }}>
-                <Lock size={20} /> AULA ENCERRADA — SOMENTE LEITURA
+        {/* ── CUSTOM DELETE CONFIRM MODAL ── */}
+        {showDeleteModal && (
+          <div style={{
+            position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+            background: "rgba(0,0,0,0.85)", zIndex: 9999,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            padding: 20, backdropFilter: "blur(4px)"
+          }}>
+            <div style={{
+              width: "100%", maxWidth: 460,
+              background: "#FFF", border: "4px solid #000",
+              boxShadow: "12px 12px 0 #000",
+              padding: 40, position: "relative"
+            }}>
+              <div style={{ width: 64, height: 64, background: "#FEE2E2", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 24 }}>
+                <UserMinus size={32} color="#DC2626" strokeWidth={2.5} />
               </div>
-              <button
-                disabled={reopening}
-                onClick={() => setShowReopenConfirm(true)}
-                style={{ 
-                  padding: "0 24px", background: "#FFF", border: "3px solid #000", 
-                  fontWeight: 900, fontSize: 13, cursor: "pointer",
-                  display: "flex", alignItems: "center", gap: 8, textTransform: "uppercase"
-                }}
-              >
-                {reopening ? <Loader2 size={16} className="animate-spin" /> : <Unlock size={18} />}
-                Reabrir Turma
-              </button>
+
+              <h2 style={{ fontSize: 24, fontWeight: 900, textTransform: "uppercase", marginBottom: 12, lineHeight: 1.1 }}>
+                Remover Aluno?
+              </h2>
+              <p style={{ color: "#4B5563", fontSize: 16, lineHeight: 1.5, marginBottom: 32 }}>
+                Você está prestes a remover o check-in de <strong style={{ color: "#000" }}>{showDeleteModal.name}</strong>. 
+                Isso liberará a vaga instantaneamente para a fila de espera.
+              </p>
+
+              <div style={{ display: "flex", gap: 12 }}>
+                <button
+                  onClick={() => setShowDeleteModal(null)}
+                  style={{
+                    flex: 1, padding: "16px", fontWeight: 900, textTransform: "uppercase",
+                    background: "#F3F4F6", border: "3px solid #000", cursor: "pointer",
+                    transition: "all 0.1s"
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "4px 4px 0 #000"; }}
+                  onMouseLeave={e => { e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "none"; }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={() => handleDeleteCheckin(showDeleteModal.id)}
+                  disabled={removingId === showDeleteModal.id}
+                  style={{
+                    flex: 2, padding: "16px", fontWeight: 900, textTransform: "uppercase",
+                    background: "#DC2626", color: "#FFF", border: "3px solid #000", cursor: "pointer",
+                    display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                    transition: "all 0.1s"
+                  }}
+                  onMouseEnter={e => { if (removingId !== showDeleteModal.id) { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "4px 4px 0 #000"; } }}
+                  onMouseLeave={e => { e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "none"; }}
+                >
+                  {removingId === showDeleteModal.id ? <Loader2 className="animate-spin" /> : "Confirmar Remoção"}
+                </button>
+              </div>
             </div>
-          )}
-
-          {/* Action Confirmation Modals */}
-          {showReopenConfirm && (
-            <ConfirmModal
-              title="Reabrir Aula"
-              message="Tem certeza que deseja reabrir esta aula? Isso removerá os pontos dos alunos presentes e permitirá novas edições."
-              confirmLabel="REABRIR AGORA"
-              onConfirm={handleReopenClass}
-              onCancel={() => setShowReopenConfirm(false)}
-              isDanger={true}
-            />
-          )}
-
-          {showConfirmEmpty && (
-            <ConfirmModal
-              title="Aviso de Segurança"
-              message="VOCÊ ESTÁ FECHANDO UMA AULA SEM ALUNOS PRESENTES. Deseja prosseguir com o fechamento mesmo assim?"
-              confirmLabel="SIM, FECHAR AULA VAZIA"
-              onConfirm={handleCloseClass}
-              onCancel={() => setShowConfirmEmpty(false)}
-              isDanger={true}
-            />
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );

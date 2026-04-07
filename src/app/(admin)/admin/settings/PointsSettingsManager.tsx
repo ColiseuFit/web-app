@@ -4,11 +4,21 @@ import { useState, useTransition, useEffect } from "react";
 import { Trophy, Star, CheckCircle2, UserCheck, Loader2, Ban, Play, AlertCircle } from "lucide-react";
 import { getPointsRules, updatePointsRule } from "@/lib/constants/settings_actions";
 
+interface PointsSettingsManagerProps {
+  initialRules: Record<string, string>;
+}
+
 /**
- * PointsSettingsManager: Maneja a aba de "Pontuação".
- * Permite configurar o valor de cada ação do aluno em tempo real (SSoT).
+ * PointsSettingsManager: Centraliza a gestão de Gamificação do Box.
+ * Controla os gatilhos automáticos para ganho de pontos (Check-in, PR, Feedback).
+ * 
+ * @security
+ * - Persistência via `updatePointsRuleAction`.
+ * - SSoT: As regras aqui definidas são consumidas pelos triggers de banco e server actions de check-in.
+ * 
+ * @param {PointsSettingsManagerProps} props - Regras iniciais carregadas do banco.
  */
-export default function PointsSettingsManager() {
+export default function PointsSettingsManager({ initialRules }: PointsSettingsManagerProps) {
   const [rules, setRules] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

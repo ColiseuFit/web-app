@@ -13,22 +13,31 @@ import { getCachedLevels, updateLevelAction } from "@/lib/constants/levels_actio
  * Facilitates editing of names, colors, descriptions, and requirements.
  * 
  * @architecture
- * - This is a Client Component.
- * - Uses optimistic updates for immediate UI feedback.
- * - Fetches initial data from getCachedLevels on mount.
- * 
- * @design
- * - Iron Monolith (Brutalist style with 2px borders).
- * - Real-time color preview (Circle indicator).
  */
-export default function LevelsManager() {
-  const [levels, setLevels] = useState<Record<string, LevelInfo>>({});
-  const [loading, setLoading] = useState(true);
+interface LevelsManagerProps {
+  initialLevels?: Record<string, LevelInfo>;
+}
+
+/**
+ * LevelsManager: Gerencia a estrutura de Níveis Técnicos (Metodologia) do Box.
+ * Permite CRUD de níveis com cores e nomes personalizados, servindo como SSoT para
+ * a progressão técnica do aluno no aplicativo.
+ * 
+ * @security
+ * - Ações via `updateLevelAction` (Sever Action).
+ * - SSoT: Centraliza definições de competência visual e nominal.
+ * 
+ * @param {LevelsManagerProps} props - Mapeamento inicial de níveis vindo do servidor.
+ */
+export default function LevelsManager({ initialLevels }: LevelsManagerProps) {
+  const [levels, setLevels] = useState<Record<string, LevelInfo>>(initialLevels || {});
+  const [loading, setLoading] = useState(!initialLevels);
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [editValues, setEditValues] = useState<Partial<LevelInfo>>({});
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
+    if (initialLevels) return;
     async function load() {
       try {
         const data = await getCachedLevels();

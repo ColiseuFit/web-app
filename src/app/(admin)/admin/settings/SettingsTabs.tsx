@@ -1,21 +1,35 @@
 "use client";
 
 import { useState } from "react";
-import { Settings as SettingsIcon, Zap, ShieldCheck, Trophy, Star, Dumbbell } from "lucide-react";
+import { Settings as SettingsIcon, Zap, ShieldCheck, Trophy, Star, Dumbbell, CheckSquare } from "lucide-react";
 import GeneralSettingsManager from "./GeneralSettingsManager";
 import LevelsManager from "./LevelsManager";
 import PointsSettingsManager from "./PointsSettingsManager";
 import WodSettingsManager from "./WodSettingsManager";
+import CheckinSettingsManager from "./CheckinSettingsManager";
 
 interface SettingsTabsProps {
   initialSettings: Record<string, string>;
+  initialRules: any[];
+  initialLevels: any[];
 }
 
-export default function SettingsTabs({ initialSettings }: SettingsTabsProps) {
-  const [activeTab, setActiveTab] = useState<"geral" | "wod" | "metodologia" | "pontuacao" | "seguranca">("geral");
+/**
+ * SettingsTabs: Gerenciador de navegação para a área de configurações administrativas.
+ * Implementa uma arquitetura de visualização condicional para isolar o estado de cada módulo de configuração.
+ * 
+ * @security
+ * - Orquestra a distribuição de SSoT para os submódulos.
+ * - Garante "Zero Blank Loadings" ao passar dados hidratados via props.
+ * 
+ * @param {SettingsTabsProps} props - Dados hidratados do servidor (Settings, Rules, Levels).
+ */
+export default function SettingsTabs({ initialSettings, initialRules, initialLevels }: SettingsTabsProps) {
+  const [activeTab, setActiveTab] = useState<"geral" | "checkin" | "wod" | "metodologia" | "pontuacao" | "seguranca">("geral");
 
   const TABS = [
     { id: "geral", label: "Geral", icon: SettingsIcon },
+    { id: "checkin", label: "Check-in", icon: CheckSquare },
     { id: "wod", label: "WOD", icon: Dumbbell },
     { id: "metodologia", label: "Metodologia", icon: Zap },
     { id: "pontuacao", label: "Pontuação", icon: Star },
@@ -80,6 +94,10 @@ export default function SettingsTabs({ initialSettings }: SettingsTabsProps) {
           <GeneralSettingsManager initialSettings={initialSettings} />
         )}
 
+        {activeTab === "checkin" && (
+          <CheckinSettingsManager initialSettings={initialSettings} />
+        )}
+
         {activeTab === "wod" && (
           <WodSettingsManager initialSettings={initialSettings} />
         )}
@@ -87,7 +105,10 @@ export default function SettingsTabs({ initialSettings }: SettingsTabsProps) {
         {activeTab === "metodologia" && (
           <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
             {/* Níveis Técnicos (Coliseu Levels) - Dynamic SSoT */}
-            <LevelsManager />
+            <LevelsManager initialLevels={initialLevels.reduce((acc, curr) => {
+              acc[curr.key] = curr;
+              return acc;
+            }, {} as any)} />
             
             {/* Future: Points System Configuration */}
             <div className="admin-card" style={{ opacity: 0.6, borderStyle: "dashed" }}>
@@ -103,7 +124,10 @@ export default function SettingsTabs({ initialSettings }: SettingsTabsProps) {
         )}
 
         {activeTab === "pontuacao" && (
-          <PointsSettingsManager />
+          <PointsSettingsManager initialRules={initialRules.reduce((acc, curr) => {
+            acc[curr.key] = String(curr.points);
+            return acc;
+          }, {} as any)} />
         )}
 
         {activeTab === "seguranca" && (

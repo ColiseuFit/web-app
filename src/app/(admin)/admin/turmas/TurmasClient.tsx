@@ -160,6 +160,7 @@ interface Props {
   currentSearch: string;
   currentLevel: string;
   currentUnenroll: boolean;
+  currentWeekOffset: number;
 }
 
 // ── Block Type: granular schedule override (SSoT: box_holidays) ──
@@ -270,7 +271,8 @@ export default function TurmasClient({
   totalCount,
   currentSearch,
   currentLevel,
-  currentUnenroll
+  currentUnenroll,
+  currentWeekOffset
 }: Props) {
   const router = useRouter();
   const pathname = usePathname();
@@ -280,6 +282,17 @@ export default function TurmasClient({
   // activeTab is the router for our 4-pillar architecture.
   // We use this instead of a simple 'mode' toggle to ensure clear task isolation.
   const [activeTab, setActiveTab] = useState<"grid" | "checkins" | "settings" | "enrollments">("grid");
+
+  const handleNavigateWeek = (targetOffset: number, isRelative: boolean = true) => {
+    const params = new URLSearchParams(searchParams.toString());
+    const newOffset = isRelative ? currentWeekOffset + targetOffset : targetOffset;
+    if (newOffset === 0) {
+      params.delete("weekOffset");
+    } else {
+      params.set("weekOffset", newOffset.toString());
+    }
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  };
   const [confirmData, setConfirmData] = useState<{
     title: string;
     message: string;
@@ -414,25 +427,26 @@ export default function TurmasClient({
     setTimeout(() => setToast(null), 3000);
   }
 
-  const currentWeekDates = (() => {
+  const currentWeekDates = useMemo(() => {
     const dates: Record<number, string> = {};
     const now = new Date();
+    // Ajuste baseado no fuso horário para bater com o servidor seria ideal, mas usaremos a lógica existente com o offset
     const day = now.getDay();
     const diff = (day === 0 ? -6 : 1 - day); 
     const monday = new Date(now);
-    monday.setDate(now.getDate() + diff);
+    monday.setDate(now.getDate() + diff + (currentWeekOffset * 7));
 
     for (let i = 0; i < 7; i++) {
         const d = new Date(monday);
         d.setDate(monday.getDate() + i);
-        const dow = (i + 1) % 7; 
+        const dow = (i + 1) % 7 === 0 ? 0 : (i + 1); // 1 = Monday, 6 = Saturday, 0 = Sunday
         const year = d.getFullYear();
         const month = String(d.getMonth() + 1).padStart(2, '0');
         const dayOfMonth = String(d.getDate()).padStart(2, '0');
         dates[dow] = `${year}-${month}-${dayOfMonth}`;
     }
     return dates;
-  })();
+  }, [currentWeekOffset]);
 
   const loadSlotDetails = useCallback(async (slot: ClassSlot) => {
     setEnrollmentsLoading(true);
@@ -452,8 +466,11 @@ export default function TurmasClient({
       setSubstitutionNotes(existingSub?.notes || "");
     }
 
-    if (slot.day_of_week === todayDay) {
-      const checkRes = await getSlotCheckins(slot.id, todayDateStr);
+    // Get the date string for this slot's day from the current week grid
+    const targetDateStr = currentWeekDates[slot.day_of_week];
+
+    if (targetDateStr) {
+      const checkRes = await getSlotCheckins(slot.id, targetDateStr);
       if (checkRes.data) setCheckins(checkRes.data);
     } else {
       setCheckins([]);
@@ -567,7 +584,7 @@ export default function TurmasClient({
 
   const handleManualPromote = async (slotId: string) => {
     startTransition(async () => {
-      const res = await triggerWaitlistPromotion(slotId);
+      const res = await triggerWaitlistPromotion(slotId, true);
       if (res.error) showToast(res.error, "error");
       else {
         showToast("Aluno promovido com sucesso!", "success");
@@ -1079,10 +1096,76 @@ export default function TurmasClient({
             <div className="admin-card" style={{ padding: 0, overflow: "hidden", marginBottom: 32 }}>
               {/* HEADER TÁTICO */}
               <div style={{ padding: "16px 24px", borderBottom: "2px solid #000", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#000", color: "#FFF" }}>
-                <h2 style={{ fontSize: 14, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", margin: 0, display: "flex", alignItems: "center", gap: 10 }}>
-                  <Zap size={18} fill="#FFF" />
-                  OCUPAÇÃO EM TEMPO REAL — HOJE
-                </h2>
+                <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
+                  {/* SETA ESQUERDA */}
+                  <button 
+                    onClick={() => handleNavigateWeek(-1)}
+                    title="Semana Anterior"
+                    style={{ 
+                      background: "#222", border: "1px solid #444", color: "#FFF", 
+                      cursor: "pointer", padding: "6px 10px", borderRadius: 4,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      transition: "all 0.15s ease"
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.background = "#333"; e.currentTarget.style.borderColor = "#666"; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = "#222"; e.currentTarget.style.borderColor = "#444"; }}
+                  >
+                    <ChevronLeft size={18} />
+                  </button>
+
+                  {/* TÍTULO COM DATAS */}
+                  <h2 style={{ fontSize: 14, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", margin: 0, display: "flex", alignItems: "center", gap: 10 }}>
+                    <CalendarClock size={18} />
+                    {(() => {
+                      const monDate = currentWeekDates[1];
+                      const satDate = currentWeekDates[6];
+                      if (!monDate || !satDate) return "OCUPAÇÃO SEMANAL";
+                      const fmt = (d: string) => {
+                        const [, m, day] = d.split("-");
+                        const months = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+                        return `${parseInt(day)} ${months[parseInt(m) - 1]}`;
+                      };
+                      return `${fmt(monDate)} – ${fmt(satDate)}`;
+                    })()}
+                    {currentWeekOffset === 0 && <span style={{ fontSize: 9, background: "#16A34A", color: "#FFF", padding: "2px 8px", borderRadius: 3 }}>ATUAL</span>}
+                  </h2>
+
+                  {/* SETA DIREITA */}
+                  <button 
+                    onClick={() => handleNavigateWeek(1)}
+                    title="Próxima Semana"
+                    style={{ 
+                      background: "#222", border: "1px solid #444", color: "#FFF", 
+                      cursor: "pointer", padding: "6px 10px", borderRadius: 4,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      transition: "all 0.15s ease"
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.background = "#333"; e.currentTarget.style.borderColor = "#666"; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = "#222"; e.currentTarget.style.borderColor = "#444"; }}
+                  >
+                    <ChevronRight size={18} />
+                  </button>
+
+                  {/* BOTÃO HOJE — só aparece quando fora da semana atual */}
+                  {currentWeekOffset !== 0 && (
+                    <button 
+                      onClick={() => handleNavigateWeek(0, false)}
+                      title="Voltar para a semana atual"
+                      style={{ 
+                        background: "transparent", border: "1px solid #16A34A", color: "#16A34A", 
+                        cursor: "pointer", padding: "5px 14px", borderRadius: 4,
+                        fontSize: 11, fontWeight: 800, letterSpacing: "0.05em",
+                        display: "flex", alignItems: "center", gap: 6,
+                        transition: "all 0.15s ease"
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.background = "#16A34A"; e.currentTarget.style.color = "#FFF"; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#16A34A"; }}
+                    >
+                      <RotateCcw size={12} />
+                      HOJE
+                    </button>
+                  )}
+                </div>
                 <div style={{ display: "flex", gap: 24, alignItems: "center" }}>
                   {/* GRUPO OCUPAÇÃO */}
                   <div style={{ display: "flex", gap: 12, alignItems: "center", borderRight: "1px solid #333", paddingRight: 20 }}>
@@ -1134,7 +1217,7 @@ export default function TurmasClient({
                       {ACTIVE_DAYS.map((day) => {
                         const dateStr = currentWeekDates[day];
                         const holiday = holidays.find(h => h.date === dateStr);
-                        const isToday = day === todayDay;
+                        const isToday = dateStr === todayDateStr; // Compara data exata, não apenas o dia da semana
                         return (
                           <th key={day} style={{ 
                             position: "sticky", top: 0, zIndex: 30,
@@ -1222,7 +1305,7 @@ export default function TurmasClient({
                             
                             const enrollmentCount = (enrollmentCounts && enrollmentCounts[slot.id]) || 0;
                             const checkinCount = (occupancy && occupancy[`${slot.id}-${dateStr}`]) || 0;
-                            const isToday = day === todayDay;
+                            const isToday = dateStr === todayDateStr;
                             const isPast = dateStr < todayDateStr;
                             
                             const countToShow = (isToday || isPast) ? (checkinCount || 0) : enrollmentCount;
@@ -2201,6 +2284,10 @@ export default function TurmasClient({
         const { slot, date } = commandCenterInfo;
         const slotKey = `${slot.id}-${date}`;
         const isFechada = !!sessions[slotKey];
+        
+        // Obter todas as turmas do mesmo dia da semana para permitir migração
+        const dayOfWeek = new Date(date + "T12:00:00Z").getUTCDay();
+        const daySlots = slots.filter(s => s.day_of_week === dayOfWeek);
 
         return (
           <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-white/40 backdrop-blur-md">
@@ -2211,6 +2298,8 @@ export default function TurmasClient({
                 isClosed={isFechada}
                 coaches={coaches || []}
                 substitutions={substitutions}
+                daySlots={daySlots}
+                occupancy={occupancy}
                 onClose={() => setCommandCenterInfo(null)}
                 onSuccess={(update) => {
                   const key = update ? `${update.id}-${update.date}` : `${slot.id}-${date}`;
