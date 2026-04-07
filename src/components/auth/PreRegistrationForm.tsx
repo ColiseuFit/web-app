@@ -82,6 +82,7 @@ export function PreRegistrationForm({ onBack, onSuccess }: PreRegistrationFormPr
             name="full_name"
             required
             autoFocus
+            maxLength={100}
             placeholder="Seu nome"
             style={{
               width: "100%",
@@ -109,6 +110,7 @@ export function PreRegistrationForm({ onBack, onSuccess }: PreRegistrationFormPr
               type="email"
               name="email"
               required
+              maxLength={150}
               placeholder="seu@email.com"
               style={{
                 width: "100%",
@@ -133,6 +135,8 @@ export function PreRegistrationForm({ onBack, onSuccess }: PreRegistrationFormPr
               type="tel"
               name="phone"
               required
+              minLength={10}
+              maxLength={15}
               placeholder="(11) 99999-9999"
               style={{
                 width: "100%",

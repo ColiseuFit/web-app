@@ -99,10 +99,11 @@ export default function AlunosClient({
   const [selectedEval, setSelectedEval] = useState<any | null>(null);
   const [selectedLead, setSelectedLead] = useState<any | null>(null);
   const [isEditingLead, setIsEditingLead] = useState(false);
+  const [newCredentials, setNewCredentials] = useState<{ email: string; password: string, name: string } | null>(null);
 
-  // Auto-hide success messages
+  // Auto-hide success messages (Except when showing a generated password)
   useEffect(() => {
-    if (message?.type === "success") {
+    if (message?.type === "success" && !message.text.includes("Senha inicial gerada")) {
       const timer = setTimeout(() => setMessage(null), 3000);
       return () => clearTimeout(timer);
     }
@@ -199,9 +200,11 @@ export default function AlunosClient({
     setLoadingLeadId(id);
     const result = await approvePreRegistration(id);
     if (result.success && result.password) {
-      setMessage({ 
-        type: "success", 
-        text: `Aluno aprovado! Senha inicial gerada: ${result.password} (Copie e entregue ao aluno)` 
+      const lead = preRegistrations?.find(p => p.id === id);
+      setNewCredentials({
+        name: lead?.full_name || "Aluno",
+        email: lead?.email || "",
+        password: result.password
       });
     } else if (result.success) {
       setMessage({ type: "success", text: "Pré-cadastro aprovado e aluno criado com sucesso!" });
@@ -1086,6 +1089,55 @@ export default function AlunosClient({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* New Credentials Modal */}
+      {newCredentials && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="bg-white max-w-sm w-full p-8 relative shadow-2xl" style={{ border: "4px solid #000" }}>
+            <div style={{ textAlign: "center", marginBottom: 24 }}>
+              <div style={{ display: "inline-flex", padding: 12, background: "#10B981", border: "2px solid #000", marginBottom: 16 }}>
+                <ShieldCheck size={32} color="#FFF" />
+              </div>
+              <h2 style={{ fontSize: 24, fontWeight: 900, textTransform: "uppercase", color: "#000", lineHeight: 1.1 }}>Acesso Criado<br/>com Sucesso</h2>
+              <p style={{ fontSize: 13, fontWeight: 600, color: "#666", marginTop: 8 }}>
+                O perfil de <strong>{newCredentials.name}</strong> foi ativado.
+              </p>
+            </div>
+
+            <div style={{ background: "#F5F5F5", border: "2px solid #000", padding: 16, marginBottom: 24 }}>
+              <div style={{ marginBottom: 12 }}>
+                <span style={{ fontSize: 10, fontWeight: 800, textTransform: "uppercase", color: "#666" }}>E-MAIL (LOGIN)</span>
+                <div style={{ fontSize: 14, fontWeight: 700, color: "#000", wordBreak: "break-all" }}>{newCredentials.email}</div>
+              </div>
+              <div>
+                <span style={{ fontSize: 10, fontWeight: 800, textTransform: "uppercase", color: "#666" }}>SENHA PROVISÓRIA</span>
+                <div style={{ fontSize: 18, fontWeight: 900, color: "#E31B23", wordBreak: "break-all", background: "#FFF", border: "1px solid #CCC", padding: "4px 8px", marginTop: 4 }}>
+                  {newCredentials.password}
+                </div>
+              </div>
+            </div>
+
+            <button 
+              onClick={() => {
+                navigator.clipboard.writeText(`Bem-vindo ao Coliseu!\nSeu login: ${newCredentials.email}\nSua senha: ${newCredentials.password}\n\nAcesse e altere sua senha no primeiro login!`);
+                setMessage({ type: "success", text: "Credenciais copiadas para a área de transferência!" });
+                setNewCredentials(null);
+              }}
+              className="admin-btn admin-btn-primary group"
+              style={{ width: "100%", height: 56, backgroundColor: "#000", color: "#FFF", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 12 }}
+            >
+              COPIAR CREDENCIAIS E FECHAR
+            </button>
+            <button 
+              onClick={() => setNewCredentials(null)}
+              className="admin-btn admin-btn-ghost"
+              style={{ width: "100%", height: 40, fontSize: 11 }}
+            >
+              FECHAR SEM COPIAR
+            </button>
           </div>
         </div>
       )}

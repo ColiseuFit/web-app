@@ -155,12 +155,12 @@ export const wodResultSchema = z.object({
 
 // 14. Schema para Pré-cadastro (Leads)
 export const preRegistrationSchema = z.object({
-  full_name: z.string().min(3, "Nome completo é obrigatório"),
-  email: z.string().email("E-mail inválido"),
-  phone: z.string().min(10, "Telefone inválido"),
-  cpf: z.string().optional(),
+  full_name: z.string().min(3, "Nome completo é obrigatório").max(100, "Nome deve ter no máximo 100 caracteres"),
+  email: z.string().email("E-mail inválido").max(150, "E-mail deve ter no máximo 150 caracteres"),
+  phone: z.string().min(10, "Telefone inválido").max(15, "Telefone muito longo"),
+  cpf: z.string().max(14, "CPF inválido").optional(),
   birth_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data inválida").optional().or(z.literal("")),
-  bio: z.string().optional(),
+  bio: z.string().max(500, "Objetivo não pode passar de 500 caracteres").optional(),
 });
 
 
