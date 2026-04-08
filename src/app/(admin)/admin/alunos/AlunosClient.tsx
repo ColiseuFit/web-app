@@ -98,6 +98,7 @@ export default function AlunosClient({
   const [loadingEvals, setLoadingEvals] = useState(false);
   const [selectedEval, setSelectedEval] = useState<any | null>(null);
   const [selectedLead, setSelectedLead] = useState<any | null>(null);
+  const [showResendConfirm, setShowResendConfirm] = useState(false);
   const [isEditingLead, setIsEditingLead] = useState(false);
   const [approvedLeadInfo, setApprovedLeadInfo] = useState<{ email: string; phone: string; name: string } | null>(null);
   const [copied, setCopied] = useState(false);
@@ -273,17 +274,22 @@ export default function AlunosClient({
     setLoading(false);
   }
 
-  async function handleResendInvite(id: string) {
-    if (!confirm("REENVIAR CONVITE? Um novo link de ativação será gerado e enviado para o e-mail do aluno. O link anterior será invalidado.")) return;
+  async function executeResendInvite() {
+    if (!selectedStudent) return;
+    setShowResendConfirm(false);
     setLoading(true);
     const { resendInviteEmail } = await import("../../actions");
-    const result = await resendInviteEmail(id);
+    const result = await resendInviteEmail(selectedStudent.id);
     if (result.success) {
       setMessage({ type: "success", text: "Convite de acesso reenviado com sucesso!" });
     } else {
       setMessage({ type: "error", text: result.error || "Erro ao reenviar convite." });
     }
     setLoading(false);
+  }
+
+  function handleResendInvite(id: string) {
+    setShowResendConfirm(true);
   }
 
   const handleOpenDrawer = (student: Student) => {
@@ -463,7 +469,6 @@ export default function AlunosClient({
                         <button onClick={() => handleOpenDrawer(student)} className="admin-btn admin-btn-ghost" style={{ height: "36px", width: "36px", padding: 0 }}><User size={16} /></button>
                         <button onClick={() => { setSelectedStudent(student); setIsEditing(true); setDrawerView("profile"); }} className="admin-btn admin-btn-ghost" style={{ height: "36px", width: "36px", padding: 0 }}><Pencil size={16} /></button>
                         <button onClick={() => handleDelete(student.id)} className="admin-btn admin-btn-ghost" style={{ height: "36px", width: "36px", padding: 0, color: "#DC2626" }} title="Excluir"><Trash2 size={16} /></button>
-                        <button onClick={() => handleResendInvite(student.id)} className="admin-btn admin-btn-ghost" style={{ height: "36px", width: "36px", padding: 0, color: "var(--admin-primary)" }} title="Reenviar Convite de Acesso"><MailIcon size={16} /></button>
                         {student.phone && (
                           <a href={`https://wa.me/55${student.phone.replace(/\D/g, "")}`} target="_blank" rel="noopener noreferrer" className="admin-btn admin-btn-ghost" style={{ height: "36px", width: "36px", padding: 0 }}><Phone size={16} /></a>
                         )}
@@ -1187,6 +1192,78 @@ export default function AlunosClient({
             >
               FECHAR E VOLTAR
             </button>
+          </div>
+        </div>
+      )}
+      {/* NEO-BRUTALIST MODAL: CONFIRM RESEND */}
+      {showResendConfirm && selectedStudent && (
+        <div style={{
+          position: "fixed",
+          inset: 0,
+          background: "rgba(0,0,0,0.85)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 99999,
+          padding: 20
+        }}>
+          <div className="admin-card" style={{
+            maxWidth: 440,
+            width: "100%",
+            background: "#FFF",
+            border: "4px solid #000",
+            boxShadow: "12px 12px 0px #000",
+            padding: 32,
+            position: "relative"
+          }}>
+            <button 
+              onClick={() => setShowResendConfirm(false)}
+              style={{ position: "absolute", top: 16, right: 16, border: "2px solid #000", borderRadius: 4, background: "#FFF", padding: 4 }}
+            >
+              <X size={16} />
+            </button>
+
+            <div style={{
+              width: 64,
+              height: 64,
+              background: "var(--admin-primary)",
+              color: "#FFF",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              borderRadius: "12px",
+              border: "3px solid #000",
+              boxShadow: "4px 4px 0px #000",
+              marginBottom: 24
+            }}>
+              <MailIcon size={32} />
+            </div>
+
+            <h3 style={{ fontSize: 24, fontWeight: 900, textTransform: "uppercase", marginBottom: 12, lineHeight: 1 }}>
+              Reenviar Convite?
+            </h3>
+            
+            <p style={{ fontSize: 13, color: "#444", marginBottom: 32, lineHeight: 1.5 }}>
+              Um novo link de ativação será gerado e enviado para <strong>{selectedStudent.full_name}</strong>. 
+              O link enviado anteriormente será invalidado permanentemente.
+            </p>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+              <button 
+                onClick={() => setShowResendConfirm(false)}
+                className="admin-btn admin-btn-ghost"
+                style={{ height: 56, fontWeight: 900, border: "2px solid #000" }}
+              >
+                CANCELAR
+              </button>
+              <button 
+                onClick={executeResendInvite}
+                className="admin-btn admin-btn-primary"
+                style={{ height: 56, fontWeight: 900, border: "2px solid #000" }}
+              >
+                SIM, REENVIAR
+              </button>
+            </div>
           </div>
         </div>
       )}
