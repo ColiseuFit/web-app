@@ -640,10 +640,15 @@ export async function approvePreRegistration(preRegistrationId: string) {
   const actionLink = authData.properties.action_link;
 
   // Disparo de e-mail Anti-Bot via Resend
-  const resend = new Resend(process.env.RESEND_API_KEY!);
-  const verifyUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/verify?link=${encodeURIComponent(actionLink)}`;
-
   try {
+    if (!process.env.RESEND_API_KEY) {
+      console.error("ERRO: RESEND_API_KEY ausente. O servidor não leu o .env.local atualizado.");
+      return { error: "Servidor precisa ser reiniciado para carregar as chaves de e-mail. Por favor, reinicie o terminal." };
+    }
+
+    const resend = new Resend(process.env.RESEND_API_KEY);
+    const verifyUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/verify?link=${encodeURIComponent(actionLink)}`;
+
     await resend.emails.send({
       from: 'Coliseu <onboarding@clube.coliseufit.com>',
       to: lead.email,
@@ -662,6 +667,7 @@ export async function approvePreRegistration(preRegistrationId: string) {
     console.error("Erro ao disparar email via Resend:", err);
     return { error: "Convite gerado, mas ocorreu um erro ao enviar o e-mail via Resend." };
   }
+
 
   // 3. Create Profile
   // We split full_name into first and last name as a basic heuristic
