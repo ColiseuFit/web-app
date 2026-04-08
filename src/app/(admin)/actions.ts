@@ -650,7 +650,7 @@ export async function approvePreRegistration(preRegistrationId: string) {
     const verifyUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/verify?link=${encodeURIComponent(actionLink)}`;
 
     await resend.emails.send({
-      from: 'Coliseu <onboarding@clube.coliseufit.com>',
+      from: 'Coliseu <onboarding@coliseufit.com>',
       to: lead.email,
       subject: 'Bem-vindo ao Clube Coliseu!',
       html: `
