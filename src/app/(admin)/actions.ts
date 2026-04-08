@@ -624,7 +624,7 @@ export async function approvePreRegistration(preRegistrationId: string) {
         full_name: lead.full_name,
         first_name: firstName,
       },
-      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/callback?next=/setup-password` 
+      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/confirm` 
     }
   });
 
@@ -966,7 +966,7 @@ export async function resendInviteEmail(studentId: string) {
         full_name: profile.full_name,
         first_name: firstName,
       },
-      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/callback?next=/setup-password` 
+      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/confirm` 
     }
   });
 
