@@ -12,39 +12,98 @@ export default async function SetupPasswordPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  // Se não houver usuário logado (ex: token expirou ou link inválido), manda pro login
   if (!user) {
     redirect("/login?error=session-expired");
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-[var(--nb-bg)]">
-      <div className="w-full max-w-md relative">
-        <div className="bg-[var(--nb-surface)] border-[3px] border-[var(--nb-border)] p-10 shadow-[var(--nb-shadow-lg)]">
-          <div className="flex flex-col items-center text-center mb-10">
-            <div className="w-20 h-20 bg-[var(--nb-blue)] flex items-center justify-center mb-6 border-[3px] border-black shadow-[var(--nb-shadow-sm)]">
-              <Key className="w-10 h-10 text-white" />
+    <main style={{
+      minHeight: "100dvh",
+      backgroundColor: "#f5f5f5",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      padding: "24px",
+      fontFamily: "'Outfit', 'Inter', sans-serif",
+    }}>
+      <div style={{ width: "100%", maxWidth: "460px" }}>
+        <div style={{
+          backgroundColor: "#ffffff",
+          border: "4px solid #000000",
+          boxShadow: "12px 12px 0px #000000",
+          overflow: "hidden",
+        }}>
+          {/* Section: Header (Black) */}
+          <div style={{
+            backgroundColor: "#000000",
+            padding: "40px",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: "20px",
+            borderBottom: "4px solid #000",
+          }}>
+            <div style={{
+              width: "72px", height: "72px",
+              backgroundColor: "#E31B23",
+              border: "3px solid #fff",
+              boxShadow: "6px 6px 0px rgba(255,255,255,0.2)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              transform: "rotate(-3deg)",
+            }}>
+              <ShieldCheck size={36} color="#fff" />
             </div>
-            <h1 className="text-4xl font-[900] text-black mb-4 uppercase tracking-tighter leading-none">
-              Bem-vindo ao <br/> <span className="text-[var(--nb-red)]">Coliseu!</span>
-            </h1>
-            <p className="text-[var(--nb-text-dim)] font-bold text-sm uppercase tracking-tight">
-              Para garantir a segurança da sua conta, por favor defina sua senha de acesso.
-            </p>
+            
+            <div style={{ textAlign: "center" }}>
+              <div style={{
+                fontSize: "14px", fontWeight: 800, color: "#fff",
+                letterSpacing: "0.2em", textTransform: "uppercase", marginBottom: "8px"
+              }}>
+                Bem-vindo ao
+              </div>
+              <div style={{
+                fontSize: "48px", fontWeight: 900, color: "#E31B23",
+                letterSpacing: "-2px", lineHeight: 0.8, textTransform: "uppercase"
+              }}>
+                COLISEU
+              </div>
+            </div>
           </div>
 
-          <SetupPasswordForm />
+          {/* Section: Form Body (White) */}
+          <div style={{ padding: "40px" }}>
+            <p style={{
+              fontSize: "15px", fontWeight: 700, color: "#333",
+              lineHeight: 1.5, textAlign: "center", marginBottom: "32px",
+              textTransform: "uppercase", letterSpacing: "tight"
+            }}>
+              Para sua segurança, defina uma <span style={{ color: "#E31B23" }}>senha forte</span> para acessar seu painel de treinos.
+            </p>
 
-          <div className="mt-10 flex items-center justify-center gap-2 text-[10px] font-black text-black uppercase tracking-[0.2em]">
-            <ShieldCheck className="w-4 h-4 text-[var(--nb-red)]" />
-            <span>Conexão Segura e Criptografada</span>
+            <SetupPasswordForm />
+
+            <div style={{
+              marginTop: "40px",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              gap: "8px", color: "#888",
+            }}>
+              <Key size={14} />
+              <span style={{ fontSize: "11px", fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase" }}>
+                Acesso Seguro • 256-bit AES
+              </span>
+            </div>
           </div>
         </div>
-        
-        <p className="text-center mt-10 text-black font-black text-xs uppercase tracking-widest opacity-30">
+
+        <p style={{
+          textAlign: "center", marginTop: "32px",
+          fontSize: "11px", fontWeight: 800, letterSpacing: "0.2em",
+          textTransform: "uppercase", color: "#999"
+        }}>
           Coliseu Fitness & Performance © {new Date().getFullYear()}
         </p>
       </div>
-    </div>
+    </main>
   );
 }
+
