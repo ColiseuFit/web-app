@@ -273,6 +273,19 @@ export default function AlunosClient({
     setLoading(false);
   }
 
+  async function handleResendInvite(id: string) {
+    if (!confirm("REENVIAR CONVITE? Um novo link de ativação será gerado e enviado para o e-mail do aluno. O link anterior será invalidado.")) return;
+    setLoading(true);
+    const { resendInviteEmail } = await import("../../actions");
+    const result = await resendInviteEmail(id);
+    if (result.success) {
+      setMessage({ type: "success", text: "Convite de acesso reenviado com sucesso!" });
+    } else {
+      setMessage({ type: "error", text: result.error || "Erro ao reenviar convite." });
+    }
+    setLoading(false);
+  }
+
   const handleOpenDrawer = (student: Student) => {
     setSelectedStudent(student);
     setIsEditing(false);
@@ -449,7 +462,8 @@ export default function AlunosClient({
                       <div style={{ display: "flex", gap: "4px" }}>
                         <button onClick={() => handleOpenDrawer(student)} className="admin-btn admin-btn-ghost" style={{ height: "36px", width: "36px", padding: 0 }}><User size={16} /></button>
                         <button onClick={() => { setSelectedStudent(student); setIsEditing(true); setDrawerView("profile"); }} className="admin-btn admin-btn-ghost" style={{ height: "36px", width: "36px", padding: 0 }}><Pencil size={16} /></button>
-                        <button onClick={() => handleDelete(student.id)} className="admin-btn admin-btn-ghost" style={{ height: "36px", width: "36px", padding: 0, color: "#DC2626" }}><Trash2 size={16} /></button>
+                        <button onClick={() => handleDelete(student.id)} className="admin-btn admin-btn-ghost" style={{ height: "36px", width: "36px", padding: 0, color: "#DC2626" }} title="Excluir"><Trash2 size={16} /></button>
+                        <button onClick={() => handleResendInvite(student.id)} className="admin-btn admin-btn-ghost" style={{ height: "36px", width: "36px", padding: 0, color: "var(--admin-primary)" }} title="Reenviar Convite de Acesso"><MailIcon size={16} /></button>
                         {student.phone && (
                           <a href={`https://wa.me/55${student.phone.replace(/\D/g, "")}`} target="_blank" rel="noopener noreferrer" className="admin-btn admin-btn-ghost" style={{ height: "36px", width: "36px", padding: 0 }}><Phone size={16} /></a>
                         )}
@@ -908,6 +922,27 @@ export default function AlunosClient({
                       >
                         {loading ? "ATUALIZANDO CREDENCIAIS..." : "CONFIRMAR ALTERAÇÕES DE SEGURANÇA"}
                       </button>
+
+                      <div style={{ height: "1px", background: "#000", margin: "16px 0", opacity: 0.1 }} />
+
+                      <div className="admin-card" style={{ padding: 24, border: "3px dashed #000", background: "#FAFAFA", textAlign: "center" }}>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 12 }}>
+                          <MailIcon size={18} />
+                          <span style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase" }}>Reenviar Link de Onboarding</span>
+                        </div>
+                        <p style={{ fontSize: 11, color: "#666", marginBottom: 20 }}>
+                          Use isto se o aluno não recebeu o e-mail inicial ou se o link expirou. Isso gerará um novo link de ativação.
+                        </p>
+                        <button 
+                          type="button"
+                          onClick={() => handleResendInvite(selectedStudent.id)}
+                          disabled={loading}
+                          className="admin-btn admin-btn-ghost"
+                          style={{ width: "100%", height: 48, borderColor: "#000", borderStyle: "solid", borderWidth: "2px", fontWeight: 900, fontSize: 12 }}
+                        >
+                          {loading ? "PROCESSANDO..." : "REENVIAR AGORA"}
+                        </button>
+                      </div>
                     </div>
                   </form>
                 </div>

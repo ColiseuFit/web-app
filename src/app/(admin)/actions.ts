@@ -903,3 +903,139 @@ export async function updatePreRegistration(preRegistrationId: string, formData:
   revalidatePath("/admin/alunos");
   return { success: true };
 }
+
+/**
+ * Resends the invitation email to an existing student.
+ * 
+ * @security
+ * - Role Requirement: Only 'admin' or 'reception' roles.
+ * - Uses Service Role for Auth Admin operations.
+ * 
+ * @param {string} studentId - The UUID of the student (auth.user.id).
+ * @returns {Promise<{ success?: boolean; error?: string }>} Operation status.
+ */
+export async function resendInviteEmail(studentId: string) {
+  const supabase = await createClient();
+  const { data: { user: currentUser } } = await supabase.auth.getUser();
+  if (!currentUser) return { error: "Sem sessão logada." };
+
+  const { data: roleData } = await supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", currentUser.id)
+    .single();
+
+  if (!roleData || (roleData.role !== "admin" && roleData.role !== "reception")) {
+    return { error: "Acesso negado. Apenas Admin ou Recepção." };
+  }
+
+  // 1. Fetch student profile to get the name
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("full_name, first_name")
+    .eq("id", studentId)
+    .single();
+
+  if (profileError || !profile) {
+    return { error: "Perfil do aluno não encontrado." };
+  }
+
+  // 2. Initialize Admin Client to get the email from Auth
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim().split(' ')[0];
+  if (!serviceRoleKey) return { error: "Erro de configuração: SERVICE_ROLE_KEY ausente." };
+
+  const supabaseAdmin = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    serviceRoleKey,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  );
+
+  const { data: authUser, error: authUserError } = await supabaseAdmin.auth.admin.getUserById(studentId);
+  if (authUserError || !authUser.user) {
+    return { error: "Usuário não encontrado na base de autenticação." };
+  }
+
+  const email = authUser.user.email;
+  if (!email) return { error: "E-mail do aluno não encontrado." };
+
+  const firstName = profile.first_name || profile.full_name.trim().split(" ")[0];
+
+  // 3. Generate Link
+  const { data: authData, error: authError } = await supabaseAdmin.auth.admin.generateLink({
+    type: 'invite',
+    email: email,
+    options: {
+      data: {
+        full_name: profile.full_name,
+        first_name: firstName,
+      },
+      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/callback?next=/setup-password` 
+    }
+  });
+
+  if (authError) return { error: "Erro ao gerar novo link de convite: " + authError.message };
+
+  const actionLink = authData.properties.action_link;
+
+  // 4. Send Email via Resend
+  try {
+    if (!process.env.RESEND_API_KEY) return { error: "API Key do Resend ausente." };
+    const resend = new Resend(process.env.RESEND_API_KEY);
+    const verifyUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/verify?link=${encodeURIComponent(actionLink)}`;
+
+    await resend.emails.send({
+      from: 'Coliseu <onboarding@coliseufit.com>',
+      to: email,
+      subject: 'Reenvio: Bem-vindo ao Clube Coliseu!',
+      html: `
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bem-vindo(a) ao Coliseu</title>
+  <style>
+    body { font-family: sans-serif; line-height: 1.6; color: #000; background-color: #f4f4f5; margin: 0; padding: 0; }
+    .wrapper { padding: 40px 20px; }
+    .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 3px solid #000; box-shadow: 8px 8px 0px #000; }
+    .header { background-color: #000; color: #fff; padding: 25px 20px; text-align: center; border-bottom: 3px solid #000; }
+    .header h1 { margin: 0; font-size: 32px; font-weight: 900; text-transform: uppercase; }
+    .header span { color: #dc2626; }
+    .content { padding: 40px 30px; }
+    .content h2 { font-size: 24px; font-weight: 800; margin-top: 0; margin-bottom: 25px; text-transform: uppercase; }
+    .cta-container { text-align: center; margin: 40px 0; }
+    .cta-button { background-color: #dc2626; color: #ffffff !important; font-size: 16px; font-weight: 800; text-transform: uppercase; text-decoration: none; padding: 16px 32px; display: inline-block; border: 2px solid #000; box-shadow: 4px 4px 0px #000; }
+    .footer { padding: 20px; background-color: #fff; border-top: 2px solid #000; text-align: center; font-size: 13px; color: #71717a; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="container">
+      <div class="header"><h1>COLISEU<span>CLUBE</span></h1></div>
+      <div class="content">
+        <h2>FALA, ${firstName}! 🔥</h2>
+        <p>Estamos reenviando seu acesso ao app porque acreditamos que você não pode ficar de fora!</p>
+        <p>Clique no botão abaixo para definir sua senha e começar seus treinos.</p>
+        <div class="cta-container">
+          <a href="${verifyUrl}" class="cta-button">CRIAR SENHA DE ACESSO</a>
+        </div>
+        <p style="font-weight: 700;">Nos vemos no Coliseu.</p>
+      </div>
+      <div class="footer">
+        Link expira em breve.<br>
+        <a href="${verifyUrl}">${verifyUrl}</a><br><br>
+        ColiseuFit &copy; 2026.
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+      `
+    });
+
+    return { success: true };
+  } catch (err) {
+    console.error("Erro no reenvio de e-mail:", err);
+    return { error: "Link gerado, mas falha no disparo do e-mail." };
+  }
+}
