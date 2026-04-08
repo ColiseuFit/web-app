@@ -611,22 +611,25 @@ export async function approvePreRegistration(preRegistrationId: string) {
     { auth: { autoRefreshToken: false, persistSession: false } }
   );
 
-  // 2. Create Auth Credential (generate 6 chars random password)
-  const randomSuffix = Math.random().toString(36).substring(2, 8);
-  const userPassword = `Coliseu@${randomSuffix}`;
-  
-  const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-    email: lead.email,
-    password: userPassword,
-    email_confirm: true,
-  });
+  // Extrair o primeiro nome para usar no email
+  const firstName = lead.full_name.trim().split(" ")[0];
+
+  // 2. Create Auth Invitation (Sends email to user to set their password)
+  const { data: authData, error: authError } = await supabaseAdmin.auth.admin.inviteUserByEmail(
+    lead.email,
+    { 
+      data: {
+        full_name: lead.full_name,
+        first_name: firstName,
+      },
+      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/callback?next=/setup-password` 
+    }
+  );
 
   if (authError) {
-    let errorMessage = "Erro ao criar credenciais de acesso.";
+    let errorMessage = "Erro ao enviar convite de acesso.";
     if (authError.message.includes("already been registered")) {
       errorMessage = "Este e-mail já está cadastrado em outro perfil de aluno.";
-    } else if (authError.message.includes("Password should be")) {
-      errorMessage = "A senha padrão não atende aos requisitos de segurança.";
     }
     return { error: errorMessage || authError.message };
   }
@@ -636,7 +639,6 @@ export async function approvePreRegistration(preRegistrationId: string) {
   // 3. Create Profile
   // We split full_name into first and last name as a basic heuristic
   const nameParts = lead.full_name.trim().split(" ");
-  const firstName = nameParts[0];
   const lastName = nameParts.length > 1 ? nameParts.slice(1).join(" ") : null;
 
   const { error: profileError } = await supabaseAdmin
@@ -675,7 +677,7 @@ export async function approvePreRegistration(preRegistrationId: string) {
     .eq("id", preRegistrationId);
 
   revalidatePath("/admin/alunos");
-  return { success: true, password: userPassword };
+  return { success: true };
 }
 
 /**

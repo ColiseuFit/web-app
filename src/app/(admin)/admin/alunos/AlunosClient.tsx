@@ -99,7 +99,7 @@ export default function AlunosClient({
   const [selectedEval, setSelectedEval] = useState<any | null>(null);
   const [selectedLead, setSelectedLead] = useState<any | null>(null);
   const [isEditingLead, setIsEditingLead] = useState(false);
-  const [newCredentials, setNewCredentials] = useState<{ email: string; password: string, name: string } | null>(null);
+  const [approvedLeadInfo, setApprovedLeadInfo] = useState<{ email: string; phone: string; name: string } | null>(null);
 
   // Auto-hide success messages (Except when showing a generated password)
   useEffect(() => {
@@ -199,15 +199,14 @@ export default function AlunosClient({
     const { approvePreRegistration } = await import("../../actions");
     setLoadingLeadId(id);
     const result = await approvePreRegistration(id);
-    if (result.success && result.password) {
+    if (result.success) {
       const lead = preRegistrations?.find(p => p.id === id);
-      setNewCredentials({
+      setApprovedLeadInfo({
         name: lead?.full_name || "Aluno",
         email: lead?.email || "",
-        password: result.password
+        phone: lead?.phone || ""
       });
-    } else if (result.success) {
-      setMessage({ type: "success", text: "Pré-cadastro aprovado e aluno criado com sucesso!" });
+      setMessage({ type: "success", text: "Pré-cadastro aprovado! Convite enviado por e-mail." });
     } else {
       setMessage({ type: "error", text: result.error || "Erro ao aprovar pré-cadastro." });
     }
@@ -1094,49 +1093,49 @@ export default function AlunosClient({
       )}
 
       {/* New Credentials Modal */}
-      {newCredentials && (
+      {/* Approved Lead / Invitation Modal */}
+      {approvedLeadInfo && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
           <div className="bg-white max-w-sm w-full p-8 relative shadow-2xl" style={{ border: "4px solid #000" }}>
             <div style={{ textAlign: "center", marginBottom: 24 }}>
               <div style={{ display: "inline-flex", padding: 12, background: "#10B981", border: "2px solid #000", marginBottom: 16 }}>
                 <ShieldCheck size={32} color="#FFF" />
               </div>
-              <h2 style={{ fontSize: 24, fontWeight: 900, textTransform: "uppercase", color: "#000", lineHeight: 1.1 }}>Acesso Criado<br/>com Sucesso</h2>
+              <h2 style={{ fontSize: 24, fontWeight: 900, textTransform: "uppercase", color: "#000", lineHeight: 1.1 }}>Aluno Aprovado</h2>
               <p style={{ fontSize: 13, fontWeight: 600, color: "#666", marginTop: 8 }}>
-                O perfil de <strong>{newCredentials.name}</strong> foi ativado.
+                Um convite foi enviado para <strong>{approvedLeadInfo.email}</strong>.
               </p>
             </div>
 
             <div style={{ background: "#F5F5F5", border: "2px solid #000", padding: 16, marginBottom: 24 }}>
-              <div style={{ marginBottom: 12 }}>
-                <span style={{ fontSize: 10, fontWeight: 800, textTransform: "uppercase", color: "#666" }}>E-MAIL (LOGIN)</span>
-                <div style={{ fontSize: 14, fontWeight: 700, color: "#000", wordBreak: "break-all" }}>{newCredentials.email}</div>
-              </div>
-              <div>
-                <span style={{ fontSize: 10, fontWeight: 800, textTransform: "uppercase", color: "#666" }}>SENHA PROVISÓRIA</span>
-                <div style={{ fontSize: 18, fontWeight: 900, color: "#E31B23", wordBreak: "break-all", background: "#FFF", border: "1px solid #CCC", padding: "4px 8px", marginTop: 4 }}>
-                  {newCredentials.password}
-                </div>
-              </div>
+              <p style={{ fontSize: 12, fontWeight: 700, color: "#333", textAlign: "center", textTransform: "uppercase", marginBottom: 4 }}>Dica de Onboarding</p>
+              <p style={{ fontSize: 11, color: "#666", textAlign: "center" }}>
+                O aluno deve clicar no link do e-mail para ativar sua conta e definir sua senha pessoal.
+              </p>
             </div>
 
             <button 
               onClick={() => {
-                navigator.clipboard.writeText(`Bem-vindo ao Coliseu!\nSeu login: ${newCredentials.email}\nSua senha: ${newCredentials.password}\n\nAcesse e altere sua senha no primeiro login!`);
-                setMessage({ type: "success", text: "Credenciais copiadas para a área de transferência!" });
-                setNewCredentials(null);
+                const text = `Olá ${approvedLeadInfo.name}! Boas-vindas ao Coliseu! 🏋️\n\nSeu cadastro foi aprovado. Enviamos um e-mail para ${approvedLeadInfo.email} com o link de ativação da sua conta.\n\nPor favor, cheque sua caixa de entrada (e spam) para definir sua senha e começar a treinar!`;
+                
+                // Formata o telefone (remove caracteres não numéricos)
+                const cleanPhone = approvedLeadInfo.phone.replace(/\D/g, '');
+                const whatsappUrl = `https://wa.me/55${cleanPhone}?text=${encodeURIComponent(text)}`;
+                
+                window.open(whatsappUrl, '_blank');
+                setApprovedLeadInfo(null);
               }}
               className="admin-btn admin-btn-primary group"
-              style={{ width: "100%", height: 56, backgroundColor: "#000", color: "#FFF", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 12 }}
+              style={{ width: "100%", height: 56, backgroundColor: "#25D366", borderColor: "#128C7E", color: "#FFF", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 12 }}
             >
-              COPIAR CREDENCIAIS E FECHAR
+              <Phone size={20} /> ENVIAR BOAS-VINDAS (WHATSAPP)
             </button>
             <button 
-              onClick={() => setNewCredentials(null)}
+              onClick={() => setApprovedLeadInfo(null)}
               className="admin-btn admin-btn-ghost"
               style={{ width: "100%", height: 40, fontSize: 11 }}
             >
-              FECHAR SEM COPIAR
+              FECHAR E VOLTAR
             </button>
           </div>
         </div>

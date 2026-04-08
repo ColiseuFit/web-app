@@ -1,8 +1,9 @@
 "use server";
 
-import { loginSchema } from "@/lib/validations/security_schemas";
+import { loginSchema, updatePasswordSchema } from "@/lib/validations/security_schemas";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 
 /**
  * Autentica um usuário utilizando o provedor Email/Password do Supabase.
@@ -107,4 +108,36 @@ export async function createPreRegistration(formData: FormData) {
   }
 
   return { success: true };
+}
+
+/**
+ * Define a senha inicial do usuário (Primeiro Acesso).
+ * 
+ * @security
+ * - Requer que o usuário já tenha uma sessão ativa (proporcionada pelo callback do convite).
+ * - Utiliza `updateUser` do Supabase para persistir a nova senha.
+ * - Validação via `updatePasswordSchema`.
+ */
+export async function setupPassword(formData: FormData) {
+  const password = formData.get("password") as string;
+  const confirm_password = formData.get("confirm_password") as string;
+
+  const validation = updatePasswordSchema.safeParse({ password, confirm_password });
+  
+  if (!validation.success) {
+    return { error: validation.error.issues[0].message };
+  }
+
+  const supabase = await createClient();
+  
+  const { error } = await supabase.auth.updateUser({
+    password: validation.data.password,
+  });
+
+  if (error) {
+    return { error: "Erro ao definir senha: " + error.message };
+  }
+
+  revalidatePath("/", "layout");
+  redirect("/dashboard");
 }
