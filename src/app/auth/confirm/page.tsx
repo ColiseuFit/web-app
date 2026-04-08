@@ -31,11 +31,12 @@ export default function AuthConfirmPage() {
   const supabase = createClient();
 
   useEffect(() => {
-    // Escuta o evento de autenticação. O SDK dispara SIGNED_IN assim que
-    // consegue trocar o token do hash por uma sessão válida.
+    // Escuta o evento de autenticação. O SDK dispara:
+    // - SIGNED_IN: quando um convite inicial (type=invite) é processado
+    // - PASSWORD_RECOVERY: quando um link de recuperação/reenvio (type=recovery) é processado
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        if (event === "SIGNED_IN" && session) {
+        if ((event === "SIGNED_IN" || event === "PASSWORD_RECOVERY") && session) {
           // Sessão estabelecida com sucesso — ir para a criação de senha
           router.replace("/setup-password");
         } else if (event === "INITIAL_SESSION" && !session) {

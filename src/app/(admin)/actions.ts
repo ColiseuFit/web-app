@@ -958,14 +958,13 @@ export async function resendInviteEmail(studentId: string) {
   const firstName = profile.first_name || profile.full_name.trim().split(" ")[0];
 
   // 3. Generate Link
+  // Use 'recovery' (password reset) because the user already exists in auth.
+  // 'invite' would fail with "already registered". 'recovery' generates a secure
+  // one-time link that lets an existing user set their password — identical UX for the student.
   const { data: authData, error: authError } = await supabaseAdmin.auth.admin.generateLink({
-    type: 'invite',
+    type: 'recovery',
     email: email,
     options: {
-      data: {
-        full_name: profile.full_name,
-        first_name: firstName,
-      },
       redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/confirm` 
     }
   });
