@@ -156,7 +156,7 @@ export default function AdminSidebar() {
 
       {/* ── BOTTOM: Back to Student App ── */}
       <div style={{ padding: "16px 12px 24px", borderTop: "2px solid #000", background: "#F9F9F9" }}>
-        <Link
+        <a
           href="/dashboard"
           style={{
             display: "flex",
@@ -178,7 +178,7 @@ export default function AdminSidebar() {
         >
           <ChevronLeft size={18} strokeWidth={2.5} />
           <span>App do Aluno</span>
-        </Link>
+        </a>
         <Link
           href="/login"
           style={{

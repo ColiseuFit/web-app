@@ -51,6 +51,14 @@ export async function proxy(request: NextRequest) {
     } else if (path === '/') {
       url.pathname = '/admin';
       isRewritten = true;
+    } else if (path === '/dashboard') {
+      const redirectUrl = request.nextUrl.clone();
+      redirectUrl.hostname = hostname.replace('admin', 'clube');
+      redirectUrl.pathname = '/dashboard';
+      if (hostname.includes('localhost')) {
+          redirectUrl.port = request.nextUrl.port || '3000';
+      }
+      return NextResponse.redirect(redirectUrl);
     } else if (
       !path.startsWith('/admin') && 
       !path.startsWith('/admin-portal') && 
