@@ -928,10 +928,10 @@ export default function AlunosClient({
           <div style={{
             background: "#FFF",
             width: "100%",
-            maxWidth: "400px",
+            maxWidth: "480px",
             border: "4px solid #000",
-            boxShadow: "16px 16px 0px #000",
-            padding: "32px",
+            boxShadow: "24px 24px 0px #000",
+            padding: "48px 40px",
             display: "flex",
             flexDirection: "column",
             alignItems: "center",
@@ -1095,9 +1095,9 @@ export default function AlunosClient({
       {/* New Credentials Modal */}
       {/* Approved Lead / Invitation Modal */}
       {approvedLeadInfo && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-white max-w-sm w-full p-8 relative shadow-2xl" style={{ border: "4px solid #000" }}>
-            <div style={{ textAlign: "center", marginBottom: 24 }}>
+        <div className="fixed inset-0 z-[10001] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+          <div className="bg-white w-full relative" style={{ maxWidth: "480px", border: "4px solid #000", boxShadow: "24px 24px 0px #000", padding: "48px 40px" }}>
+            <div style={{ textAlign: "center", marginBottom: 32 }}>
               <div style={{ display: "inline-flex", padding: 12, background: "#10B981", border: "2px solid #000", marginBottom: 16 }}>
                 <ShieldCheck size={32} color="#FFF" />
               </div>
