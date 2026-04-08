@@ -33,37 +33,37 @@ export default function SetupPasswordForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-6">
       {error && (
-        <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-xs p-3 rounded-xl text-center">
+        <div className="bg-[var(--nb-red)] border-[2px] border-black text-white text-[10px] font-black p-3 shadow-[var(--nb-shadow-sm)] text-center uppercase tracking-widest">
           {error}
         </div>
       )}
 
-      <div className="space-y-2">
-        <label className="text-xs font-medium text-gray-400 ml-1">Nova Senha</label>
+      <div className="space-y-3">
+        <label className="text-[10px] font-black text-black uppercase tracking-[0.2em] ml-1">Nova Senha</label>
         <div className="relative">
           <input
             type={showPassword ? "text" : "password"}
             name="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="No mínimo 8 caracteres"
+            placeholder="Mínimo 8 caracteres"
             required
-            className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all"
+            className="w-full bg-white border-[3px] border-black px-5 py-4 text-black placeholder:text-gray-400 focus:outline-none focus:bg-[var(--nb-surface-low)] transition-all font-bold"
           />
           <button
             type="button"
             onClick={() => setShowPassword(!showPassword)}
-            className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors"
+            className="absolute right-5 top-1/2 -translate-y-1/2 text-black hover:text-[var(--nb-red)] transition-colors"
           >
-            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
           </button>
         </div>
       </div>
 
-      <div className="space-y-2">
-        <label className="text-xs font-medium text-gray-400 ml-1">Confirmar Senha</label>
+      <div className="space-y-3">
+        <label className="text-[10px] font-black text-black uppercase tracking-[0.2em] ml-1">Confirmar Senha</label>
         <input
           type={showPassword ? "text" : "password"}
           name="confirm_password"
@@ -71,20 +71,20 @@ export default function SetupPasswordForm() {
           onChange={(e) => setConfirmPassword(e.target.value)}
           placeholder="Repita sua senha"
           required
-          className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all"
+          className="w-full bg-white border-[3px] border-black px-5 py-4 text-black placeholder:text-gray-400 focus:outline-none focus:bg-[var(--nb-surface-low)] transition-all font-bold"
         />
       </div>
 
       <button
         type="submit"
         disabled={isLoading || password.length < 8}
-        className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-4 rounded-2xl shadow-xl shadow-blue-500/20 flex items-center justify-center gap-2 group transition-all"
+        className="w-full h-16 bg-[var(--nb-red)] text-white border-[3px] border-black shadow-[var(--nb-shadow)] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 uppercase font-black text-sm tracking-[0.2em] mt-2 group"
       >
         {isLoading ? (
           <Loader2 className="w-5 h-5 animate-spin" />
         ) : (
           <>
-            Ativar Minha Conta
+            ATIVAR MINHA CONTA
             <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
           </>
         )}

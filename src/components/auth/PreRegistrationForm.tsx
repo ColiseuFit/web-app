@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 import { createPreRegistration } from "@/app/(auth)/actions";
 
 interface PreRegistrationFormProps {
@@ -59,9 +60,7 @@ export function PreRegistrationForm({ onBack, onSuccess }: PreRegistrationFormPr
         onMouseEnter={(e) => e.currentTarget.style.color = "white"}
         onMouseLeave={(e) => e.currentTarget.style.color = "rgba(255,255,255,0.6)"}
       >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="square" className="transition-transform group-hover:-translate-x-1">
-          <path d="M19 12H5M12 19l-7-7 7-7" />
-        </svg>
+        <ArrowLeft size={16} className="transition-transform group-hover:-translate-x-1" />
         VOLTAR
       </button>
 
@@ -155,6 +154,57 @@ export function PreRegistrationForm({ onBack, onSuccess }: PreRegistrationFormPr
           </div>
         </div>
 
+        {/* CPF & Nascimento */}
+        <div className="flex gap-4">
+          <div className="flex-1">
+            <label style={{ display: "block", fontSize: "10px", fontWeight: 800, color: "rgba(255,255,255,0.7)", letterSpacing: "0.2em", textTransform: "uppercase", marginBottom: "8px" }}>
+              CPF (Opcional)
+            </label>
+            <input
+              type="text"
+              name="cpf"
+              maxLength={14}
+              placeholder="000.000.000-00"
+              style={{
+                width: "100%",
+                background: "#0A0A0A",
+                border: "1px solid rgba(255,255,255,0.1)",
+                padding: "16px",
+                fontSize: "16px",
+                color: "white",
+                outline: "none",
+                fontFamily: "Inter, sans-serif",
+                transition: "border-color 0.3s",
+              }}
+              onFocus={(e) => e.currentTarget.style.borderColor = "#E31B23"}
+              onBlur={(e) => e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"}
+            />
+          </div>
+          <div className="flex-1">
+            <label style={{ display: "block", fontSize: "10px", fontWeight: 800, color: "rgba(255,255,255,0.7)", letterSpacing: "0.2em", textTransform: "uppercase", marginBottom: "8px" }}>
+              Nascimento
+            </label>
+            <input
+              type="date"
+              name="birth_date"
+              style={{
+                width: "100%",
+                background: "#0A0A0A",
+                border: "1px solid rgba(255,255,255,0.1)",
+                padding: "16px",
+                fontSize: "16px",
+                color: "white",
+                outline: "none",
+                fontFamily: "Inter, sans-serif",
+                transition: "border-color 0.3s",
+              }}
+              className="appearance-none"
+              onFocus={(e) => e.currentTarget.style.borderColor = "#E31B23"}
+              onBlur={(e) => e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"}
+            />
+          </div>
+        </div>
+
 
         {/* Error */}
         {error && (
@@ -201,9 +251,7 @@ export function PreRegistrationForm({ onBack, onSuccess }: PreRegistrationFormPr
           }}
         >
           <span className="relative z-10">{loading ? "ENVIANDO..." : "ENVIAR PRÉ-CADASTRO"}</span>
-          <svg className="relative z-10" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="square">
-            <path d="M5 12h14M12 5l7 7-7 7" />
-          </svg>
+          <ArrowRight size={18} className="relative z-10" />
         </button>
       </form>
     </motion.div>

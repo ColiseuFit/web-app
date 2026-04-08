@@ -15,47 +15,43 @@ export default async function VerifyPage({
 
   if (!link) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4 bg-[#0a0a0a]">
-        <div className="text-center">
-          <div className="w-16 h-16 bg-red-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-red-500/30">
-            <ShieldCheck className="w-8 h-8 text-red-500" />
+      <div className="min-h-screen flex items-center justify-center p-4 bg-[var(--nb-bg)]">
+        <div className="text-center p-8 bg-[var(--nb-surface)] border-[3px] border-[var(--nb-border)] shadow-[var(--nb-shadow-lg)] max-w-sm">
+          <div className="w-16 h-16 bg-[var(--nb-red)] flex items-center justify-center mx-auto mb-6 border-[2px] border-black shadow-[var(--nb-shadow-sm)]">
+            <ShieldCheck className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-xl font-bold text-white mb-2">Link Inválido</h1>
-          <p className="text-gray-400">Por favor, acesse através do botão enviado no seu e-mail.</p>
+          <h1 className="text-2xl font-[900] text-black mb-4 uppercase tracking-tighter">Link Inválido</h1>
+          <p className="text-[var(--nb-text-dim)] font-medium">Por favor, acesse através do botão enviado no seu e-mail.</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-[#0a0a0a]">
-      {/* Background Decorative Elements */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-500/10 blur-[120px] rounded-full" />
-        <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] bg-orange-500/10 blur-[120px] rounded-full" />
-      </div>
-
-      <div className="w-full max-w-md z-10">
-        <div className="bg-[#1a1a1a]/80 backdrop-blur-xl border border-white/10 p-8 rounded-3xl shadow-2xl">
-          <div className="flex flex-col items-center text-center mb-8">
-            <div className="w-16 h-16 bg-blue-500/20 rounded-2xl flex items-center justify-center mb-4 border border-blue-500/30 animate-pulse">
-              <Dumbbell className="w-8 h-8 text-blue-400" />
+    <div className="min-h-screen flex items-center justify-center p-4 bg-[var(--nb-bg)]">
+      <div className="w-full max-w-md relative">
+        <div className="bg-[var(--nb-surface)] border-[3px] border-[var(--nb-border)] p-10 shadow-[var(--nb-shadow-lg)]">
+          <div className="flex flex-col items-center text-center mb-10">
+            <div className="w-20 h-20 bg-[var(--nb-blue)] flex items-center justify-center mb-6 border-[3px] border-black shadow-[var(--nb-shadow-sm)] animate-bounce-slow">
+              <Dumbbell className="w-10 h-10 text-white" />
             </div>
-            <h1 className="text-2xl font-bold text-white mb-2">Quase lá!</h1>
-            <p className="text-gray-400 text-sm">
-              Para sua segurança, clique no botão abaixo para confirmar seu acesso e definir sua senha.
+            <h1 className="text-4xl font-[900] text-black mb-4 uppercase tracking-tighter leading-none">
+              Quase <br/> <span className="text-[var(--nb-red)]">lá!</span>
+            </h1>
+            <p className="text-[var(--nb-text-dim)] font-bold text-sm uppercase tracking-tight">
+              Clique no botão abaixo para confirmar seu acesso e definir sua senha.
             </p>
           </div>
 
           <VerifyButton link={link} />
 
-          <div className="mt-8 flex items-center justify-center gap-2 text-[10px] text-gray-500 uppercase tracking-widest">
-            <ShieldCheck className="w-3 h-3 text-green-500/50" />
-            <span>Verificação Protegida Anti-Bot</span>
+          <div className="mt-10 flex items-center justify-center gap-2 text-[10px] font-black text-black uppercase tracking-[0.2em]">
+            <ShieldCheck className="w-4 h-4 text-[var(--nb-red)]" />
+            <span>Verificação Protegida</span>
           </div>
         </div>
         
-        <p className="text-center mt-6 text-gray-600 text-sm">
+        <p className="text-center mt-10 text-black font-black text-xs uppercase tracking-widest opacity-30">
           Coliseu Fitness & Performance © {new Date().getFullYear()}
         </p>
       </div>

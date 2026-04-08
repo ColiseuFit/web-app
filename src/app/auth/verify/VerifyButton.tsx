@@ -26,16 +26,16 @@ export default function VerifyButton({ link }: { link: string }) {
     <button
       onClick={handleClick}
       disabled={clicked}
-      className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-medium py-3 px-4 rounded-xl transition-all disabled:opacity-70 disabled:cursor-not-allowed group"
+      className="w-full h-16 flex items-center justify-center gap-3 bg-[var(--nb-red)] text-white border-[3px] border-black shadow-[var(--nb-shadow)] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all disabled:opacity-70 disabled:cursor-not-allowed group uppercase font-[900] text-sm tracking-widest"
     >
       {clicked ? (
         <>
           <Loader2 className="w-5 h-5 animate-spin" />
-          Ativando...
+          ATIVANDO...
         </>
       ) : (
         <>
-          Ativar Minha Conta
+          ATIVAR MINHA CONTA
           <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
         </>
       )}
