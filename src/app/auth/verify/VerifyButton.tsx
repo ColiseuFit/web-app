@@ -3,22 +3,22 @@
 import { useState } from "react";
 import { ArrowRight, Loader2 } from "lucide-react";
 
+/**
+ * Botão de ativação de conta no fluxo de onboarding.
+ * Usa estilos inline para evitar interferência do CSS global do painel escuro.
+ *
+ * @param {string} link - O action_link gerado pelo Supabase para ser processado.
+ */
 export default function VerifyButton({ link }: { link: string }) {
   const [clicked, setClicked] = useState(false);
 
   const handleClick = () => {
-    setClicked(true);
-    
-    // Fallback/Safety check: If searchParams was not awaited correctly on server, 
-    // it results in [object Promise].
     if (link === "[object Promise]") {
-      console.error("Link state error: received Promise instead of URL string.");
+      console.error("Link inválido — recebeu Promise em vez de string.");
       alert("Erro na ativação: Link inválido. Por favor, tente novamente.");
-      setClicked(false);
       return;
     }
-
-    console.log("Navigating to verification link:", link);
+    setClicked(true);
     window.location.href = link;
   };
 
@@ -26,17 +26,49 @@ export default function VerifyButton({ link }: { link: string }) {
     <button
       onClick={handleClick}
       disabled={clicked}
-      className="w-full h-16 flex items-center justify-center gap-3 bg-[var(--nb-red)] text-white border-[3px] border-black shadow-[var(--nb-shadow)] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all disabled:opacity-70 disabled:cursor-not-allowed group uppercase font-[900] text-sm tracking-widest"
+      style={{
+        width: "100%",
+        height: "60px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: "12px",
+        backgroundColor: clicked ? "#999" : "#E31B23",
+        color: "#ffffff",
+        border: "3px solid #000000",
+        boxShadow: clicked ? "none" : "5px 5px 0px #000000",
+        cursor: clicked ? "not-allowed" : "pointer",
+        fontSize: "15px",
+        fontWeight: 900,
+        fontFamily: "'Outfit', 'Inter', sans-serif",
+        textTransform: "uppercase",
+        letterSpacing: "0.12em",
+        transition: "all 0.15s ease",
+        transform: clicked ? "translate(3px, 3px)" : "translate(0, 0)",
+        outline: "none",
+      }}
+      onMouseEnter={(e) => {
+        if (!clicked) {
+          (e.currentTarget as HTMLButtonElement).style.transform = "translate(3px, 3px)";
+          (e.currentTarget as HTMLButtonElement).style.boxShadow = "2px 2px 0px #000000";
+        }
+      }}
+      onMouseLeave={(e) => {
+        if (!clicked) {
+          (e.currentTarget as HTMLButtonElement).style.transform = "translate(0, 0)";
+          (e.currentTarget as HTMLButtonElement).style.boxShadow = "5px 5px 0px #000000";
+        }
+      }}
     >
       {clicked ? (
         <>
-          <Loader2 className="w-5 h-5 animate-spin" />
+          <Loader2 size={20} style={{ animation: "spin 1s linear infinite" }} />
           ATIVANDO...
         </>
       ) : (
         <>
           ATIVAR MINHA CONTA
-          <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+          <ArrowRight size={20} />
         </>
       )}
     </button>
