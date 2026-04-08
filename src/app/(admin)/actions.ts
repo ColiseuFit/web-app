@@ -957,12 +957,22 @@ export async function resendInviteEmail(studentId: string) {
 
   const firstName = profile.first_name || profile.full_name.trim().split(" ")[0];
 
-  // 3. Generate Link
-  // Use 'recovery' (password reset) because the user already exists in auth.
-  // 'invite' would fail with "already registered". 'recovery' generates a secure
-  // one-time link that lets an existing user set their password — identical UX for the student.
+  // 3. Garantir que o e-mail está confirmado antes de gerar o link.
+  // Sem isso, 'recovery' falha silenciosamente para usuários não confirmados.
+  // 'email_confirm: true' não altera dados pessoais — apenas marca o email como verificado
+  // para que o fluxo de link funcione corretamente.
+  await supabaseAdmin.auth.admin.updateUserById(studentId, {
+    email_confirm: true,
+  });
+
+  // 4. Generate Link
+  // Use 'magiclink' (não 'recovery') para o reenvio porque:
+  // - 'invite' falha com "already registered" para usuários existentes
+  // - 'recovery' requer email confirmado (e pode falhar para novos alunos não ativados)
+  // - 'magiclink' gera um link de sign-in de uso único que funciona para QUALQUER estado
+  //    do usuário (confirmado ou não) e dispara o evento SIGNED_IN no cliente.
   const { data: authData, error: authError } = await supabaseAdmin.auth.admin.generateLink({
-    type: 'recovery',
+    type: 'magiclink',
     email: email,
     options: {
       redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/confirm` 
@@ -970,6 +980,7 @@ export async function resendInviteEmail(studentId: string) {
   });
 
   if (authError) return { error: "Erro ao gerar novo link de convite: " + authError.message };
+
 
   const actionLink = authData.properties.action_link;
 
