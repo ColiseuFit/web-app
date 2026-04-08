@@ -8,8 +8,17 @@ export default function VerifyButton({ link }: { link: string }) {
 
   const handleClick = () => {
     setClicked(true);
-    // Navegação direta com window.location substitui prefetching do Next.js
-    // e garante que a sessão original via hash/querystring repasse pro backend do supabase
+    
+    // Fallback/Safety check: If searchParams was not awaited correctly on server, 
+    // it results in [object Promise].
+    if (link === "[object Promise]") {
+      console.error("Link state error: received Promise instead of URL string.");
+      alert("Erro na ativação: Link inválido. Por favor, tente novamente.");
+      setClicked(false);
+      return;
+    }
+
+    console.log("Navigating to verification link:", link);
     window.location.href = link;
   };
 

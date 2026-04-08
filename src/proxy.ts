@@ -41,6 +41,13 @@ export async function proxy(request: NextRequest) {
   const hostname = request.headers.get("host") || "";
   const path = request.nextUrl.pathname;
   const url = request.nextUrl.clone();
+
+  // EARLY BYPASS: Auth and Verification routes must be handled by their respective pages
+  // without interference from domain-specific redirect logic during the handshake.
+  if (path.startsWith('/auth') || path.startsWith('/api/auth')) {
+    return supabaseResponse;
+  }
+
   let isRewritten = false;
 
   // 1. DOMAIN ROUTING: Admin

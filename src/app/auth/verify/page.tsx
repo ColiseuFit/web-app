@@ -6,12 +6,12 @@ export const metadata = {
   description: "Ative sua conta para começar seus treinos no Coliseu.",
 };
 
-export default function VerifyPage({
+export default async function VerifyPage({
   searchParams,
 }: {
-  searchParams: { link?: string };
+  searchParams: Promise<{ link?: string }>;
 }) {
-  const link = searchParams.link;
+  const { link } = await searchParams;
 
   if (!link) {
     return (
