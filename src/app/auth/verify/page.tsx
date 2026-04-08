@@ -32,13 +32,13 @@ export default async function VerifyPage({
       <div className="w-full max-w-md relative">
         <div className="bg-[var(--nb-surface)] border-[3px] border-[var(--nb-border)] p-10 shadow-[var(--nb-shadow-lg)]">
           <div className="flex flex-col items-center text-center mb-10">
-            <div className="w-20 h-20 bg-[var(--nb-blue)] flex items-center justify-center mb-6 border-[3px] border-black shadow-[var(--nb-shadow-sm)] animate-bounce-slow">
+            <div className="w-20 h-20 bg-[#2980BA] flex items-center justify-center mb-6 border-[3px] border-black shadow-[4px_4px_0px_#000] rounded-xl transform rotate-3">
               <Dumbbell className="w-10 h-10 text-white" />
             </div>
-            <h1 className="text-4xl font-[900] text-black mb-4 uppercase tracking-tighter leading-none">
+            <h1 className="text-4xl font-[900] text-black mb-4 uppercase tracking-tighter leading-[0.85]">
               Quase <br/> <span className="text-[var(--nb-red)]">lá!</span>
             </h1>
-            <p className="text-[var(--nb-text-dim)] font-bold text-sm uppercase tracking-tight">
+            <p className="text-[var(--nb-text-dim)] font-bold text-xs uppercase tracking-tight max-w-[240px] mt-2">
               Clique no botão abaixo para confirmar seu acesso e definir sua senha.
             </p>
           </div>

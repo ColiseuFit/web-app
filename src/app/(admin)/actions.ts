@@ -678,20 +678,17 @@ export async function approvePreRegistration(preRegistrationId: string) {
       box-shadow: 8px 8px 0px #000000;
     }
     .header {
-      background-color: #000000;
+      background-color: #101010;
       color: #ffffff;
-      padding: 25px 20px;
+      padding: 35px 20px;
       text-align: center;
       border-bottom: 3px solid #000000;
     }
-    .header h1 {
-      margin: 0;
-      font-size: 32px;
-      font-weight: 900;
-      text-transform: uppercase;
-      letter-spacing: -1px;
+    .header img {
+      height: 32px;
+      display: block;
+      margin: 0 auto;
     }
-    .header span { color: #dc2626; }
     .content { padding: 40px 30px; }
     .content h2 {
       font-size: 24px;
@@ -739,7 +736,7 @@ export async function approvePreRegistration(preRegistrationId: string) {
   <div class="wrapper">
     <div class="container">
       <div class="header">
-        <h1>COLISEU<span>CLUBE</span></h1>
+        <img src="https://admin.coliseufit.com/logo-coliseu-white.svg" alt="COLISEU" />
       </div>
       <div class="content">
         <h2>FALA, ${firstName}! 🔥</h2>
@@ -998,9 +995,8 @@ export async function resendInviteEmail(studentId: string) {
     body { font-family: sans-serif; line-height: 1.6; color: #000; background-color: #f4f4f5; margin: 0; padding: 0; }
     .wrapper { padding: 40px 20px; }
     .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 3px solid #000; box-shadow: 8px 8px 0px #000; }
-    .header { background-color: #000; color: #fff; padding: 25px 20px; text-align: center; border-bottom: 3px solid #000; }
-    .header h1 { margin: 0; font-size: 32px; font-weight: 900; text-transform: uppercase; }
-    .header span { color: #dc2626; }
+    .header { background-color: #101010; color: #fff; padding: 35px 20px; text-align: center; border-bottom: 3px solid #000; }
+    .header img { height: 32px; display: block; margin: 0 auto; }
     .content { padding: 40px 30px; }
     .content h2 { font-size: 24px; font-weight: 800; margin-top: 0; margin-bottom: 25px; text-transform: uppercase; }
     .cta-container { text-align: center; margin: 40px 0; }
@@ -1011,7 +1007,9 @@ export async function resendInviteEmail(studentId: string) {
 <body>
   <div class="wrapper">
     <div class="container">
-      <div class="header"><h1>COLISEU<span>CLUBE</span></h1></div>
+      <div class="header">
+        <img src="https://admin.coliseufit.com/logo-coliseu-white.svg" alt="COLISEU" />
+      </div>
       <div class="content">
         <h2>FALA, ${firstName}! 🔥</h2>
         <p>Estamos reenviando seu acesso ao app porque acreditamos que você não pode ficar de fora!</p>

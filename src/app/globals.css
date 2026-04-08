@@ -34,8 +34,9 @@
   /* Hard Shadows */
   --nb-shadow: 4px 4px 0px #000000;
   --nb-shadow-sm: 2px 2px 0px #000000;
-  --nb-shadow-lg: 8px 8px 0px #000000;
+  --nb-shadow-lg: 8px 8px 0px #1A1A1A;
   --nb-shadow-red: 4px 4px 0px #E31B23;
+  --nb-blue: #2980BA;
 
   /* Typography */
   --font-mono: 'Space Mono', 'Roboto Mono', monospace;
