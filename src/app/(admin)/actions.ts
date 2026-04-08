@@ -3,6 +3,7 @@
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { Resend } from "resend";
 
 import { createStudentSchema, wodSchema, physicalEvaluationSchema } from "@/lib/validations/security_schemas";
 
@@ -614,20 +615,21 @@ export async function approvePreRegistration(preRegistrationId: string) {
   // Extrair o primeiro nome para usar no email
   const firstName = lead.full_name.trim().split(" ")[0];
 
-  // 2. Create Auth Invitation (Sends email to user to set their password)
-  const { data: authData, error: authError } = await supabaseAdmin.auth.admin.inviteUserByEmail(
-    lead.email,
-    { 
+  // 2. Create Auth Invitation (Generates Link without sending email via Supabase)
+  const { data: authData, error: authError } = await supabaseAdmin.auth.admin.generateLink({
+    type: 'invite',
+    email: lead.email,
+    options: {
       data: {
         full_name: lead.full_name,
         first_name: firstName,
       },
       redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/callback?next=/setup-password` 
     }
-  );
+  });
 
   if (authError) {
-    let errorMessage = "Erro ao enviar convite de acesso.";
+    let errorMessage = "Erro ao gerar convite de acesso.";
     if (authError.message.includes("already been registered")) {
       errorMessage = "Este e-mail já está cadastrado em outro perfil de aluno.";
     }
@@ -635,6 +637,31 @@ export async function approvePreRegistration(preRegistrationId: string) {
   }
 
   const userId = authData.user.id;
+  const actionLink = authData.properties.action_link;
+
+  // Disparo de e-mail Anti-Bot via Resend
+  const resend = new Resend(process.env.RESEND_API_KEY!);
+  const verifyUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/verify?link=${encodeURIComponent(actionLink)}`;
+
+  try {
+    await resend.emails.send({
+      from: 'Coliseu <onboarding@clube.coliseufit.com>',
+      to: lead.email,
+      subject: 'Bem-vindo ao Clube Coliseu!',
+      html: `
+        <div style="font-family: sans-serif; background-color: #0a0a0a; color: #ffffff; padding: 40px; text-align: center; border-radius: 12px; max-width: 600px; margin: 0 auto; border: 1px solid #333;">
+          <h1 style="color: #60a5fa; margin-bottom: 20px;">Clube Coliseu</h1>
+          <p style="font-size: 18px; color: #e5e7eb; margin-bottom: 10px;">Olá <strong>${firstName}</strong>, seu acesso foi liberado!</p>
+          <p style="font-size: 14px; color: #9ca3af; margin-bottom: 40px;">Para começar, ative sua conta e defina sua senha com segurança.</p>
+          <a href="${verifyUrl}" style="background-color: #2563eb; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block;">Ativar Minha Conta</a>
+          <p style="font-size: 12px; color: #6b7280; margin-top: 40px;">Se você não solicitou este acesso, apenas ignore este e-mail.</p>
+        </div>
+      `
+    });
+  } catch (err) {
+    console.error("Erro ao disparar email via Resend:", err);
+    return { error: "Convite gerado, mas ocorreu um erro ao enviar o e-mail via Resend." };
+  }
 
   // 3. Create Profile
   // We split full_name into first and last name as a basic heuristic

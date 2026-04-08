@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Search, Plus, Phone, X, UserPlus, ChevronDown, Pencil, Trash2, User, Mail, Calendar, CreditCard, Info, Activity, ShieldCheck, Lock as LockIcon, Mail as MailIcon, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, Plus, Phone, X, UserPlus, ChevronDown, Pencil, Trash2, User, Mail, Calendar, CreditCard, Info, Activity, ShieldCheck, Lock as LockIcon, Mail as MailIcon, ChevronLeft, ChevronRight, Copy, Check } from "lucide-react";
 import { createStudent, updateStudent, deleteStudent, getStudentEvaluations, deletePhysicalEvaluation, updateStudentAuth, updatePreRegistration } from "../../actions";
 import PhysicalEvaluationForm from "./PhysicalEvaluationForm";
 import { getLevelInfo, LevelInfo } from "@/lib/constants/levels";
@@ -100,6 +100,7 @@ export default function AlunosClient({
   const [selectedLead, setSelectedLead] = useState<any | null>(null);
   const [isEditingLead, setIsEditingLead] = useState(false);
   const [approvedLeadInfo, setApprovedLeadInfo] = useState<{ email: string; phone: string; name: string } | null>(null);
+  const [copied, setCopied] = useState(false);
 
   // Auto-hide success messages (Except when showing a generated password)
   useEffect(() => {
@@ -1126,9 +1127,23 @@ export default function AlunosClient({
                 setApprovedLeadInfo(null);
               }}
               className="admin-btn admin-btn-primary group"
-              style={{ width: "100%", height: 56, backgroundColor: "#25D366", borderColor: "#128C7E", color: "#FFF", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 12 }}
+              style={{ width: "100%", height: 56, backgroundColor: "#25D366", borderColor: "#128C7E", color: "#FFF", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 8 }}
             >
               <Phone size={20} /> ENVIAR BOAS-VINDAS (WHATSAPP)
+            </button>
+
+            <button 
+              onClick={() => {
+                const text = `Olá ${approvedLeadInfo.name}! Boas-vindas ao Coliseu! 🏋️\n\nSeu cadastro foi aprovado. Enviamos um e-mail para ${approvedLeadInfo.email} com o link de ativação da sua conta.\n\nPor favor, cheque sua caixa de entrada (e spam) para definir sua senha e começar a treinar!`;
+                navigator.clipboard.writeText(text);
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000);
+              }}
+              className="admin-btn admin-btn-ghost group"
+              style={{ width: "100%", height: 48, fontSize: 13, border: "2px solid #000", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 16 }}
+            >
+              {copied ? <Check size={20} color="#10B981" /> : <Copy size={20} />}
+              {copied ? "COPIADO!" : "COPIAR TEXTO DE BOAS-VINDAS"}
             </button>
             <button 
               onClick={() => setApprovedLeadInfo(null)}
