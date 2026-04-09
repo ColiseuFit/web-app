@@ -557,16 +557,16 @@ export default function AlunosClient({
           {preRegistrations.length === 0 ? (
             <div style={{ padding: "64px 20px", textAlign: "center", color: "#666", fontSize: "14px" }}>Nenhum pré-cadastro pendente.</div>
           ) : (
-            <div style={{ overflowX: "auto" }}>
-              <table className="admin-table" style={{ tableLayout: "fixed", width: "100%" }}>
+            <div>
+              <table className="admin-table" style={{ width: "100%" }}>
                 <thead>
                   <tr>
                     <th style={{ paddingLeft: "24px", textAlign: "left" }}>Candidato</th>
-                    <th style={{ width: "190px", textAlign: "left", paddingLeft: "16px", borderLeft: "2px solid rgba(0,0,0,0.08)" }}>Contato</th>
-                    <th style={{ width: "65px", textAlign: "left", paddingLeft: "12px", borderLeft: "2px solid rgba(0,0,0,0.08)" }}>Data</th>
-                    <th style={{ width: "115px", textAlign: "center", borderLeft: "2px solid rgba(0,0,0,0.08)" }}>Nível</th>
-                    <th style={{ width: "115px", textAlign: "center", borderLeft: "2px solid rgba(0,0,0,0.08)" }}>Plano</th>
-                    <th style={{ width: "215px", textAlign: "center", borderLeft: "2px solid rgba(0,0,0,0.08)" }}>Ações</th>
+                    <th style={{ width: "180px", textAlign: "left", paddingLeft: "16px", borderLeft: "1px solid #E5E7EB" }}>Contato</th>
+                    <th style={{ width: "70px", textAlign: "left", paddingLeft: "12px", borderLeft: "1px solid #E5E7EB" }}>Data</th>
+                    <th style={{ width: "125px", textAlign: "center", borderLeft: "1px solid #E5E7EB" }}>Nível</th>
+                    <th style={{ width: "145px", textAlign: "center", borderLeft: "1px solid #E5E7EB" }}>Plano</th>
+                    <th style={{ width: "210px", textAlign: "center", borderLeft: "1px solid #E5E7EB" }}>Ações</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -575,12 +575,12 @@ export default function AlunosClient({
                       <td style={{ paddingLeft: "24px", paddingRight: "12px" }}>
                         <div style={{ fontWeight: 800, fontSize: "14px", color: "#000", lineHeight: "1.2", overflow: "hidden" }}>{lead.full_name}</div>
                       </td>
-                      <td style={{ width: "190px", paddingLeft: "16px", borderLeft: "2px solid rgba(0,0,0,0.05)" }}>
+                      <td style={{ paddingLeft: "16px", borderLeft: "1px solid #F3F4F6" }}>
                         <div style={{ fontSize: "13px", fontWeight: 600 }}>{lead.phone}</div>
                         <div style={{ fontSize: "10px", color: "#666", wordBreak: "break-all", lineHeight: 1.1 }}>{lead.email}</div>
                       </td>
-                      <td style={{ width: "65px", fontSize: "10px", fontWeight: 700, paddingLeft: "12px", borderLeft: "2px solid rgba(0,0,0,0.05)" }}>{formatDate(lead.created_at)}</td>
-                      <td style={{ width: "115px", padding: "12px 6px", borderLeft: "2px solid rgba(0,0,0,0.05)" }}>
+                      <td style={{ fontSize: "10px", fontWeight: 700, paddingLeft: "12px", borderLeft: "1px solid #F3F4F6" }}>{formatDate(lead.created_at)}</td>
+                      <td style={{ padding: "12px 6px", borderLeft: "1px solid #F3F4F6" }}>
                         <select 
                           value={leadLevels[lead.id] || "branco"}
                           onChange={(e) => setLeadLevels(prev => ({ ...prev, [lead.id]: e.target.value }))}
@@ -605,7 +605,7 @@ export default function AlunosClient({
                           ))}
                         </select>
                       </td>
-                      <td style={{ width: "115px", padding: "12px 6px", borderLeft: "2px solid rgba(0,0,0,0.05)" }}>
+                      <td style={{ padding: "12px 6px", borderLeft: "1px solid #F3F4F6" }}>
                         <select 
                           value={leadMembershipTypes[lead.id] || "club"}
                           onChange={(e) => setLeadMembershipTypes(prev => ({ ...prev, [lead.id]: e.target.value }))}
@@ -630,7 +630,7 @@ export default function AlunosClient({
                           ))}
                         </select>
                       </td>
-                      <td style={{ width: "215px", borderLeft: "2px solid rgba(0,0,0,0.05)", padding: "12px 8px" }}>
+                      <td style={{ borderLeft: "1px solid #F3F4F6", padding: "12px 8px" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: "16px", justifyContent: "center" }}>
                           {loadingLeadId === lead.id ? (
                             <span style={{ fontSize: "12px", fontWeight: 700, color: "#666" }}>...</span>
