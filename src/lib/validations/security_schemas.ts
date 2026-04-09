@@ -164,6 +164,10 @@ export const preRegistrationSchema = z.object({
   bio: z.string().max(500, "Objetivo não pode passar de 500 caracteres").optional(),
 });
 
+// 15. Schema para Solicitação de Recuperação de Senha
+export const forgotPasswordSchema = z.object({
+  email: z.string().email("E-mail inválido"),
+});
 
 export type LoginInput = z.infer<typeof loginSchema>;
 export type CreateStudentInput = z.infer<typeof createStudentSchema>;
@@ -178,3 +182,4 @@ export type UpdateAuthInput = z.infer<typeof updateAuthSchema>;
 export type UpdatePasswordInput = z.infer<typeof updatePasswordSchema>;
 export type WodResultInput = z.infer<typeof wodResultSchema>;
 export type PreRegistrationInput = z.infer<typeof preRegistrationSchema>;
+export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;

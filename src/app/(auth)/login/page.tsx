@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { login } from "../actions";
+import { login, requestPasswordReset } from "../actions";
 import Link from "next/link";
 import Image from "next/image";
 import { LoginCarousel, slides, AUTOPLAY_INTERVAL } from "@/components/auth/LoginCarousel";
@@ -27,7 +27,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [currentSlide, setCurrentSlide] = useState(0);
-  const [view, setView] = useState<"landing" | "login" | "pre-register" | "pre-register-success">("landing");
+  const [view, setView] = useState<"landing" | "login" | "pre-register" | "pre-register-success" | "forgot-password" | "forgot-password-success">("landing");
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -326,9 +326,13 @@ export default function LoginPage() {
                         <label style={{ fontSize: "10px", fontWeight: 800, color: "#E31B23", letterSpacing: "0.2em", textTransform: "uppercase" }}>
                           Senha
                         </label>
-                        <Link href="https://wa.me/5573999911525" target="_blank" style={{ fontSize: "10px", color: "rgba(255,255,255,0.6)", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: 700, textDecoration: "underline" }}>
+                        <button 
+                          type="button"
+                          onClick={() => setView("forgot-password")}
+                          style={{ fontSize: "10px", color: "rgba(255,255,255,0.6)", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: 700, textDecoration: "underline", background: "none", border: "none", cursor: "pointer", padding: 0 }}
+                        >
                           Esqueceu?
-                        </Link>
+                        </button>
                       </div>
                       <div className="relative">
                         <input
@@ -416,6 +420,196 @@ export default function LoginPage() {
                       COLISEU © {new Date().getFullYear()}
                     </p>
                   </form>
+                </motion.div>
+              )}
+
+              {/* FORGOT PASSWORD FORM */}
+              {view === "forgot-password" && (
+                <motion.div
+                  key="forgot-password"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => { setView("login"); setError(null); }}
+                    className="group"
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      color: "rgba(255,255,255,0.6)",
+                      fontSize: "11px",
+                      fontWeight: 800,
+                      letterSpacing: "0.2em",
+                      textTransform: "uppercase",
+                      background: "transparent",
+                      border: "none",
+                      cursor: "pointer",
+                      marginBottom: "24px",
+                      padding: 0,
+                      transition: "color 0.2s"
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.color = "white"}
+                    onMouseLeave={(e) => e.currentTarget.style.color = "rgba(255,255,255,0.6)"}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="square" className="transition-transform group-hover:-translate-x-1">
+                      <path d="M19 12H5M12 19l-7-7 7-7" />
+                    </svg>
+                    VOLTAR PARA LOGIN
+                  </button>
+
+                  <h3 style={{ fontSize: "20px", fontWeight: 900, fontFamily: "Outfit, sans-serif", color: "white", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "12px" }}>
+                    RECUPERAR SENHA
+                  </h3>
+                  <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.6)", marginBottom: "32px", lineHeight: 1.5 }}>
+                    Informe seu e-mail cadastrado e enviaremos um link para você redefinir sua senha.
+                  </p>
+
+                  <form 
+                    onSubmit={async (e) => {
+                      e.preventDefault();
+                      setLoading(true);
+                      setError(null);
+                      const formData = new FormData(e.currentTarget);
+                      const email = formData.get("email") as string;
+                      const res = await requestPasswordReset(email);
+                      setLoading(false);
+                      if (res.error) {
+                        setError(res.error);
+                      } else {
+                        setView("forgot-password-success");
+                      }
+                    }} 
+                    className="flex flex-col" 
+                    style={{ gap: "20px" }}
+                  >
+                    <div>
+                      <label style={{ display: "block", fontSize: "10px", fontWeight: 800, color: "#E31B23", letterSpacing: "0.2em", textTransform: "uppercase", marginBottom: "8px" }}>
+                        E-mail de Cadastro
+                      </label>
+                      <input
+                        type="email"
+                        name="email"
+                        required
+                        placeholder="seu@email.com"
+                        style={{
+                          width: "100%",
+                          background: "#0A0A0A",
+                          border: "1px solid rgba(255,255,255,0.1)",
+                          padding: "16px",
+                          fontSize: "16px",
+                          color: "white",
+                          outline: "none",
+                          fontFamily: "Inter, sans-serif",
+                          transition: "border-color 0.3s",
+                        }}
+                        onFocus={(e) => e.currentTarget.style.borderColor = "#E31B23"}
+                        onBlur={(e) => e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"}
+                      />
+                    </div>
+
+                    {error && (
+                      <div style={{ padding: "10px 14px", borderLeft: "2px solid #E31B23", background: "rgba(227,27,35,0.05)", color: "#E31B23", fontSize: "11px", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>
+                        {error}
+                      </div>
+                    )}
+
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      style={{
+                        width: "100%",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        padding: "16px 20px",
+                        background: "#E31B23",
+                        color: "white",
+                        border: "none",
+                        fontSize: "12px",
+                        fontFamily: "Outfit, sans-serif",
+                        fontWeight: 900,
+                        letterSpacing: "0.2em",
+                        textTransform: "uppercase",
+                        cursor: loading ? "not-allowed" : "pointer",
+                        opacity: loading ? 0.5 : 1,
+                        transition: "filter 0.2s",
+                      }}
+                      onMouseEnter={(e) => { if (!loading) (e.currentTarget as HTMLButtonElement).style.filter = "brightness(1.15)"; }}
+                      onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.filter = "brightness(1)"; }}
+                    >
+                      <span className="relative z-10">{loading ? "ENVIANDO..." : "ENVIAR LINK"}</span>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="square">
+                        <path d="M5 12h14M12 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                    
+                    <Link 
+                      href="https://wa.me/5573999911525" 
+                      target="_blank"
+                      style={{ 
+                        textAlign: "center", 
+                        fontSize: "11px", 
+                        color: "rgba(255,255,255,0.4)", 
+                        textDecoration: "underline",
+                        marginTop: "10px"
+                      }}
+                    >
+                      Ainda com problemas? Fale com suporte
+                    </Link>
+                  </form>
+                </motion.div>
+              )}
+
+              {/* FORGOT PASSWORD SUCCESS */}
+              {view === "forgot-password-success" && (
+                <motion.div
+                  key="forgot-password-success"
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="flex flex-col items-center text-center"
+                  style={{ gap: "24px", paddingTop: "20px" }}
+                >
+                  <div style={{
+                    width: "64px", height: "64px", borderRadius: "50%", background: "rgba(227,27,35,0.1)",
+                    display: "flex", alignItems: "center", justifyContent: "center", color: "#E31B23"
+                  }}>
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="square">
+                      <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
+                    </svg>
+                  </div>
+                  
+                  <div>
+                    <h2 style={{ fontSize: "20px", fontWeight: 900, fontFamily: "Outfit, sans-serif", color: "white", textTransform: "uppercase", letterSpacing: "0.05em", margin: "0 0 8px 0" }}>E-mail Enviado!</h2>
+                    <p style={{ fontSize: "14px", color: "rgba(255,255,255,0.6)", margin: 0, lineHeight: 1.5 }}>
+                      Se o e-mail estiver cadastrado, você receberá um link de recuperação em instantes.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setView("login")}
+                    style={{
+                      marginTop: "20px",
+                      width: "100%",
+                      padding: "16px 20px",
+                      background: "white",
+                      color: "#050505",
+                      border: "none",
+                      fontSize: "12px",
+                      fontFamily: "Outfit, sans-serif",
+                      fontWeight: 900,
+                      letterSpacing: "0.2em",
+                      textTransform: "uppercase",
+                      cursor: "pointer"
+                    }}
+                  >
+                    VOLTAR PARA LOGIN
+                  </button>
                 </motion.div>
               )}
               {/* PRE-REGISTER FORM */}

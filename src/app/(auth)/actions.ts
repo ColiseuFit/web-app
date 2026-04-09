@@ -1,6 +1,6 @@
 "use server";
 
-import { loginSchema, updatePasswordSchema } from "@/lib/validations/security_schemas";
+import { loginSchema, updatePasswordSchema, forgotPasswordSchema } from "@/lib/validations/security_schemas";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
@@ -164,4 +164,35 @@ export async function setupPassword(formData: FormData) {
 
   revalidatePath("/", "layout");
   redirect("/dashboard");
+}
+
+/**
+ * Solicita a recuperação de senha enviando um e-mail para o usuário.
+ * 
+ * @security
+ * - Utiliza Supabase Auth `resetPasswordForEmail`.
+ * - Redireciona para o callback de autenticação que garante a troca do token por sessão.
+ * 
+ * @param {string} email - E-mail do usuário que deseja recuperar a senha.
+ * @returns {Promise<{ success?: boolean; error?: string }>} Status da solicitação.
+ */
+export async function requestPasswordReset(email: string) {
+  const validation = forgotPasswordSchema.safeParse({ email });
+  if (!validation.success) {
+    return { error: validation.error.issues[0].message };
+  }
+
+  const supabase = await createClient();
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+  
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${siteUrl}/auth/callback?next=/setup-password`,
+  });
+
+  if (error) {
+    console.error("[requestPasswordReset] Error:", error);
+    return { error: "Não foi possível enviar o e-mail de recuperação: " + error.message };
+  }
+
+  return { success: true };
 }

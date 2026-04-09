@@ -110,6 +110,8 @@ export default async function AlunosPage({
     birth_date: p.birth_date,
     gender: p.gender,
     membership_type: p.membership_type ?? "club",
+    email: p.email,
+    member_number: p.member_number,
   }));
 
   const totalPages = Math.ceil((totalCount || 0) / pageSize);

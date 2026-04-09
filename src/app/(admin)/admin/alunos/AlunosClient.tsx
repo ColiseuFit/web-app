@@ -40,6 +40,8 @@ interface Student {
   birth_date: string | null;
   gender: string | null;
   membership_type: string;
+  email: string | null;
+  member_number: number | null;
 }
 
 // We will define this inside the component to use dynamic levels
@@ -733,9 +735,14 @@ export default function AlunosClient({
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 <div style={{ width: 12, height: 12, background: "#FFF" }} />
                 <div>
-                  <h2 style={{ fontSize: 18, fontWeight: 900, textTransform: "uppercase", margin: 0, letterSpacing: "0.05em" }}>{selectedStudent.full_name}</h2>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
-                    <span style={{ fontSize: 10, fontWeight: 900, background: "#FFF", color: "#000", padding: "2px 8px", textTransform: "uppercase" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    <h2 style={{ fontSize: 18, fontWeight: 900, textTransform: "uppercase", margin: 0, borderBottom: "2px solid #FFF", paddingBottom: 2 }}>{selectedStudent.full_name}</h2>
+                    <span style={{ fontSize: 12, fontWeight: 900, background: "#FFF", color: "#000", padding: "2px 10px", borderRadius: 0 }}>
+                      MATRÍCULA #{selectedStudent.member_number || "---"}
+                    </span>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
+                    <span style={{ fontSize: 10, fontWeight: 900, background: getLevelInfo(selectedStudent.level, dynamicLevels).color, color: getLevelInfo(selectedStudent.level, dynamicLevels).text_color, padding: "2px 8px", border: "1px solid #FFF", textTransform: "uppercase" }}>
                       {getLevelInfo(selectedStudent.level, dynamicLevels).label}
                     </span>
                   </div>
@@ -862,30 +869,30 @@ export default function AlunosClient({
                       </div>
                     </form>
                   ) : (
-                    <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
-                        <div className="admin-card" style={{ padding: 24, border: "3px solid #000", background: "#F9FAFB", boxShadow: "8px 8px 0px rgba(0,0,0,0.05)" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 10, color: "#666", marginBottom: 12 }}>
-                            <Calendar size={18} />
-                            <span style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase" }}>Matriculado em</span>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
+                        <div className="admin-card" style={{ padding: "20px 24px", border: "3px solid #000", background: "#F9FAFB", boxShadow: "4px 4px 0px rgba(0,0,0,0.05)" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8, color: "#666", marginBottom: 8 }}>
+                            <Calendar size={14} />
+                            <span style={{ fontSize: 10, fontWeight: 900, textTransform: "uppercase" }}>Matriculado</span>
                           </div>
-                          <div style={{ fontSize: 18, fontWeight: 900 }}>{formatDate(selectedStudent.created_at)}</div>
+                          <div style={{ fontSize: 16, fontWeight: 900 }}>{formatDate(selectedStudent.created_at)}</div>
                         </div>
-                        <div className="admin-card" style={{ padding: 24, border: "3px solid #000", background: "#F9FAFB", boxShadow: "8px 8px 0px rgba(0,0,0,0.05)" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 10, color: "#666", marginBottom: 12 }}>
-                            <Tag size={18} />
-                            <span style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase" }}>Plano</span>
+                        <div className="admin-card" style={{ padding: "20px 24px", border: "3px solid #000", background: "#F9FAFB", boxShadow: "4px 4px 0px rgba(0,0,0,0.05)" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8, color: "#666", marginBottom: 8 }}>
+                            <Tag size={14} />
+                            <span style={{ fontSize: 10, fontWeight: 900, textTransform: "uppercase" }}>Plano</span>
                           </div>
-                          <div style={{ fontSize: 18, fontWeight: 900, color: getMembershipLabel(selectedStudent.membership_type).includes("Pass") ? "#DC2626" : "#000" }}>
+                          <div style={{ fontSize: 16, fontWeight: 900, color: getMembershipLabel(selectedStudent.membership_type).includes("Pass") ? "#DC2626" : "#000" }}>
                             {getMembershipLabel(selectedStudent.membership_type)}
                           </div>
                         </div>
-                        <div className="admin-card" style={{ padding: 24, border: "3px solid #000", background: "#F9FAFB", boxShadow: "8px 8px 0px rgba(0,0,0,0.05)" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 10, color: "#666", marginBottom: 12 }}>
-                            <Activity size={18} />
-                            <span style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase" }}>Pontuação Total</span>
+                        <div className="admin-card" style={{ padding: "20px 24px", border: "3px solid #000", background: "#F9FAFB", boxShadow: "4px 4px 0px rgba(0,0,0,0.05)" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8, color: "#666", marginBottom: 8 }}>
+                            <Activity size={14} />
+                            <span style={{ fontSize: 10, fontWeight: 900, textTransform: "uppercase" }}>Pontuação</span>
                           </div>
-                          <div style={{ fontSize: 18, fontWeight: 900 }}>{selectedStudent.points.toLocaleString()} <span style={{ fontSize: 12, color: "#666" }}>PTS</span></div>
+                          <div style={{ fontSize: 16, fontWeight: 900 }}>{selectedStudent.points.toLocaleString()} <span style={{ fontSize: 11, color: "#666" }}>PTS</span></div>
                         </div>
                       </div>
 
@@ -893,29 +900,37 @@ export default function AlunosClient({
                         Dados Cadastrais
                       </div>
 
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1.5fr", gap: 24, background: "#FFF", padding: 20, border: "1px solid #EEE" }}>
                         <div>
                           <p style={{ fontSize: 11, fontWeight: 800, color: "#666", textTransform: "uppercase", marginBottom: 4 }}>WhatsApp</p>
-                          <p style={{ fontSize: 15, fontWeight: 900, margin: 0 }}>{selectedStudent.phone || "NÃO INFORMADO"}</p>
+                          <p style={{ fontSize: 14, fontWeight: 900, margin: 0 }}>{selectedStudent.phone || "---"}</p>
                         </div>
                         <div>
-                          <p style={{ fontSize: 11, fontWeight: 800, color: "#666", textTransform: "uppercase", marginBottom: 4 }}>Documento (CPF)</p>
-                          <p style={{ fontSize: 15, fontWeight: 900, margin: 0 }}>{selectedStudent.cpf || "NÃO INFORMADO"}</p>
+                          <p style={{ fontSize: 11, fontWeight: 800, color: "#666", textTransform: "uppercase", marginBottom: 4 }}>CPF</p>
+                          <p style={{ fontSize: 14, fontWeight: 900, margin: 0 }}>{selectedStudent.cpf || "---"}</p>
                         </div>
                         <div>
-                          <p style={{ fontSize: 11, fontWeight: 800, color: "#666", textTransform: "uppercase", marginBottom: 4 }}>Data Nascimento</p>
-                          <p style={{ fontSize: 15, fontWeight: 900, margin: 0 }}>{selectedStudent.birth_date ? new Date(selectedStudent.birth_date).toLocaleDateString("pt-BR", { timeZone: "UTC" }) : "NÃO INFORMADO"}</p>
+                          <p style={{ fontSize: 11, fontWeight: 800, color: "#666", textTransform: "uppercase", marginBottom: 4 }}>E-mail de Acesso</p>
+                          <p style={{ fontSize: 14, fontWeight: 900, margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{selectedStudent.email || "---"}</p>
+                        </div>
+                        <div>
+                          <p style={{ fontSize: 11, fontWeight: 800, color: "#666", textTransform: "uppercase", marginBottom: 4 }}>Nascimento</p>
+                          <p style={{ fontSize: 14, fontWeight: 900, margin: 0 }}>{selectedStudent.birth_date ? new Date(selectedStudent.birth_date).toLocaleDateString("pt-BR", { timeZone: "UTC" }) : "---"}</p>
                         </div>
                         <div>
                           <p style={{ fontSize: 11, fontWeight: 800, color: "#666", textTransform: "uppercase", marginBottom: 4 }}>Gênero</p>
-                          <p style={{ fontSize: 15, fontWeight: 900, margin: 0 }}>{selectedStudent.gender || "NÃO INFORMADO"}</p>
+                          <p style={{ fontSize: 14, fontWeight: 900, margin: 0 }}>{selectedStudent.gender || "---"}</p>
+                        </div>
+                        <div>
+                          <p style={{ fontSize: 11, fontWeight: 800, color: "#666", textTransform: "uppercase", marginBottom: 4 }}>Status do Atleta</p>
+                          <p style={{ fontSize: 14, fontWeight: 900, margin: 0, color: "#059669" }}>ATIVO</p>
                         </div>
                       </div>
 
                       {selectedStudent.bio && (
                         <div>
-                          <p style={{ fontSize: 11, fontWeight: 800, color: "#666", textTransform: "uppercase", marginBottom: 8 }}>Observações / Bio</p>
-                          <div style={{ padding: 20, border: "2px dashed #000", fontSize: 14, fontWeight: 600, color: "#333", background: "#F9FAFB" }}>
+                          <p style={{ fontSize: 11, fontWeight: 800, color: "#666", textTransform: "uppercase", marginBottom: 8 }}>Bio / Observações de Performance</p>
+                          <div style={{ padding: 20, border: "2px solid #EEE", fontSize: 13, fontWeight: 600, color: "#444", background: "#F9FAFB", lineHeight: 1.5 }}>
                             {selectedStudent.bio}
                           </div>
                         </div>

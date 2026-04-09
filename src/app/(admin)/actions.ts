@@ -94,6 +94,7 @@ export async function createStudent(formData: FormData) {
     .insert({
       id: userId,
       full_name: fullName,
+      email: email,
       level: level,
       membership_type: membershipType,
     });
@@ -151,7 +152,7 @@ export async function updateStudent(studentId: string, formData: FormData) {
   // Dynamic updates object to avoid overwriting missing fields with null
   const fields = [
     "full_name", "display_name", "first_name", "last_name", 
-    "level", "phone", "cpf", "gender", "bio", "birth_date", "membership_type"
+    "level", "phone", "cpf", "gender", "bio", "birth_date", "membership_type", "email"
   ];
   
   const updates: any = {
@@ -792,6 +793,7 @@ export async function approvePreRegistration(preRegistrationId: string, customLe
     .insert({
       id: userId,
       full_name: lead.full_name,
+      email: lead.email,
       first_name: firstName,
       last_name: lastName,
       phone: lead.phone,
