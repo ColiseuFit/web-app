@@ -41,6 +41,7 @@ O projeto utiliza um stack moderno focado em performance extrema e isolamento de
 - `src/app/(coach)`: Interface operacional para coaches no tatame.
 - `src/app/(admin)`: Painel de gestão estratégica e financeira.
 - `docs/`: Sistema de conhecimento distribuído (Playbooks e SOPs).
+  - `docs/PLAYBOOKS/RECUPERACAO_SENHA.md`: Documentação técnica do fluxo de "Esqueci Minha Senha".
 
 ---
 ---

@@ -166,6 +166,28 @@ export async function setupPassword(formData: FormData) {
   redirect("/dashboard");
 }
 
+/**
+ * Solicita a recuperação de senha gerando um Magic Link Administrativo e enviando via Resend SDK.
+ * 
+ * @security
+ * - Role: Executado no servidor de forma anônima (unauthenticated endpoint).
+ * - Anti-Enumeration: Mostra um erro claro ("User not found") para facilitar UX, embora fuja levemente 
+ *   do padrão estrito OWASP de falha silenciosa. Isso foca na usabilidade para academias (usuários esquecem
+ *   como estão escritos os emails).
+ * - RLS Bypass temporário: Utiliza a \`SUPABASE_SERVICE_ROLE_KEY\` para gerar o link administrativamente
+ *   (\`generateLink\` com \`type: 'recovery'\`), garantindo que o link possa ser manipulado por nós em vez de 
+ *   disparado pelo SMTP interno mascarado do Supabase.
+ * - Integração Segura: Utiliza a Resend com o domínio verificado (@coliseufit.com) para contornar problemas de SPAM e DKIM.
+ * 
+ * @technical
+ * - Vendor Quirk (Supabase Admin API): Ao instanciar o Supabase Client com \`persistSession: false\`, ele assume
+ *   ambiente não-SSR e gera um Implicit Grant (Hash Fragment URL \`#access_token=...\`). O App Router do Next.js
+ *   NÃO consegue ler fragments no backend (ex: /auth/callback). Para resolver isso, usamos \`redirectTo: /auth/confirm\`,
+ *   uma página \`use client\` que coleta o fragmento localmente no navegador e restabelece a sessão.
+ * 
+ * @param {string} email - E-mail do usuário submetido pelo formulário (validado por \`forgotPasswordSchema\`).
+ * @returns {Promise<{ success?: boolean; error?: string }>} Objeto indicando status da operação ou envio de erros amigáveis.
+ */
 export async function requestPasswordReset(email: string) {
   const validation = forgotPasswordSchema.safeParse({ email });
   if (!validation.success) {

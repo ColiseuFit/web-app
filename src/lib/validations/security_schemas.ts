@@ -165,6 +165,12 @@ export const preRegistrationSchema = z.object({
 });
 
 // 15. Schema para Solicitação de Recuperação de Senha
+/**
+ * @security
+ * - Valida estritamente a string como formato de e-mail para prevenir SQL/NoSQL Injection
+ *   no payload enviado à Server Action `requestPasswordReset`.
+ * - Requisito mínimo antes de acionar a GoTrue Admin API.
+ */
 export const forgotPasswordSchema = z.object({
   email: z.string().email("E-mail inválido"),
 });
