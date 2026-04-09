@@ -742,7 +742,7 @@ export default function AlunosClient({
                     </span>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
-                    <span style={{ fontSize: 10, fontWeight: 900, background: getLevelInfo(selectedStudent.level, dynamicLevels).color, color: getLevelInfo(selectedStudent.level, dynamicLevels).text_color, padding: "2px 8px", border: "1px solid #FFF", textTransform: "uppercase" }}>
+                    <span style={{ fontSize: 10, fontWeight: 900, background: getLevelInfo(selectedStudent.level, dynamicLevels).color, color: getLevelInfo(selectedStudent.level, dynamicLevels).textColor, padding: "2px 8px", border: "1px solid #FFF", textTransform: "uppercase" }}>
                       {getLevelInfo(selectedStudent.level, dynamicLevels).label}
                     </span>
                   </div>
