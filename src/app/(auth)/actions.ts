@@ -193,7 +193,7 @@ export async function requestPasswordReset(email: string) {
     type: 'recovery',
     email: email,
     options: {
-      redirectTo: `${siteUrl}/auth/callback?next=/setup-password`,
+      redirectTo: `${siteUrl}/auth/confirm`,
     }
   });
 
