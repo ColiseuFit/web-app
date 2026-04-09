@@ -28,13 +28,14 @@ export async function createStudent(formData: FormData) {
     password: formData.get("password"),
     full_name: formData.get("full_name"),
     level: formData.get("level") || "branco",
+    membership_type: formData.get("membership_type") || "club",
   };
 
   const validation = createStudentSchema.safeParse(rawData);
   if (!validation.success) {
     return { error: "Dados inválidos: " + validation.error.issues[0].message };
   }
-  const { email, password, full_name: fullName, level } = validation.data;
+  const { email, password, full_name: fullName, level, membership_type: membershipType } = validation.data;
 
   // 1. Verifica a sessão atual e se ele é admin/reception
   const supabase = await createClient();
@@ -94,6 +95,7 @@ export async function createStudent(formData: FormData) {
       id: userId,
       full_name: fullName,
       level: level,
+      membership_type: membershipType,
     });
 
   if (profileError) {
@@ -112,7 +114,7 @@ export async function createStudent(formData: FormData) {
     return { error: "Falha ao definir o nível de acesso (role) do aluno." };
   }
 
-  revalidatePath("/admin");
+  revalidatePath("/admin/alunos");
   return { success: true };
 }
 
@@ -149,7 +151,7 @@ export async function updateStudent(studentId: string, formData: FormData) {
   // Dynamic updates object to avoid overwriting missing fields with null
   const fields = [
     "full_name", "display_name", "first_name", "last_name", 
-    "level", "phone", "cpf", "gender", "bio", "birth_date"
+    "level", "phone", "cpf", "gender", "bio", "birth_date", "membership_type"
   ];
   
   const updates: any = {
@@ -571,7 +573,7 @@ export async function uploadEvaluationPhoto(formData: FormData) {
  * @param {string} preRegistrationId - The UUID of the pre-registration lead.
  * @returns {Promise<{ success?: boolean; error?: string }>} An object indicating success or failure.
  */
-export async function approvePreRegistration(preRegistrationId: string) {
+export async function approvePreRegistration(preRegistrationId: string, customLevel?: string, membershipType: string = 'club') {
   const supabase = await createClient();
   const { data: { user: currentUser } } = await supabase.auth.getUser();
   if (!currentUser) return { error: "Sem sessão logada." };
@@ -598,8 +600,15 @@ export async function approvePreRegistration(preRegistrationId: string) {
   }
 
   if (lead.status !== "pending") {
-    return { error: "Lead já processado." };
+    return { error: "Este pré-cadastro já foi processado anteriormente." };
   }
+
+  // 1.1 Extra check: See if this email is already in profiles
+  const { data: existingUser } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("full_name", lead.full_name) // or email? Profiles has no email column usually (it's in auth)
+    .single(); // Actually profiles has no email in this schema usually, let's skip or check auth
 
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim().split(' ')[0];
   if (!serviceRoleKey) {
@@ -775,7 +784,6 @@ export async function approvePreRegistration(preRegistrationId: string) {
 
 
   // 3. Create Profile
-  // We split full_name into first and last name as a basic heuristic
   const nameParts = lead.full_name.trim().split(" ");
   const lastName = nameParts.length > 1 ? nameParts.slice(1).join(" ") : null;
 
@@ -789,11 +797,13 @@ export async function approvePreRegistration(preRegistrationId: string) {
       phone: lead.phone,
       cpf: lead.cpf,
       birth_date: lead.birth_date,
-      level: "branco", // Default starting level
+      level: customLevel || "branco",
+      membership_type: membershipType,
     });
 
   if (profileError) {
-    return { error: "Ocorreu uma falha ao vincular os dados pessoais do aluno." };
+    console.error("[approvePreRegistration] Profile Error:", profileError);
+    return { error: "Convite gerado, mas houve um erro ao criar o perfil no banco de dados." };
   }
 
   // 4. Assign Role
@@ -805,14 +815,22 @@ export async function approvePreRegistration(preRegistrationId: string) {
     });
 
   if (roleError) {
-    return { error: "Falha ao definir as permissões de acesso do novo aluno." };
+    console.error("[approvePreRegistration] Role Error:", roleError);
+    return { error: "Convite enviado e perfil criado, mas houve erro ao definir permissões." };
   }
 
-  // 5. Update Pre-registration Status
-  await supabaseAdmin
+  // 5. Update Lead status (FINAL STEP)
+  const { error: updateError } = await supabaseAdmin
     .from("pre_registrations")
-    .update({ status: "approved" })
+    .update({ 
+      status: "approved", 
+      updated_at: new Date().toISOString() 
+    })
     .eq("id", preRegistrationId);
+
+  if (updateError) {
+    console.error("[approvePreRegistration] Lead Status Update Error:", updateError);
+  }
 
   revalidatePath("/admin/alunos");
   return { success: true };

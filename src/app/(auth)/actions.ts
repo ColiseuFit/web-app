@@ -93,6 +93,30 @@ export async function createPreRegistration(formData: FormData) {
 
   const supabase = await createClient();
 
+  // --- Verificação de Duplicidade (Email/CPF) ---
+  // 1. Checar se já existe como Aluno Ativo
+  const { data: existingProfile } = await supabase
+    .from("profiles")
+    .select("id")
+    .or(`email.eq.${dataToInsert.email}${dataToInsert.cpf ? `,cpf.eq.${dataToInsert.cpf}` : ""}`)
+    .maybeSingle();
+
+  if (existingProfile) {
+    return { error: "Este cadastro já existe e está ativo. Tente fazer login." };
+  }
+
+  // 2. Checar se já existe como Lead Pendente
+  const { data: existingLead } = await supabase
+    .from("pre_registrations")
+    .select("status")
+    .or(`email.eq.${dataToInsert.email}${dataToInsert.cpf ? `,cpf.eq.${dataToInsert.cpf}` : ""}`)
+    .eq("status", "pending")
+    .maybeSingle();
+
+  if (existingLead) {
+    return { error: "Já recebemos sua solicitação! Aguarde o contato da nossa equipe." };
+  }
+
   const { error } = await supabase
     .from("pre_registrations")
     .insert([

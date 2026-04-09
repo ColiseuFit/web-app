@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { ArrowLeft, ArrowRight } from "lucide-react";
+import { ArrowLeft, ArrowRight, ShieldCheck } from "lucide-react";
 import { createPreRegistration } from "@/app/(auth)/actions";
 
 interface PreRegistrationFormProps {
@@ -13,6 +13,23 @@ interface PreRegistrationFormProps {
 export function PreRegistrationForm({ onBack, onSuccess }: PreRegistrationFormProps) {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+  const [phone, setPhone] = useState("");
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value.replace(/\D/g, "");
+    if (value.length > 11) value = value.slice(0, 11);
+    
+    // Mask: (00) 00000-0000
+    if (value.length > 7) {
+      value = `(${value.slice(0, 2)}) ${value.slice(2, 7)}-${value.slice(7)}`;
+    } else if (value.length > 2) {
+      value = `(${value.slice(0, 2)}) ${value.slice(2)}`;
+    } else if (value.length > 0) {
+      value = `(${value}`;
+    }
+    setPhone(value);
+  };
 
   async function handleSubmit(formData: FormData) {
     setLoading(true);
@@ -23,8 +40,57 @@ export function PreRegistrationForm({ onBack, onSuccess }: PreRegistrationFormPr
       setLoading(false);
     } else {
       setLoading(false);
-      onSuccess();
+      setIsSuccess(true);
+      // Wait a bit before calling external success
+      setTimeout(() => {
+        onSuccess();
+      }, 5000);
     }
+  }
+
+  if (isSuccess) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          textAlign: "center",
+          padding: "40px 20px",
+          gap: "24px",
+          height: "100%"
+        }}
+      >
+        <div style={{
+          width: "64px",
+          height: "64px",
+          background: "#E31B23",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          transform: "rotate(45deg)",
+          marginBottom: "12px"
+        }}>
+          <ShieldCheck size={32} color="white" style={{ transform: "rotate(-45deg)" }} />
+        </div>
+        <div>
+          <h2 style={{ fontSize: "24px", fontWeight: 900, color: "white", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "12px" }}>
+            Solicitação Enviada!
+          </h2>
+          <p style={{ fontSize: "14px", color: "rgba(255,255,255,0.7)", lineHeight: "1.6", maxWidth: "280px", margin: "0 auto" }}>
+            Recebemos seu pré-cadastro. Nossa equipe entrará em contato via WhatsApp em breve para finalizar sua matrícula.
+          </p>
+        </div>
+        <div style={{ marginTop: "20px" }}>
+          <p style={{ fontSize: "10px", fontWeight: 800, color: "rgba(255,255,255,0.4)", letterSpacing: "0.2em", textTransform: "uppercase" }}>
+            Redirecionando...
+          </p>
+        </div>
+      </motion.div>
+    );
   }
 
   return (
@@ -134,9 +200,9 @@ export function PreRegistrationForm({ onBack, onSuccess }: PreRegistrationFormPr
               type="tel"
               name="phone"
               required
-              minLength={10}
-              maxLength={15}
-              placeholder="(11) 99999-9999"
+              value={phone}
+              onChange={handlePhoneChange}
+              placeholder="(00) 00000-0000"
               style={{
                 width: "100%",
                 background: "#0A0A0A",

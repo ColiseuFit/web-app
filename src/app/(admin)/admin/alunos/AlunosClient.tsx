@@ -2,10 +2,11 @@
 
 import { useState, useRef, useEffect } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Search, Plus, Phone, X, UserPlus, ChevronDown, Pencil, Trash2, User, Mail, Calendar, CreditCard, Info, Activity, ShieldCheck, Lock as LockIcon, Mail as MailIcon, ChevronLeft, ChevronRight, Copy, Check } from "lucide-react";
+import { Search, Plus, Phone, X, UserPlus, ChevronDown, Pencil, Trash2, User, Mail, Calendar, CreditCard, Info, Activity, ShieldCheck, Lock as LockIcon, Mail as MailIcon, ChevronLeft, ChevronRight, Copy, Check, Tag } from "lucide-react";
 import { createStudent, updateStudent, deleteStudent, getStudentEvaluations, deletePhysicalEvaluation, updateStudentAuth, updatePreRegistration } from "../../actions";
 import PhysicalEvaluationForm from "./PhysicalEvaluationForm";
 import { getLevelInfo, LevelInfo } from "@/lib/constants/levels";
+import { MEMBERSHIP_TYPES, getMembershipLabel } from "@/lib/constants/membership";
 
 /**
  * AlunosClient: Central de Inteligência e Gestão de Alunos (CRM).
@@ -38,6 +39,7 @@ interface Student {
   cpf: string | null;
   birth_date: string | null;
   gender: string | null;
+  membership_type: string;
 }
 
 // We will define this inside the component to use dynamic levels
@@ -102,6 +104,8 @@ export default function AlunosClient({
   const [isEditingLead, setIsEditingLead] = useState(false);
   const [approvedLeadInfo, setApprovedLeadInfo] = useState<{ email: string; phone: string; name: string } | null>(null);
   const [copied, setCopied] = useState(false);
+  const [leadLevels, setLeadLevels] = useState<Record<string, string>>({});
+  const [leadMembershipTypes, setLeadMembershipTypes] = useState<Record<string, string>>({});
 
   // Auto-hide success messages (Except when showing a generated password)
   useEffect(() => {
@@ -200,7 +204,9 @@ export default function AlunosClient({
   async function handleApproveLead(id: string) {
     const { approvePreRegistration } = await import("../../actions");
     setLoadingLeadId(id);
-    const result = await approvePreRegistration(id);
+    const currentLevel = leadLevels[id] || "branco";
+    const currentType = leadMembershipTypes[id] || "club";
+    const result = await approvePreRegistration(id, currentLevel, currentType);
     if (result.success) {
       const lead = preRegistrations?.find(p => p.id === id);
       setApprovedLeadInfo({
@@ -542,55 +548,124 @@ export default function AlunosClient({
             <div style={{ padding: "64px 20px", textAlign: "center", color: "#666", fontSize: "14px" }}>Nenhum pré-cadastro pendente.</div>
           ) : (
             <div style={{ overflowX: "auto" }}>
-              <table className="admin-table">
+              <table className="admin-table" style={{ tableLayout: "fixed", width: "100%" }}>
                 <thead>
                   <tr>
-                    <th style={{ paddingLeft: "24px" }}>Candidato</th>
-                    <th>Contato</th>
-                    <th>Data Solicitação</th>
-                    <th style={{ width: "160px" }}>Ações</th>
+                    <th style={{ paddingLeft: "24px", textAlign: "left" }}>Candidato</th>
+                    <th style={{ width: "220px", textAlign: "left", paddingLeft: "16px", borderLeft: "2px solid rgba(0,0,0,0.05)" }}>Contato</th>
+                    <th style={{ width: "80px", textAlign: "left", paddingLeft: "12px", borderLeft: "2px solid rgba(0,0,0,0.05)" }}>Data</th>
+                    <th style={{ width: "125px", textAlign: "center", borderLeft: "2px solid rgba(0,0,0,0.05)" }}>Nível</th>
+                    <th style={{ width: "125px", textAlign: "center", borderLeft: "2px solid rgba(0,0,0,0.05)" }}>Plano</th>
+                    <th style={{ width: "230px", textAlign: "center", borderLeft: "2px solid rgba(0,0,0,0.05)" }}>Ações</th>
                   </tr>
                 </thead>
                 <tbody>
                   {preRegistrations.map((lead: any) => (
                     <tr key={lead.id}>
                       <td style={{ paddingLeft: "24px" }}>
-                        <div style={{ fontWeight: 800, fontSize: "14px", color: "#000" }}>{lead.full_name}</div>
+                        <div style={{ fontWeight: 800, fontSize: "14px", color: "#000", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{lead.full_name}</div>
                       </td>
-                      <td>
+                      <td style={{ width: "220px", paddingLeft: "16px", borderLeft: "2px solid rgba(0,0,0,0.05)" }}>
                         <div style={{ fontSize: "13px", fontWeight: 600 }}>{lead.phone}</div>
-                        <div style={{ fontSize: "11px", color: "#666" }}>{lead.email}</div>
+                        <div style={{ fontSize: "11px", color: "#666", wordBreak: "break-all" }}>{lead.email}</div>
                       </td>
-                      <td style={{ fontSize: "13px" }}>{formatDate(lead.created_at)}</td>
-                      <td>
-                        {loadingLeadId === lead.id ? (
-                          <span style={{ fontSize: "12px", fontWeight: 700, color: "#666" }}>Processando...</span>
-                        ) : (
-                          <div style={{ display: "flex", gap: "8px" }}>
-                            <button 
-                              onClick={() => { setSelectedLead(lead); setIsEditingLead(true); }}
-                              className="admin-btn admin-btn-ghost" 
-                              style={{ width: "36px", height: "36px", padding: 0 }}
-                              title="Editar Dados"
-                            >
-                              <Pencil size={16} />
-                            </button>
-                            <button 
-                              onClick={() => handleApproveLead(lead.id)} 
-                              className="admin-btn admin-btn-primary" 
-                              style={{ padding: "6px 12px", fontSize: "11px", backgroundColor: "#000", color: "#FFF" }}
-                            >
-                              Aceitar
-                            </button>
-                            <button 
-                              onClick={() => handleRejectLead(lead.id)} 
-                              className="admin-btn admin-btn-ghost" 
-                              style={{ padding: "6px 12px", fontSize: "11px", color: "#DC2626" }}
-                            >
-                              Rejeitar
-                            </button>
-                          </div>
-                        )}
+                      <td style={{ width: "80px", fontSize: "11px", paddingLeft: "12px", borderLeft: "2px solid rgba(0,0,0,0.05)" }}>{formatDate(lead.created_at)}</td>
+                      <td style={{ width: "125px", padding: "12px 6px", borderLeft: "2px solid rgba(0,0,0,0.05)" }}>
+                        <select 
+                          value={leadLevels[lead.id] || "branco"}
+                          onChange={(e) => setLeadLevels(prev => ({ ...prev, [lead.id]: e.target.value }))}
+                          disabled={loadingLeadId === lead.id}
+                          style={{ 
+                            width: "100%", 
+                            padding: "6px 8px", 
+                            border: "2px solid #000", 
+                            fontSize: "11px", 
+                            fontWeight: 900, 
+                            background: "#FFF",
+                            color: "#000",
+                            borderRadius: 0,
+                            cursor: "pointer",
+                            textTransform: "uppercase"
+                          }}
+                        >
+                          {levelsList.map((lvl: any) => (
+                            <option key={lvl.key} value={lvl.key}>
+                              {lvl.label}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td style={{ width: "125px", padding: "12px 6px", borderLeft: "2px solid rgba(0,0,0,0.05)" }}>
+                        <select 
+                          value={leadMembershipTypes[lead.id] || "club"}
+                          onChange={(e) => setLeadMembershipTypes(prev => ({ ...prev, [lead.id]: e.target.value }))}
+                          disabled={loadingLeadId === lead.id}
+                          style={{ 
+                            width: "100%", 
+                            padding: "6px 8px", 
+                            border: "2px solid #000", 
+                            fontSize: "11px", 
+                            fontWeight: 900, 
+                            background: "#FFF",
+                            color: "#000",
+                            borderRadius: 0,
+                            cursor: "pointer",
+                            textTransform: "uppercase"
+                          }}
+                        >
+                          {MEMBERSHIP_TYPES.map((type) => (
+                            <option key={type.key} value={type.key}>
+                              {type.label}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td style={{ width: "230px", borderLeft: "2px solid rgba(0,0,0,0.05)", padding: "12px 8px" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "16px", justifyContent: "center" }}>
+                          {loadingLeadId === lead.id ? (
+                            <span style={{ fontSize: "12px", fontWeight: 700, color: "#666" }}>...</span>
+                          ) : (
+                            <>
+                              <button 
+                                onClick={() => { setSelectedLead(lead); setIsEditingLead(true); }}
+                                style={{ border: "none", background: "none", cursor: "pointer", color: "#666", padding: "4px" }}
+                                title="Editar Pré-cadastro"
+                              >
+                                <Pencil size={18} />
+                              </button>
+                              
+                              <button 
+                                onClick={() => handleApproveLead(lead.id)}
+                                className="admin-btn admin-btn-primary"
+                                style={{ 
+                                  height: "36px", 
+                                  padding: "0 16px", 
+                                  fontSize: "11px",
+                                  fontWeight: 900,
+                                  whiteSpace: "nowrap"
+                                }}
+                              >
+                                ACEITAR
+                              </button>
+
+                              <button 
+                                onClick={() => handleRejectLead(lead.id)}
+                                style={{ 
+                                  border: "none",
+                                  background: "none",
+                                  color: "#DC2626",
+                                  fontSize: "11px",
+                                  fontWeight: 900,
+                                  textTransform: "uppercase",
+                                  cursor: "pointer",
+                                  padding: "0 8px"
+                                }}
+                              >
+                                REJEITAR
+                              </button>
+                            </>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -758,6 +833,13 @@ export default function AlunosClient({
                           </select>
                         </div>
                       </div>
+                      
+                      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                        <label style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", color: "#666" }}>Plano de Acesso</label>
+                        <select name="membership_type" defaultValue={selectedStudent.membership_type || "club"} style={{ width: "100%", padding: 14, border: "3px solid #000", fontWeight: 800, outline: "none" }}>
+                          {MEMBERSHIP_TYPES.map(t => <option key={t.key} value={t.key}>{t.label}</option>)}
+                        </select>
+                      </div>
 
                       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                         <label style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", color: "#666" }}>Bio / Notas Gerais</label>
@@ -778,6 +860,15 @@ export default function AlunosClient({
                             <span style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase" }}>Matriculado em</span>
                           </div>
                           <div style={{ fontSize: 18, fontWeight: 900 }}>{formatDate(selectedStudent.created_at)}</div>
+                        </div>
+                        <div className="admin-card" style={{ padding: 24, border: "3px solid #000", background: "#F9FAFB", boxShadow: "8px 8px 0px rgba(0,0,0,0.05)" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 10, color: "#666", marginBottom: 12 }}>
+                            <Tag size={18} />
+                            <span style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase" }}>Plano</span>
+                          </div>
+                          <div style={{ fontSize: 18, fontWeight: 900, color: getMembershipLabel(selectedStudent.membership_type).includes("Pass") ? "#DC2626" : "#000" }}>
+                            {getMembershipLabel(selectedStudent.membership_type)}
+                          </div>
                         </div>
                         <div className="admin-card" style={{ padding: 24, border: "3px solid #000", background: "#F9FAFB", boxShadow: "8px 8px 0px rgba(0,0,0,0.05)" }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 10, color: "#666", marginBottom: 12 }}>

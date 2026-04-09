@@ -91,7 +91,7 @@ export default function AuthConfirmPage() {
       }
     });
 
-    // Timeout de segurança: se o SDK não disparar nenhum evento em 6s, exibe erro
+    // Timeout de segurança: se o SDK não disparar nenhum evento em 10s, exibe erro
     const timeout = setTimeout(() => {
       setStatus((prev) => {
         if (prev === "loading") {
@@ -99,7 +99,7 @@ export default function AuthConfirmPage() {
         }
         return prev;
       });
-    }, 6000);
+    }, 10000);
 
     return () => {
       subscription.unsubscribe();

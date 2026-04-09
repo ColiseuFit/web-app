@@ -26,7 +26,8 @@ export const createStudentSchema = z.object({
   email: z.string().email("E-mail inválido"),
   password: z.string().min(8, "A senha deve ter pelo menos 8 caracteres para maior segurança"),
   full_name: z.string().min(3, "O nome completo deve ter pelo menos 3 caracteres"),
-  level: z.enum(ALL_LEVELS.map(l => l.key) as [string, ...string[]]).default("iniciante"),
+  level: z.enum(ALL_LEVELS.map(l => l.key) as [string, ...string[]]).default("branco"),
+  membership_type: z.enum(["club", "club_pass"]).default("club"),
 });
 
 /**
