@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: {
-    default: "Coliseu Clube | A Arena dos Fortes",
+    default: "Coliseu Clube",
     template: "%s | Coliseu Clube"
   },
   description: "Plataforma exclusiva para membros do Coliseu. Acompanhe seus treinos, PRs e evolua na Arena.",
@@ -18,7 +18,7 @@ export const metadata: Metadata = {
   },
   metadataBase: new URL("https://clube.coliseufit.com"),
   openGraph: {
-    title: "Coliseu Clube | A Arena dos Fortes",
+    title: "Coliseu Clube",
     description: "Acompanhe seus treinos, PRs e evolua na sua jornada fitness no Coliseu.",
     url: "https://clube.coliseufit.com",
     siteName: "Coliseu Clube",
@@ -27,7 +27,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Coliseu Clube | A Arena dos Fortes",
+    title: "Coliseu Clube",
     description: "Acompanhe seus treinos, PRs e evolua na sua jornada fitness no Coliseu.",
   },
   icons: {
