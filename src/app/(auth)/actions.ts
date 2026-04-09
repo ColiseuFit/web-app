@@ -166,32 +166,106 @@ export async function setupPassword(formData: FormData) {
   redirect("/dashboard");
 }
 
-/**
- * Solicita a recuperação de senha enviando um e-mail para o usuário.
- * 
- * @security
- * - Utiliza Supabase Auth `resetPasswordForEmail`.
- * - Redireciona para o callback de autenticação que garante a troca do token por sessão.
- * 
- * @param {string} email - E-mail do usuário que deseja recuperar a senha.
- * @returns {Promise<{ success?: boolean; error?: string }>} Status da solicitação.
- */
 export async function requestPasswordReset(email: string) {
   const validation = forgotPasswordSchema.safeParse({ email });
   if (!validation.success) {
     return { error: validation.error.issues[0].message };
   }
 
-  const supabase = await createClient();
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim().split(' ')[0];
+  if (!serviceRoleKey || !process.env.RESEND_API_KEY) {
+    console.error("ERRO: SUPABASE_SERVICE_ROLE_KEY ou RESEND_API_KEY ausente.");
+    return { error: "Erro de configuração no servidor. Entre em contato com o suporte." };
+  }
+
+  // Usamos o Admin Client para gerar o Magic Link sem disparar o e-mail pelo Supabase
+  const { createClient: createAdminClient } = await import("@supabase/supabase-js");
+  const supabaseAdmin = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    serviceRoleKey,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  );
+
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
   
-  const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${siteUrl}/auth/callback?next=/setup-password`,
+  // 1. Gera o link de recuperação de senha autenticado
+  const { data: authData, error: authError } = await supabaseAdmin.auth.admin.generateLink({
+    type: 'recovery',
+    email: email,
+    options: {
+      redirectTo: `${siteUrl}/auth/callback?next=/setup-password`,
+    }
   });
 
-  if (error) {
-    console.error("[requestPasswordReset] Error:", error);
-    return { error: "Não foi possível enviar o e-mail de recuperação: " + error.message };
+  // Por segurança (evitar vazamento de quem é ou não usuário), falhamos silenciosamente para o frontend
+  if (authError) {
+    console.warn(`[requestPasswordReset] Ignorado: tentativa de recup. para email não existente (${email}). Erro:`, authError.message);
+    return { success: true }; // Retornamos success para a UI manter o UX seguro
+  }
+
+  const actionLink = authData.properties.action_link;
+
+  // 2. Dispara o e-mail moderno via Resend (replicando estética Neo-brutalista)
+  try {
+    const { Resend } = await import("resend");
+    const resend = new Resend(process.env.RESEND_API_KEY);
+
+    // O actionLink já contém /auth/v1/verify e os tokens, ele trocará de sessão e redirecionará pro Next (/auth/callback)
+    await resend.emails.send({
+      from: 'Coliseu <onboarding@coliseufit.com>',
+      to: email,
+      subject: 'Redefinição de Senha - Coliseu Clube',
+      html: `
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Redefinição de Senha</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #000; background-color: #f4f4f5; margin: 0; padding: 0; }
+    .wrapper { padding: 40px 20px; }
+    .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 3px solid #000000; box-shadow: 8px 8px 0px #000000; }
+    .header { background-color: #101010; color: #ffffff; padding: 35px 20px; text-align: center; border-bottom: 3px solid #000000; }
+    .header img { height: 32px; display: block; margin: 0 auto; }
+    .content { padding: 40px 30px; }
+    .content h2 { font-size: 24px; font-weight: 800; margin-top: 0; margin-bottom: 25px; text-transform: uppercase; }
+    .content p { font-size: 16px; margin-bottom: 20px; color: #18181b; }
+    .cta-container { text-align: center; margin: 40px 0; }
+    .cta-button { background-color: #000000; color: #ffffff !important; font-size: 16px; font-weight: 800; text-transform: uppercase; text-decoration: none; padding: 16px 32px; display: inline-block; border: 2px solid #000000; box-shadow: 4px 4px 0px rgba(0,0,0,0.3); }
+    .footer { padding: 20px; background-color: #ffffff; border-top: 2px solid #000000; text-align: center; font-size: 13px; color: #71717a; font-weight: 500; }
+    .footer a { color: #000000; text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="container">
+      <div class="header">
+        <h1 style="margin: 0; font-size: 24px;">COLISEU</h1>
+      </div>
+      <div class="content">
+        <h2>SOLICITAÇÃO DE NOVA SENHA</h2>
+        <p>Recebemos um pedido para alterar sua senha de acesso na plataforma da Arena dos Fortes.</p>
+        <p>Clique no botão abaixo para definir sua nova credencial de segurança. <strong>Este link é válido por apenas 24 horas.</strong></p>
+        <div class="cta-container">
+          <a href="${actionLink}" class="cta-button">REDEFINIR SENHA</a>
+        </div>
+        <p style="font-weight: 700; margin-top: 30px; font-size: 14px; color: #52525b;">Se você não solicitou essa alteração, por favor ignore este email.</p>
+      </div>
+      <div class="footer">
+        Se o botão não funcionar, cole este link no navegador:<br>
+        <a href="${actionLink}">${actionLink}</a>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+      `
+    });
+
+  } catch (err: any) {
+    console.error("[requestPasswordReset] Erro Resend:", err);
+    return { error: "Não foi possível enviar o e-mail de recuperação no momento. Tente novamente." };
   }
 
   return { success: true };
