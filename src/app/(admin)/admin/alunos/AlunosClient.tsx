@@ -390,6 +390,16 @@ export default function AlunosClient({
                   ))}
                 </select>
               </div>
+              <div>
+                <label style={{ display: "block", fontSize: 12, fontWeight: 500, color: "var(--admin-text-secondary)", marginBottom: 6 }}>Plano / Categoria</label>
+                <select name="membership_type" defaultValue="club">
+                  {MEMBERSHIP_TYPES.map((type) => (
+                    <option key={type.key} value={type.key}>
+                      {type.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
               <div>
@@ -445,11 +455,11 @@ export default function AlunosClient({
               <thead>
                 <tr>
                   <th style={{ paddingLeft: "24px" }}>Nome do Atleta</th>
-                  <th>Nível</th>
-                  <th>Pontuação</th>
-                  <th>Data Cadastro</th>
-                  <th>Contato</th>
-                  <th style={{ width: "80px" }}>Ações</th>
+                  <th style={{ width: "120px" }}>Nível</th>
+                  <th style={{ width: "110px" }}>Pontuação</th>
+                  <th style={{ width: "75px" }}>Data</th>
+                  <th style={{ width: "160px" }}>Contato</th>
+                  <th style={{ width: "100px", textAlign: "center" }}>Ações</th>
                 </tr>
               </thead>
               <tbody>
@@ -468,9 +478,9 @@ export default function AlunosClient({
                     </td>
                     <td><span className={`admin-badge badge-${getLevelInfo(student.level, dynamicLevels).key}`}>{getLevelInfo(student.level, dynamicLevels).label}</span></td>
                     <td style={{ fontSize: "14px", fontWeight: 700 }}>{student.points.toLocaleString("pt-BR")} PTS</td>
-                    <td style={{ fontSize: "13px" }}>{formatDate(student.created_at)}</td>
+                    <td style={{ fontSize: "12px", color: "#666" }}>{formatDate(student.created_at)}</td>
                     <td style={{ fontSize: "13px", fontWeight: 600 }}>{student.phone || "—"}</td>
-                    <td>
+                    <td style={{ paddingRight: "16px" }}>
                       <div style={{ display: "flex", gap: "4px" }}>
                         <button onClick={() => handleOpenDrawer(student)} className="admin-btn admin-btn-ghost" style={{ height: "36px", width: "36px", padding: 0 }}><User size={16} /></button>
                         <button onClick={() => { setSelectedStudent(student); setIsEditing(true); setDrawerView("profile"); }} className="admin-btn admin-btn-ghost" style={{ height: "36px", width: "36px", padding: 0 }}><Pencil size={16} /></button>
@@ -552,25 +562,25 @@ export default function AlunosClient({
                 <thead>
                   <tr>
                     <th style={{ paddingLeft: "24px", textAlign: "left" }}>Candidato</th>
-                    <th style={{ width: "220px", textAlign: "left", paddingLeft: "16px", borderLeft: "2px solid rgba(0,0,0,0.05)" }}>Contato</th>
-                    <th style={{ width: "80px", textAlign: "left", paddingLeft: "12px", borderLeft: "2px solid rgba(0,0,0,0.05)" }}>Data</th>
-                    <th style={{ width: "125px", textAlign: "center", borderLeft: "2px solid rgba(0,0,0,0.05)" }}>Nível</th>
-                    <th style={{ width: "125px", textAlign: "center", borderLeft: "2px solid rgba(0,0,0,0.05)" }}>Plano</th>
-                    <th style={{ width: "230px", textAlign: "center", borderLeft: "2px solid rgba(0,0,0,0.05)" }}>Ações</th>
+                    <th style={{ width: "190px", textAlign: "left", paddingLeft: "16px", borderLeft: "2px solid rgba(0,0,0,0.08)" }}>Contato</th>
+                    <th style={{ width: "65px", textAlign: "left", paddingLeft: "12px", borderLeft: "2px solid rgba(0,0,0,0.08)" }}>Data</th>
+                    <th style={{ width: "115px", textAlign: "center", borderLeft: "2px solid rgba(0,0,0,0.08)" }}>Nível</th>
+                    <th style={{ width: "115px", textAlign: "center", borderLeft: "2px solid rgba(0,0,0,0.08)" }}>Plano</th>
+                    <th style={{ width: "215px", textAlign: "center", borderLeft: "2px solid rgba(0,0,0,0.08)" }}>Ações</th>
                   </tr>
                 </thead>
                 <tbody>
                   {preRegistrations.map((lead: any) => (
                     <tr key={lead.id}>
-                      <td style={{ paddingLeft: "24px" }}>
-                        <div style={{ fontWeight: 800, fontSize: "14px", color: "#000", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{lead.full_name}</div>
+                      <td style={{ paddingLeft: "24px", paddingRight: "12px" }}>
+                        <div style={{ fontWeight: 800, fontSize: "14px", color: "#000", lineHeight: "1.2", overflow: "hidden" }}>{lead.full_name}</div>
                       </td>
-                      <td style={{ width: "220px", paddingLeft: "16px", borderLeft: "2px solid rgba(0,0,0,0.05)" }}>
+                      <td style={{ width: "190px", paddingLeft: "16px", borderLeft: "2px solid rgba(0,0,0,0.05)" }}>
                         <div style={{ fontSize: "13px", fontWeight: 600 }}>{lead.phone}</div>
-                        <div style={{ fontSize: "11px", color: "#666", wordBreak: "break-all" }}>{lead.email}</div>
+                        <div style={{ fontSize: "10px", color: "#666", wordBreak: "break-all", lineHeight: 1.1 }}>{lead.email}</div>
                       </td>
-                      <td style={{ width: "80px", fontSize: "11px", paddingLeft: "12px", borderLeft: "2px solid rgba(0,0,0,0.05)" }}>{formatDate(lead.created_at)}</td>
-                      <td style={{ width: "125px", padding: "12px 6px", borderLeft: "2px solid rgba(0,0,0,0.05)" }}>
+                      <td style={{ width: "65px", fontSize: "10px", fontWeight: 700, paddingLeft: "12px", borderLeft: "2px solid rgba(0,0,0,0.05)" }}>{formatDate(lead.created_at)}</td>
+                      <td style={{ width: "115px", padding: "12px 6px", borderLeft: "2px solid rgba(0,0,0,0.05)" }}>
                         <select 
                           value={leadLevels[lead.id] || "branco"}
                           onChange={(e) => setLeadLevels(prev => ({ ...prev, [lead.id]: e.target.value }))}
@@ -595,7 +605,7 @@ export default function AlunosClient({
                           ))}
                         </select>
                       </td>
-                      <td style={{ width: "125px", padding: "12px 6px", borderLeft: "2px solid rgba(0,0,0,0.05)" }}>
+                      <td style={{ width: "115px", padding: "12px 6px", borderLeft: "2px solid rgba(0,0,0,0.05)" }}>
                         <select 
                           value={leadMembershipTypes[lead.id] || "club"}
                           onChange={(e) => setLeadMembershipTypes(prev => ({ ...prev, [lead.id]: e.target.value }))}
@@ -620,7 +630,7 @@ export default function AlunosClient({
                           ))}
                         </select>
                       </td>
-                      <td style={{ width: "230px", borderLeft: "2px solid rgba(0,0,0,0.05)", padding: "12px 8px" }}>
+                      <td style={{ width: "215px", borderLeft: "2px solid rgba(0,0,0,0.05)", padding: "12px 8px" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: "16px", justifyContent: "center" }}>
                           {loadingLeadId === lead.id ? (
                             <span style={{ fontSize: "12px", fontWeight: 700, color: "#666" }}>...</span>
