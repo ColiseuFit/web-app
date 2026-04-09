@@ -197,10 +197,14 @@ export async function requestPasswordReset(email: string) {
     }
   });
 
-  // Por segurança (evitar vazamento de quem é ou não usuário), falhamos silenciosamente para o frontend
+  // Mostramos um erro claro para o aluno caso o e-mail não exista na base,
+  // melhorando a usabilidade (ao invés de fingir sucesso silencioso).
   if (authError) {
-    console.warn(`[requestPasswordReset] Ignorado: tentativa de recup. para email não existente (${email}). Erro:`, authError.message);
-    return { success: true }; // Retornamos success para a UI manter o UX seguro
+    if (authError.message.includes("User not found")) {
+      return { error: "Este e-mail não foi encontrado em nossa base de alunos." };
+    }
+    console.error(`[requestPasswordReset] Erro Supabase:`, authError.message);
+    return { error: "Não foi possível gerar a recuperação no momento. Tente novamente." };
   }
 
   const actionLink = authData.properties.action_link;
