@@ -458,6 +458,7 @@ export default function AlunosClient({
                 <tr>
                   <th style={{ paddingLeft: "24px" }}>Nome do Atleta</th>
                   <th style={{ width: "120px" }}>Nível</th>
+                  <th style={{ width: "130px" }}>Plano</th>
                   <th style={{ width: "110px" }}>Pontuação</th>
                   <th style={{ width: "75px" }}>Data</th>
                   <th style={{ width: "160px" }}>Contato</th>
@@ -479,6 +480,7 @@ export default function AlunosClient({
                       </div>
                     </td>
                     <td><span className={`admin-badge badge-${getLevelInfo(student.level, dynamicLevels).key}`}>{getLevelInfo(student.level, dynamicLevels).label}</span></td>
+                    <td style={{ fontSize: "11px", fontWeight: 800, textTransform: "uppercase" }}>{getMembershipLabel(student.membership_type)}</td>
                     <td style={{ fontSize: "14px", fontWeight: 700 }}>{student.points.toLocaleString("pt-BR")} PTS</td>
                     <td style={{ fontSize: "12px", color: "#666" }}>{formatDate(student.created_at)}</td>
                     <td style={{ fontSize: "13px", fontWeight: 600 }}>{student.phone || "—"}</td>
