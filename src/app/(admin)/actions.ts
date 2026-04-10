@@ -696,21 +696,33 @@ export async function approvePreRegistration(preRegistrationId: string, customLe
     return { error: "Erro ao setar permissões do perfil. O e-mail de convite NÃO foi enviado e a aprovação foi abortada." };
   }
 
-  // Disparo de e-mail Anti-Bot via Resend
+  // 5. Marcar Pré-cadastro como Aprovado (SSoT: Movido para antes do e-mail para evitar inconsistência)
+  const { error: updateError } = await supabaseAdmin
+    .from("pre_registrations")
+    .update({ 
+      status: "approved"
+    })
+    .eq("id", preRegistrationId);
+
+  if (updateError) {
+    console.error("[approvePreRegistration] Lead Status Update Error:", updateError);
+    return { error: "Erro ao atualizar status do pré-cadastro no banco de dados. A aprovação foi interrompida." };
+  }
+
+  // 6. Disparo de e-mail Anti-Bot via Resend
+  let emailSent = false;
   try {
     if (!process.env.RESEND_API_KEY) {
-      console.error("ERRO: RESEND_API_KEY ausente. O servidor não leu o .env.local atualizado.");
-      return { error: "Servidor precisa ser reiniciado para carregar as chaves de e-mail. Por favor, reinicie o terminal." };
-    }
+      console.warn("AVISO: RESEND_API_KEY ausente. O convite não será enviado por e-mail.");
+    } else {
+      const resend = new Resend(process.env.RESEND_API_KEY);
+      const verifyUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/verify?link=${encodeURIComponent(actionLink)}`;
 
-    const resend = new Resend(process.env.RESEND_API_KEY);
-    const verifyUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/verify?link=${encodeURIComponent(actionLink)}`;
-
-    await resend.emails.send({
-      from: 'Coliseu <onboarding@coliseufit.com>',
-      to: lead.email,
-      subject: 'Bem-vindo ao Clube Coliseu!',
-      html: `
+      await resend.emails.send({
+        from: 'Coliseu <onboarding@coliseufit.com>',
+        to: lead.email,
+        subject: 'Bem-vindo ao Clube Coliseu!',
+        html: `
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -824,27 +836,20 @@ export async function approvePreRegistration(preRegistrationId: string, customLe
 </body>
 </html>
       `
-    });
+      });
+      emailSent = true;
+    }
   } catch (err) {
     console.error("Erro ao disparar email via Resend:", err);
-    return { error: "O perfil de acesso foi criado, mas ocorreu um erro no servidor envio de e-mails via Resend." };
-  }
-
-  // 5. Update Lead status (FINAL STEP)
-  const { error: updateError } = await supabaseAdmin
-    .from("pre_registrations")
-    .update({ 
-      status: "approved", 
-      updated_at: new Date().toISOString() 
-    })
-    .eq("id", preRegistrationId);
-
-  if (updateError) {
-    console.error("[approvePreRegistration] Lead Status Update Error:", updateError);
+    // Não retornamos erro aqui, pois o perfil e o status já foram atualizados.
+    // O admin verá o sucesso, mas o log registrará a falha do e-mail.
   }
 
   revalidatePath("/admin/alunos");
-  return { success: true };
+  return { 
+    success: true, 
+    message: emailSent ? "Aprovação concluída com sucesso." : "Aprovação concluída, mas houve um erro ao enviar o e-mail de boas-vindas." 
+  };
 }
 
 /**

@@ -281,7 +281,10 @@ export default function AlunosClient({
         email: lead?.email || "",
         phone: lead?.phone || ""
       });
-      setMessage({ type: "success", text: "Pré-cadastro aprovado! Convite enviado por e-mail." });
+      setMessage({ 
+        type: "success", 
+        text: (result as any).message || "Pré-cadastro aprovado! Convite enviado por e-mail." 
+      });
     } else {
       setMessage({ type: "error", text: result.error || "Erro ao aprovar pré-cadastro." });
     }
