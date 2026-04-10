@@ -1,12 +1,28 @@
 "use client";
 
 import { useState, useRef } from "react";
+import { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import { updateProfile, updatePassword } from "./actions";
 import ConfirmModal from "@/components/ConfirmModal";
-import { Lock, ShieldCheck, User } from "lucide-react";
+import { Lock, ShieldCheck, User as UserIcon } from "lucide-react";
 
-export default function ProfileForm({ user, profile }: { user: any, profile: any }) {
+/**
+ * ProfileForm Component
+ * 
+ * Responsável pela gestão da identidade do atleta (perfil e segurança).
+ * 
+ * @design (Iron Monolith Light)
+ * - Cores literais (#FFF/#000) utilizadas para garantir paridade total com o design system,
+ *   evitando oscilações de tokens de tema em componentes críticos de identidade.
+ * - Neo-Brutalismo: Sombras 4px sólidas, bordas 2px e tipografia Outfit 900.
+ * 
+ * @storage_logic (Auto-Healing)
+ * - Implementa limpeza automática de arquivos órfãos no bucket 'avatars'.
+ * - Ao realizar upload ou exclusão, o arquivo físico é removido do Supabase Storage
+ *   para evitar custos desnecessários e acúmulo de lixo.
+ */
+export default function ProfileForm({ user, profile }: { user: User; profile: any }) {
   const supabase = createClient();
   
   const [loading, setLoading] = useState(false);
@@ -148,7 +164,7 @@ export default function ProfileForm({ user, profile }: { user: any, profile: any
           {avatarUrl ? (
             <img src={avatarUrl} alt="Avatar" style={{ width: "100%", height: "100%", objectFit: "cover", filter: "grayscale(100%) contrast(1.1)" }} />
           ) : (
-            <User size={40} style={{ color: "var(--text-dim)" }} />
+            <UserIcon size={40} style={{ color: "#AAA" }} />
           )}
         </div>
         
@@ -167,10 +183,10 @@ export default function ProfileForm({ user, profile }: { user: any, profile: any
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading}
             style={{
-              background: "var(--surface)",
-              border: "1px solid var(--border)",
-              boxShadow: "var(--nb-shadow-sm)",
-              color: "var(--text)",
+              background: "#FFF",
+              border: "2px solid #000",
+              boxShadow: "3px 3px 0px #000",
+              color: "#000",
               padding: "8px 16px",
               fontSize: "10px",
               fontWeight: 700,
@@ -192,8 +208,8 @@ export default function ProfileForm({ user, profile }: { user: any, profile: any
               disabled={uploading}
               style={{
                 background: "transparent",
-                border: "1px solid var(--red)",
-                color: "var(--red)",
+                border: "2px solid #E31B23",
+                color: "#E31B23",
                 padding: "8px 16px",
                 fontSize: "10px",
                 fontWeight: 700,
@@ -233,8 +249,8 @@ export default function ProfileForm({ user, profile }: { user: any, profile: any
         {/* ── PERSONALIZAÇÃO ── */}
         <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "8px" }}>
-            <div style={{ width: "8px", height: "16px", background: "var(--red)" }} />
-            <h3 style={{ fontSize: "11px", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text)" }}>PERSONALIZAÇÃO</h3>
+            <div style={{ width: "8px", height: "16px", background: "#E31B23" }} />
+            <h3 style={{ fontSize: "11px", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.1em", color: "#000" }}>PERSONALIZAÇÃO</h3>
           </div>
 
           <div style={{ position: "relative" }}>
@@ -276,8 +292,8 @@ export default function ProfileForm({ user, profile }: { user: any, profile: any
         {/* ── DADOS PESSOAIS ── */}
         <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "8px" }}>
-            <div style={{ width: "8px", height: "16px", background: "var(--red)" }} />
-            <h3 style={{ fontSize: "11px", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text)" }}>DADOS PESSOAIS</h3>
+            <div style={{ width: "8px", height: "16px", background: "#E31B23" }} />
+            <h3 style={{ fontSize: "11px", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.1em", color: "#000" }}>DADOS PESSOAIS</h3>
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
@@ -378,21 +394,21 @@ export default function ProfileForm({ user, profile }: { user: any, profile: any
       </form>
 
       {/* ── SENHA E SEGURANÇA ── */}
-      <div style={{ marginTop: "64px", borderTop: "2px solid var(--border)", paddingTop: "48px" }}>
+      <div style={{ marginTop: "64px", borderTop: "2px solid #EEE", paddingTop: "48px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "32px" }}>
-          <div style={{ width: "8px", height: "16px", background: "var(--red)" }} />
-          <h3 style={{ fontSize: "11px", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text)" }}>SEGURANÇA DA CONTA</h3>
+          <div style={{ width: "8px", height: "16px", background: "#E31B23" }} />
+          <h3 style={{ fontSize: "11px", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.1em", color: "#000" }}>SEGURANÇA DA CONTA</h3>
         </div>
 
         <form ref={passFormRef} action={handlePassSubmit} style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
-          <p style={{ fontSize: "12px", color: "var(--text-dim)", lineHeight: "1.6", marginBottom: "8px" }}>
+          <p style={{ fontSize: "12px", color: "#666", lineHeight: "1.6", marginBottom: "8px" }}>
             Mantenha sua conta protegida. A nova senha deve ter no mínimo 8 caracteres.
           </p>
 
           <div style={{ position: "relative" }}>
             <label style={labelStyle}>Nova Senha</label>
             <div style={{ position: "relative" }}>
-              <Lock size={14} style={{ position: "absolute", left: "16px", top: "50%", transform: "translateY(-50%)", color: "var(--text-dim)" }} />
+              <Lock size={14} style={{ position: "absolute", left: "16px", top: "50%", transform: "translateY(-50%)", color: "#AAA" }} />
               <input 
                 type="password" 
                 name="password" 
@@ -406,7 +422,7 @@ export default function ProfileForm({ user, profile }: { user: any, profile: any
           <div style={{ position: "relative" }}>
             <label style={labelStyle}>Confirmar Nova Senha</label>
             <div style={{ position: "relative" }}>
-              <ShieldCheck size={14} style={{ position: "absolute", left: "16px", top: "50%", transform: "translateY(-50%)", color: "var(--text-dim)" }} />
+              <ShieldCheck size={14} style={{ position: "absolute", left: "16px", top: "50%", transform: "translateY(-50%)", color: "#AAA" }} />
               <input 
                 type="password" 
                 name="confirm_password" 

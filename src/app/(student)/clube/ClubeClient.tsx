@@ -3,11 +3,18 @@
 import { useState, useEffect } from "react";
 import StudentHeader from "@/components/StudentHeader";
 import BottomNav from "@/components/BottomNav";
-import { Trophy, Hammer } from "lucide-react";
+import { Trophy, Hammer, Users, Star, Gift, Clock } from "lucide-react";
 import DashboardStyles from "@/components/DashboardStyles";
 
 /**
- * Cliente Interativo da Comunidade (O Clube) - EDIÇÃO NEO-BRUTALIST (EM BREVE)
+ * ClubeClient Component
+ * 
+ * Módulo de Fidelidade e Recompensas (Clube Coliseu).
+ * 
+ * @status MOCK (Em Breve)
+ * - Este componente utiliza estados estáticos para exemplificar a interface final.
+ * - A desativação de interatividade real visa manter a integridade visual enquanto 
+ *   as regras de negócio e o backend de resgate de prêmios estão em desenvolvimento.
  */
 export default function ClubeClient() {
   const [isLoaded, setIsLoaded] = useState(false);

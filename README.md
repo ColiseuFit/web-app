@@ -41,10 +41,13 @@ O projeto utiliza um stack moderno focado em performance extrema e isolamento de
 - `src/app/(coach)`: Interface operacional para coaches no tatame.
 - `src/app/(admin)`: Painel de gestão estratégica e financeira.
 - `docs/`: Sistema de conhecimento distribuído (Playbooks e SOPs).
+  - `docs/PLAYBOOKS/STUDENT_APP.md`: Guia mestre da experiência do aluno.
+  - `docs/PLAYBOOKS/ATHLETE_IDENTITY_PROFILE.md`: Gestão de perfil, avatares e benchmarks.
   - `docs/PLAYBOOKS/RECUPERACAO_SENHA.md`: Documentação técnica do fluxo de "Esqueci Minha Senha".
+  - `docs/PLAYBOOKS/WHATSAPP_INTEGRATION.md`: Configuração de automação via API.
 
 ---
 ---
-**Versão do Sistema:** 2.7.0 (Audit 1.0.3 Locked)  
-**Status da Auditoria:** 🏛️ LEGACY PROOF (Protocolo 1.0.3) - 100% Concluído  
+**Versão: 2.8.0 (Abril/2026) - Athlete Identity & SSoT WhatsApp Stabilization**  
+**Status da Auditoria:** 🏛️ LEGACY PROOF (Protocolo 1.0.4) - 100% Concluído  
 **Equipe:** Antigravity AI & Coliseu Engineering Team
