@@ -1,5 +1,16 @@
 "use client";
 
+/**
+ * @coordinator ProfileEditClient
+ * 
+ * Este componente atua como o 'Single Source of Truth' para o estado de edição.
+ * Ele coordena o fluxo entre o cabeçalho de navegação (EditHeader) e o formulário
+ * principal (ProfileForm).
+ * 
+ * @logic
+ * - isDirty: Estado compartilhado que detecta alterações pendentes.
+ * - Navigation Guard: Intercepta tentativas de saída para evitar perda de dados.
+ */
 import { useState } from "react";
 import EditHeader from "./EditHeader";
 import ProfileForm from "../ProfileForm";

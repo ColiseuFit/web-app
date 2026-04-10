@@ -1,5 +1,14 @@
 "use client";
 
+/**
+ * @component EditHeader
+ * 
+ * Cabeçalho defensivo para a página de edição.
+ * Implementa UX de confirmação assistida para prevenir navegação acidental.
+ * 
+ * @security (Navigation Guard)
+ * - Intercepta eventos de clique no Link para avaliar o estado 'isDirty'.
+ */
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
