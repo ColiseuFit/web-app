@@ -1,10 +1,12 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { Flame, Activity, Trophy } from "lucide-react";
+import { Flame, Activity, Trophy, Camera, TrendingUp } from "lucide-react";
 import { calculateAge, calculateBMR, calculateTDEE } from "@/lib/physique-utils";
 import BottomNav from "@/components/BottomNav";
 import DashboardStyles from "@/components/DashboardStyles";
+import BiometricTrendChart from "./BiometricTrendChart";
+import Image from "next/image";
 
 /**
  * Página de Histórico de Avaliações Físicas do Aluno.
@@ -49,6 +51,30 @@ export default async function EvaluationsPage() {
   const weightLostSinceStart = (latest && first && first.id !== latest.id) 
     ? (first.weight - latest.weight).toFixed(1) 
     : null;
+
+  // Formatação nativa para Início/Atual
+  const formatMonthYear = (dateStr: string) => {
+    const d = new Date(dateStr + "T00:00:00Z");
+    return d.toLocaleDateString("pt-BR", { 
+      month: "short", 
+      year: "numeric", 
+      timeZone: "UTC" 
+    }).replace(".", "").toUpperCase();
+  };
+
+  // Extração de fotos para comparação
+  const getFrontPhoto = (evalObj: any) => {
+    if (!evalObj?.photos || !Array.isArray(evalObj.photos)) return null;
+    const photo = evalObj.photos.find((p: any) => 
+      p.label?.toLowerCase().includes('front') || 
+      p.label?.toLowerCase().includes('frente')
+    );
+    return photo?.url || evalObj.photos[0]?.url || null;
+  };
+
+  const firstPhoto = getFrontPhoto(first);
+  const latestPhoto = getFrontPhoto(latest);
+  const hasPhotos = firstPhoto || latestPhoto;
 
   return (
     <div style={{ backgroundColor: "#FFF", color: "#000", minHeight: "100vh", paddingBottom: "120px" }}>
@@ -151,10 +177,91 @@ export default async function EvaluationsPage() {
                 </div>
              </div>
           </div>
-          <p style={{ fontSize: "9px", color: "#999", fontWeight: 700, lineHeight: 1.4 }}>
+          <p style={{ fontSize: "9px", color: "#999", fontWeight: 700, lineHeight: 1.4, marginBottom: "24px" }}>
             *Insights calculados com base na sua avaliação mais recente e perfil atual.
           </p>
+
+          <BiometricTrendChart evaluations={evaluations || []} />
         </section>
+
+        {/* ── EVOLUÇÃO VISUAL ── */}
+        {hasPhotos && (first?.id !== latest.id) && (
+          <section style={{ marginBottom: "40px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "20px" }}>
+              <h2 className="font-display" style={{ fontSize: "16px", letterSpacing: "0.05em", fontWeight: 900 }}>EVOLUÇÃO VISUAL</h2>
+              <div style={{ flex: 1, height: "2px", background: "#000" }} />
+            </div>
+
+            <div style={{ 
+              background: "#FFF", 
+              border: "3px solid #000",
+              boxShadow: "6px 6px 0px #000",
+              overflow: "hidden"
+            }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "2px", background: "#000" }}>
+                {/* ANTES */}
+                <div style={{ background: "#FFF", position: "relative", aspectRatio: "3/4" }}>
+                  {firstPhoto ? (
+                    <Image 
+                      src={firstPhoto} 
+                      alt="Primeira Avaliação" 
+                      fill 
+                      style={{ objectFit: "cover", opacity: 0.8, filter: "grayscale(100%)" }}
+                      unoptimized
+                    />
+                  ) : (
+                    <div style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "#F1F1F1", padding: "20px", textAlign: "center" }}>
+                      <Camera size={24} color="#CCC" style={{ marginBottom: "8px" }} />
+                      <span style={{ fontSize: "10px", fontWeight: 800, color: "#999" }}>SEM FOTO INICIAL</span>
+                    </div>
+                  )}
+                  <div style={{ position: "absolute", bottom: "12px", left: "12px", background: "#000", color: "#FFF", padding: "4px 8px", fontSize: "10px", fontWeight: 900 }}>
+                    INÍCIO • {first ? formatMonthYear(first.evaluation_date) : "--"}
+                  </div>
+                </div>
+
+                {/* DEPOIS */}
+                <div style={{ background: "#FFF", position: "relative", aspectRatio: "3/4" }}>
+                  {latestPhoto ? (
+                    <Image 
+                      src={latestPhoto} 
+                      alt="Última Avaliação" 
+                      fill 
+                      style={{ objectFit: "cover" }}
+                      unoptimized
+                    />
+                  ) : (
+                    <div style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "#F1F1F1", padding: "20px", textAlign: "center" }}>
+                      <Camera size={24} color="#CCC" style={{ marginBottom: "8px" }} />
+                      <span style={{ fontSize: "10px", fontWeight: 800, color: "#999" }}>SEM FOTO ATUAL</span>
+                    </div>
+                  )}
+                  <div style={{ position: "absolute", bottom: "12px", right: "12px", background: "#E31B23", color: "#FFF", padding: "4px 8px", fontSize: "10px", fontWeight: 900 }}>
+                    ATUAL • {latest ? formatMonthYear(latest.evaluation_date) : "--"}
+                  </div>
+                </div>
+              </div>
+
+              {/* Botão para abrir detalhes comparativos */}
+              <Link href={`/profile/evaluations/${latest.id}`} style={{ 
+                display: "flex", 
+                alignItems: "center", 
+                justifyContent: "center", 
+                gap: "8px",
+                padding: "16px",
+                background: "#000",
+                color: "#FFF",
+                textDecoration: "none",
+                fontSize: "12px",
+                fontWeight: 900,
+                letterSpacing: "0.05em"
+              }}>
+                <TrendingUp size={16} />
+                VER COMPARAÇÃO DETALHADA
+              </Link>
+            </div>
+          </section>
+        )}
 
         {/* ── LISTA DE AVALIAÇÕES ── */}
         <section style={{ marginBottom: "0" }}>

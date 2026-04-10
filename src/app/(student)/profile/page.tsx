@@ -295,34 +295,51 @@ export default async function ProfilePage() {
 
           {latestEvaluation ? (
             <>
-              <div style={{ 
-                background: "#FFF", 
-                padding: "24px", 
-                border: "2px solid #000",
-                boxShadow: "4px 4px 0px #F0F0F0",
-                display: "grid",
-                gridTemplateColumns: "repeat(2, 1fr)",
-                gap: "16px"
-              }}>
-                <div style={{ borderBottom: "1px solid #EEE", paddingBottom: "12px" }}>
-                  <div style={{ fontSize: "9px", fontWeight: 900, color: "#000", marginBottom: "8px", letterSpacing: "0.1em", opacity: 0.5 }}>PESO ATUAL</div>
-                  <div style={{ fontFamily: "var(--font-display)", fontSize: "28px", fontWeight: 950 }}>{latestEvaluation.weight} <span style={{ fontSize: "14px", fontWeight: 800, color: "#999" }}>KG</span></div>
-                </div>
-                <div style={{ borderBottom: "1px solid #EEE", paddingBottom: "12px" }}>
-                  <div style={{ fontSize: "9px", fontWeight: 900, color: "#000", marginBottom: "8px", letterSpacing: "0.1em", opacity: 0.5 }}>% GORDURA</div>
-                  <div style={{ fontFamily: "var(--font-display)", fontSize: "28px", fontWeight: 950, color: "#E31B23" }}>{latestEvaluation.body_fat_percentage}%</div>
-                </div>
-                <div>
-                  <div style={{ fontSize: "9px", fontWeight: 900, color: "#000", marginBottom: "8px", letterSpacing: "0.1em", opacity: 0.5 }}>MASSA MAGRA</div>
-                  <div style={{ fontFamily: "var(--font-display)", fontSize: "28px", fontWeight: 950 }}>{leanMass || "--"} <span style={{ fontSize: "14px", fontWeight: 800, color: "#999" }}>KG</span></div>
-                </div>
-                <div>
-                  <div style={{ fontSize: "9px", fontWeight: 900, color: "#000", marginBottom: "8px", letterSpacing: "0.1em", opacity: 0.5 }}>WHR (C/Q)</div>
-                  <div style={{ fontFamily: "var(--font-display)", fontSize: "28px", fontWeight: 950, color: (latestEvaluation.waist_hip_ratio || 0) > 0.9 ? "#E31B23" : "inherit" }}>
-                    {latestEvaluation.waist_hip_ratio || "--"}
+              <Link href="/profile/evaluations" style={{ textDecoration: "none", color: "inherit", display: "block" }}>
+                <div style={{ 
+                  background: "#FFF", 
+                  padding: "24px", 
+                  border: "2px solid #000",
+                  boxShadow: "4px 4px 0px #F0F0F0",
+                  display: "grid",
+                  gridTemplateColumns: "repeat(2, 1fr)",
+                  gap: "20px 16px",
+                  position: "relative"
+                }}>
+                  <div style={{ borderBottom: "1px solid #EEE", paddingBottom: "12px" }}>
+                    <div style={{ fontSize: "9px", fontWeight: 900, color: "#000", marginBottom: "8px", letterSpacing: "0.1em", opacity: 0.5 }}>PESO ATUAL</div>
+                    <div style={{ fontFamily: "var(--font-display)", fontSize: "28px", fontWeight: 950 }}>{latestEvaluation.weight} <span style={{ fontSize: "14px", fontWeight: 800, color: "#999" }}>KG</span></div>
+                  </div>
+                  <div style={{ borderBottom: "1px solid #EEE", paddingBottom: "12px" }}>
+                    <div style={{ fontSize: "9px", fontWeight: 900, color: "#000", marginBottom: "8px", letterSpacing: "0.1em", opacity: 0.5 }}>% GORDURA</div>
+                    <div style={{ fontFamily: "var(--font-display)", fontSize: "28px", fontWeight: 950, color: "#E31B23" }}>{latestEvaluation.body_fat_percentage}%</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: "9px", fontWeight: 900, color: "#000", marginBottom: "8px", letterSpacing: "0.1em", opacity: 0.5 }}>MASSA MAGRA</div>
+                    <div style={{ fontFamily: "var(--font-display)", fontSize: "28px", fontWeight: 950 }}>{leanMass || "--"} <span style={{ fontSize: "14px", fontWeight: 800, color: "#999" }}>KG</span></div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: "9px", fontWeight: 900, color: "#000", marginBottom: "8px", letterSpacing: "0.1em", opacity: 0.5 }}>WHR (C/Q)</div>
+                    <div style={{ fontFamily: "var(--font-display)", fontSize: "28px", fontWeight: 950, color: (latestEvaluation.waist_hip_ratio || 0) > 0.9 ? "#E31B23" : "inherit" }}>
+                      {latestEvaluation.waist_hip_ratio || "--"}
+                    </div>
+                  </div>
+
+                  {/* NOVO FOOTER DE ACESSO */}
+                  <div style={{ 
+                    gridColumn: "span 2", 
+                    marginTop: "8px", 
+                    paddingTop: "16px", 
+                    borderTop: "2px solid #000",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center"
+                  }}>
+                    <span style={{ fontSize: "11px", fontWeight: 900, letterSpacing: "0.1em" }}>VER EVOLUÇÃO E GRÁFICOS</span>
+                    <TrendingUp size={16} strokeWidth={3} />
                   </div>
                 </div>
-              </div>
+              </Link>
               {/* CTA: solicitar nova avaliação */}
               {whatsappLink && (
                 <a
