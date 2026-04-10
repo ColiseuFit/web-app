@@ -14,6 +14,7 @@ import { AlertTriangle } from "lucide-react";
 import { getTodayDate, getWeekDates, getMinWeekOffset } from "@/lib/date-utils";
 import { getBoxSettings } from "@/lib/constants/settings_actions";
 import { DAY_SHORT, ACTIVE_DAYS, SYSTEM_START_DATE } from "@/lib/constants/calendar";
+import { EvalGateLink } from "@/components/EvalRequestButton";
 
 // import RecentPRs from "@/components/progress/RecentPRs"; (Removed: moving to Progress page)
 
@@ -150,6 +151,15 @@ export default async function AppDashboard({ searchParams }: PageProps) {
 
   const level = getLevelInfo(profile?.level, dynamicLevels);
 
+  // ── Membership & Upgrade Logic ──
+  const rawWhatsApp = boxSettings?.box_whatsapp || "";
+  const whatsappNumber = rawWhatsApp.replace(/\D/g, "");
+  const upgradeLink = whatsappNumber
+    ? `https://wa.me/55${whatsappNumber}?text=${encodeURIComponent("Olá! Gostaria de saber mais sobre como fazer o upgrade para o Plano Clube Premium.")}`
+    : null;
+
+  const isClubPass = profile?.membership_type === 'club_pass';
+
   return (
     <div style={{ minHeight: "100vh", backgroundColor: "var(--nb-bg)", color: "var(--nb-text)", paddingBottom: "100px", position: "relative" }}>
       <DashboardStyles />
@@ -217,6 +227,30 @@ export default async function AppDashboard({ searchParams }: PageProps) {
               </span>
               <div style={{ width: "20px", height: "2px", background: "#000" }} />
             </div>
+            {/* MEMBERSHIP TAG */}
+            <EvalGateLink
+              href="#"
+              isClubPass={isClubPass}
+              upgradeLink={upgradeLink}
+              style={{ 
+                marginTop: "16px",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+                padding: "4px 12px",
+                background: isClubPass ? "#000" : "var(--nb-red)",
+                color: "#fff",
+                border: "2px solid #000",
+                boxShadow: "3px 3px 0px #000",
+                fontSize: "10px",
+                fontWeight: 900,
+                letterSpacing: "0.1em",
+                textTransform: "uppercase",
+                cursor: isClubPass ? "pointer" : "default"
+              }}
+            >
+               {isClubPass ? 'CLUBE PASS' : 'CLUBE PREMIUM'}
+            </EvalGateLink>
           </div>
         </section>
 
@@ -258,6 +292,8 @@ export default async function AppDashboard({ searchParams }: PageProps) {
             checkin={userCheckin}
             studentLevel={profile?.level || "branco"}
             holiday={holiday}
+            membershipType={profile?.membership_type}
+            upgradeLink={upgradeLink}
           />
         </section>
 

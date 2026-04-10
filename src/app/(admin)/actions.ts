@@ -169,18 +169,15 @@ export async function updateStudent(studentId: string, formData: FormData) {
     updated_at: new Date().toISOString(),
   };
 
-  // 3. Search stability: Calculate full_name if first/last name changed
-  if (updates.first_name && updates.last_name) {
-    updates.full_name = `${updates.first_name} ${updates.last_name}`;
-  } else if (updates.first_name) {
-    updates.full_name = updates.first_name;
-  }
-
-  // Pre-calculated full_name for search stability if both names are provided
-  if (updates.first_name && updates.last_name) {
-    updates.full_name = `${updates.first_name} ${updates.last_name}`;
-  } else if (updates.first_name) {
-    updates.full_name = updates.first_name;
+  // 3. Handle Name Parsing for SSoT
+  // The Admin UI mostly sends `full_name`. If it's provided, split it to maintain the SSoT of first/last name.
+  if (updates.full_name) {
+    const parts = updates.full_name.trim().split(" ");
+    updates.first_name = parts[0] || "";
+    updates.last_name = parts.slice(1).join(" ") || "";
+  } else if (updates.first_name || updates.last_name) {
+    // Rebuild full name if parts are updated separately
+    updates.full_name = `${updates.first_name || ""} ${updates.last_name || ""}`.trim();
   }
 
   const { error } = await supabaseAdmin

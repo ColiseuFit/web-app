@@ -139,6 +139,24 @@ export default function AlunosClient({
     }
   }, [message]);
 
+  // Sync selectedStudent dynamically if it is updated in the background via revalidatePath
+  useEffect(() => {
+    if (selectedStudent) {
+      const updated = students.find((s) => s.id === selectedStudent.id);
+      if (updated && JSON.stringify(updated) !== JSON.stringify(selectedStudent)) {
+        setSelectedStudent(updated);
+      }
+    }
+  }, [students, selectedStudent]);
+
+  // Optimistic local state for leads — keeps the list fresh without a full server round-trip
+  const [localLeads, setLocalLeads] = useState<any[]>(preRegistrations);
+
+  // Sync localLeads if a new set of pre-registrations arrives from the server
+  useEffect(() => {
+    setLocalLeads(preRegistrations);
+  }, [preRegistrations]);
+
   const formRef = useRef<HTMLFormElement>(null);
   const editFormRef = useRef<HTMLFormElement>(null);
 
@@ -275,7 +293,9 @@ export default function AlunosClient({
     const currentType = leadMembershipTypes[id] || "club";
     const result = await approvePreRegistration(id, currentLevel, currentType);
     if (result.success) {
-      const lead = preRegistrations?.find(p => p.id === id);
+      // Optimistic: remove from local list immediately so it doesn't reappear
+      const lead = localLeads.find(p => p.id === id);
+      setLocalLeads(prev => prev.filter(p => p.id !== id));
       setApprovedLeadInfo({
         name: lead?.full_name || "Aluno",
         email: lead?.email || "",
@@ -307,6 +327,8 @@ export default function AlunosClient({
     setPendingAction(null);
     const result = await rejectPreRegistration(id);
     if (result.success) {
+      // Optimistic: remove from local list immediately so it doesn't reappear
+      setLocalLeads(prev => prev.filter(p => p.id !== id));
       // Background revalidation will refresh the list
     } else {
       setMessage({ type: "error", text: result.error || "Erro ao rejeitar pré-cadastro." });
@@ -451,9 +473,9 @@ export default function AlunosClient({
           }}
         >
           Pré-cadastros
-          {preRegistrations.length > 0 && (
+          {localLeads.length > 0 && (
             <span style={{ background: "#DF2127", color: "#FFF", padding: "2px 6px", borderRadius: "12px", fontSize: "11px", fontWeight: 800 }}>
-              {preRegistrations.length}
+              {localLeads.length}
             </span>
           )}
         </button>
@@ -642,7 +664,7 @@ export default function AlunosClient({
       {/* ── LEADS VIEW ── */}
       {viewMode === "leads" && (
         <div className="admin-card" style={{ padding: 0, overflow: "hidden", marginBottom: 24 }}>
-          {preRegistrations.length === 0 ? (
+          {localLeads.length === 0 ? (
             <div style={{ padding: "64px 20px", textAlign: "center", color: "#666", fontSize: "14px" }}>Nenhum pré-cadastro pendente.</div>
           ) : (
             <div>
@@ -658,7 +680,7 @@ export default function AlunosClient({
                   </tr>
                 </thead>
                 <tbody>
-                  {preRegistrations.map((lead: any) => (
+                  {localLeads.map((lead: any) => (
                     <tr key={lead.id}>
                       <td style={{ paddingLeft: "24px", paddingRight: "12px" }}>
                         <AthleteIdentity 

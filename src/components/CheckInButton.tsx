@@ -7,6 +7,7 @@ import CheckInModal from "./CheckInModal";
 import ConfirmModal from "./ConfirmModal";
 import AlertModal from "./AlertModal";
 import { cancelCheckIn } from "@/app/(student)/actions";
+import { EvalGateLink } from "./EvalRequestButton";
 
 interface CheckInButtonProps {
   wodId: string;
@@ -17,6 +18,8 @@ interface CheckInButtonProps {
   isClassFinished?: boolean;
   holiday?: any;
   time?: string | null;
+  membershipType?: string | null;
+  upgradeLink?: string | null;
 }
 
 /**
@@ -33,7 +36,7 @@ interface CheckInButtonProps {
  * 
  * @param {CheckInButtonProps} props - Dados de estado local e handlers de ação.
  */
-export default function CheckInButton({ wodId, date, alreadyChecked, status, result, isClassFinished, holiday, time }: CheckInButtonProps) {
+export default function CheckInButton({ wodId, date, alreadyChecked, status, result, isClassFinished, holiday, time, membershipType, upgradeLink }: CheckInButtonProps) {
   const [open, setOpen] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [done, setDone] = useState(alreadyChecked);
@@ -182,62 +185,72 @@ export default function CheckInButton({ wodId, date, alreadyChecked, status, res
 
         {/* Botão de Ação Principal (Mudar Horário ou Registrar Resultado) */}
         {isClassFinished && !result && (
-          <Link
+          <EvalGateLink
             href="/treinos"
-            style={{
-              width: "100%",
-              padding: "20px",
-              background: "var(--nb-yellow, #FFEF61)",
-              border: "2px solid #000",
-              boxShadow: "6px 6px 0px #000",
-              color: "#000",
-              fontSize: "13px",
-              fontWeight: 900,
-              letterSpacing: "0.2em",
-              textTransform: "uppercase",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "12px",
-              transition: "transform 0.1s ease, box-shadow 0.1s ease",
-              fontFamily: "var(--font-display)",
-              marginTop: "8px",
-              textDecoration: "none"
-            }}
+            isClubPass={membershipType === 'club_pass'}
+            upgradeLink={upgradeLink}
+            style={{ width: "100%", textDecoration: "none" }}
           >
-            <Trophy size={18} />
-            REGISTRAR MEU RESULTADO
-          </Link>
+            <div
+              style={{
+                width: "100%",
+                padding: "20px",
+                background: "var(--nb-yellow, #FFEF61)",
+                border: "2px solid #000",
+                boxShadow: "6px 6px 0px #000",
+                color: "#000",
+                fontSize: "13px",
+                fontWeight: 900,
+                letterSpacing: "0.2em",
+                textTransform: "uppercase",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "12px",
+                transition: "transform 0.1s ease, box-shadow 0.1s ease",
+                fontFamily: "var(--font-display)",
+                marginTop: "8px"
+              }}
+            >
+              <Trophy size={18} />
+              REGISTRAR MEU RESULTADO
+            </div>
+          </EvalGateLink>
         )}
 
         {isClassFinished && result && (
-           <Link
+           <EvalGateLink
             href="/treinos"
-            style={{
-              width: "100%",
-              padding: "20px",
-              background: "#FFF",
-              border: "2px solid #000",
-              boxShadow: "6px 6px 0px #000",
-              color: "#000",
-              fontSize: "13px",
-              fontWeight: 900,
-              letterSpacing: "0.15em",
-              textTransform: "uppercase",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "12px",
-              fontFamily: "var(--font-display)",
-              marginTop: "8px",
-              textDecoration: "none"
-            }}
+            isClubPass={membershipType === 'club_pass'}
+            upgradeLink={upgradeLink}
+            style={{ width: "100%", textDecoration: "none" }}
           >
-            <Trophy size={18} color="#B8860B" strokeWidth={3} />
-            <span>MEU SCORE: <strong style={{ color: "var(--nb-red, #E31B23)" }}>{result}</strong></span>
-          </Link>
+            <div
+              style={{
+                width: "100%",
+                padding: "20px",
+                background: "#FFF",
+                border: "2px solid #000",
+                boxShadow: "6px 6px 0px #000",
+                color: "#000",
+                fontSize: "13px",
+                fontWeight: 900,
+                letterSpacing: "0.15em",
+                textTransform: "uppercase",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "12px",
+                fontFamily: "var(--font-display)",
+                marginTop: "8px"
+              }}
+            >
+              <Trophy size={18} color="#B8860B" strokeWidth={3} />
+              <span>MEU SCORE: <strong style={{ color: "var(--nb-red, #E31B23)" }}>{result}</strong></span>
+            </div>
+          </EvalGateLink>
         )}
         {!isClassFinished && (
           <button
@@ -312,6 +325,8 @@ export default function CheckInButton({ wodId, date, alreadyChecked, status, res
       </div>
     );
   }
+
+
 
   return (
     <>

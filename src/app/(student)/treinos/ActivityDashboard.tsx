@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { ActivityFeedCard } from "@/components/activity/ActivityFeedCard";
-import { Flame, Zap, BarChart3, Dumbbell, History, Target, Loader } from "lucide-react";
+import { Flame, Zap, BarChart3, History, Loader } from "lucide-react";
 import { getTodayDate } from "@/lib/date-utils";
 import { getPaginatedHistory } from "@/app/(student)/actions";
+import AccessGate from "@/components/AccessGate";
 
 /**
  * Componente AnimatedNumber
@@ -71,7 +72,15 @@ interface ActivityItem {
   isExcellence?: boolean;
 }
 
-export default function ActivityDashboard({ history = [] }: { history?: ActivityItem[] }) {
+export default function ActivityDashboard({ 
+  history = [], 
+  isClubPass = false,
+  upgradeLink = null
+}: { 
+  history?: ActivityItem[], 
+  isClubPass?: boolean,
+  upgradeLink?: string | null
+}) {
   const [activePeriod, setActivePeriod] = useState("Mês");
   const [isBroken, setIsBroken] = useState(false);
   const activePeriodLow = activePeriod.toLowerCase();
@@ -106,6 +115,17 @@ export default function ActivityDashboard({ history = [] }: { history?: Activity
     }
   }
 
+  // Se for Clube Pass, exibe o Gate de Acesso Restrito em vez dos dados
+  if (isClubPass) {
+    return (
+      <div className="activity-dashboard-root" style={{ marginTop: "20px" }}>
+        <AccessGate 
+          message="O DASHBOARD DE PERFORMANCE E O HISTÓRICO DETALHADO DE TREINOS SÃO FUNCIONALIDADES EXCLUSIVAS PARA ATLETAS CLUBE PREMIUM."
+          upgradeLink={upgradeLink}
+        />
+      </div>
+    );
+  }
   // Feed Unificado usa estritamente o feed local (estado gerenciado pelo Load More)
   const unifiedFeed = feed;
 

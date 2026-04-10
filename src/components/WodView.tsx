@@ -24,6 +24,8 @@ interface WodViewProps {
   checkin: { id: string; status: string; result: string | null; isClassFinished?: boolean; time?: string | null } | null;
   studentLevel: string;
   holiday: any;
+  membershipType?: string | null;
+  upgradeLink?: string | null;
 }
 
 /**
@@ -45,7 +47,9 @@ export default function WodView({
   selectedDate, 
   checkin, 
   studentLevel,
-  holiday
+  holiday,
+  membershipType,
+  upgradeLink
 }: WodViewProps) {
   const [activeLevel, setActiveLevel] = useState(getLevelInfo(studentLevel).id);
 
@@ -217,6 +221,8 @@ export default function WodView({
                 isClassFinished={checkin?.isClassFinished}
                 holiday={holiday}
                 time={checkin?.time}
+                membershipType={membershipType}
+                upgradeLink={upgradeLink}
             />
           </div>
         </div>

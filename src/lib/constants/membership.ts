@@ -9,7 +9,7 @@
 export const MEMBERSHIP_TYPES = [
   { 
     id: 'club', 
-    label: 'Clube',
+    label: 'Clube Premium',
     description: 'Acesso às aulas CrossTraining do CT Coliseu.'
   },
   { 

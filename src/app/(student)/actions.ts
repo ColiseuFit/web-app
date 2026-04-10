@@ -191,7 +191,7 @@ export async function getAvailableSlots(date: string): Promise<{
  * @param {string} classSlotId - UUID da grade horária vinculada.
  * @returns {Promise<{success?: boolean, error?: string, message?: string}>}
  */
-export async function performCheckIn(wodId: string, timeSlot?: string, classSlotId?: string) {
+export async function performCheckIn(wodId: string, timeSlot?: string, classSlotId?: string): Promise<{ success?: boolean; error?: string; message?: string }> {
   // 0. Validation
   const validation = checkInSchema.safeParse({ wodId, timeSlot, classSlotId });
   if (!validation.success) {
@@ -205,16 +205,28 @@ export async function performCheckIn(wodId: string, timeSlot?: string, classSlot
     return { error: "Usuário não autenticado." };
   }
 
-  const todayStr = getTodayDate();
-  
-  // 0.1 Fetch ALL holidays for the operational date (SSoT)
+
+
+  // 0.15 Fetch WOD to get its exact date for block validation
+  const { data: wodRaw } = await supabase
+    .from("wods")
+    .select("date")
+    .eq("id", wodId)
+    .single();
+
+  const wodDateStr = wodRaw?.date;
+  if (!wodDateStr) {
+    return { error: "WOD não encontrado ou inativo." };
+  }
+
+  // 0.2 Fetch ALL holidays for the operational date (SSoT)
   // We need to check if THIS specific slot or period is blocked.
   const { data: holidays } = await supabase
     .from("box_holidays")
     .select("*")
-    .eq("date", todayStr);
+    .eq("date", wodDateStr);
 
-  // 0.2 If we have a classSlotId, we must fetch its start time to validate blocks
+  // 0.3 If we have a classSlotId, we must fetch its start time to validate blocks
   let slotTime = "00:00:00";
   if (classSlotId) {
     const { data: slot } = await supabase
@@ -228,7 +240,7 @@ export async function performCheckIn(wodId: string, timeSlot?: string, classSlot
   const blockRule = checkIsSlotBlocked(
     classSlotId || "", 
     slotTime, 
-    todayStr, 
+    wodDateStr, 
     (holidays || []) as Holiday[]
   );
 

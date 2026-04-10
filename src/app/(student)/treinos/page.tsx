@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import StudentHeader from "@/components/StudentHeader";
 import BottomNav from "@/components/BottomNav";
 import ActivityDashboard from "./ActivityDashboard";
+import { getBoxSettings } from "@/lib/constants/settings_actions";
 
 export const metadata: Metadata = {
   title: "Minhas Atividades",
@@ -11,18 +12,6 @@ export const metadata: Metadata = {
 
 /**
  * Página de Atividade (Timeline) do Atleta.
- * 
- * @architecture
- * - SSoT de Histórico: Agrega `check_ins` com seus respectivos `wods` (Relational Join hydration).
- * - Algoritmo de Score: Mapeia status `confirmed` para 50 pontos (SSoT operacional).
- * - UTC Persistence: Transforma `wod.date` em objetos Date UTC para garantir que o dia de treino não mude entre fusos.
- * 
- * @security
- * - RBAC: Sessão validada no servidor; RLS garante que o aluno veja apenas sua própria timeline.
- * - Integrity Check: Filtra `status != 'missed'` para manter o foco em treinos realizados/pendentes.
- * 
- * @technical
- * - UI: Utiliza `ActivityDashboard` para renderização de cards em lista virtual (Neo-Brutalist Light).
  */
 export default async function TreinosPage() {
   const supabase = await createClient();
@@ -34,16 +23,29 @@ export default async function TreinosPage() {
     redirect("/login");
   }
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("display_name, full_name, level")
-    .eq("id", user.id)
-    .single();
+  // SSoT: Checagem de Perfil e Configurações
+  const [
+    { data: profile },
+    boxSettings
+  ] = await Promise.all([
+    supabase.from("profiles").select("display_name, full_name, level, membership_type").eq("id", user.id).single(),
+    getBoxSettings()
+  ]);
 
   const displayName = profile?.display_name || profile?.full_name || "Atleta";
   const studentProfileLevel = profile?.level || "iniciante";
+  const isClubPass = profile?.membership_type === 'club_pass';
 
-  const today = new Date().toISOString().split("T")[0];
+  // Link de Upgrade (WhatsApp)
+  const rawWhatsApp = boxSettings?.box_whatsapp || "";
+  const whatsappNumber = rawWhatsApp.replace(/\D/g, "");
+  const upgradeLink = whatsappNumber
+    ? `https://wa.me/55${whatsappNumber}?text=${encodeURIComponent("Olá! Gostaria de saber mais sobre como fazer o upgrade para o Plano Clube Premium.")}`
+    : null;
+
+  /**
+   * (...) RESTO DO CÓDIGO DE FETCH (CHECOINS, WODS) PERMANECE IGUAL
+   */
 
   // 2. Fetch point rule for check_in (SSoT)
   const { data: pointRule } = await supabase
@@ -235,7 +237,11 @@ export default async function TreinosPage() {
         </div>
 
         {/* Activity Dashboard & Sync Badge */}
-        <ActivityDashboard history={wodHistory as any} />
+        <ActivityDashboard 
+          history={wodHistory as any} 
+          isClubPass={isClubPass}
+          upgradeLink={upgradeLink}
+        />
 
       </main>
 

@@ -41,13 +41,15 @@ O projeto utiliza um stack moderno focado em performance extrema e isolamento de
 - `src/app/(coach)`: Interface operacional para coaches no tatame.
 - `src/app/(admin)`: Painel de gestão estratégica e financeira.
 - `docs/`: Sistema de conhecimento distribuído (Playbooks e SOPs).
-  - `docs/PLAYBOOKS/STUDENT_APP.md`: Guia mestre da experiência do aluno.
-  - `docs/PLAYBOOKS/AVALIACOES_FISICAS.md`: Hub de Progresso, Biometria e Évolução Visual.
+  - `docs/PLAYBOOKS/STUDENT_APP.md`: Guia mestre da experiência do aluno (Membership Tiers & Check-in).
+  - `docs/PLAYBOOKS/ACTIVITY_DASHBOARD.md`: Matriz de Atividade, Streaks e Heatmap Semanal.
+  - `docs/PLAYBOOKS/AVALIACOES_FISICAS.md`: Hub de Progresso, Biometria e Evolução Visual.
+  - `docs/PLAYBOOKS/RESULTS_LOGGING.md`: Procedimentos de Check-in e Lançamento de Score.
   - `docs/PLAYBOOKS/ATHLETE_IDENTITY_PROFILE.md`: Gestão de perfil, avatares e benchmarks.
   - `docs/PLAYBOOKS/RECUPERACAO_SENHA.md`: Documentação técnica do fluxo de "Esqueci Minha Senha".
 
 ---
 ---
-**Versão: 2.9.0 (Abril/2026) - Progress Hub & Biometric Trends**  
-**Status da Auditoria:** 🏛️ LEGACY PROOF (Protocolo 1.0.5) - 100% Concluído  
+**Versão: 3.0.0 (Abril/2026) - Membership Stabilization & Access Gates**  
+**Status da Auditoria:** 🏛️ LEGACY PROOF (Protocolo 1.0.6) - 100% Concluído  
 **Equipe:** Antigravity AI & Coliseu Engineering Team

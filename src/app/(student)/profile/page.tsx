@@ -7,6 +7,8 @@ import StudentHeader from "@/components/StudentHeader";
 import BottomNav from "@/components/BottomNav";
 import LevelCard from "@/components/LevelCard";
 import DashboardStyles from "@/components/DashboardStyles";
+import { EvalRequestButton, EvalGateLink } from "@/components/EvalRequestButton";
+import AccessGate from "@/components/AccessGate";
 import { Zap, Shield, Diamond, Star, Award, Medal, Trophy, TrendingUp, Settings, LineChart, MessageCircle } from "lucide-react";
 import { getTodayDate } from "@/lib/date-utils";
 import { getLevelInfo } from "@/lib/constants/levels";
@@ -71,6 +73,10 @@ export default async function ProfilePage() {
     ? `https://wa.me/55${whatsappNumber}?text=${encodeURIComponent("Olá! Gostaria de agendar uma avaliação física no Coliseu.")}`
     : null;
 
+  const upgradeLink = whatsappNumber
+    ? `https://wa.me/55${whatsappNumber}?text=${encodeURIComponent("Olá! Gostaria de saber mais sobre como fazer o upgrade para o Plano Clube Premium.")}`
+    : null;
+
   // Cálculo de massa magra se houver dados
   const leanMass = (latestEvaluation?.weight && latestEvaluation?.body_fat_percentage)
     ? (latestEvaluation.weight * (1 - latestEvaluation.body_fat_percentage / 100)).toFixed(1)
@@ -88,6 +94,7 @@ export default async function ProfilePage() {
    * 2. Níveis (Graduações) são geridos separadamente pelos coaches e não vinculados mecanicamente aos pontos.
    */
   const pointsActual = profile?.points_balance || 0;
+  const isClubPass = profile?.membership_type === 'club_pass';
   
   const checkIns = checkInsCount || [];
   
@@ -182,21 +189,26 @@ export default async function ProfilePage() {
               {profile?.last_name || profile?.display_name?.split(' ').slice(1).join(' ') || "COLISEU CLUB"}
             </p>
 
-            <div style={{ 
-              marginTop: "24px",
-              padding: "8px 20px",
-              background: "#000",
-              display: "inline-block",
-              border: "2px solid #000",
-              fontSize: "11px", 
-              fontWeight: 900, 
-              color: "#FFF", 
-              letterSpacing: "0.2em", 
-              textTransform: "uppercase",
-              boxShadow: `4px 4px 0px ${level.color}`
-            }}>
+            <EvalGateLink
+              href="/profile/evaluations"
+              isClubPass={isClubPass}
+              upgradeLink={upgradeLink}
+              style={{ 
+                marginTop: "24px",
+                padding: "8px 20px",
+                background: "#000",
+                display: "inline-block",
+                border: "2px solid #000",
+                fontSize: "11px", 
+                fontWeight: 900, 
+                color: "#FFF", 
+                letterSpacing: "0.2em", 
+                textTransform: "uppercase",
+                boxShadow: `4px 4px 0px ${level.color}`
+              }}
+            >
               MEMBER ID: #{(profile?.member_number || "000").toString().padStart(3, '0')}
-            </div>
+            </EvalGateLink>
             
             <div style={{ marginTop: "32px", display: "flex", justifyContent: "center", gap: "16px", flexWrap: "wrap", width: "100%" }}>
               <Link href="/profile/edit" style={{ 
@@ -280,22 +292,27 @@ export default async function ProfilePage() {
           <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "20px" }}>
             <h2 className="font-display" style={{ fontSize: "18px", letterSpacing: "0.05em", fontWeight: 900 }}>AVALIAÇÕES FÍSICAS</h2>
             <div style={{ flex: 1, height: "2px", background: "#000" }} />
-            <Link href="/profile/evaluations" style={{ 
-              fontSize: "10px", 
-              fontWeight: 900, 
-              color: "#000", 
-              textDecoration: "none",
-              letterSpacing: "0.1em",
-              border: "2px solid #000",
-              padding: "6px 12px",
-              background: "#FFF",
-              boxShadow: "2px 2px 0px #000"
-            }}>VER TUDO</Link>
+            <EvalGateLink
+              href="/profile/evaluations"
+              isClubPass={isClubPass}
+              upgradeLink={upgradeLink}
+              style={{ 
+                fontSize: "10px", 
+                fontWeight: 900, 
+                color: "#000", 
+                textDecoration: "none",
+                letterSpacing: "0.1em",
+                border: "2px solid #000",
+                padding: "6px 12px",
+                background: "#FFF",
+                boxShadow: "2px 2px 0px #000"
+              }}
+            >VER TUDO</EvalGateLink>
           </div>
 
           {latestEvaluation ? (
             <>
-              <Link href="/profile/evaluations" style={{ textDecoration: "none", color: "inherit", display: "block" }}>
+              <EvalGateLink href="/profile/evaluations" isClubPass={isClubPass} upgradeLink={upgradeLink} style={{ textDecoration: "none", color: "inherit", display: "block" }}>
                 <div style={{ 
                   background: "#FFF", 
                   padding: "24px", 
@@ -339,19 +356,16 @@ export default async function ProfilePage() {
                     <TrendingUp size={16} strokeWidth={3} />
                   </div>
                 </div>
-              </Link>
+              </EvalGateLink>
               {/* CTA: solicitar nova avaliação */}
               {whatsappLink && (
-                <a
-                  href={whatsappLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="whatsapp-btn"
-                  style={{ marginTop: "12px" }}
-                >
-                  <MessageCircle size={14} strokeWidth={3} />
-                  SOLICITAR NOVA AVALIAÇÃO
-                </a>
+                <EvalRequestButton
+                  whatsappLink={whatsappLink}
+                  upgradeLink={upgradeLink}
+                  isClubPass={isClubPass}
+                  label="SOLICITAR NOVA AVALIAÇÃO"
+                  size={14}
+                />
               )}
             </>
           ) : (
@@ -363,15 +377,13 @@ export default async function ProfilePage() {
             }}>
               <p style={{ fontSize: "13px", fontWeight: 800, color: "#000", marginBottom: "20px", letterSpacing: "0.02em" }}>NENHUMA AVALIAÇÃO REGISTRADA</p>
               {whatsappLink && (
-                <a
-                  href={whatsappLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="whatsapp-btn"
-                >
-                  <MessageCircle size={12} strokeWidth={3} />
-                  SOLICITAR AVALIAÇÃO
-                </a>
+                <EvalRequestButton
+                  whatsappLink={whatsappLink}
+                  upgradeLink={upgradeLink}
+                  isClubPass={isClubPass}
+                  label="SOLICITAR AVALIAÇÃO"
+                  size={12}
+                />
               )}
             </div>
           )}
@@ -379,98 +391,116 @@ export default async function ProfilePage() {
 
         {/* ── RECORDES PESSOAIS (PRs) ── */}
         <section style={{ marginBottom: "48px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "20px" }}>
-            <h2 className="font-display" style={{ fontSize: "18px", letterSpacing: "0.05em", fontWeight: 900 }}>RECORDES PESSOAIS</h2>
-            <div style={{ flex: 1, height: "2px", background: "#000" }} />
-          </div>
-
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-            {prs && prs.length > 0 ? (
-              prs.map((pr, i) => (
-                <div key={i} style={{ 
-                  background: "#FFF", 
-                  padding: "20px", 
-                  border: "2px solid #000",
-                  boxShadow: "2px 2px 0px #000",
-                  position: "relative",
-                  overflow: "hidden",
-                }}>
-                  <div style={{ fontSize: "10px", fontWeight: 900, color: "#000", marginBottom: "8px", letterSpacing: "0.05em", textTransform: "uppercase", opacity: 0.5 }}>{pr.movement_name}</div>
-                  <div style={{ fontFamily: "var(--font-display)", fontSize: "24px", fontWeight: 950 }}>{pr.value} <span style={{ fontSize: "12px", fontWeight: 800, color: "#999" }}>{pr.unit}</span></div>
-                  <div style={{ 
-                    position: "absolute", 
-                    right: "-5px", 
-                    bottom: "-5px", 
-                    opacity: 0.1, 
-                    color: "#000" 
-                  }}>
-                    <TrendingUp size={32} />
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div style={{ gridColumn: "span 2", padding: "32px", textAlign: "center", border: "2px dashed #EEE", fontSize: "12px", fontWeight: 800, color: "#999" }}>
-                NENHUM RECORDE REGISTRADO
+          {isClubPass ? (
+            <AccessGate 
+              message="OS RECORDES PESSOAIS (PRs) E O MONITORAMENTO DE EVOLUÇÃO DE CARGAS SÃO EXCLUSIVOS PARA O PLANO CLUBE PREMIUM."
+              upgradeLink={upgradeLink}
+            />
+          ) : (
+            <>
+              <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "20px" }}>
+                <h2 className="font-display" style={{ fontSize: "18px", letterSpacing: "0.05em", fontWeight: 900 }}>RECORDES PESSOAIS</h2>
+                <div style={{ flex: 1, height: "2px", background: "#000" }} />
               </div>
-            )}
-          </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                {prs && prs.length > 0 ? (
+                  prs.map((pr, i) => (
+                    <div key={i} style={{ 
+                      background: "#FFF", 
+                      padding: "20px", 
+                      border: "2px solid #000",
+                      boxShadow: "2px 2px 0px #000",
+                      position: "relative",
+                      overflow: "hidden",
+                    }}>
+                      <div style={{ fontSize: "10px", fontWeight: 900, color: "#000", marginBottom: "8px", letterSpacing: "0.05em", textTransform: "uppercase", opacity: 0.5 }}>{pr.movement_name}</div>
+                      <div style={{ fontFamily: "var(--font-display)", fontSize: "24px", fontWeight: 950 }}>{pr.value} <span style={{ fontSize: "12px", fontWeight: 800, color: "#999" }}>{pr.unit}</span></div>
+                      <div style={{ 
+                        position: "absolute", 
+                        right: "-5px", 
+                        bottom: "-5px", 
+                        opacity: 0.1, 
+                        color: "#000" 
+                      }}>
+                        <TrendingUp size={32} />
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div style={{ gridColumn: "span 2", padding: "32px", textAlign: "center", border: "2px dashed #EEE", fontSize: "12px", fontWeight: 800, color: "#999" }}>
+                    NENHUM RECORDE REGISTRADO
+                  </div>
+                )}
+              </div>
+            </>
+          )}
         </section>
 
         {/* ── MURAL DE CONQUISTAS ── */}
         <section style={{ marginBottom: "0px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "20px" }}>
-            <h2 className="font-display" style={{ fontSize: "18px", letterSpacing: "0.05em", fontWeight: 900 }}>CONQUISTAS</h2>
-            <div style={{ flex: 1, height: "2px", background: "#000" }} />
-          </div>
+          {isClubPass ? (
+            <AccessGate 
+              message="O MURAL DE CONQUISTAS E SELOS DE EXCELÊNCIA TÉCNICA É UMA FUNCIONALIDADE RESERVADA PARA ATLETAS CLUBE PREMIUM."
+              upgradeLink={upgradeLink}
+            />
+          ) : (
+            <>
+              <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "20px" }}>
+                <h2 className="font-display" style={{ fontSize: "18px", letterSpacing: "0.05em", fontWeight: 900 }}>CONQUISTAS</h2>
+                <div style={{ flex: 1, height: "2px", background: "#000" }} />
+              </div>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-            {/* Seção de Benchmarks (Shields Brutalistas) */}
-            <div style={{ 
-              display: "grid", 
-              gridTemplateColumns: "repeat(3, 1fr)", 
-              gap: "12px", 
-              marginBottom: "12px" 
-            }}>
-              {[
-                { id: "du", title: "DOUBLE UNDERS", icon: Zap },
-                { id: "pu", title: "PULL UPS", icon: Shield },
-                { id: "hspu", title: "HSPU", icon: Diamond },
-              ].map((bm_meta) => {
-                const bmInstance = benchmarks?.find(b => b.benchmark_id === bm_meta.id);
-                const completed = !!bmInstance;
-                
-                return (
-                  <div key={bm_meta.id} style={{
-                    background: completed ? "#000" : "#FFF",
-                    border: "2px solid #000",
-                    padding: "20px 10px",
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: "12px",
-                    boxShadow: completed ? "none" : "3px 3px 0px #F0F0F0",
-                    opacity: completed ? 1 : 0.3,
-                    transition: "all 0.2s ease"
-                  }}>
-                    <div style={{ color: completed ? "#FFF" : "#000" }}>
-                      <bm_meta.icon size={24} strokeWidth={completed ? 2 : 1} />
-                    </div>
-                    <div style={{ 
-                      fontSize: "8px", 
-                      fontWeight: 900, 
-                      color: completed ? "#FFF" : "#000", 
-                      textAlign: "center", 
-                      letterSpacing: "0.1em",
-                      textTransform: "uppercase" 
-                    }}>
-                      {bm_meta.title}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                {/* Seção de Benchmarks (Shields Brutalistas) */}
+                <div style={{ 
+                  display: "grid", 
+                  gridTemplateColumns: "repeat(3, 1fr)", 
+                  gap: "12px", 
+                  marginBottom: "12px" 
+                }}>
+                  {[
+                    { id: "du", title: "DOUBLE UNDERS", icon: Zap },
+                    { id: "pu", title: "PULL UPS", icon: Shield },
+                    { id: "hspu", title: "HSPU", icon: Diamond },
+                  ].map((bm_meta) => {
+                    const bmInstance = benchmarks?.find(b => b.benchmark_id === bm_meta.id);
+                    const completed = !!bmInstance;
+                    
+                    return (
+                      <div key={bm_meta.id} style={{
+                        background: completed ? "#000" : "#FFF",
+                        border: "2px solid #000",
+                        padding: "20px 10px",
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: "12px",
+                        boxShadow: completed ? "none" : "3px 3px 0px #F0F0F0",
+                        opacity: completed ? 1 : 0.3,
+                        transition: "all 0.2s ease"
+                      }}>
+                        <div style={{ color: completed ? "#FFF" : "#000" }}>
+                          <bm_meta.icon size={24} strokeWidth={completed ? 2 : 1} />
+                        </div>
+                        <div style={{ 
+                          fontSize: "8px", 
+                          fontWeight: 900, 
+                          color: completed ? "#FFF" : "#000", 
+                          textAlign: "center", 
+                          letterSpacing: "0.1em",
+                          textTransform: "uppercase" 
+                        }}>
+                          {bm_meta.title}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </>
+          )}
         </section>
 
       </main>

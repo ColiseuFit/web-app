@@ -130,7 +130,7 @@ wodId, date, onClose, onSuccess }: CheckInModalProps) {
       hapticConfirm();
       onSuccess();
     } else {
-      setAlertMsg(result.error || "Erro ao realizar check-in. Tente novamente.");
+      setAlertMsg(result.message || result.error || "Erro ao realizar check-in. Tente novamente.");
     }
   };
 

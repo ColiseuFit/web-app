@@ -241,13 +241,24 @@ export const profileSchema = z.object({
   display_name: z.string()
     .min(3, "O Apelido deve ter pelo menos 3 caracteres")
     .max(50, "O Apelido deve ter no máximo 50 caracteres")
-    .regex(/^[a-zA-Z0-9À-ÿ\s]+$/, "O Apelido não deve conter caracteres especiais"),
+    .regex(/^[a-zA-Z0-9À-ÿ\s]+$/, "O Apelido não deve conter caracteres especiais")
+    .optional()
+    .nullable(),
+  full_name: z.string()
+    .min(3, "O nome completo deve ter pelo menos 3 caracteres")
+    .refine((val) => isValidName(val), { message: "Nome inválido ou contém caracteres irreais" })
+    .optional()
+    .nullable(),
   first_name: z.string()
     .max(100)
-    .refine((val) => isValidName(val), { message: "Primeiro nome inválido ou contém caracteres irreais" }),
+    .refine((val) => !val || isValidName(val), { message: "Primeiro nome inválido ou contém caracteres irreais" })
+    .optional()
+    .nullable(),
   last_name: z.string()
     .max(100)
-    .refine((val) => isValidName(val), { message: "Sobrenome inválido ou contém caracteres irreais" }),
+    .refine((val) => !val || isValidName(val), { message: "Sobrenome inválido ou contém caracteres irreais" })
+    .optional()
+    .nullable(),
   bio: z.string().max(150, "A biografia deve ter no máximo 150 caracteres").optional().nullable(),
   gender: z.string().optional().nullable(),
   cpf: z.string()
