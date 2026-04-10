@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import Link from "next/link";
+import { ChevronDown, Maximize2, X } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import DashboardStyles from "@/components/DashboardStyles";
 
@@ -51,8 +52,44 @@ export default function EvaluationDetailsClient({
   previous: EvaluationData | null;
 }) {
   const [activeTab, setActiveTab] = useState<"resumo" | "antropometria" | "composicao" | "postura">("resumo");
+  const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
   const [evolutionSplit, setEvolutionSplit] = useState(50); // For the slider (0-100)
   const [selectedPose, setSelectedPose] = useState("Frente");
+
+  // Ref para o container da comparação de fotos (drag customizado)
+  const compContainerRef = useRef<HTMLDivElement>(null);
+
+  /**
+   * Handler de drag customizado usando Pointer Events API.
+   * Funciona de forma confiável em touch (mobile) e mouse (desktop).
+   * `touch-action: none` previne conflito com o scroll da página.
+   * @param e - Evento de PointerDown que inicia o drag
+   */
+  const handleDragStart = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    const target = e.currentTarget;
+    target.setPointerCapture(e.pointerId);
+
+    const update = (clientX: number) => {
+      const container = compContainerRef.current;
+      if (!container) return;
+      const rect = container.getBoundingClientRect();
+      const x = Math.max(0, Math.min(clientX - rect.left, rect.width));
+      setEvolutionSplit(Math.round((x / rect.width) * 100));
+    };
+
+    update(e.clientX);
+
+    const onMove = (ev: PointerEvent) => update(ev.clientX);
+    const onUp = () => {
+      target.releasePointerCapture(e.pointerId);
+      target.removeEventListener("pointermove", onMove);
+      target.removeEventListener("pointerup", onUp);
+    };
+
+    target.addEventListener("pointermove", onMove);
+    target.addEventListener("pointerup", onUp);
+  }, []);
 
   // Cálculos
   const bmi = (evaluation.weight && evaluation.height) 
@@ -227,98 +264,212 @@ export default function EvaluationDetailsClient({
             {/* RADAR DE EVOLUÇÃO (Visual Wow) */}
             <section style={{ marginBottom: "40px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "20px" }}>
-                <h2 style={{ fontFamily: "var(--font-display, 'Outfit', sans-serif)", fontSize: "14px", fontWeight: 900 }}>RADAR DE EVOLUÇÃO</h2>
+                <h2 style={{ fontFamily: "var(--font-display, 'Outfit', sans-serif)", fontSize: "14px", fontWeight: 900 }}>ANÁLISE DE PROGRESSO VISUAL</h2>
                 <div style={{ flex: 1, height: "2px", background: "#000" }} />
               </div>
 
-              {/* POSE SELECTOR */}
-              <div style={{ 
-                display: "flex", 
-                gap: "8px", 
-                marginBottom: "20px", 
-                overflowX: "auto", 
-                paddingBottom: "8px",
-                msOverflowStyle: "none",
-                scrollbarWidth: "none"
-              }}>
-                {availablePoses.map(pose => {
-                  const hasPhoto = evaluation.photos.some(p => p.label === pose);
-                  if (!hasPhoto) return null;
-
-                  return (
-                    <button
-                      key={pose}
-                      onClick={() => setSelectedPose(pose)}
-                      style={{
-                        padding: "8px 16px",
-                        background: selectedPose === pose ? "#000" : "#FFF",
-                        color: selectedPose === pose ? "#FFF" : "#000",
-                        border: "2px solid #000",
-                        fontSize: "10px",
-                        fontWeight: 900,
-                        textTransform: "uppercase",
-                        letterSpacing: "0.05em",
-                        whiteSpace: "nowrap",
-                        cursor: "pointer",
-                        boxShadow: selectedPose === pose ? "none" : "2px 2px 0px #000",
-                        transform: selectedPose === pose ? "translate(2px, 2px)" : "none",
-                        transition: "all 0.1s ease"
-                      }}
-                    >
-                      {pose}
-                    </button>
-                  );
-                })}
+              {/* POSE SELECTOR (Dropdown) */}
+              <div style={{ marginBottom: "24px", marginTop: "12px", position: "relative" }}>
+                <div style={{ fontSize: "10px", fontWeight: 900, color: "#000", marginBottom: "8px", letterSpacing: "0.05em" }}>SELECIONE A POSE:</div>
+                <div style={{ position: "relative", display: "inline-block", width: "100%" }}>
+                  <select
+                    value={selectedPose}
+                    onChange={(e) => setSelectedPose(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "12px 16px",
+                      background: "#FFF",
+                      border: "3px solid #000",
+                      borderRadius: "0",
+                      fontSize: "14px",
+                      fontWeight: 900,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.05em",
+                      cursor: "pointer",
+                      appearance: "none",
+                      boxShadow: "4px 4px 0px #000",
+                      fontFamily: "var(--font-display, 'Outfit', sans-serif)"
+                    }}
+                  >
+                    {availablePoses.map(pose => {
+                      const hasPhoto = evaluation.photos.some(p => p.label === pose);
+                      if (!hasPhoto) return null;
+                      return <option key={pose} value={pose}>{pose}</option>;
+                    })}
+                  </select>
+                  <div style={{ position: "absolute", right: "16px", top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}>
+                    <ChevronDown size={20} strokeWidth={3} color="#000" />
+                  </div>
+                </div>
               </div>
               
-              {previous && currentPhoto && previousPhoto ? (
-                <div style={{ position: "relative", aspectRatio: "3/4", background: "#F5F5F5", overflow: "hidden", border: "2px solid #000", boxShadow: "6px 6px 0px #000" }}>
-                  {/* Previous Image */}
-                  <img 
-                    src={previousPhoto.url} 
-                    style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", filter: "grayscale(100%) opacity(0.6)" }} 
-                  />
-                  {/* Current Image (Clipped) */}
-                  <div style={{ 
-                    position: "absolute", 
-                    inset: 0, 
-                    width: `${evolutionSplit}%`, 
-                    overflow: "hidden", 
-                    borderRight: "4px solid #E31B23",
-                    zIndex: 2,
-                    boxShadow: "2px 0 10px rgba(0,0,0,0.3)"
-                  }}>
-                    <img 
-                      src={currentPhoto.url} 
-                      style={{ width: "440px", height: "100%", objectFit: "cover" }} 
-                    />
-                  </div>
-                  {/* Labels */}
-                  <div style={{ position: "absolute", left: "12px", top: "12px", fontSize: "10px", fontWeight: 900, color: "#000", background: "#FFF", border: "2px solid #000", padding: "2px 6px", zIndex: 3 }}>
-                    {new Date(previous.evaluation_date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }).toUpperCase()}
-                  </div>
-                  <div style={{ position: "absolute", right: "12px", top: "12px", fontSize: "10px", fontWeight: 900, color: "#FFF", zIndex: 3, background: "#E31B23", border: "2px solid #000", padding: "2px 6px" }}>
-                    ATUAL
-                  </div>
+              {currentPhoto ? (
+                <div ref={compContainerRef} style={{ position: "relative", aspectRatio: "3/4", background: "#F5F5F5", overflow: "hidden", border: "2px solid #000", boxShadow: "6px 6px 0px #000" }}>
                   
-                  {/* Slider Control */}
-                  <input 
-                    type="range" 
-                    min="0" 
-                    max="100" 
-                    value={evolutionSplit} 
-                    onChange={(e) => setEvolutionSplit(Number(e.target.value))}
-                    style={{ 
-                      position: "absolute", 
-                      bottom: "24px", 
-                      left: "50%", 
-                      transform: "translateX(-50%)",
-                      width: "80%", 
-                      zIndex: 10,
-                      accentColor: "#E31B23",
-                      cursor: "ew-resize"
+                  {/* Botão de Expandir (Zindex maior que o drag) */}
+                  <button 
+                    onClick={() => setFullscreenImage(currentPhoto.url)}
+                    style={{
+                      position: "absolute",
+                      top: "12px",
+                      right: "12px",
+                      zIndex: 20,
+                      background: "#FFF",
+                      border: "2px solid #000",
+                      padding: "8px",
+                      cursor: "pointer",
+                      boxShadow: "3px 3px 0px #000",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center"
                     }}
-                  />
+                    title="Ver em tela cheia"
+                  >
+                    <Maximize2 size={18} strokeWidth={3} color="#000" />
+                  </button>
+
+                  {previous && previousPhoto ? (
+                    <>
+                      {/* Previous Image */}
+                      <img 
+                        src={previousPhoto.url} 
+                        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", filter: "grayscale(100%) opacity(0.6)" }} 
+                      />
+                      {/* Current Image (Clipped) */}
+                      <div style={{ 
+                        position: "absolute", 
+                        inset: 0, 
+                        width: `${evolutionSplit}%`, 
+                        overflow: "hidden", 
+                        borderRight: "4px solid #E31B23",
+                        zIndex: 2,
+                        boxShadow: "2px 0 10px rgba(0,0,0,0.3)"
+                      }}>
+                        <img 
+                          src={currentPhoto.url} 
+                          style={{ width: "100%", height: "100%", objectFit: "cover" }} 
+                        />
+                      </div>
+                      {/* Drag Handle Overlay — toda a área é a zona de arraste */}
+                      <div
+                        onPointerDown={handleDragStart}
+                        style={{
+                          position: "absolute",
+                          inset: 0,
+                          zIndex: 10,
+                          cursor: "ew-resize",
+                          touchAction: "none",
+                          userSelect: "none",
+                        }}
+                      >
+                        {/* Linha divisória vertical */}
+                        <div style={{
+                          position: "absolute",
+                          top: 0,
+                          bottom: 0,
+                          left: `${evolutionSplit}%`,
+                          width: "3px",
+                          background: "#E31B23",
+                          transform: "translateX(-50%)",
+                          pointerEvents: "none",
+                        }} />
+
+                        {/* Handle com apenas ícone de setas — minimalista e funcional */}
+                        <div style={{
+                          position: "absolute",
+                          top: "50%",
+                          left: `${evolutionSplit}%`,
+                          transform: "translate(-50%, -50%)",
+                          background: "#E31B23",
+                          border: "3px solid #000",
+                          borderRadius: "50%",
+                          width: "40px",
+                          height: "40px",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          boxShadow: "3px 3px 0px #000",
+                          pointerEvents: "none",
+                        }}>
+                          <svg width="20" height="14" viewBox="0 0 20 14" fill="none">
+                            <path d="M1 7H19M1 7L5 3M1 7L5 11M19 7L15 3M19 7L15 11" stroke="#FFF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        </div>
+
+                        {/* Label ATUAL — flutua no centro da metade esquerda */}
+                        {evolutionSplit > 12 && (
+                          <div style={{
+                            position: "absolute",
+                            bottom: "16px",
+                            left: `${evolutionSplit / 2}%`,
+                            transform: "translateX(-50%)",
+                            background: "#E31B23",
+                            border: "2px solid #000",
+                            padding: "4px 8px",
+                            pointerEvents: "none",
+                            whiteSpace: "nowrap",
+                          }}>
+                            <span style={{ fontSize: "10px", fontWeight: 900, color: "#FFF", letterSpacing: "0.05em" }}>ATUAL</span>
+                          </div>
+                        )}
+
+                        {/* Label ANTERIOR com data — flutua no centro da metade direita */}
+                        {evolutionSplit < 88 && (
+                          <div style={{
+                            position: "absolute",
+                            bottom: "16px",
+                            left: `${evolutionSplit + (100 - evolutionSplit) / 2}%`,
+                            transform: "translateX(-50%)",
+                            background: "#FFF",
+                            border: "2px solid #000",
+                            padding: "4px 8px",
+                            pointerEvents: "none",
+                            whiteSpace: "nowrap",
+                          }}>
+                            <span style={{ fontSize: "10px", fontWeight: 900, color: "#000", letterSpacing: "0.05em" }}>
+                              {new Date(previous.evaluation_date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }).toUpperCase()}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      {/* Only Current Image */}
+                      <img 
+                        src={currentPhoto.url} 
+                        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} 
+                      />
+                      <div style={{ 
+                        position: "absolute", 
+                        inset: 0, 
+                        background: "linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 40%)",
+                        zIndex: 1
+                      }} />
+                      
+                      {/* Contextual Message */}
+                      <div style={{ 
+                        position: "absolute", 
+                        bottom: "20px", 
+                        left: "20px", 
+                        right: "20px", 
+                        zIndex: 2,
+                        background: "#FFF",
+                        border: "2px solid #000",
+                        padding: "12px",
+                        boxShadow: "4px 4px 0px #000"
+                      }}>
+                        <div style={{ fontSize: "10px", fontWeight: 900, color: "#E31B23", marginBottom: "4px", letterSpacing: "0.05em" }}>
+                          {!previous ? "PRIMEIRO REGISTRO" : "NOVO ÂNGULO"}
+                        </div>
+                        <div style={{ fontSize: "11px", fontWeight: 700, lineHeight: "1.3", color: "#000" }}>
+                          {!previous 
+                            ? "Esta é sua primeira foto nesta pose. Ela servirá como base para comparar sua evolução no próximo encontro." 
+                            : "Não encontramos um registro anterior desta pose. Salvamos esta para comparar com sua evolução futura!"}
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
               ) : (
                 <div style={{ 
@@ -338,11 +489,16 @@ export default function EvaluationDetailsClient({
                     </svg>
                   </div>
                   <span style={{ fontSize: "11px", fontWeight: 900, color: "#999", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                    {!previous ? "Aguardando próxima avaliação para comparar" : "Registro de foto não encontrado no histórico"}
+                    Nenhuma foto selecionada ou disponível
                   </span>
                 </div>
               )}
-              <p style={{ fontSize: "9px", color: "#000", opacity: 0.6, marginTop: "16px", textAlign: "center", letterSpacing: "0.1em", fontWeight: 900 }}>DESLIZE PARA COMPARAR DEFINIÇÃO E VOLUME</p>
+
+              {previous && currentPhoto && previousPhoto && (
+                <p style={{ fontSize: "9px", color: "#000", opacity: 0.6, marginTop: "16px", textAlign: "center", letterSpacing: "0.1em", fontWeight: 900 }}>
+                  DESLIZE PARA COMPARAR DEFINIÇÃO E VOLUME
+                </p>
+              )}
             </section>
 
 
@@ -355,7 +511,17 @@ export default function EvaluationDetailsClient({
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "16px" }}>
                   {evaluation.photos.map((photo, i) => (
-                    <div key={i} style={{ background: "#FFF", padding: "8px", border: "2px solid #000", boxShadow: "3px 3px 0px #000" }}>
+                    <div 
+                      key={i} 
+                      onClick={() => setFullscreenImage(photo.url)}
+                      style={{ 
+                        background: "#FFF", 
+                        padding: "8px", 
+                        border: "2px solid #000", 
+                        boxShadow: "3px 3px 0px #000",
+                        cursor: "zoom-in"
+                      }}
+                    >
                       <img src={photo.url} alt={photo.label} style={{ width: "100%", aspectRatio: "1/1", objectFit: "cover", marginBottom: "8px", border: "1px solid #000" }} />
                       <div style={{ fontSize: "10px", fontWeight: 900, color: "#000", textAlign: "center", textTransform: "uppercase" }}>{photo.label || `FOTO ${i+1}`}</div>
                     </div>
@@ -491,6 +657,89 @@ export default function EvaluationDetailsClient({
       </main>
 
       <BottomNav />
+
+      {/* ── LIGHTBOX: FULLSCREEN IMAGE ── */}
+      {fullscreenImage && (
+        <div 
+          onClick={() => setFullscreenImage(null)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 1000,
+            background: "rgba(0,0,0,0.95)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "20px",
+            backdropFilter: "blur(5px)",
+            cursor: "zoom-out",
+            animation: "fadeIn 0.2s ease-out"
+          }}
+        >
+          {/* Close Button */}
+          <button 
+            onClick={(e) => { e.stopPropagation(); setFullscreenImage(null); }}
+            style={{
+              position: "absolute",
+              top: "20px",
+              right: "20px",
+              background: "#E31B23",
+              border: "3px solid #000",
+              color: "#FFF",
+              padding: "12px",
+              cursor: "pointer",
+              boxShadow: "4px 4px 0px #000",
+              zIndex: 1001,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center"
+            }}
+          >
+            <X size={24} strokeWidth={3} />
+          </button>
+
+          {/* Image Container */}
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              maxWidth: "100%",
+              maxHeight: "100%",
+              position: "relative",
+              border: "4px solid #FFF",
+              boxShadow: "10px 10px 0px #000",
+              background: "#000"
+            }}
+          >
+            <img 
+              src={fullscreenImage} 
+              alt="Visualização ampliada"
+              style={{
+                maxWidth: "100vw",
+                maxHeight: "85vh",
+                display: "block",
+                objectFit: "contain"
+              }} 
+            />
+          </div>
+
+          <div style={{
+            position: "absolute",
+            bottom: "40px",
+            left: "50%",
+            transform: "translateX(-50%)",
+            color: "#FFF",
+            fontSize: "10px",
+            fontWeight: 900,
+            letterSpacing: "0.1em",
+            textTransform: "uppercase",
+            background: "#000",
+            padding: "8px 16px",
+            border: "1px solid rgba(255,255,255,0.2)"
+          }}>
+            Toque fora para fechar
+          </div>
+        </div>
+      )}
     </div>
   );
 }
