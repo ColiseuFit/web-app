@@ -37,7 +37,13 @@ export async function login(formData: FormData) {
   });
 
   if (error) {
-    return { error: error.message };
+    if (error.message.includes("Invalid login credentials")) {
+      return { error: "E-mail ou senha incorretos. Verifique seus dados de acesso." };
+    }
+    if (error.message.includes("Email not confirmed")) {
+      return { error: "Confirme seu e-mail antes de acessar. Verifique sua caixa de entrada." };
+    }
+    return { error: "Não foi possível fazer login: " + error.message };
   }
 
   redirect("/dashboard");
@@ -93,28 +99,33 @@ export async function createPreRegistration(formData: FormData) {
 
   const supabase = await createClient();
 
-  // --- Verificação de Duplicidade (Email/CPF) ---
-  // 1. Checar se já existe como Aluno Ativo
+  // --- Verificação de Duplicidade Rigorosa (Email, CPF ou WhatsApp) ---
+  const cpfCondition = dataToInsert.cpf ? `,cpf.eq."${dataToInsert.cpf}"` : "";
+  const orString = `email.eq."${dataToInsert.email}"${cpfCondition},phone.eq."${dataToInsert.phone}"`;
+
+  // 1. Checar se já existe como Aluno Ativo (qualquer dado bateu na tabela final)
   const { data: existingProfile } = await supabase
     .from("profiles")
     .select("id")
-    .or(`email.eq.${dataToInsert.email}${dataToInsert.cpf ? `,cpf.eq.${dataToInsert.cpf}` : ""}`)
+    .or(orString)
     .maybeSingle();
 
   if (existingProfile) {
     return { error: "Este cadastro já existe e está ativo. Tente fazer login." };
   }
 
-  // 2. Checar se já existe como Lead Pendente
+  // 2. Checar se já existe na fila de Leads (qualquer status)
   const { data: existingLead } = await supabase
     .from("pre_registrations")
     .select("status")
-    .or(`email.eq.${dataToInsert.email}${dataToInsert.cpf ? `,cpf.eq.${dataToInsert.cpf}` : ""}`)
-    .eq("status", "pending")
+    .or(orString)
     .maybeSingle();
 
   if (existingLead) {
-    return { error: "Já recebemos sua solicitação! Aguarde o contato da nossa equipe." };
+    if (existingLead.status === "pending") {
+      return { error: "Já recebemos sua solicitação! Aguarde o contato da nossa equipe." };
+    }
+    return { error: "Já temos um registro com estes dados! Verifique seu e-mail ou tente fazer login." };
   }
 
   const { error } = await supabase

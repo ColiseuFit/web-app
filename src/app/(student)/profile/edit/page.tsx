@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import ProfileForm from "../ProfileForm";
 import BottomNav from "@/components/BottomNav";
+import { ChevronLeft } from "lucide-react";
 
 /**
  * Página de Edição de Perfil do Aluno.
@@ -26,12 +27,11 @@ export default async function ProfileEditPage() {
     .single();
 
   return (
-    <div style={{ backgroundColor: "#050505", color: "#FFFFFF", fontFamily: "'Inter', sans-serif", minHeight: "100vh", paddingBottom: "100px" }}>
+    <div style={{ backgroundColor: "var(--bg)", color: "var(--text)", fontFamily: "'Inter', sans-serif", minHeight: "100vh", paddingBottom: "100px" }}>
       {/* ── HEADER ── */}
       <header style={{
-        background: "rgba(5,5,5,0.95)",
-        borderBottom: "1px solid rgba(255,255,255,0.05)",
-        backdropFilter: "blur(20px)",
+        background: "var(--surface)",
+        borderBottom: "1px solid var(--border)",
         position: "sticky",
         top: 0,
         zIndex: 100,
@@ -46,13 +46,11 @@ export default async function ProfileEditPage() {
         }}>
           <Link href="/profile" style={{ 
             textDecoration: "none",
-            color: "rgba(255,255,255,0.4)",
+            color: "var(--text-dim)",
             display: "flex",
             alignItems: "center",
           }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <path d="M15 18l-6-6 6-6" />
-            </svg>
+            <ChevronLeft size={24} />
           </Link>
           
           <div style={{
@@ -62,7 +60,7 @@ export default async function ProfileEditPage() {
             textTransform: "uppercase",
             letterSpacing: "-0.02em",
           }}>
-            EDITAR <span style={{ color: "#E31B23" }}>IDENTIDADE</span>
+            EDITAR <span style={{ color: "var(--red)" }}>IDENTIDADE</span>
           </div>
         </div>
       </header>

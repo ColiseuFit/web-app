@@ -608,8 +608,12 @@ export async function approvePreRegistration(preRegistrationId: string, customLe
   const { data: existingUser } = await supabase
     .from("profiles")
     .select("id")
-    .eq("full_name", lead.full_name) // or email? Profiles has no email column usually (it's in auth)
-    .single(); // Actually profiles has no email in this schema usually, let's skip or check auth
+    .eq("email", lead.email)
+    .maybeSingle();
+
+  if (existingUser) {
+    return { error: "Este e-mail já possui um perfil de aluno ativo no sistema." };
+  }
 
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim().split(' ')[0];
   if (!serviceRoleKey) {
@@ -639,15 +643,53 @@ export async function approvePreRegistration(preRegistrationId: string, customLe
   });
 
   if (authError) {
-    let errorMessage = "Erro ao gerar convite de acesso.";
+    let errorMessage = "Erro ao gerar convite de acesso no Supabase Auth.";
     if (authError.message.includes("already been registered")) {
-      errorMessage = "Este e-mail já está cadastrado em outro perfil de aluno.";
+      errorMessage = "Este e-mail já possui uma conta no Auth do banco de dados (duplicado). Marcando o lead como rejeitado para não travar.";
+      await supabaseAdmin.from("pre_registrations").update({ status: "rejected" }).eq("id", preRegistrationId);
     }
-    return { error: errorMessage || authError.message };
+    return { error: errorMessage };
   }
 
   const userId = authData.user.id;
   const actionLink = authData.properties.action_link;
+
+  // 3. Create Profile (Movido para ANTES do disparo de e-mail - Bug 02)
+  const nameParts = lead.full_name.trim().split(" ");
+  const lastName = nameParts.length > 1 ? nameParts.slice(1).join(" ") : null;
+
+  const { error: profileError } = await supabaseAdmin
+    .from("profiles")
+    .insert({
+      id: userId,
+      full_name: lead.full_name,
+      email: lead.email,
+      first_name: firstName,
+      last_name: lastName,
+      phone: lead.phone,
+      cpf: lead.cpf,
+      birth_date: lead.birth_date,
+      level: customLevel || "branco",
+      membership_type: membershipType,
+    });
+
+  if (profileError) {
+    console.error("[approvePreRegistration] Profile Error:", profileError);
+    return { error: "Erro ao criar perfil. O e-mail de convite NÃO foi enviado e a aprovação foi abortada." };
+  }
+
+  // 4. Assign Role
+  const { error: roleError } = await supabaseAdmin
+    .from("user_roles")
+    .insert({
+      user_id: userId,
+      role: "student",
+    });
+
+  if (roleError) {
+    console.error("[approvePreRegistration] Role Error:", roleError);
+    return { error: "Erro ao setar permissões do perfil. O e-mail de convite NÃO foi enviado e a aprovação foi abortada." };
+  }
 
   // Disparo de e-mail Anti-Bot via Resend
   try {
@@ -780,45 +822,7 @@ export async function approvePreRegistration(preRegistrationId: string, customLe
     });
   } catch (err) {
     console.error("Erro ao disparar email via Resend:", err);
-    return { error: "Convite gerado, mas ocorreu um erro ao enviar o e-mail via Resend." };
-  }
-
-
-  // 3. Create Profile
-  const nameParts = lead.full_name.trim().split(" ");
-  const lastName = nameParts.length > 1 ? nameParts.slice(1).join(" ") : null;
-
-  const { error: profileError } = await supabaseAdmin
-    .from("profiles")
-    .insert({
-      id: userId,
-      full_name: lead.full_name,
-      email: lead.email,
-      first_name: firstName,
-      last_name: lastName,
-      phone: lead.phone,
-      cpf: lead.cpf,
-      birth_date: lead.birth_date,
-      level: customLevel || "branco",
-      membership_type: membershipType,
-    });
-
-  if (profileError) {
-    console.error("[approvePreRegistration] Profile Error:", profileError);
-    return { error: "Convite gerado, mas houve um erro ao criar o perfil no banco de dados." };
-  }
-
-  // 4. Assign Role
-  const { error: roleError } = await supabaseAdmin
-    .from("user_roles")
-    .insert({
-      user_id: userId,
-      role: "student",
-    });
-
-  if (roleError) {
-    console.error("[approvePreRegistration] Role Error:", roleError);
-    return { error: "Convite enviado e perfil criado, mas houve erro ao definir permissões." };
+    return { error: "O perfil de acesso foi criado, mas ocorreu um erro no servidor envio de e-mails via Resend." };
   }
 
   // 5. Update Lead status (FINAL STEP)
@@ -862,8 +866,17 @@ export async function rejectPreRegistration(preRegistrationId: string) {
     return { error: "Acesso negado." };
   }
 
-  // We can use standard supabase update since RLS allows update for admin/reception
-  const { error } = await supabase
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim().split(' ')[0];
+  if (!serviceRoleKey) return { error: "Erro de configuração no servidor." };
+
+  const supabaseAdmin = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    serviceRoleKey,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  );
+
+  // Usando admin para garantir bypass de RLS na alteração de status
+  const { error } = await supabaseAdmin
     .from("pre_registrations")
     .update({ status: "rejected" })
     .eq("id", preRegistrationId);
@@ -900,7 +913,7 @@ export async function updatePreRegistration(preRegistrationId: string, formData:
     return { error: "Acesso negado." };
   }
 
-  const updates = {
+  const rawData = {
     full_name: formData.get("full_name") as string,
     email: formData.get("email") as string,
     phone: formData.get("phone") as string,
@@ -908,7 +921,25 @@ export async function updatePreRegistration(preRegistrationId: string, formData:
     birth_date: formData.get("birth_date") as string || null,
   };
 
-  const { error } = await supabase
+  // Basic validation rules
+  if (!rawData.full_name || rawData.full_name.trim() === "") return { error: "Nome completo é obrigatório." };
+  if (!rawData.email || !rawData.email.includes("@")) return { error: "E-mail válido é obrigatório." };
+  if (!rawData.phone || rawData.phone.length < 10) return { error: "Telefone válido é obrigatório." };
+  if (rawData.cpf && rawData.cpf.length > 0 && rawData.cpf.length !== 14) return { error: "O CPF fornecido tem um formato inválido." };
+
+  const updates = { ...rawData };
+  if (updates.birth_date === "") updates.birth_date = null;
+
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim().split(' ')[0];
+  if (!serviceRoleKey) return { error: "Erro de configuração." };
+
+  const supabaseAdmin = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    serviceRoleKey,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  );
+
+  const { error } = await supabaseAdmin
     .from("pre_registrations")
     .update(updates)
     .eq("id", preRegistrationId);

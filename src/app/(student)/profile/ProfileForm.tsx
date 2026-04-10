@@ -4,7 +4,7 @@ import { useState, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { updateProfile, updatePassword } from "./actions";
 import ConfirmModal from "@/components/ConfirmModal";
-import { Lock, ShieldCheck } from "lucide-react";
+import { Lock, ShieldCheck, User } from "lucide-react";
 
 export default function ProfileForm({ user, profile }: { user: any, profile: any }) {
   const supabase = createClient();
@@ -84,10 +84,33 @@ export default function ProfileForm({ user, profile }: { user: any, profile: any
     setPassLoading(false);
   }
 
+  // Common input styles to prevent huge repetition
+  const blockInputStyle = {
+    width: "100%",
+    background: "var(--surface)",
+    border: "1px solid var(--border)",
+    padding: "14px 16px",
+    color: "var(--text)",
+    fontSize: "14px",
+    fontFamily: "'Inter', sans-serif",
+    outline: "none",
+    borderRadius: 0,
+  };
+
+  const labelStyle: React.CSSProperties = {
+    display: "block", 
+    fontSize: "9px", 
+    fontWeight: 700, 
+    textTransform: "uppercase", 
+    color: "var(--text-dim)", 
+    marginBottom: "10px", 
+    letterSpacing: "0.2em" 
+  };
+
   return (
     <div style={{
-      background: "#0E0E0E",
-      border: "1px solid rgba(255,255,255,0.05)",
+      background: "var(--surface)",
+      border: "1px solid var(--border)",
       padding: "32px 24px",
     }}>
       
@@ -96,8 +119,9 @@ export default function ProfileForm({ user, profile }: { user: any, profile: any
         <div style={{
           width: "120px",
           height: "120px",
-          background: "#050505",
-          border: "1px solid rgba(255,255,255,0.08)",
+          background: "var(--bg)",
+          border: "2px solid var(--border)",
+          boxShadow: "var(--nb-shadow)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -105,16 +129,10 @@ export default function ProfileForm({ user, profile }: { user: any, profile: any
           position: "relative",
           marginBottom: "16px",
         }}>
-          {/* Corner accents */}
-          <div style={{ position: "absolute", top: 0, left: 0, width: "12px", height: "12px", borderTop: "2px solid #E31B23", borderLeft: "2px solid #E31B23" }} />
-          <div style={{ position: "absolute", bottom: 0, right: 0, width: "12px", height: "12px", borderBottom: "2px solid #E31B23", borderRight: "2px solid #E31B23" }} />
-
           {avatarUrl ? (
             <img src={avatarUrl} alt="Avatar" style={{ width: "100%", height: "100%", objectFit: "cover", filter: "grayscale(100%) contrast(1.1)" }} />
           ) : (
-            <svg width="40" height="40" viewBox="0 0 24 24" fill="rgba(255,255,255,0.1)">
-              <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
-            </svg>
+            <User size={40} style={{ color: "var(--text-dim)" }} />
           )}
         </div>
         
@@ -133,17 +151,20 @@ export default function ProfileForm({ user, profile }: { user: any, profile: any
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading}
             style={{
-              background: "transparent",
-              border: "1px solid rgba(255,255,255,0.1)",
-              color: "rgba(255,255,255,0.7)",
+              background: "var(--surface)",
+              border: "1px solid var(--border)",
+              boxShadow: "var(--nb-shadow-sm)",
+              color: "var(--text)",
               padding: "8px 16px",
               fontSize: "10px",
               fontWeight: 700,
               letterSpacing: "0.1em",
               textTransform: "uppercase",
               cursor: "pointer",
-              transition: "all 0.2s",
+              transition: "transform 0.1s",
             }}
+            onMouseOver={(e) => (e.currentTarget.style.transform = "translate(1px, 1px)")}
+            onMouseOut={(e) => (e.currentTarget.style.transform = "none")}
           >
             {uploading ? "SINCRO..." : "ALTERAR FOTO"}
           </button>
@@ -155,8 +176,8 @@ export default function ProfileForm({ user, profile }: { user: any, profile: any
               disabled={uploading}
               style={{
                 background: "transparent",
-                border: "1px solid rgba(227,27,35,0.2)",
-                color: "#E31B23",
+                border: "1px solid var(--red)",
+                color: "var(--red)",
                 padding: "8px 16px",
                 fontSize: "10px",
                 fontWeight: 700,
@@ -192,68 +213,27 @@ export default function ProfileForm({ user, profile }: { user: any, profile: any
         {/* ── PERSONALIZAÇÃO ── */}
         <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "8px" }}>
-            <div style={{ width: "4px", height: "16px", background: "#E31B23" }} />
-            <h3 style={{ fontSize: "11px", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.1em", color: "#FFF" }}>PERSONALIZAÇÃO</h3>
+            <div style={{ width: "8px", height: "16px", background: "var(--red)" }} />
+            <h3 style={{ fontSize: "11px", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text)" }}>PERSONALIZAÇÃO</h3>
           </div>
 
           <div style={{ position: "relative" }}>
-            <label style={{ 
-              display: "block", 
-              fontSize: "9px", 
-              fontWeight: 700, 
-              textTransform: "uppercase", 
-              color: "rgba(255,255,255,0.25)", 
-              marginBottom: "10px", 
-              letterSpacing: "0.2em" 
-            }}>
-              Codinome de Atleta
-            </label>
+            <label style={labelStyle}>Codinome de Atleta</label>
             <input 
               type="text" 
               name="display_name" 
               defaultValue={profile?.display_name || profile?.full_name || ""} 
               placeholder="Ex: JOÃO SILVA" 
-              style={{
-                width: "100%",
-                background: "#050505",
-                border: "1px solid rgba(255,255,255,0.08)",
-                padding: "14px 16px",
-                color: "#FFFFFF",
-                fontSize: "14px",
-                fontFamily: "'Inter', sans-serif",
-                outline: "none",
-                borderRadius: 0,
-              }}
+              style={blockInputStyle}
             />
           </div>
 
           <div style={{ position: "relative" }}>
-            <label style={{ 
-              display: "block", 
-              fontSize: "9px", 
-              fontWeight: 700, 
-              textTransform: "uppercase", 
-              color: "rgba(255,255,255,0.25)", 
-              marginBottom: "10px", 
-              letterSpacing: "0.2em" 
-            }}>
-              Gênero
-            </label>
+            <label style={labelStyle}>Gênero</label>
             <select 
               name="gender" 
               defaultValue={profile?.gender || ""} 
-              style={{
-                width: "100%",
-                background: "#050505",
-                border: "1px solid rgba(255,255,255,0.08)",
-                padding: "14px 16px",
-                color: "#FFFFFF",
-                fontSize: "14px",
-                fontFamily: "'Inter', sans-serif",
-                outline: "none",
-                borderRadius: 0,
-                appearance: "none",
-              }}
+              style={{...blockInputStyle, appearance: "none"}}
             >
               <option value="" disabled>Selecione...</option>
               <option value="Masculino">Masculino</option>
@@ -262,34 +242,13 @@ export default function ProfileForm({ user, profile }: { user: any, profile: any
           </div>
 
           <div style={{ position: "relative" }}>
-            <label style={{ 
-              display: "block", 
-              fontSize: "9px", 
-              fontWeight: 700, 
-              textTransform: "uppercase", 
-              color: "rgba(255,255,255,0.25)", 
-              marginBottom: "10px", 
-              letterSpacing: "0.2em" 
-            }}>
-              Ficha Biográfica
-            </label>
+            <label style={labelStyle}>Ficha Biográfica</label>
             <textarea 
               name="bio" 
               defaultValue={profile?.bio || ""} 
               rows={4}
               placeholder="Ex: FOCADO EM LPO E PERFORMANCE..." 
-              style={{ 
-                width: "100%",
-                background: "#050505",
-                border: "1px solid rgba(255,255,255,0.08)",
-                padding: "14px 16px",
-                color: "#FFFFFF",
-                fontSize: "14px",
-                fontFamily: "'Inter', sans-serif",
-                outline: "none",
-                borderRadius: 0,
-                resize: "none" 
-              }}
+              style={{ ...blockInputStyle, resize: "none" }}
             />
           </div>
         </div>
@@ -297,70 +256,30 @@ export default function ProfileForm({ user, profile }: { user: any, profile: any
         {/* ── DADOS PESSOAIS ── */}
         <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "8px" }}>
-            <div style={{ width: "4px", height: "16px", background: "#E31B23" }} />
-            <h3 style={{ fontSize: "11px", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.1em", color: "#FFF" }}>DADOS PESSOAIS</h3>
+            <div style={{ width: "8px", height: "16px", background: "var(--red)" }} />
+            <h3 style={{ fontSize: "11px", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text)" }}>DADOS PESSOAIS</h3>
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
             <div style={{ position: "relative" }}>
-              <label style={{ 
-                display: "block", 
-                fontSize: "9px", 
-                fontWeight: 700, 
-                textTransform: "uppercase", 
-                color: "rgba(255,255,255,0.25)", 
-                marginBottom: "10px", 
-                letterSpacing: "0.2em" 
-              }}>
-                Primeiro Nome
-              </label>
+              <label style={labelStyle}>Primeiro Nome</label>
               <input 
                 type="text" 
                 name="first_name" 
                 defaultValue={profile?.first_name || (profile?.full_name ? profile.full_name.split(' ')[0] : "")} 
                 placeholder="Ex: JOÃO" 
-                style={{
-                  width: "100%",
-                  background: "#050505",
-                  border: "1px solid rgba(255,255,255,0.08)",
-                  padding: "14px 16px",
-                  color: "#FFFFFF",
-                  fontSize: "14px",
-                  fontFamily: "'Inter', sans-serif",
-                  outline: "none",
-                  borderRadius: 0,
-                }}
+                style={blockInputStyle}
               />
             </div>
 
             <div style={{ position: "relative" }}>
-              <label style={{ 
-                display: "block", 
-                fontSize: "9px", 
-                fontWeight: 700, 
-                textTransform: "uppercase", 
-                color: "rgba(255,255,255,0.25)", 
-                marginBottom: "10px", 
-                letterSpacing: "0.2em" 
-              }}>
-                Sobrenome
-              </label>
+              <label style={labelStyle}>Sobrenome</label>
               <input 
                 type="text" 
                 name="last_name" 
                 defaultValue={profile?.last_name || (profile?.full_name ? profile.full_name.split(' ').slice(1).join(' ') : "")} 
                 placeholder="Ex: DA SILVA" 
-                style={{
-                  width: "100%",
-                  background: "#050505",
-                  border: "1px solid rgba(255,255,255,0.08)",
-                  padding: "14px 16px",
-                  color: "#FFFFFF",
-                  fontSize: "14px",
-                  fontFamily: "'Inter', sans-serif",
-                  outline: "none",
-                  borderRadius: 0,
-                }}
+                style={blockInputStyle}
               />
             </div>
           </div>
@@ -368,64 +287,23 @@ export default function ProfileForm({ user, profile }: { user: any, profile: any
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
             <div style={{ position: "relative" }}>
-              <label style={{ 
-                display: "block", 
-                fontSize: "9px", 
-                fontWeight: 700, 
-                textTransform: "uppercase", 
-                color: "rgba(255,255,255,0.25)", 
-                marginBottom: "10px", 
-                letterSpacing: "0.2em" 
-              }}>
-                CPF
-              </label>
+              <label style={labelStyle}>CPF</label>
               <input 
                 type="text" 
                 name="cpf" 
                 defaultValue={profile?.cpf || ""} 
                 placeholder="000.000.000-00" 
-                style={{
-                  width: "100%",
-                  background: "#050505",
-                  border: "1px solid rgba(255,255,255,0.08)",
-                  padding: "14px 16px",
-                  color: "#FFFFFF",
-                  fontSize: "14px",
-                  fontFamily: "'Inter', sans-serif",
-                  outline: "none",
-                  borderRadius: 0,
-                }}
+                style={blockInputStyle}
               />
             </div>
 
             <div style={{ position: "relative" }}>
-              <label style={{ 
-                display: "block", 
-                fontSize: "9px", 
-                fontWeight: 700, 
-                textTransform: "uppercase", 
-                color: "rgba(255,255,255,0.25)", 
-                marginBottom: "10px", 
-                letterSpacing: "0.2em" 
-              }}>
-                Nascimento
-              </label>
+              <label style={labelStyle}>Nascimento</label>
               <input 
                 type="date" 
                 name="birth_date" 
                 defaultValue={profile?.birth_date || ""} 
-                style={{
-                  width: "100%",
-                  background: "#050505",
-                  border: "1px solid rgba(255,255,255,0.08)",
-                  padding: "13px 16px",
-                  color: "#FFFFFF",
-                  fontSize: "14px",
-                  fontFamily: "'Inter', sans-serif",
-                  outline: "none",
-                  borderRadius: 0,
-                  colorScheme: "dark",
-                }}
+                style={{ ...blockInputStyle, padding: "13px 16px" }}
               />
             </div>
           </div>
@@ -434,11 +312,12 @@ export default function ProfileForm({ user, profile }: { user: any, profile: any
         {message && (
           <div style={{
             padding: "14px",
-            background: message.type === "error" ? "rgba(227,27,35,0.1)" : "rgba(255,255,255,0.03)",
-            border: `1px solid ${message.type === "error" ? "rgba(227,27,35,0.2)" : "rgba(255,255,255,0.1)"}`,
-            color: message.type === "error" ? "#E31B23" : "#FFFFFF",
+            background: message.type === "error" ? "var(--surface)" : "var(--bg)",
+            border: `2px solid ${message.type === "error" ? "var(--red)" : "var(--border)"}`,
+            color: message.type === "error" ? "var(--red)" : "var(--text)",
+            boxShadow: "var(--nb-shadow-sm)",
             fontSize: "12px",
-            fontWeight: 600,
+            fontWeight: 800,
             textAlign: "center",
             textTransform: "uppercase",
             letterSpacing: "0.05em",
@@ -452,28 +331,32 @@ export default function ProfileForm({ user, profile }: { user: any, profile: any
           disabled={loading} 
           style={{ 
             marginTop: "8px",
-            background: "#E31B23",
+            background: "var(--red)",
             color: "#FFFFFF",
-            border: "none",
+            border: "2px solid var(--border)",
+            boxShadow: "var(--nb-shadow)",
             padding: "16px",
             fontSize: "12px",
             fontWeight: 900,
             textTransform: "uppercase",
             letterSpacing: "0.15em",
             cursor: "pointer",
-            transition: "all 0.2s",
+            transition: "all 0.1s",
             fontFamily: "'Outfit', sans-serif",
           }}
+          onMouseDown={(e) => e.currentTarget.style.transform = "translate(2px, 2px)"}
+          onMouseUp={(e) => e.currentTarget.style.transform = "none"}
+          onMouseOut={(e) => e.currentTarget.style.transform = "none"}
         >
           {loading ? "PROCESSANDO..." : "SALVAR ALTERAÇÕES"}
         </button>
       </form>
 
       {/* ── SENHA E SEGURANÇA ── */}
-      <div style={{ marginTop: "64px", borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: "48px" }}>
+      <div style={{ marginTop: "64px", borderTop: "2px solid var(--border)", paddingTop: "48px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "32px" }}>
-          <div style={{ width: "4px", height: "16px", background: "#E31B23" }} />
-          <h3 style={{ fontSize: "11px", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.1em", color: "#FFF" }}>SEGURANÇA DA CONTA</h3>
+          <div style={{ width: "8px", height: "16px", background: "var(--red)" }} />
+          <h3 style={{ fontSize: "11px", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text)" }}>SEGURANÇA DA CONTA</h3>
         </div>
 
         <form ref={passFormRef} action={handlePassSubmit} style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
@@ -482,65 +365,29 @@ export default function ProfileForm({ user, profile }: { user: any, profile: any
           </p>
 
           <div style={{ position: "relative" }}>
-            <label style={{ 
-              display: "block", 
-              fontSize: "9px", 
-              fontWeight: 700, 
-              textTransform: "uppercase", 
-              color: "rgba(255,255,255,0.25)", 
-              marginBottom: "10px", 
-              letterSpacing: "0.2em" 
-            }}>
-              Nova Senha
-            </label>
+            <label style={labelStyle}>Nova Senha</label>
             <div style={{ position: "relative" }}>
-              <Lock size={14} style={{ position: "absolute", left: "16px", top: "50%", transform: "translateY(-50%)", color: "rgba(255,255,255,0.2)" }} />
+              <Lock size={14} style={{ position: "absolute", left: "16px", top: "50%", transform: "translateY(-50%)", color: "var(--text-dim)" }} />
               <input 
                 type="password" 
                 name="password" 
                 placeholder="********" 
                 required
-                style={{
-                  width: "100%",
-                  background: "#050505",
-                  border: "1px solid rgba(255,255,255,0.08)",
-                  padding: "14px 16px 14px 44px",
-                  color: "#FFFFFF",
-                  fontSize: "14px",
-                  outline: "none",
-                }}
+                style={{ ...blockInputStyle, padding: "14px 16px 14px 44px" }}
               />
             </div>
           </div>
 
           <div style={{ position: "relative" }}>
-            <label style={{ 
-              display: "block", 
-              fontSize: "9px", 
-              fontWeight: 700, 
-              textTransform: "uppercase", 
-              color: "rgba(255,255,255,0.25)", 
-              marginBottom: "10px", 
-              letterSpacing: "0.2em" 
-            }}>
-              Confirmar Nova Senha
-            </label>
+            <label style={labelStyle}>Confirmar Nova Senha</label>
             <div style={{ position: "relative" }}>
-              <ShieldCheck size={14} style={{ position: "absolute", left: "16px", top: "50%", transform: "translateY(-50%)", color: "rgba(255,255,255,0.2)" }} />
+              <ShieldCheck size={14} style={{ position: "absolute", left: "16px", top: "50%", transform: "translateY(-50%)", color: "var(--text-dim)" }} />
               <input 
                 type="password" 
                 name="confirm_password" 
                 placeholder="********" 
                 required
-                style={{
-                  width: "100%",
-                  background: "#050505",
-                  border: "1px solid rgba(255,255,255,0.08)",
-                  padding: "14px 16px 14px 44px",
-                  color: "#FFFFFF",
-                  fontSize: "14px",
-                  outline: "none",
-                }}
+                style={{ ...blockInputStyle, padding: "14px 16px 14px 44px" }}
               />
             </div>
           </div>
@@ -548,11 +395,12 @@ export default function ProfileForm({ user, profile }: { user: any, profile: any
           {passMessage && (
             <div style={{
               padding: "14px",
-              background: passMessage.type === "error" ? "rgba(227,27,35,0.1)" : "rgba(255,255,255,0.03)",
-              border: `1px solid ${passMessage.type === "error" ? "rgba(227,27,35,0.2)" : "rgba(255,255,255,0.1)"}`,
-              color: passMessage.type === "error" ? "#E31B23" : "#FFFFFF",
+              background: passMessage.type === "error" ? "var(--surface)" : "var(--bg)",
+              border: `2px solid ${passMessage.type === "error" ? "var(--red)" : "var(--border)"}`,
+              boxShadow: "var(--nb-shadow-sm)",
+              color: passMessage.type === "error" ? "var(--red)" : "var(--text)",
               fontSize: "12px",
-              fontWeight: 600,
+              fontWeight: 800,
               textAlign: "center",
               textTransform: "uppercase",
             }}>
@@ -564,17 +412,21 @@ export default function ProfileForm({ user, profile }: { user: any, profile: any
             type="submit" 
             disabled={passLoading} 
             style={{ 
-              background: "transparent",
-              color: "#FFFFFF",
-              border: "1px solid rgba(255,255,255,0.15)",
+              background: "var(--surface)",
+              color: "var(--text)",
+              border: "2px solid var(--border)",
+              boxShadow: "var(--nb-shadow)",
               padding: "16px",
               fontSize: "10px",
               fontWeight: 800,
               textTransform: "uppercase",
               letterSpacing: "0.2em",
               cursor: "pointer",
-              transition: "all 0.2s",
+              transition: "transform 0.1s",
             }}
+            onMouseDown={(e) => e.currentTarget.style.transform = "translate(2px, 2px)"}
+            onMouseUp={(e) => e.currentTarget.style.transform = "none"}
+            onMouseOut={(e) => e.currentTarget.style.transform = "none"}
           >
             {passLoading ? "ATUALIZANDO..." : "REDEFINIR SENHA"}
           </button>
