@@ -4,29 +4,14 @@ import { redirect } from "next/navigation";
 import StudentHeader from "@/components/StudentHeader";
 import BottomNav from "@/components/BottomNav";
 import DashboardStyles from "@/components/DashboardStyles";
-import ProgressDashboardClient from "@/components/progress/ProgressDashboardClient";
-import RecentPRs from "@/components/progress/RecentPRs";
+import { Target, Hammer } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Meu Progresso",
 };
 
-import { getTodayDate } from "@/lib/date-utils";
-
 /**
- * Página de Progresso e Metas
- * Centraliza o Monitor de Compromisso, Recordes (PRs) e Objetivos Técnicos.
- * 
- * @security
- * - Sessão validada no servidor.
- * - RLS ativo para tabelas `personal_records`, `student_settings` e `student_goals`.
- * 
- * @technical
- * - Time Logic: Calcula o início da semana (Segunda-feira) em UTC para o monitor de frequência.
- * - Data Composition: Agrega dados de 5 tabelas diferentes via `Promise.all` para renderização atômica.
- * - Interactive: Delega interatividade (PRs, Metas) para o `ProgressDashboardClient`.
- * 
- * @returns {Promise<JSX.Element>} Dashboard de progresso técnico do atleta.
+ * Página de Progresso e Metas (EM BREVE)
  */
 export default async function ProgressPage() {
   const supabase = await createClient();
@@ -34,79 +19,107 @@ export default async function ProgressPage() {
 
   if (!user) redirect("/login");
 
-  // 1. Data Fetching
-  const todayStr = getTodayDate();
-  const todayMs = new Date(todayStr + "T00:00:00Z");
-  const dayOfWeek = todayMs.getUTCDay();
-  const diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-  const monday = new Date(todayMs.getTime() - diffToMonday * 86400000);
-
-  const [
-    { data: profile },
-    { data: settings },
-    { data: checkIns },
-    { data: prs },
-    { data: goals }
-  ] = await Promise.all([
-    supabase.from("profiles").select("*").eq("id", user.id).single(),
-    supabase.from("student_settings").select("*").eq("student_id", user.id).maybeSingle(),
-    supabase.from("check_ins").select("id").eq("student_id", user.id).gte("created_at", monday.toISOString()),
-    supabase.from("personal_records").select("*").eq("student_id", user.id).order("date", { ascending: false }),
-    supabase.from("student_goals").select("*").eq("student_id", user.id).order("created_at", { ascending: true })
-  ]);
-
-  const currentCheckIns = checkIns?.length || 0;
-  const targetFrequency = settings?.weekly_frequency_target || 3;
-
-  const levelMap: Record<string, string> = {
-    branco: "L1",
-    verde: "L2",
-    azul: "L3",
-    vermelho: "L4",
-    rx: "L4",
-    preto: "L5",
-    elite: "L5"
-  };
-
-  const studentLevelMapped = profile?.level ? levelMap[profile.level] || "L1" : "L1";
-
   return (
-    <div style={{ minHeight: "100vh", backgroundColor: "#FFF", color: "#000", paddingBottom: "120px", position: "relative" }}>
+    <>
       <DashboardStyles />
-      
+      {/* BACKGROUND LIGTH */}
+      <div 
+        style={{ 
+          position: "fixed", top: 0, left: 0, right: 0, bottom: 0, 
+          zIndex: -1, background: "#FFF" 
+        }} 
+      />
+
       <StudentHeader />
 
-      <main style={{ maxWidth: "480px", margin: "0 auto", position: "relative" }}>
+      <main className="animate-in" style={{ 
+        maxWidth: "500px", margin: "0 auto", padding: "0 20px 120px", 
+      }}>
         
-        {/* BOAS-VINDAS / TÍTULO (ATHLETIC BRANDING) */}
-        <section style={{ padding: "32px 20px 24px" }}>
-          <p className="font-headline" style={{ fontSize: "10px", fontWeight: 900, letterSpacing: "0.2em", color: "rgba(0,0,0,0.5)", textTransform: "uppercase", marginBottom: "4px" }}>
-            {(profile?.display_name || "ATLETA").toUpperCase()}
-          </p>
-          <h1 className="font-display" style={{ fontSize: "42px", lineHeight: 0.9, textTransform: "uppercase", fontWeight: 900, letterSpacing: "-0.03em" }}>
-            MEU<br />PROGRESSO
+        {/* ── HEADER DE IMPACTO ── */}
+        <section style={{ paddingTop: "32px", paddingBottom: "32px", textAlign: "center" }}>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: "8px", background: "var(--red)", color: "white", padding: "4px 12px", border: "2px solid #000", boxShadow: "4px 4px 0px #000", marginBottom: "16px" }}>
+            <Target size={14} strokeWidth={3} />
+            <span style={{ fontSize: "10px", fontWeight: 900, letterSpacing: "0.2em" }}>METAS E RECORDES</span>
+          </div>
+          <h1 className="font-display" style={{ fontSize: "48px", fontWeight: 950, lineHeight: 0.8, textTransform: "uppercase", letterSpacing: "-0.04em", margin: 0 }}>
+             MEU<br/>PROGRESSO
           </h1>
-          <div style={{ width: "40px", height: "4px", background: "#000", marginTop: "16px" }}></div>
+          <p className="font-headline" style={{ fontSize: "12px", fontWeight: 800, color: "#000", marginTop: "12px", letterSpacing: "0.15em", textTransform: "uppercase", opacity: 0.6 }}>
+            ACOMPANHE SUA EVOLUÇÃO
+          </p>
         </section>
 
-        {/* ── RECORDES RECENTES (DESTAQUE) ── */}
-        <div style={{ padding: "0 20px", marginBottom: "32px" }}>
-           <RecentPRs prs={(prs?.slice(0, 4) || []) as any[]} hideViewAll={true} />
-        </div>
+        {/* ── EM BREVE CONTAINER ── */}
+        <section
+          style={{
+            background: "#FFF",
+            border: "3px solid #000",
+            boxShadow: "10px 10px 0px #000",
+            position: "relative",
+            overflow: "hidden",
+            padding: "40px 20px",
+            textAlign: "center",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: "24px",
+          }}
+        >
+          {/* Fita de Construção (Visual Drip) */}
+          <div style={{
+            position: "absolute",
+            top: "20px",
+            right: "-40px",
+            background: "#FFD700",
+            color: "#000",
+            borderTop: "2px solid #000",
+            borderBottom: "2px solid #000",
+            padding: "4px 40px",
+            transform: "rotate(45deg)",
+            fontSize: "10px",
+            fontWeight: 900,
+            letterSpacing: "0.2em",
+            zIndex: 10
+          }}>
+            WORK IN PROGRESS
+          </div>
 
-        {/* SEÇÃO PRINCIPAL INTERATIVA (CLIENT WRAPPER) */}
-        <ProgressDashboardClient 
-          studentName={profile?.display_name || "ATLETA"}
-          initialPrs={prs || []}
-          initialGoals={goals || []}
-          currentCheckIns={currentCheckIns}
-          targetFrequency={targetFrequency}
-          studentLevel={studentLevelMapped}
-        />
+          <div style={{ 
+            width: "80px", 
+            height: "80px", 
+            background: "#F0F0F0", 
+            border: "3px solid #000", 
+            display: "flex", 
+            alignItems: "center", 
+            justifyContent: "center",
+            boxShadow: "4px 4px 0px var(--red)",
+            borderRadius: "50%"
+          }}>
+            <Hammer size={40} color="#000" strokeWidth={2.5} />
+          </div>
+
+          <div>
+            <h2 className="font-display" style={{ fontSize: "28px", fontWeight: 950, color: "#000", lineHeight: 1, marginBottom: "12px" }}>
+              MEU PROGRESSO<br/>EM CONSTRUÇÃO
+            </h2>
+            <p className="font-headline" style={{ fontSize: "12px", fontWeight: 800, color: "#000", letterSpacing: "0.05em", opacity: 0.7 }}>
+              ESTAMOS PREPARANDO A FORMA MAIS BRUTAL E EFICIENTE DE VOCÊ REGISTRAR SEUS PRS E ACOMPANHAR SUA EVOLUÇÃO NO COLISEU.
+            </p>
+          </div>
+
+          <div style={{ display: "inline-block", background: "#000", color: "#FFF", padding: "12px 24px", fontSize: "14px", fontWeight: 900, letterSpacing: "0.1em", border: "2px solid #000" }}>
+            EM BREVE
+          </div>
+
+        </section>
 
       </main>
 
       <BottomNav />
-    </div>
+      {/* Podemos usar uma tag style para injeção simples do keyframe já que é um componente Server (mas pode dar warning) 
+          Então usarei inline keyframes num link de style se necessário, como não é 'use client', ou removo a animação 
+          no servidor render para evitar problemas. */}
+    </>
   );
 }

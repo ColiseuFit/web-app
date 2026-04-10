@@ -82,6 +82,37 @@ export default function DashboardStyles() {
       border-top: 2px solid #000;
       padding-bottom: env(safe-area-inset-bottom);
     }
+
+    /* WhatsApp CTA Button */
+    .whatsapp-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: #25D366;
+      color: #FFF;
+      border: 2px solid #000;
+      padding: 12px 20px;
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      text-decoration: none;
+      box-shadow: 4px 4px 0px #000;
+      margin-bottom: 20px;
+      transition: all 0.1s ease;
+      cursor: pointer;
+    }
+
+    .whatsapp-btn:hover {
+      transform: translate(-1px, -1px);
+      box-shadow: 5px 5px 0px #000;
+    }
+
+    .whatsapp-btn:active {
+      transform: translate(2px, 2px);
+      box-shadow: 2px 2px 0px #000;
+    }
   `;
 
 

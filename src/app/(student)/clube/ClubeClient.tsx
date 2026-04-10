@@ -3,24 +3,13 @@
 import { useState, useEffect } from "react";
 import StudentHeader from "@/components/StudentHeader";
 import BottomNav from "@/components/BottomNav";
-import ActivityFeed from "@/components/ActivityFeed";
-import { Trophy, Globe, Flame } from "lucide-react";
+import { Trophy, Hammer } from "lucide-react";
+import DashboardStyles from "@/components/DashboardStyles";
 
 /**
- * Interface para os atletas do ranking
- */
-interface LeaderboardEntry {
-  id: string;
-  display_name: string;
-  points_balance: number;
-  rank: number;
-}
-
-/**
- * Cliente Interativo da Comunidade (O Clube) - EDIÇÃO NEO-BRUTALIST
+ * Cliente Interativo da Comunidade (O Clube) - EDIÇÃO NEO-BRUTALIST (EM BREVE)
  */
 export default function ClubeClient() {
-  const [activeTab, setActiveTab] = useState<"semanal" | "geral">("semanal");
   const [isLoaded, setIsLoaded] = useState(false);
 
   // Efeito para animação de entrada
@@ -28,26 +17,9 @@ export default function ClubeClient() {
     setIsLoaded(true);
   }, []);
 
-  const MOCK_WEEKLY: LeaderboardEntry[] = [
-    { id: "1", display_name: "JOÃO COLISEU", points_balance: 450, rank: 1 },
-    { id: "2", display_name: "MARIA SILVA", points_balance: 400, rank: 2 },
-    { id: "3", display_name: "RICARDO SOUZA", points_balance: 350, rank: 3 },
-    { id: "me", display_name: "VOCÊ", points_balance: 300, rank: 4 },
-    { id: "5", display_name: "ANA COSTA", points_balance: 280, rank: 5 },
-  ];
-
-  const MOCK_GENERAL: LeaderboardEntry[] = [
-    { id: "10", display_name: "GABRIEL FERRO", points_balance: 15400, rank: 1 },
-    { id: "11", display_name: "LUANA GRIT", points_balance: 14200, rank: 2 },
-    { id: "12", display_name: "CARLOS BRUTO", points_balance: 13800, rank: 3 },
-    { id: "1", display_name: "JOÃO COLISEU", points_balance: 12800, rank: 4 },
-    { id: "me", display_name: "VOCÊ", points_balance: 12450, rank: 5 },
-  ];
-
-  const currentData = activeTab === "semanal" ? MOCK_WEEKLY : MOCK_GENERAL;
-
   return (
     <>
+      <DashboardStyles />
       {/* BACKGROUND LIGTH */}
       <div 
         style={{ 
@@ -77,151 +49,70 @@ export default function ClubeClient() {
           </p>
         </section>
 
-        {/* ── BRUTALIST TAB TOGGLE ── */}
-        <div style={{ 
-            display: "flex", 
-            gap: "10px", 
-            marginBottom: "32px", 
-        }}>
-            <button 
-                onClick={() => setActiveTab("semanal")}
-                style={{ 
-                    flex: 1, 
-                    padding: "16px 8px", 
-                    background: activeTab === "semanal" ? "#000" : "#FFF", 
-                    border: "3px solid #000", 
-                    color: activeTab === "semanal" ? "#FFF" : "#000", 
-                    fontSize: "11px", 
-                    fontWeight: 900, 
-                    letterSpacing: "0.1em", 
-                    cursor: "pointer",
-                    boxShadow: activeTab === "semanal" ? "2px 2px 0px #000" : "6px 6px 0px #000",
-                    transform: activeTab === "semanal" ? "translate(4px, 4px)" : "none",
-                    transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: "8px"
-                }}
-            >
-                <Flame size={14} strokeWidth={3} />
-                LIGA SEMANAL
-            </button>
-            <button 
-                onClick={() => setActiveTab("geral")}
-                style={{ 
-                    flex: 1, 
-                    padding: "16px 8px", 
-                    background: activeTab === "geral" ? "#000" : "#FFF", 
-                    border: "3px solid #000", 
-                    color: activeTab === "geral" ? "#FFF" : "#000", 
-                    fontSize: "11px", 
-                    fontWeight: 900, 
-                    letterSpacing: "0.1em", 
-                    cursor: "pointer",
-                    boxShadow: activeTab === "geral" ? "2px 2px 0px #000" : "6px 6px 0px #000",
-                    transform: activeTab === "geral" ? "translate(4px, 4px)" : "none",
-                    transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: "8px"
-                }}
-            >
-                <Globe size={14} strokeWidth={3} />
-                GERAL RX
-            </button>
-        </div>
-
-        {/* ── LISTA DE RANKING (BRUTALIST CONTAINER) ── */}
+        {/* ── EM BREVE CONTAINER ── */}
         <section
-          key={activeTab}
           style={{
             background: "#FFF",
             border: "3px solid #000",
             boxShadow: "10px 10px 0px #000",
             position: "relative",
             overflow: "hidden",
+            padding: "40px 20px",
+            textAlign: "center",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: "24px",
             animation: "entrancePop 0.4s cubic-bezier(0.16, 1, 0.3, 1)"
           }}
         >
-          {/* Header Barra */}
-          <div style={{ 
-            padding: "12px 20px", 
-            borderBottom: "3px solid #000", 
-            display: "flex", 
-            justifyContent: "space-between", 
-            alignItems: "center", 
-            background: "#F0F0F0" 
+          {/* Fita de Construção (Visual Drip) */}
+          <div style={{
+            position: "absolute",
+            top: "20px",
+            right: "-40px",
+            background: "#FFD700",
+            color: "#000",
+            borderTop: "2px solid #000",
+            borderBottom: "2px solid #000",
+            padding: "4px 40px",
+            transform: "rotate(45deg)",
+            fontSize: "10px",
+            fontWeight: 900,
+            letterSpacing: "0.2em",
+            zIndex: 10
           }}>
-            <span style={{ fontSize: "10px", fontWeight: 900, letterSpacing: "0.1em", color: "#000" }}>
-              {activeTab === "semanal" ? "TOP ATLETAS SEMANA" : "OS MAIORES DA HISTÓRIA"}
-            </span>
-            <div style={{ width: "8px", height: "8px", background: "var(--red)", borderRadius: "50%" }} />
+            WORK IN PROGRESS
           </div>
 
-          <div style={{ display: "flex", flexDirection: "column" }}>
-            {currentData.map((entry, index) => {
-                const isMe = entry.id === "me";
-                const rank = entry.rank;
-                const name = entry.display_name;
-                
-                return (
-                    <div
-                      key={entry.id}
-                      style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "16px",
-                          padding: "20px",
-                          borderBottom: index === currentData.length - 1 ? "none" : "2px solid #000",
-                          background: isMe ? "#F8FBFF" : "transparent",
-                          position: "relative"
-                      }}
-                    >
-                      {isMe && <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: "6px", background: "var(--red)" }} />}
-                      
-                      <div className="font-display" style={{ 
-                        fontSize: "24px", 
-                        fontWeight: 950,
-                        color: rank === 1 ? "#FFD700" : rank === 2 ? "#C0C0C0" : rank === 3 ? "#CD7F32" : "#000", 
-                        minWidth: "42px",
-                        textAlign: "center",
-                        WebkitTextStroke: "1px #000"
-                      }}>
-                        {rank}
-                      </div>
-
-                      <div style={{ flex: 1 }}>
-                        <div style={{ 
-                          fontSize: "14px", 
-                          fontWeight: 900, 
-                          color: "#000",
-                          letterSpacing: "-0.01em"
-                        }}>
-                          {name.toUpperCase()}
-                        </div>
-                        {isMe && (
-                          <div style={{ display: "inline-block", background: "var(--red)", color: "white", fontSize: "10px", fontWeight: 900, padding: "2px 8px", marginTop: "4px" }}>
-                            MINHA POSIÇÃO
-                          </div>
-                        )}
-                      </div>
-
-                      <div style={{ textAlign: "right" }}>
-                        <div className="font-display" style={{ fontSize: "20px", fontWeight: 950, color: "#000" }}>
-                          {entry.points_balance.toLocaleString("pt-BR")}
-                        </div>
-                        <div style={{ fontSize: "9px", fontWeight: 900, color: "#000", opacity: 0.4, letterSpacing: "0.1em" }}>PONTOS</div>
-                      </div>
-                    </div>
-                );
-            })}
+          <div style={{ 
+            width: "80px", 
+            height: "80px", 
+            background: "#F0F0F0", 
+            border: "3px solid #000", 
+            display: "flex", 
+            alignItems: "center", 
+            justifyContent: "center",
+            boxShadow: "4px 4px 0px var(--red)",
+            borderRadius: "50%"
+          }}>
+            <Hammer size={40} color="#000" strokeWidth={2.5} />
           </div>
+
+          <div>
+            <h2 className="font-display" style={{ fontSize: "28px", fontWeight: 950, color: "#000", lineHeight: 1, marginBottom: "12px" }}>
+              O CLUBE ESTÁ<br/>EM CONSTRUÇÃO
+            </h2>
+            <p className="font-headline" style={{ fontSize: "12px", fontWeight: 800, color: "#000", letterSpacing: "0.05em", opacity: 0.7 }}>
+              ESTAMOS PREPARANDO UM ESPAÇO ÉPICO PARA VOCÊS ACOMPANHAREM SEUS RECORDES, PONTUAÇÕES E LIGAS SEMANAIS CONTRA OUTROS ATLETAS DO COLISEU.
+            </p>
+          </div>
+
+          <div style={{ display: "inline-block", background: "#000", color: "#FFF", padding: "12px 24px", fontSize: "14px", fontWeight: 900, letterSpacing: "0.1em", border: "2px solid #000" }}>
+            EM BREVE
+          </div>
+
         </section>
-
-        {/* ── ACTIVITY FEED ── */}
-        <ActivityFeed />
 
       </main>
 

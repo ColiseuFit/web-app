@@ -7,10 +7,11 @@ import StudentHeader from "@/components/StudentHeader";
 import BottomNav from "@/components/BottomNav";
 import LevelCard from "@/components/LevelCard";
 import DashboardStyles from "@/components/DashboardStyles";
-import { Zap, Shield, Diamond, Star, Award, Medal, Trophy, TrendingUp } from "lucide-react";
+import { Zap, Shield, Diamond, Star, Award, Medal, Trophy, TrendingUp, Settings, LineChart, MessageCircle } from "lucide-react";
 import { getTodayDate } from "@/lib/date-utils";
 import { getLevelInfo } from "@/lib/constants/levels";
 import { getCachedLevels } from "@/lib/constants/levels_actions";
+import { getBoxSettings } from "@/lib/constants/settings_actions";
 
 export const metadata: Metadata = {
   title: "Meu Perfil",
@@ -48,15 +49,27 @@ export default async function ProfilePage() {
     { data: checkInsCount },
     { data: prs },
     { data: benchmarks },
-    dynamicLevels
+    dynamicLevels,
+    boxSettings
   ] = await Promise.all([
     supabase.from("profiles").select("*").eq("id", user.id).single(),
     supabase.from("physical_evaluations").select("*").eq("student_id", user.id).order("evaluation_date", { ascending: false }).limit(1).maybeSingle(),
     supabase.from("check_ins").select("created_at").eq("student_id", user.id).order("created_at", { ascending: false }),
     supabase.from("personal_records").select("*").eq("student_id", user.id).order("date", { ascending: false }).limit(4),
     supabase.from("student_benchmarks").select("*").eq("student_id", user.id),
-    getCachedLevels()
+    getCachedLevels(),
+    getBoxSettings()
   ]);
+
+  /**
+   * Prepara link de WhatsApp a partir da SSoT (box_settings → box_whatsapp).
+   * Remove caracteres não numéricos e monta URL wa.me com mensagem pré-definida.
+   */
+  const rawWhatsApp = boxSettings?.box_whatsapp || "";
+  const whatsappNumber = rawWhatsApp.replace(/\D/g, "");
+  const whatsappLink = whatsappNumber
+    ? `https://wa.me/55${whatsappNumber}?text=${encodeURIComponent("Olá! Gostaria de agendar uma avaliação física no Coliseu.")}`
+    : null;
 
   // Cálculo de massa magra se houver dados
   const leanMass = (latestEvaluation?.weight && latestEvaluation?.body_fat_percentage)
@@ -69,26 +82,12 @@ export default async function ProfilePage() {
    */
 
   /**
-   * LÓGICA DE PROGRESSÃO DATA-DRIVEN (SSoT)
+   * LÓGICA DE PONTUAÇÃO DATA-DRIVEN (SSoT)
    * @logic
    * 1. Consome `points_balance` do perfil.
-   * 2. Aplica escala de 5k por nível para determinar o `totalPointsGoal`.
-   * 3. Calcula progresso percentual e pontos restantes para o próximo nível.
+   * 2. Níveis (Graduações) são geridos separadamente pelos coaches e não vinculados mecanicamente aos pontos.
    */
   const pointsActual = profile?.points_balance || 0;
-  
-  // Lógica temporária de escalonamento (5k por nível)
-  const calculateGoal = (points: number) => {
-    if (points < 5000) return 5000;
-    if (points < 10000) return 10000;
-    if (points < 15000) return 15000;
-    if (points < 20000) return 20000;
-    return points + 5000;
-  };
-
-  const totalPointsGoal = calculateGoal(pointsActual);
-  const pointsProgress = (pointsActual / totalPointsGoal) * 100;
-  const pointsRemaining = totalPointsGoal - pointsActual;
   
   const checkIns = checkInsCount || [];
   
@@ -132,10 +131,8 @@ export default async function ProfilePage() {
 
   const stats = {
     points_actual: pointsActual,
-    points_next_level: totalPointsGoal,
     trainings_count: checkIns.length,
     current_streak: streak,
-    total_points_goal: totalPointsGoal,
   };
 
   const level = getLevelInfo(profile?.level || "iniciante", dynamicLevels);
@@ -155,8 +152,6 @@ export default async function ProfilePage() {
             <LevelCard 
               level={level} 
               stats={stats} 
-              pointsProgress={pointsProgress} 
-              pointsRemaining={pointsRemaining} 
               avatarUrl={profile?.avatar_url}
             />
           </div>
@@ -203,28 +198,45 @@ export default async function ProfilePage() {
               MEMBER ID: #{(profile?.member_number || "000").toString().padStart(3, '0')}
             </div>
             
-            <div style={{ marginTop: "32px", display: "flex", justifyContent: "center", gap: "24px" }}>
+            <div style={{ marginTop: "32px", display: "flex", justifyContent: "center", gap: "16px", flexWrap: "wrap", width: "100%" }}>
               <Link href="/profile/edit" style={{ 
+                flex: "1",
+                minWidth: "140px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "8px",
                 fontSize: "11px", 
                 fontWeight: 900, 
                 color: "#000", 
+                background: "#FFF",
                 letterSpacing: "0.1em", 
                 textDecoration: "none", 
-                borderBottom: "2px solid #000", 
-                paddingBottom: "2px",
-                opacity: 0.6
+                border: "2px solid #000", 
+                padding: "14px 16px",
+                boxShadow: "3px 3px 0px #000"
               }}>
+                <Settings size={14} strokeWidth={2.5} />
                 EDITAR PERFIL
               </Link>
               <Link href="/progresso" style={{ 
+                flex: "1",
+                minWidth: "140px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "8px",
                 fontSize: "11px", 
                 fontWeight: 900, 
-                color: level.color, 
+                color: level.btnTextColor || (level.key === 'iniciante' ? '#000' : '#FFF'), 
+                background: level.color,
                 letterSpacing: "0.1em", 
                 textDecoration: "none", 
-                borderBottom: `2px solid ${level.color}`, 
-                paddingBottom: "2px"
+                border: "2px solid #000",
+                padding: "14px 16px",
+                boxShadow: "3px 3px 0px #000"
               }}>
+                <LineChart size={14} strokeWidth={2.5} />
                 MINHA EVOLUÇÃO
               </Link>
             </div>
@@ -263,10 +275,10 @@ export default async function ProfilePage() {
           ))}
         </section>
 
-        {/* ── ÚLTIMA AVALIAÇÃO ── */}
+        {/* ── AVALIAÇÕES FÍSICAS ── */}
         <section style={{ marginBottom: "48px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "20px" }}>
-            <h2 className="font-display" style={{ fontSize: "18px", letterSpacing: "0.05em", fontWeight: 900 }}>ÚLTIMA AVALIAÇÃO</h2>
+            <h2 className="font-display" style={{ fontSize: "18px", letterSpacing: "0.05em", fontWeight: 900 }}>AVALIAÇÕES FÍSICAS</h2>
             <div style={{ flex: 1, height: "2px", background: "#000" }} />
             <Link href="/profile/evaluations" style={{ 
               fontSize: "10px", 
@@ -282,34 +294,49 @@ export default async function ProfilePage() {
           </div>
 
           {latestEvaluation ? (
-            <div style={{ 
-              background: "#FFF", 
-              padding: "24px", 
-              border: "2px solid #000",
-              boxShadow: "4px 4px 0px #F0F0F0",
-              display: "grid",
-              gridTemplateColumns: "repeat(2, 1fr)",
-              gap: "16px"
-            }}>
-              <div style={{ borderBottom: "1px solid #EEE", paddingBottom: "12px" }}>
-                <div style={{ fontSize: "9px", fontWeight: 900, color: "#000", marginBottom: "8px", letterSpacing: "0.1em", opacity: 0.5 }}>PESO ATUAL</div>
-                <div style={{ fontFamily: "var(--font-display)", fontSize: "28px", fontWeight: 950 }}>{latestEvaluation.weight} <span style={{ fontSize: "14px", fontWeight: 800, color: "#999" }}>KG</span></div>
-              </div>
-              <div style={{ borderBottom: "1px solid #EEE", paddingBottom: "12px" }}>
-                <div style={{ fontSize: "9px", fontWeight: 900, color: "#000", marginBottom: "8px", letterSpacing: "0.1em", opacity: 0.5 }}>% GORDURA</div>
-                <div style={{ fontFamily: "var(--font-display)", fontSize: "28px", fontWeight: 950, color: "#E31B23" }}>{latestEvaluation.body_fat_percentage}%</div>
-              </div>
-              <div>
-                <div style={{ fontSize: "9px", fontWeight: 900, color: "#000", marginBottom: "8px", letterSpacing: "0.1em", opacity: 0.5 }}>MASSA MAGRA</div>
-                <div style={{ fontFamily: "var(--font-display)", fontSize: "28px", fontWeight: 950 }}>{leanMass || "--"} <span style={{ fontSize: "14px", fontWeight: 800, color: "#999" }}>KG</span></div>
-              </div>
-              <div>
-                <div style={{ fontSize: "9px", fontWeight: 900, color: "#000", marginBottom: "8px", letterSpacing: "0.1em", opacity: 0.5 }}>WHR (C/Q)</div>
-                <div style={{ fontFamily: "var(--font-display)", fontSize: "28px", fontWeight: 950, color: (latestEvaluation.waist_hip_ratio || 0) > 0.9 ? "#E31B23" : "inherit" }}>
-                  {latestEvaluation.waist_hip_ratio || "--"}
+            <>
+              <div style={{ 
+                background: "#FFF", 
+                padding: "24px", 
+                border: "2px solid #000",
+                boxShadow: "4px 4px 0px #F0F0F0",
+                display: "grid",
+                gridTemplateColumns: "repeat(2, 1fr)",
+                gap: "16px"
+              }}>
+                <div style={{ borderBottom: "1px solid #EEE", paddingBottom: "12px" }}>
+                  <div style={{ fontSize: "9px", fontWeight: 900, color: "#000", marginBottom: "8px", letterSpacing: "0.1em", opacity: 0.5 }}>PESO ATUAL</div>
+                  <div style={{ fontFamily: "var(--font-display)", fontSize: "28px", fontWeight: 950 }}>{latestEvaluation.weight} <span style={{ fontSize: "14px", fontWeight: 800, color: "#999" }}>KG</span></div>
+                </div>
+                <div style={{ borderBottom: "1px solid #EEE", paddingBottom: "12px" }}>
+                  <div style={{ fontSize: "9px", fontWeight: 900, color: "#000", marginBottom: "8px", letterSpacing: "0.1em", opacity: 0.5 }}>% GORDURA</div>
+                  <div style={{ fontFamily: "var(--font-display)", fontSize: "28px", fontWeight: 950, color: "#E31B23" }}>{latestEvaluation.body_fat_percentage}%</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: "9px", fontWeight: 900, color: "#000", marginBottom: "8px", letterSpacing: "0.1em", opacity: 0.5 }}>MASSA MAGRA</div>
+                  <div style={{ fontFamily: "var(--font-display)", fontSize: "28px", fontWeight: 950 }}>{leanMass || "--"} <span style={{ fontSize: "14px", fontWeight: 800, color: "#999" }}>KG</span></div>
+                </div>
+                <div>
+                  <div style={{ fontSize: "9px", fontWeight: 900, color: "#000", marginBottom: "8px", letterSpacing: "0.1em", opacity: 0.5 }}>WHR (C/Q)</div>
+                  <div style={{ fontFamily: "var(--font-display)", fontSize: "28px", fontWeight: 950, color: (latestEvaluation.waist_hip_ratio || 0) > 0.9 ? "#E31B23" : "inherit" }}>
+                    {latestEvaluation.waist_hip_ratio || "--"}
+                  </div>
                 </div>
               </div>
-            </div>
+              {/* CTA: solicitar nova avaliação */}
+              {whatsappLink && (
+                <a
+                  href={whatsappLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="whatsapp-btn"
+                  style={{ marginTop: "12px" }}
+                >
+                  <MessageCircle size={14} strokeWidth={3} />
+                  SOLICITAR NOVA AVALIAÇÃO
+                </a>
+              )}
+            </>
           ) : (
             <div style={{ 
               background: "#FFF", 
@@ -318,21 +345,17 @@ export default async function ProfilePage() {
               border: "2px dashed #000",
             }}>
               <p style={{ fontSize: "13px", fontWeight: 800, color: "#000", marginBottom: "20px", letterSpacing: "0.02em" }}>NENHUMA AVALIAÇÃO REGISTRADA</p>
-              <button 
-                style={{ 
-                  margin: "0 auto", 
-                  background: "#000", 
-                  color: "#FFF", 
-                  border: "none", 
-                  padding: "12px 24px", 
-                  fontSize: "10px", 
-                  fontWeight: 900,
-                  letterSpacing: "0.1em",
-                  cursor: "pointer"
-                }}
-              >
-                SOLICITAR AVALIAÇÃO
-              </button>
+              {whatsappLink && (
+                <a
+                  href={whatsappLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="whatsapp-btn"
+                >
+                  <MessageCircle size={12} strokeWidth={3} />
+                  SOLICITAR AVALIAÇÃO
+                </a>
+              )}
             </div>
           )}
         </section>
@@ -430,63 +453,7 @@ export default async function ProfilePage() {
                 );
               })}
             </div>
-
-            {/* Conquistas Gerais */}
-            {[
-              { icon: Star, color: "#E31B23", label: "FUNDADOR", desc: "Membro Fundador do Coliseu Clube" },
-              { icon: Award, color: "#000", label: "PIONEIRO", desc: "Primeira turma Coliseu V2" },
-              { icon: Medal, color: "#000", label: "TOP 10% ATIVOS", desc: "Entre as lendas do Coliseu" },
-            ].map((achievement, i) => (
-              <div key={i} style={{ 
-                background: "#FFF", 
-                padding: "20px",
-                border: "2px solid #000",
-                display: "flex",
-                alignItems: "center",
-                gap: "20px",
-                position: "relative",
-                boxShadow: "3px 3px 0px #000"
-              }}>
-                <div style={{
-                  width: "48px",
-                  height: "48px",
-                  background: "#000",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flexShrink: 0,
-                }}>
-                  <div style={{ color: achievement.color === "#000" ? "#FFF" : achievement.color, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <achievement.icon size={24} strokeWidth={2.5} />
-                  </div>
-                </div>
-                
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: "14px", fontWeight: 950, color: "#000", textTransform: "uppercase", marginBottom: "2px", lineHeight: 1 }}>{achievement.label}</div>
-                  <div style={{ fontSize: "10px", fontWeight: 800, color: "#000", opacity: 0.5 }}>{achievement.desc}</div>
-                </div>
-              </div>
-            ))}
           </div>
-          
-          <button 
-            style={{ 
-              width: "100%", 
-              background: "#FFF", 
-              border: "2px solid #000", 
-              padding: "18px", 
-              marginTop: "24px", 
-              fontSize: "11px", 
-              fontWeight: 950, 
-              letterSpacing: "0.15em",
-              color: "#000",
-              textTransform: "uppercase",
-              cursor: "pointer",
-              boxShadow: "4px 4px 0px #000"
-            }}
-          >
-            VER TODAS AS CONQUISTAS
-          </button>
         </section>
 
       </main>

@@ -32,14 +32,26 @@ export default function ProfileForm({ user, profile }: { user: any, profile: any
 
       const file = event.target.files[0];
       const fileExt = file.name.split(".").pop();
-      const filePath = `${user.id}-${Math.random()}.${fileExt}`;
+      const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+      const filePath = fileName;
 
-      const { error: uploadError, data } = await supabase.storage
+      // 1. Upload do novo arquivo
+      const { error: uploadError } = await supabase.storage
         .from("avatars")
         .upload(filePath, file);
 
-      if (uploadError) {
-        throw uploadError;
+      if (uploadError) throw uploadError;
+
+      // 2. Se já existia um avatar, tenta deletar o arquivo antigo para evitar lixo
+      if (avatarUrl) {
+        try {
+          const oldPath = avatarUrl.split("/").pop();
+          if (oldPath && oldPath.includes(user.id)) {
+            await supabase.storage.from("avatars").remove([oldPath]);
+          }
+        } catch (err) {
+          console.error("Erro ao limpar avatar antigo:", err);
+        }
       }
 
       const { data: { publicUrl } } = supabase.storage
@@ -84,34 +96,38 @@ export default function ProfileForm({ user, profile }: { user: any, profile: any
     setPassLoading(false);
   }
 
-  // Common input styles to prevent huge repetition
+  // Common input styles alignment (Iron Monolith Light)
   const blockInputStyle = {
     width: "100%",
-    background: "var(--surface)",
-    border: "1px solid var(--border)",
+    background: "#FFF",
+    border: "2px solid #000",
     padding: "14px 16px",
-    color: "var(--text)",
+    color: "#000",
     fontSize: "14px",
+    fontWeight: 600,
     fontFamily: "'Inter', sans-serif",
     outline: "none",
     borderRadius: 0,
+    boxShadow: "2px 2px 0px #F0F0F0",
   };
 
   const labelStyle: React.CSSProperties = {
     display: "block", 
     fontSize: "9px", 
-    fontWeight: 700, 
+    fontWeight: 900, 
     textTransform: "uppercase", 
-    color: "var(--text-dim)", 
+    color: "#000", 
+    opacity: 0.6,
     marginBottom: "10px", 
     letterSpacing: "0.2em" 
   };
 
   return (
     <div style={{
-      background: "var(--surface)",
-      border: "1px solid var(--border)",
+      background: "#FFF",
+      border: "2px solid #000",
       padding: "32px 24px",
+      boxShadow: "4px 4px 0px #000",
     }}>
       
       {/* Avatar Section */}
@@ -119,9 +135,9 @@ export default function ProfileForm({ user, profile }: { user: any, profile: any
         <div style={{
           width: "120px",
           height: "120px",
-          background: "var(--bg)",
-          border: "2px solid var(--border)",
-          boxShadow: "var(--nb-shadow)",
+          background: "#F9F9F9",
+          border: "2px solid #000",
+          boxShadow: "4px 4px 0px #000",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -198,7 +214,11 @@ export default function ProfileForm({ user, profile }: { user: any, profile: any
             message="ESTA AÇÃO IRÁ EXCLUIR SUA FOTO DE PERFIL PERMANENTEMENTE DOS SERVIDORES. DESEJA CONTINUAR COM A EXCLUSÃO?"
             confirmLabel="CONFIRMAR REMOÇÃO"
             cancelLabel="VOLTAR"
-            onConfirm={() => {
+            onConfirm={async () => {
+              if (avatarUrl) {
+                const oldPath = avatarUrl.split("/").pop();
+                if (oldPath) await supabase.storage.from("avatars").remove([oldPath]);
+              }
               setAvatarUrl("");
               setShowDeleteConfirm(false);
             }}
@@ -312,10 +332,10 @@ export default function ProfileForm({ user, profile }: { user: any, profile: any
         {message && (
           <div style={{
             padding: "14px",
-            background: message.type === "error" ? "var(--surface)" : "var(--bg)",
-            border: `2px solid ${message.type === "error" ? "var(--red)" : "var(--border)"}`,
-            color: message.type === "error" ? "var(--red)" : "var(--text)",
-            boxShadow: "var(--nb-shadow-sm)",
+            background: message.type === "error" ? "#FFF" : "#000",
+            border: `2px solid #000`,
+            color: message.type === "error" ? "#E31B23" : "#FFF",
+            boxShadow: "3px 3px 0px #000",
             fontSize: "12px",
             fontWeight: 800,
             textAlign: "center",
@@ -331,10 +351,10 @@ export default function ProfileForm({ user, profile }: { user: any, profile: any
           disabled={loading} 
           style={{ 
             marginTop: "8px",
-            background: "var(--red)",
+            background: "#E31B23",
             color: "#FFFFFF",
-            border: "2px solid var(--border)",
-            boxShadow: "var(--nb-shadow)",
+            border: "2px solid #000",
+            boxShadow: "4px 4px 0px #000",
             padding: "16px",
             fontSize: "12px",
             fontWeight: 900,
@@ -344,9 +364,14 @@ export default function ProfileForm({ user, profile }: { user: any, profile: any
             transition: "all 0.1s",
             fontFamily: "'Outfit', sans-serif",
           }}
-          onMouseDown={(e) => e.currentTarget.style.transform = "translate(2px, 2px)"}
-          onMouseUp={(e) => e.currentTarget.style.transform = "none"}
-          onMouseOut={(e) => e.currentTarget.style.transform = "none"}
+          onMouseDown={(e) => {
+            e.currentTarget.style.transform = "translate(2px, 2px)";
+            e.currentTarget.style.boxShadow = "2px 2px 0px #000";
+          }}
+          onMouseUp={(e) => {
+            e.currentTarget.style.transform = "none";
+            e.currentTarget.style.boxShadow = "4px 4px 0px #000";
+          }}
         >
           {loading ? "PROCESSANDO..." : "SALVAR ALTERAÇÕES"}
         </button>
@@ -395,10 +420,10 @@ export default function ProfileForm({ user, profile }: { user: any, profile: any
           {passMessage && (
             <div style={{
               padding: "14px",
-              background: passMessage.type === "error" ? "var(--surface)" : "var(--bg)",
-              border: `2px solid ${passMessage.type === "error" ? "var(--red)" : "var(--border)"}`,
-              boxShadow: "var(--nb-shadow-sm)",
-              color: passMessage.type === "error" ? "var(--red)" : "var(--text)",
+              background: passMessage.type === "error" ? "#FFF" : "#000",
+              border: `2px solid #000`,
+              boxShadow: "3px 3px 0px #000",
+              color: passMessage.type === "error" ? "#E31B23" : "#FFF",
               fontSize: "12px",
               fontWeight: 800,
               textAlign: "center",
@@ -407,26 +432,31 @@ export default function ProfileForm({ user, profile }: { user: any, profile: any
               {passMessage.text}
             </div>
           )}
-
+          
           <button 
             type="submit" 
             disabled={passLoading} 
             style={{ 
-              background: "var(--surface)",
-              color: "var(--text)",
-              border: "2px solid var(--border)",
-              boxShadow: "var(--nb-shadow)",
+              background: "#FFF",
+              color: "#000",
+              border: "2px solid #000",
+              boxShadow: "4px 4px 0px #000",
               padding: "16px",
-              fontSize: "10px",
-              fontWeight: 800,
+              fontSize: "11px",
+              fontWeight: 900,
               textTransform: "uppercase",
-              letterSpacing: "0.2em",
+              letterSpacing: "0.15em",
               cursor: "pointer",
-              transition: "transform 0.1s",
+              transition: "all 0.1s",
             }}
-            onMouseDown={(e) => e.currentTarget.style.transform = "translate(2px, 2px)"}
-            onMouseUp={(e) => e.currentTarget.style.transform = "none"}
-            onMouseOut={(e) => e.currentTarget.style.transform = "none"}
+            onMouseDown={(e) => {
+              e.currentTarget.style.transform = "translate(2px, 2px)";
+              e.currentTarget.style.boxShadow = "2px 2px 0px #000";
+            }}
+            onMouseUp={(e) => {
+              e.currentTarget.style.transform = "none";
+              e.currentTarget.style.boxShadow = "4px 4px 0px #000";
+            }}
           >
             {passLoading ? "ATUALIZANDO..." : "REDEFINIR SENHA"}
           </button>

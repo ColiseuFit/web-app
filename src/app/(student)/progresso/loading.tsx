@@ -1,6 +1,6 @@
 /**
  * ProgressoSkeleton:
- * Recreates the student progress view with "Neo-Brutalist Light" tokens.
+ * Recreates the student progress view with "Neo-Brutalist Light" tokens (Iron Monolith).
  * 
  * @architecture
  * - Server Component Skeleton: Pure Server Component to avoid module factory 
@@ -9,57 +9,58 @@
  */
 export default function ProgressoSkeleton() {
   return (
-    <div style={{ backgroundColor: "var(--bg)", minHeight: "100vh", paddingBottom: "100px" }}>
+    <div style={{ backgroundColor: "#FFF", minHeight: "100vh", paddingBottom: "100px" }}>
       <style>
         {`
           @keyframes skeletonPulse {
-            0% { opacity: 0.6; }
-            50% { opacity: 0.25; }
-            100% { opacity: 0.6; }
+            0% { opacity: 1; background-color: #F0F0F0; }
+            50% { opacity: 1; background-color: #E0E0E0; }
+            100% { opacity: 1; background-color: #F0F0F0; }
           }
         `}
       </style>
-      <div style={{ maxWidth: "480px", margin: "0 auto", padding: "0 16px" }}>
+      <div style={{ maxWidth: "480px", margin: "0 auto", padding: "0 20px" }}>
 
         {/* Title Skeleton */}
         <div style={{ paddingTop: "24px", paddingBottom: "32px" }}>
           <div style={{
-            height: "10px", width: "80px",
-            background: "var(--surface-low)", marginBottom: "6px",
+            height: "14px", width: "80px",
+            background: "#F0F0F0", border: "2px solid #000", marginBottom: "8px",
             animation: "skeletonPulse 1.5s infinite ease-in-out"
           }} />
           <div style={{
-            height: "32px", width: "200px",
-            background: "var(--surface-low)", marginBottom: "6px",
+            height: "40px", width: "200px",
+            background: "#F0F0F0", border: "2px solid #000", marginBottom: "8px",
             animation: "skeletonPulse 1.5s infinite ease-in-out"
           }} />
           <div style={{
-            height: "10px", width: "220px",
-            background: "var(--surface-low)",
+            height: "12px", width: "220px",
+            background: "#F0F0F0", border: "2px solid #000",
             animation: "skeletonPulse 1.5s infinite ease-in-out"
           }} />
         </div>
 
         {/* 1. COMPROMISSO SEMANAL (Gauge Skeleton) */}
         <div style={{
-          background: "var(--surface-lowest)",
-          border: "1px solid var(--border-glow)",
+          background: "#FFF",
+          border: "2px solid #000",
+          boxShadow: "4px 4px 0px #F0F0F0",
           position: "relative", overflow: "hidden",
-          borderRadius: "4px", marginBottom: "24px"
+          marginBottom: "24px"
         }}>
           <div style={{
             position: "absolute", left: 0, top: 0, bottom: 0,
-            width: "4px", background: "var(--red)"
+            width: "6px", background: "#E31B23"
           }} />
 
           <div style={{
-            padding: "14px 20px",
-            borderBottom: "1px solid var(--border-glow)",
-            background: "rgba(255,255,255,0.02)"
+            padding: "16px 20px 16px 26px",
+            borderBottom: "2px solid #000",
+            background: "#F9F9F9"
           }}>
             <div style={{
-              height: "9px", width: "160px",
-              background: "var(--surface-low)",
+              height: "12px", width: "160px",
+              background: "#F0F0F0", border: "2px solid #000",
               animation: "skeletonPulse 1.5s infinite ease-in-out"
             }} />
           </div>
@@ -67,16 +68,17 @@ export default function ProgressoSkeleton() {
           {/* Circular Gauge Placeholder */}
           <div style={{
             display: "flex", flexDirection: "column",
-            alignItems: "center", padding: "32px 0"
+            alignItems: "center", padding: "40px 0"
           }}>
             <div style={{
               width: "150px", height: "150px", borderRadius: "50%",
-              border: "10px solid var(--surface-low)",
+              border: "12px solid #F0F0F0",
+              boxShadow: "0 0 0 2px #000 inset, 0 0 0 2px #000",
               animation: "skeletonPulse 1.5s infinite ease-in-out"
             }} />
             <div style={{
-              height: "10px", width: "140px",
-              background: "var(--surface-low)", marginTop: "24px",
+              height: "14px", width: "140px",
+              background: "#F0F0F0", border: "2px solid #000", marginTop: "32px",
               animation: "skeletonPulse 1.5s infinite ease-in-out"
             }} />
           </div>
@@ -88,9 +90,10 @@ export default function ProgressoSkeleton() {
           }}>
             {[1, 2, 3, 4, 5, 6, 7].map((i) => (
               <div key={i} style={{
-                width: "36px", height: "36px",
-                background: "var(--surface-low)",
-                border: "1px solid var(--border-glow)",
+                width: "40px", height: "40px",
+                background: "#F0F0F0",
+                border: "2px solid #000",
+                boxShadow: "2px 2px 0px #000",
                 animation: "skeletonPulse 1.5s infinite ease-in-out",
                 animationDelay: `${i * 0.06}s`
               }} />
@@ -100,28 +103,30 @@ export default function ProgressoSkeleton() {
 
         {/* 2. RECORDES PESSOAIS (PR Matrix Skeleton) */}
         <div style={{
-          background: "var(--surface-lowest)",
-          border: "1px solid var(--border-glow)",
-          borderRadius: "4px", marginBottom: "24px"
+          background: "#FFF",
+          border: "2px solid #000",
+          boxShadow: "4px 4px 0px #F0F0F0",
+          marginBottom: "24px"
         }}>
           <div style={{
-            padding: "14px 20px",
-            borderBottom: "1px solid var(--border-glow)",
-            background: "rgba(255,255,255,0.02)"
+            padding: "16px 20px",
+            borderBottom: "2px solid #000",
+            background: "#F9F9F9"
           }}>
             <div style={{
-              height: "9px", width: "200px",
-              background: "var(--surface-low)",
+              height: "12px", width: "200px",
+              background: "#F0F0F0", border: "2px solid #000",
               animation: "skeletonPulse 1.5s infinite ease-in-out"
             }} />
           </div>
 
-          <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "8px" }}>
-            {[1, 2, 3].map((i) => (
+          <div style={{ padding: "20px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+            {[1, 2, 3, 4].map((i) => (
               <div key={i} style={{
-                height: "64px", width: "100%",
-                background: "var(--surface-low)",
-                border: "1px solid var(--border-glow)",
+                height: "80px", width: "100%",
+                background: "#F0F0F0",
+                border: "2px solid #000",
+                boxShadow: "2px 2px 0px #000",
                 animation: "skeletonPulse 1.5s infinite ease-in-out",
                 animationDelay: `${i * 0.15}s`
               }} />
@@ -131,36 +136,37 @@ export default function ProgressoSkeleton() {
 
         {/* 3. METAS E OBJETIVOS (Goals Skeleton) */}
         <div style={{
-          background: "var(--surface-lowest)",
-          border: "1px solid var(--border-glow)",
-          borderRadius: "4px", marginBottom: "24px"
+          background: "#FFF",
+          border: "2px solid #000",
+          boxShadow: "4px 4px 0px #F0F0F0",
+            marginBottom: "24px"
         }}>
           <div style={{
-            padding: "14px 20px",
-            borderBottom: "1px solid var(--border-glow)",
-            background: "rgba(255,255,255,0.02)"
+            padding: "16px 20px",
+            borderBottom: "2px solid #000",
+            background: "#F9F9F9"
           }}>
             <div style={{
-              height: "9px", width: "150px",
-              background: "var(--surface-low)",
+              height: "12px", width: "150px",
+              background: "#F0F0F0", border: "2px solid #000",
               animation: "skeletonPulse 1.5s infinite ease-in-out"
             }} />
           </div>
 
-          <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: "10px" }}>
+          <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "16px" }}>
             {[1, 2].map((i) => (
               <div key={i} style={{
-                display: "flex", alignItems: "center", gap: "12px"
+                display: "flex", alignItems: "center", gap: "16px"
               }}>
                 <div style={{
-                  width: "20px", height: "20px", flexShrink: 0,
-                  background: "var(--surface-low)",
+                  width: "24px", height: "24px", flexShrink: 0,
+                  background: "#F0F0F0", border: "2px solid #000",
                   animation: "skeletonPulse 1.5s infinite ease-in-out",
                   animationDelay: `${i * 0.1}s`
                 }} />
                 <div style={{
-                  height: "14px", width: `${70 + i * 10}%`,
-                  background: "var(--surface-low)",
+                  height: "16px", width: `${70 + i * 10}%`,
+                  background: "#F0F0F0", border: "2px solid #000",
                   animation: "skeletonPulse 1.5s infinite ease-in-out",
                   animationDelay: `${i * 0.1}s`
                 }} />
@@ -172,4 +178,3 @@ export default function ProgressoSkeleton() {
     </div>
   );
 }
-

@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import BottomNav from "@/components/BottomNav";
+import DashboardStyles from "@/components/DashboardStyles";
 
 interface Photo {
   url: string;
@@ -28,14 +30,14 @@ interface EvaluationData {
  * Componente de visualização detalhada da avaliação física do atleta.
  * 
  * Este componente implementa a interface de "3 Pilares" (Antropometria, Composição e Postura)
- * seguindo a estética brutalista "Iron Monolith".
+ * seguindo a estética brutalista "Iron Monolith" (Light mode).
  * 
  * Funcionalidades principais:
  * - Tab Navigation: Alterna entre diferentes vistas técnicas sem reload.
  * - Radar de Evolução: Slider interativo (0-100) para comparação imediata (clipping) 
  *   entre a imagem anterior (gray-scale) e a atual.
  * - Indicadores de Delta: Cálculos em tempo real comparando medidas atuais com a anterior,
- *   usando cores de status baseadas em progresso (Verde) ou atenção (Vermelho).
+ *   usando cores de status baseadas em progresso (Verde) ou atenção (Vermelha).
  * 
  * @param {object} props - Propriedades do componente.
  * @param {EvaluationData} props.evaluation - Dados da avaliação atual selecionada.
@@ -72,9 +74,9 @@ export default function EvaluationDetailsClient({
   };
 
   const getStatusColor = (diff: number, inverse = false) => {
-    if (diff === 0) return "rgba(255,255,255,0.4)";
+    if (diff === 0) return "rgba(0,0,0,0.4)";
     const good = inverse ? diff > 0 : diff < 0;
-    return good ? "#10B981" : "#F43F5E";
+    return good ? "#10B981" : "#E31B23";
   };
 
   const tabs = [
@@ -85,24 +87,24 @@ export default function EvaluationDetailsClient({
   ];
 
   return (
-    <div style={{ backgroundColor: "#131313", color: "#FFFFFF", fontFamily: "'Inter', sans-serif", minHeight: "100vh", paddingBottom: "100px" }}>
+    <div style={{ backgroundColor: "#FFF", color: "#000", fontFamily: "'Inter', sans-serif", minHeight: "100vh", paddingBottom: "100px" }}>
+      <DashboardStyles />
       {/* ── HEADER ── */}
       <header style={{
-        background: "rgba(19,19,19,0.8)",
-        backdropFilter: "blur(20px)",
+        background: "#FFF",
         position: "sticky",
         top: 0,
         zIndex: 100,
         padding: "16px",
-        borderBottom: "1px solid rgba(255,255,255,0.05)"
+        borderBottom: "2px solid #000"
       }}>
         <div style={{ maxWidth: "480px", margin: "0 auto", display: "flex", alignItems: "center", gap: "16px" }}>
-          <Link href="/profile/evaluations" style={{ color: "#FFF", display: "flex", alignItems: "center" }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <Link href="/profile/evaluations" style={{ color: "#000", display: "flex", alignItems: "center" }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <path d="M15 18l-6-6 6-6" />
             </svg>
           </Link>
-          <h1 style={{ fontFamily: "'Outfit', sans-serif", fontSize: "14px", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.1em" }}>ANÁLISE DE ATLETA</h1>
+          <h1 style={{ fontFamily: "var(--font-display, 'Outfit', sans-serif)", fontSize: "14px", fontWeight: 950, textTransform: "uppercase", letterSpacing: "0.1em" }}>ANÁLISE DE ATLETA</h1>
         </div>
       </header>
 
@@ -112,8 +114,8 @@ export default function EvaluationDetailsClient({
         margin: "0 auto", 
         padding: "0 20px", 
         display: "flex", 
-        borderBottom: "1px solid rgba(255,255,255,0.05)",
-        background: "#131313"
+        borderBottom: "2px solid #000",
+        background: "#FFF"
       }}>
         {tabs.map(tab => (
           <button
@@ -128,8 +130,8 @@ export default function EvaluationDetailsClient({
               fontSize: "10px",
               fontWeight: 900,
               letterSpacing: "0.1em",
-              color: activeTab === tab.id ? "#E31B23" : "rgba(255,255,255,0.3)",
-              borderBottom: activeTab === tab.id ? "2px solid #E31B23" : "2px solid transparent",
+              color: activeTab === tab.id ? "#E31B23" : "#999",
+              borderBottom: activeTab === tab.id ? "3px solid #E31B23" : "3px solid transparent",
               transition: "all 0.2s ease"
             }}
           >
@@ -144,51 +146,51 @@ export default function EvaluationDetailsClient({
         {activeTab === "resumo" && (
           <div className="animate-fadeIn">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "32px" }}>
-              <div style={{ fontSize: "14px", fontWeight: 900, color: "#E31B23", fontFamily: "'Outfit', sans-serif" }}>
+              <div style={{ fontSize: "14px", fontWeight: 900, color: "#E31B23", fontFamily: "var(--font-display, 'Outfit', sans-serif)" }}>
                 {new Date(evaluation.evaluation_date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric', timeZone: 'UTC' }).toUpperCase()}
               </div>
-              <div style={{ fontSize: "10px", fontWeight: 700, background: "rgba(255,255,255,0.05)", padding: "4px 8px", borderRadius: "2px" }}>
+              <div style={{ fontSize: "10px", fontWeight: 900, background: "#000", color: "#FFF", padding: "4px 8px" }}>
                 ESTADO: <span style={{ color: "#10B981" }}>EM EVOLUÇÃO</span>
               </div>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginBottom: "32px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "32px" }}>
                {/* Weight Card */}
-               <div style={{ background: "#0E0E0E", padding: "20px" }}>
-                <div style={{ fontSize: "8px", fontWeight: 800, color: "rgba(255,255,255,0.3)", marginBottom: "4px" }}>PESO ATUAL</div>
+               <div style={{ background: "#FFF", padding: "20px", border: "2px solid #000", boxShadow: "3px 3px 0px #F0F0F0" }}>
+                <div style={{ fontSize: "8px", fontWeight: 900, color: "#000", opacity: 0.5, marginBottom: "4px", letterSpacing: "0.1em" }}>PESO ATUAL</div>
                 <div style={{ display: "flex", alignItems: "baseline", gap: "8px" }}>
-                  <div style={{ fontFamily: "'Outfit', sans-serif", fontSize: "24px", fontWeight: 900, color: "#FFF" }}>{evaluation.weight} <span style={{ fontSize: "10px" }}>KG</span></div>
+                  <div style={{ fontFamily: "var(--font-display, 'Outfit', sans-serif)", fontSize: "24px", fontWeight: 950, color: "#000" }}>{evaluation.weight} <span style={{ fontSize: "10px", fontWeight: 900, color: "#999" }}>KG</span></div>
                   {previous && (
-                    <span style={{ fontSize: "10px", fontWeight: 800, color: getStatusColor(evaluation.weight - previous.weight) }}>
+                    <span style={{ fontSize: "10px", fontWeight: 900, color: getStatusColor(evaluation.weight - previous.weight) }}>
                       {getDelta(evaluation.weight, previous.weight)}
                     </span>
                   )}
                 </div>
               </div>
               {/* BF Card */}
-              <div style={{ background: "#0E0E0E", padding: "20px" }}>
-                <div style={{ fontSize: "8px", fontWeight: 800, color: "rgba(255,255,255,0.3)", marginBottom: "4px" }}>GORDURA CORPO</div>
+              <div style={{ background: "#FFF", padding: "20px", border: "2px solid #000", boxShadow: "3px 3px 0px #F0F0F0" }}>
+                <div style={{ fontSize: "8px", fontWeight: 900, color: "#000", opacity: 0.5, marginBottom: "4px", letterSpacing: "0.1em" }}>GORDURA CORPO</div>
                 <div style={{ display: "flex", alignItems: "baseline", gap: "8px" }}>
-                  <div style={{ fontFamily: "'Outfit', sans-serif", fontSize: "24px", fontWeight: 900, color: "#E31B23" }}>{evaluation.body_fat_percentage}%</div>
+                  <div style={{ fontFamily: "var(--font-display, 'Outfit', sans-serif)", fontSize: "24px", fontWeight: 950, color: "#E31B23" }}>{evaluation.body_fat_percentage}%</div>
                   {previous && (
-                    <span style={{ fontSize: "10px", fontWeight: 800, color: getStatusColor(evaluation.body_fat_percentage - previous.body_fat_percentage) }}>
+                    <span style={{ fontSize: "10px", fontWeight: 900, color: getStatusColor(evaluation.body_fat_percentage - previous.body_fat_percentage) }}>
                       {getDelta(evaluation.body_fat_percentage, previous.body_fat_percentage)}
                     </span>
                   )}
                 </div>
               </div>
               {/* BMI Card */}
-              <div style={{ background: "#0E0E0E", padding: "20px" }}>
-                <div style={{ fontSize: "8px", fontWeight: 800, color: "rgba(255,255,255,0.3)", marginBottom: "4px" }}>IMC (BODY INDEX)</div>
-                <div style={{ fontFamily: "'Outfit', sans-serif", fontSize: "20px", fontWeight: 900, color: "#FFF" }}>{bmi}</div>
+              <div style={{ background: "#FFF", padding: "20px", border: "2px solid #000", boxShadow: "3px 3px 0px #F0F0F0" }}>
+                <div style={{ fontSize: "8px", fontWeight: 900, color: "#000", opacity: 0.5, marginBottom: "4px", letterSpacing: "0.1em" }}>IMC (BODY INDEX)</div>
+                <div style={{ fontFamily: "var(--font-display, 'Outfit', sans-serif)", fontSize: "20px", fontWeight: 950, color: "#000" }}>{bmi}</div>
               </div>
               {/* Lean Mass Card */}
-              <div style={{ background: "#0E0E0E", padding: "20px" }}>
-                <div style={{ fontSize: "8px", fontWeight: 800, color: "rgba(255,255,255,0.3)", marginBottom: "4px" }}>MASSA MAGRA</div>
+              <div style={{ background: "#FFF", padding: "20px", border: "2px solid #000", boxShadow: "3px 3px 0px #F0F0F0" }}>
+                <div style={{ fontSize: "8px", fontWeight: 900, color: "#000", opacity: 0.5, marginBottom: "4px", letterSpacing: "0.1em" }}>MASSA MAGRA</div>
                 <div style={{ display: "flex", alignItems: "baseline", gap: "8px" }}>
-                  <div style={{ fontFamily: "'Outfit', sans-serif", fontSize: "20px", fontWeight: 900, color: "#10B981" }}>{leanMass} <span style={{ fontSize: "10px", color: "#FFF" }}>KG</span></div>
+                  <div style={{ fontFamily: "var(--font-display, 'Outfit', sans-serif)", fontSize: "20px", fontWeight: 950, color: "#10B981" }}>{leanMass} <span style={{ fontSize: "10px", color: "#000" }}>KG</span></div>
                   {prevLeanMass && (
-                    <span style={{ fontSize: "10px", fontWeight: 800, color: getStatusColor(Number(leanMass) - Number(prevLeanMass), true) }}>
+                    <span style={{ fontSize: "10px", fontWeight: 900, color: getStatusColor(Number(leanMass) - Number(prevLeanMass), true) }}>
                       {getDelta(Number(leanMass), Number(prevLeanMass))}
                     </span>
                   )}
@@ -196,19 +198,19 @@ export default function EvaluationDetailsClient({
               </div>
 
               {/* Height Card */}
-              <div style={{ background: "#0E0E0E", padding: "20px" }}>
-                <div style={{ fontSize: "8px", fontWeight: 800, color: "rgba(255,255,255,0.3)", marginBottom: "4px" }}>ALTURA</div>
-                <div style={{ fontFamily: "'Outfit', sans-serif", fontSize: "20px", fontWeight: 900, color: "#FFF" }}>{evaluation.height} <span style={{ fontSize: "10px" }}>M</span></div>
+              <div style={{ background: "#FFF", padding: "20px", border: "2px solid #000", boxShadow: "3px 3px 0px #F0F0F0" }}>
+                <div style={{ fontSize: "8px", fontWeight: 900, color: "#000", opacity: 0.5, marginBottom: "4px", letterSpacing: "0.1em" }}>ALTURA</div>
+                <div style={{ fontFamily: "var(--font-display, 'Outfit', sans-serif)", fontSize: "20px", fontWeight: 950, color: "#000" }}>{evaluation.height} <span style={{ fontSize: "10px", color: "#999" }}>M</span></div>
               </div>
 
               {/* WHR Card */}
-              <div style={{ background: "#0E0E0E", padding: "20px" }}>
-                <div style={{ fontSize: "8px", fontWeight: 800, color: "rgba(255,255,255,0.3)", marginBottom: "4px" }}>WHR (CINTURA/QUADRIL)</div>
+              <div style={{ background: "#FFF", padding: "20px", border: "2px solid #000", boxShadow: "3px 3px 0px #F0F0F0" }}>
+                <div style={{ fontSize: "8px", fontWeight: 900, color: "#000", opacity: 0.5, marginBottom: "4px", letterSpacing: "0.1em" }}>WHR (CINTURA/QUADRIL)</div>
                 <div style={{ display: "flex", alignItems: "baseline", gap: "8px" }}>
-                  <div style={{ fontFamily: "'Outfit', sans-serif", fontSize: "20px", fontWeight: 900, color: (evaluation.waist_hip_ratio || 0) > 0.9 ? "#F43F5E" : "#FFF" }}>
+                  <div style={{ fontFamily: "var(--font-display, 'Outfit', sans-serif)", fontSize: "20px", fontWeight: 950, color: (evaluation.waist_hip_ratio || 0) > 0.9 ? "#E31B23" : "#000" }}>
                     {evaluation.waist_hip_ratio || "--"}
                   </div>
-                  <span style={{ fontSize: "8px", fontWeight: 900, color: (evaluation.waist_hip_ratio || 0) > 0.9 ? "#F43F5E" : "rgba(255,255,255,0.4)" }}>
+                  <span style={{ fontSize: "8px", fontWeight: 900, color: (evaluation.waist_hip_ratio || 0) > 0.9 ? "#E31B23" : "rgba(0,0,0,0.4)" }}>
                     {(evaluation.waist_hip_ratio || 0) > 0.9 ? "ATENÇÃO" : "SAUDÁVEL"}
                   </span>
                 </div>
@@ -219,15 +221,15 @@ export default function EvaluationDetailsClient({
             {previous && evaluation.photos.length > 0 && previous.photos.length > 0 && (
               <section style={{ marginBottom: "40px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "20px" }}>
-                  <h2 style={{ fontFamily: "'Outfit', sans-serif", fontSize: "12px", fontWeight: 900 }}>RADAR DE EVOLUÇÃO</h2>
-                  <div style={{ flex: 1, height: "1px", background: "rgba(255,255,255,0.1)" }} />
+                  <h2 style={{ fontFamily: "var(--font-display, 'Outfit', sans-serif)", fontSize: "14px", fontWeight: 900 }}>RADAR DE EVOLUÇÃO</h2>
+                  <div style={{ flex: 1, height: "2px", background: "#000" }} />
                 </div>
                 
-                <div style={{ position: "relative", aspectRatio: "3/4", background: "#0E0E0E", overflow: "hidden", border: "1px solid rgba(255,255,255,0.1)" }}>
+                <div style={{ position: "relative", aspectRatio: "3/4", background: "#F5F5F5", overflow: "hidden", border: "2px solid #000", boxShadow: "6px 6px 0px #000" }}>
                   {/* Previous Image */}
                   <img 
                     src={previous.photos[0].url} 
-                    style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", filter: "grayscale(100%) opacity(0.5)" }} 
+                    style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", filter: "grayscale(100%) opacity(0.6)" }} 
                   />
                   {/* Current Image (Clipped) */}
                   <div style={{ 
@@ -235,8 +237,9 @@ export default function EvaluationDetailsClient({
                     inset: 0, 
                     width: `${evolutionSplit}%`, 
                     overflow: "hidden", 
-                    borderRight: "2px solid #E31B23",
-                    zIndex: 2
+                    borderRight: "4px solid #E31B23",
+                    zIndex: 2,
+                    boxShadow: "2px 0 10px rgba(0,0,0,0.5)"
                   }}>
                     <img 
                       src={evaluation.photos[0].url} 
@@ -244,8 +247,8 @@ export default function EvaluationDetailsClient({
                     />
                   </div>
                   {/* Labels */}
-                  <div style={{ position: "absolute", left: "12px", top: "12px", fontSize: "10px", fontWeight: 900, color: "rgba(255,255,255,0.5)", zIndex: 3 }}>ANTERIOR</div>
-                  <div style={{ position: "absolute", right: "12px", top: "12px", fontSize: "10px", fontWeight: 900, color: "#FFF", zIndex: 3, background: "#E31B23", padding: "2px 6px" }}>ATUAL</div>
+                  <div style={{ position: "absolute", left: "12px", top: "12px", fontSize: "10px", fontWeight: 900, color: "#000", background: "#FFF", border: "2px solid #000", padding: "2px 6px", zIndex: 3 }}>ANTERIOR</div>
+                  <div style={{ position: "absolute", right: "12px", top: "12px", fontSize: "10px", fontWeight: 900, color: "#FFF", zIndex: 3, background: "#E31B23", border: "2px solid #000", padding: "2px 6px" }}>ATUAL</div>
                   
                   {/* Slider Control */}
                   <input 
@@ -266,7 +269,7 @@ export default function EvaluationDetailsClient({
                     }}
                   />
                 </div>
-                <p style={{ fontSize: "9px", color: "rgba(255,255,255,0.3)", marginTop: "12px", textAlign: "center", letterSpacing: "0.1em" }}>DESLIZE PARA COMPARAR DEFINIÇÃO E VOLUME</p>
+                <p style={{ fontSize: "9px", color: "#000", opacity: 0.6, marginTop: "16px", textAlign: "center", letterSpacing: "0.1em", fontWeight: 900 }}>DESLIZE PARA COMPARAR DEFINIÇÃO E VOLUME</p>
               </section>
             )}
 
@@ -274,14 +277,14 @@ export default function EvaluationDetailsClient({
             {evaluation.photos.length > 0 && (
               <section style={{ marginBottom: "40px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "20px" }}>
-                  <h2 style={{ fontFamily: "'Outfit', sans-serif", fontSize: "12px", fontWeight: 900 }}>GALERIA DE REGISTROS</h2>
-                  <div style={{ flex: 1, height: "1px", background: "rgba(255,255,255,0.1)" }} />
+                  <h2 style={{ fontFamily: "var(--font-display, 'Outfit', sans-serif)", fontSize: "14px", fontWeight: 900 }}>GALERIA DE REGISTROS</h2>
+                  <div style={{ flex: 1, height: "2px", background: "#000" }} />
                 </div>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "12px" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "16px" }}>
                   {evaluation.photos.map((photo, i) => (
-                    <div key={i} style={{ background: "#0E0E0E", padding: "8px", border: "1px solid rgba(255,255,255,0.05)" }}>
-                      <img src={photo.url} alt={photo.label} style={{ width: "100%", aspectRatio: "1/1", objectFit: "cover", marginBottom: "8px" }} />
-                      <div style={{ fontSize: "9px", fontWeight: 800, color: "rgba(255,255,255,0.4)", textAlign: "center", textTransform: "uppercase" }}>{photo.label || `FOTO ${i+1}`}</div>
+                    <div key={i} style={{ background: "#FFF", padding: "8px", border: "2px solid #000", boxShadow: "3px 3px 0px #000" }}>
+                      <img src={photo.url} alt={photo.label} style={{ width: "100%", aspectRatio: "1/1", objectFit: "cover", marginBottom: "8px", border: "1px solid #000" }} />
+                      <div style={{ fontSize: "10px", fontWeight: 900, color: "#000", textAlign: "center", textTransform: "uppercase" }}>{photo.label || `FOTO ${i+1}`}</div>
                     </div>
                   ))}
                 </div>
@@ -289,9 +292,9 @@ export default function EvaluationDetailsClient({
             )}
 
             {evaluation.notes && (
-              <section style={{ padding: "20px", background: "rgba(255,255,255,0.02)", borderLeft: "2px solid #E31B23" }}>
-                <h3 style={{ fontSize: "10px", fontWeight: 900, marginBottom: "8px", color: "rgba(255,255,255,0.4)" }}>OBSERVAÇÕES DO COACH</h3>
-                <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.7)", lineHeight: 1.6 }}>{evaluation.notes}</p>
+              <section style={{ padding: "20px", background: "#FFF", border: "2px solid #000", borderLeft: "6px solid #E31B23", boxShadow: "4px 4px 0px #F0F0F0" }}>
+                <h3 style={{ fontSize: "12px", fontWeight: 950, marginBottom: "8px", color: "#000", textTransform: "uppercase" }}>OBSERVAÇÕES DO COACH</h3>
+                <p style={{ fontSize: "13px", color: "#000", lineHeight: 1.6, fontWeight: 700 }}>{evaluation.notes}</p>
               </section>
             )}
           </div>
@@ -300,8 +303,8 @@ export default function EvaluationDetailsClient({
         {/* ── CONTENT: ANTROPOMETRIA ── */}
         {activeTab === "antropometria" && (
           <div className="animate-fadeIn">
-            <h2 style={{ fontFamily: "'Outfit', sans-serif", fontSize: "12px", fontWeight: 900, marginBottom: "20px", color: "#E31B23" }}>PERIMETRIA TÉCNICA (CM)</h2>
-            <div style={{ display: "grid", gap: "1px", background: "rgba(255,255,255,0.05)" }}>
+            <h2 style={{ fontFamily: "var(--font-display, 'Outfit', sans-serif)", fontSize: "14px", fontWeight: 950, marginBottom: "20px", color: "#E31B23" }}>PERIMETRIA TÉCNICA (CM)</h2>
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
               {[
                 { key: "neck", label: "PESCOÇO" },
                 { key: "shoulder", label: "OMBRO" },
@@ -323,12 +326,12 @@ export default function EvaluationDetailsClient({
                 const value = evaluation.measurements[field.key];
                 if (value === undefined || value === null) return null;
                 return (
-                  <div key={field.key} style={{ background: "#0E0E0E", padding: "12px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ fontSize: "10px", fontWeight: 700, color: "rgba(255,255,255,0.4)", textTransform: "uppercase" }}>{field.label}</span>
-                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                      <span style={{ fontFamily: "'Inter', sans-serif", fontWeight: 800, fontSize: "14px" }}>{value}</span>
+                  <div key={field.key} style={{ background: "#FFF", padding: "16px", border: "2px solid #000", display: "flex", justifyContent: "space-between", alignItems: "center", boxShadow: "2px 2px 0px #F0F0F0" }}>
+                    <span style={{ fontSize: "11px", fontWeight: 900, color: "#000", textTransform: "uppercase", letterSpacing: "0.05em" }}>{field.label}</span>
+                    <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                      <span style={{ fontFamily: "var(--font-display, 'Outfit', sans-serif)", fontWeight: 950, fontSize: "18px" }}>{value}</span>
                       {previous?.measurements?.[field.key] && (
-                        <span style={{ fontSize: "9px", color: getStatusColor(Number(value) - Number(previous.measurements[field.key]), true) }}>
+                        <span style={{ fontSize: "11px", fontWeight: 900, color: getStatusColor(Number(value) - Number(previous.measurements[field.key]), true) }}>
                           {getDelta(Number(value), Number(previous.measurements[field.key]))}
                         </span>
                       )}
@@ -344,11 +347,11 @@ export default function EvaluationDetailsClient({
         {activeTab === "composicao" && (
           <div className="animate-fadeIn">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
-              <h2 style={{ fontFamily: "'Outfit', sans-serif", fontSize: "12px", fontWeight: 900, color: "#E31B23" }}>DOBRAS CUTÂNEAS (MM)</h2>
-              <span style={{ fontSize: "8px", fontWeight: 900, opacity: 0.4 }}>PROTOCOLO: {evaluation.protocol}</span>
+              <h2 style={{ fontFamily: "var(--font-display, 'Outfit', sans-serif)", fontSize: "14px", fontWeight: 950, color: "#E31B23" }}>DOBRAS CUTÂNEAS (MM)</h2>
+              <span style={{ fontSize: "9px", fontWeight: 900, background: "#000", color: "#FFF", padding: "4px 8px" }}>PROTOCOLO: {evaluation.protocol}</span>
             </div>
             
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginBottom: "32px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "40px" }}>
               {[
                 { key: "triceps", label: "TRÍCEPS" },
                 { key: "biceps", label: "BÍCEPS" },
@@ -362,16 +365,16 @@ export default function EvaluationDetailsClient({
                 const value = evaluation.skinfolds[field.key];
                 if (value === undefined || value === null) return null;
                 return (
-                  <div key={field.key} style={{ background: "#0E0E0E", padding: "16px" }}>
-                    <div style={{ fontSize: "8px", fontWeight: 700, color: "rgba(255,255,255,0.4)", marginBottom: "4px", textTransform: "uppercase" }}>{field.label}</div>
-                    <div style={{ fontFamily: "'Outfit', sans-serif", fontSize: "18px", fontWeight: 900 }}>{value}</div>
+                  <div key={field.key} style={{ background: "#FFF", padding: "16px", border: "2px solid #000", boxShadow: "2px 2px 0px #000" }}>
+                    <div style={{ fontSize: "10px", fontWeight: 900, color: "#000", opacity: 0.6, marginBottom: "4px", textTransform: "uppercase" }}>{field.label}</div>
+                    <div style={{ fontFamily: "var(--font-display, 'Outfit', sans-serif)", fontSize: "20px", fontWeight: 950 }}>{value}</div>
                   </div>
                 );
               })}
             </div>
 
-            <h2 style={{ fontFamily: "'Outfit', sans-serif", fontSize: "12px", fontWeight: 900, marginBottom: "20px", color: "rgba(255,255,255,0.4)" }}>DIÂMETROS ÓSSEOS (CM)</h2>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "4px" }}>
+            <h2 style={{ fontFamily: "var(--font-display, 'Outfit', sans-serif)", fontSize: "14px", fontWeight: 950, marginBottom: "20px", color: "#000" }}>DIÂMETROS ÓSSEOS (CM)</h2>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "12px" }}>
               {[
                 { key: "humerus", label: "ÚMERO" },
                 { key: "femur", label: "FÊMUR" },
@@ -381,9 +384,9 @@ export default function EvaluationDetailsClient({
                 const value = evaluation.bone_diameters[field.key];
                 if (value === undefined || value === null) return null;
                 return (
-                  <div key={field.key} style={{ background: "#0E0E0E", padding: "12px", textAlign: "center" }}>
-                    <div style={{ fontSize: "7px", fontWeight: 700, opacity: 0.4, marginBottom: "4px", textTransform: "uppercase" }}>{field.label}</div>
-                    <div style={{ fontSize: "12px", fontWeight: 900 }}>{value}</div>
+                  <div key={field.key} style={{ background: "#FFF", padding: "16px", textAlign: "center", border: "2px dashed #000" }}>
+                    <div style={{ fontSize: "10px", fontWeight: 900, opacity: 0.6, marginBottom: "4px", textTransform: "uppercase" }}>{field.label}</div>
+                    <div style={{ fontFamily: "var(--font-display, 'Outfit', sans-serif)", fontSize: "18px", fontWeight: 950 }}>{value}</div>
                   </div>
                 );
               })}
@@ -394,17 +397,17 @@ export default function EvaluationDetailsClient({
         {/* ── CONTENT: POSTURA ── */}
         {activeTab === "postura" && (
           <div className="animate-fadeIn">
-            <h2 style={{ fontFamily: "'Outfit', sans-serif", fontSize: "12px", fontWeight: 900, marginBottom: "20px", color: "#E31B23" }}>ANÁLISE BIOMECÂNICA</h2>
+            <h2 style={{ fontFamily: "var(--font-display, 'Outfit', sans-serif)", fontSize: "14px", fontWeight: 950, marginBottom: "20px", color: "#000" }}>ANÁLISE BIOMECÂNICA</h2>
             
             {Object.entries(evaluation.postural_analysis).map(([view, findings]) => (
-              <div key={view} style={{ marginBottom: "24px", background: "#0E0E0E", borderLeft: "2px solid #E31B23", padding: "16px" }}>
-                <div style={{ fontSize: "10px", fontWeight: 900, color: "#E31B23", marginBottom: "12px", textTransform: "uppercase" }}>
+              <div key={view} style={{ marginBottom: "24px", background: "#FFF", border: "2px solid #000", borderLeft: "8px solid #000", padding: "20px", boxShadow: "4px 4px 0px #F0F0F0" }}>
+                <div style={{ fontSize: "12px", fontWeight: 950, color: "#000", marginBottom: "12px", textTransform: "uppercase" }}>
                   {view === "anterior" ? "VISTA ANTERIOR" : 
                    view === "posterior" ? "VISTA POSTERIOR" : 
                    view === "lateral_right" ? "LATERAL DIREITA" : 
                    view === "lateral_left" ? "LATERAL ESQUERDA" : view}
                 </div>
-                <div style={{ fontSize: "13px", color: "rgba(255,255,255,0.8)", lineHeight: 1.5, background: "rgba(255,255,255,0.02)", padding: "12px" }}>
+                <div style={{ fontSize: "13px", color: "#000", lineHeight: 1.5, background: "#F9F9F9", padding: "16px", border: "1px dashed #000", fontWeight: 600 }}>
                    {String(findings)}
                 </div>
               </div>
@@ -414,65 +417,7 @@ export default function EvaluationDetailsClient({
 
       </main>
 
-      {/* ── BOTTOM NAV ── */}
-      <nav
-        style={{
-          position: "fixed",
-          bottom: 0,
-          left: 0,
-          width: "100%",
-          background: "rgba(5,5,5,0.92)",
-          borderTop: "1px solid rgba(255,255,255,0.06)",
-          backdropFilter: "blur(24px)",
-          zIndex: 150,
-        }}
-      >
-        <div
-          style={{
-            maxWidth: "480px",
-            margin: "0 auto",
-            display: "flex",
-            justifyContent: "space-around",
-          }}
-        >
-          {[
-            { href: "/dashboard", label: "Início", path: "M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z", type: "fill" },
-            { href: "/treinos", label: "Treinos", path: "M13 2L3 14h9l-1 8 10-12h-9l1-8z", type: "stroke" },
-            { href: "/profile", label: "Perfil", path: "M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2 M12 7a4 4 0 1 0 0-8 4 4 0 0 0 0 8z", type: "stroke" },
-          ].map((item) => {
-            const isActive = item.href === "/profile";
-            return (
-              <Link key={item.href} href={item.href} style={{ textDecoration: "none", flex: 1 }}>
-                <div style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  gap: "4px",
-                  padding: "14px 0",
-                  color: isActive ? "#E31B23" : "rgba(255,255,255,0.2)",
-                  position: "relative",
-                }}>
-                  {isActive && (
-                    <div style={{
-                      position: "absolute",
-                      top: "-1px",
-                      left: "50%",
-                      transform: "translateX(-50%)",
-                      width: "40px",
-                      height: "2px",
-                      background: "#E31B23",
-                    }} />
-                  )}
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill={item.type === "fill" ? "currentColor" : "none"} stroke={item.type === "stroke" ? "currentColor" : "none"} strokeWidth="2">
-                    <path d={item.path} />
-                  </svg>
-                  <span style={{ fontSize: "8px", fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase" }}>{item.label}</span>
-                </div>
-              </Link>
-            );
-          })}
-        </div>
-      </nav>
+      <BottomNav />
     </div>
   );
 }

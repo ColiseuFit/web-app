@@ -6,15 +6,11 @@ import { getLevelInfo, LevelInfo as CentralLevelInfo } from "@/lib/constants/lev
 
 interface AthleteStats {
   points_actual: number;
-  points_next_level: number;
-  total_points_goal: number;
 }
 
 interface LevelCardProps {
   level: string | CentralLevelInfo;
   stats: AthleteStats;
-  pointsProgress: number;
-  pointsRemaining: number;
   avatarUrl?: string | null;
 }
 
@@ -22,7 +18,7 @@ interface LevelCardProps {
  * LevelCard "Elite Performance Certificate"
  * A high-density data component for the athlete's progress.
  */
-export default function LevelCard({ level: levelInput, stats, pointsProgress, pointsRemaining, avatarUrl }: LevelCardProps) {
+export default function LevelCard({ level: levelInput, stats, avatarUrl }: LevelCardProps) {
   const level = typeof levelInput === "string" ? getLevelInfo(levelInput) : levelInput;
   
   return (
@@ -118,43 +114,7 @@ export default function LevelCard({ level: levelInput, stats, pointsProgress, po
           </div>
         </div>
 
-        {/* PROGRESS BAR (BRUTALIST TRACK) */}
-        <div style={{ marginTop: "24px" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
-             <span style={{ fontSize: "10px", fontWeight: 900, letterSpacing: "0.05em" }}>PROGRESSO DE NÍVEL</span>
-             <span style={{ fontSize: "10px", fontWeight: 900 }}>{Math.round(pointsProgress)}%</span>
-          </div>
-          <div style={{ 
-            width: "100%", 
-            height: "16px", 
-            background: "#F0F0F0", 
-            border: "2px solid #000", 
-            position: "relative",
-          }}>
-            <div 
-              style={{ 
-                position: "absolute", 
-                left: 0, 
-                top: 0, 
-                height: "100%", 
-                width: `${pointsProgress}%`, 
-                background: level.color,
-                borderRight: "2px solid #000",
-                transition: "width 1.5s cubic-bezier(0.16, 1, 0.3, 1)",
-            }} />
-          </div>
-          <div style={{ 
-            marginTop: "10px", 
-            fontSize: "10px", 
-            fontWeight: 800, 
-            color: "#000", 
-            textAlign: "center",
-            letterSpacing: "0.02em",
-            opacity: 0.6
-          }}>
-            FALTAM {pointsRemaining.toLocaleString("pt-BR")} PONTOS PARA A PRÓXIMA GRADUAÇÃO
-          </div>
-        </div>
+
       </div>
     </div>
   );
