@@ -33,7 +33,7 @@ export default function GamificacaoClient({ students, dynamicLevels, initialRule
   // Estados para Reset Global
   const [showResetModal, setShowResetModal] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
-  const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
   const filteredStudents = students.filter(s => {
     const searchLow = searchTerm.toLowerCase().trim();
@@ -104,15 +104,15 @@ export default function GamificacaoClient({ students, dynamicLevels, initialRule
     try {
       const result = await resetAllGamification();
       if (result.success) {
-        setToast({ msg: "GAMIFICAÇÃO ZERADA COM SUCESSO!", type: "success" });
+        setToast({ message: "GAMIFICAÇÃO ZERADA COM SUCESSO!", type: "success" });
         setTimeout(() => window.location.reload(), 2000);
       } else {
-        setToast({ msg: result.error || "ERRO AO ZERAR PONTUAÇÃO", type: "error" });
+        setToast({ message: result.error || "ERRO AO ZERAR PONTUAÇÃO", type: "error" });
         setIsResetting(false);
         setShowResetModal(false);
       }
     } catch (err) {
-      setToast({ msg: "FALHA CRÍTICA NO SERVIDOR", type: "error" });
+      setToast({ message: "FALHA CRÍTICA NO SERVIDOR", type: "error" });
       setIsResetting(false);
       setShowResetModal(false);
     }
@@ -405,7 +405,7 @@ export default function GamificacaoClient({ students, dynamicLevels, initialRule
 
           {toast && (
             <Toast 
-              msg={toast.msg} 
+              message={toast.message} 
               type={toast.type} 
               onClose={() => setToast(null)} 
             />

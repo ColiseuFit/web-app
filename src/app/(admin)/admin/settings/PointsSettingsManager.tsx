@@ -24,7 +24,7 @@ export default function PointsSettingsManager({ initialRules }: PointsSettingsMa
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
-  const [toast, setToast] = useState<{ msg: string, type: "success" | "error" } | null>(null);
+  const [toast, setToast] = useState<{ message: string, type: "success" | "error" } | null>(null);
 
   // Carregar regras do Banco de Dados (SSoT)
   const loadRules = async () => {
@@ -51,9 +51,9 @@ export default function PointsSettingsManager({ initialRules }: PointsSettingsMa
     startTransition(async () => {
       const result = await updatePointsRule(id, newPoints);
       if (result.success) {
-        setToast({ msg: "REGRA ATUALIZADA!", type: "success" });
+        setToast({ message: "REGRA ATUALIZADA!", type: "success" });
       } else {
-        setToast({ msg: "ERRO AO SALVAR", type: "error" });
+        setToast({ message: "ERRO AO SALVAR", type: "error" });
       }
     });
   };
@@ -65,9 +65,9 @@ export default function PointsSettingsManager({ initialRules }: PointsSettingsMa
     startTransition(async () => {
       const result = await updatePointsRuleStatus(id, newStatus); 
       if (result.success) {
-        setToast({ msg: newStatus ? "REGRA ATIVADA!" : "REGRA DESATIVADA!", type: "success" });
+        setToast({ message: newStatus ? "REGRA ATIVADA!" : "REGRA DESATIVADA!", type: "success" });
       } else {
-        setToast({ msg: "ERRO AO ALTERAR STATUS", type: "error" });
+        setToast({ message: "ERRO AO ALTERAR STATUS", type: "error" });
         // Reverter local caso erro
         setRules(prev => prev.map(r => r.id === id ? { ...r, is_active: currentStatus } : r));
       }
@@ -184,7 +184,7 @@ export default function PointsSettingsManager({ initialRules }: PointsSettingsMa
 
       {toast && (
         <Toast 
-          msg={toast.msg} 
+          message={toast.message} 
           type={toast.type} 
           onClose={() => setToast(null)} 
         />

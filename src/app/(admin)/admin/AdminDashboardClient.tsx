@@ -38,6 +38,7 @@ interface RecentStudent {
   level: string;
   avatar_url?: string | null;
   phone: string | null;
+  created_at: string;
   checked_in_today: boolean;
 }
 

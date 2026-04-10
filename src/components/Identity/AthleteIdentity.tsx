@@ -1,15 +1,25 @@
 "use client";
 
 import AthleteAvatar from "./AthleteAvatar";
+export { AthleteAvatar };
 import { getDisplayName } from "@/lib/identity-utils";
 
 interface AthleteIdentityProps {
-  profile: {
+  // New SSoT style
+  profile?: {
     full_name?: string | null;
     display_name?: string | null;
     avatar_url?: string | null;
     [key: string]: any;
   } | null;
+
+  // Legacy compatibility props
+  full_name?: string | null;
+  display_name?: string | null;
+  avatar_url?: string | null;
+  size?: number; // Legacy alias for avatarSize
+  subordinateText?: string; // Legacy alias for subtitle
+
   mode?: "full" | "avatar" | "compact";
   avatarSize?: number;
   showSubtitle?: boolean;
@@ -17,41 +27,64 @@ interface AthleteIdentityProps {
 }
 
 /**
- * AthleteIdentity Component (Iron Monolith SSoT)
+ * AthleteIdentity Component (Iron Monolith SSoT - Polymorphic)
  * 
  * Única fonte de verdade para exibição de identidade de atletas na plataforma.
+ * Suporta tanto o novo padrão de objeto 'profile' quanto propriedades individuais legadas.
  */
-export default function AthleteIdentity({ 
-  profile, 
+export function AthleteIdentity({ 
+  profile,
+  full_name,
+  display_name,
+  avatar_url,
+  size,
+  subordinateText,
   mode = "full", 
   avatarSize = 32,
   showSubtitle = false,
   subtitle
 }: AthleteIdentityProps) {
-  const name = getDisplayName(profile);
+  // Merge to effective profile
+  const effectiveProfile = profile || {
+    full_name,
+    display_name,
+    avatar_url
+  };
+
+  const currentName = getDisplayName(effectiveProfile);
+  const currentAvatarUrl = effectiveProfile?.avatar_url;
+  const effectiveAvatarSize = avatarSize || size || 32;
+  
+  // Logic for subtitle: legacy 'subordinateText' or new 'subtitle'
+  const displaySubtitle = subtitle || subordinateText || (profile ? (profile?.email || "Atleta") : "");
+  const shouldShowSubtitle = showSubtitle || !!subordinateText || (!!subtitle);
 
   if (mode === "avatar") {
-    return <AthleteAvatar url={profile?.avatar_url} name={name} size={avatarSize} />;
+    return <AthleteAvatar url={currentAvatarUrl} name={currentName} size={effectiveAvatarSize} />;
   }
 
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-      <AthleteAvatar url={profile?.avatar_url} name={name} size={avatarSize} />
+    <div style={{ 
+      display: "flex", 
+      alignItems: "center", 
+      gap: mode === "compact" ? "8px" : "12px" 
+    }}>
+      <AthleteAvatar url={currentAvatarUrl} name={currentName} size={effectiveAvatarSize} />
       
-      {mode !== "compact" && (
+      {mode !== "avatar" && (
         <div style={{ display: "flex", flexDirection: "column" }}>
           <span style={{ 
-            fontSize: "13px", 
+            fontSize: mode === "compact" ? "11px" : "13px", 
             fontWeight: 800, 
             color: "#000",
             textTransform: "uppercase",
             letterSpacing: "-0.01em",
             lineHeight: 1
           }}>
-            {name}
+            {currentName}
           </span>
           
-          {(showSubtitle || subtitle) && (
+          {shouldShowSubtitle && displaySubtitle && (
             <span style={{ 
               fontSize: "10px", 
               fontWeight: 600, 
@@ -59,7 +92,7 @@ export default function AthleteIdentity({
               textTransform: "uppercase",
               marginTop: "4px"
             }}>
-              {subtitle || profile?.email || "Atleta"}
+              {displaySubtitle}
             </span>
           )}
         </div>
@@ -67,3 +100,5 @@ export default function AthleteIdentity({
     </div>
   );
 }
+
+export default AthleteIdentity;

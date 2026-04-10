@@ -38,7 +38,7 @@ export default function LevelsManager({ initialLevels }: LevelsManagerProps) {
   const [editValues, setEditValues] = useState<Partial<LevelInfo>>({});
   const [isSaving, setIsSaving] = useState(false);
   
-  const [toast, setToast] = useState<{ msg: string; type: ToastStatus } | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: ToastStatus } | null>(null);
   const [alertConfig, setAlertConfig] = useState<{ title: string; message: string; type: "success" | "error" | "info" } | null>(null);
 
   useEffect(() => {
@@ -80,7 +80,7 @@ export default function LevelsManager({ initialLevels }: LevelsManagerProps) {
       }));
       
       setEditingKey(null);
-      setToast({ msg: "Nível atualizado com sucesso!", type: "success" });
+      setToast({ message: "Nível atualizado com sucesso!", type: "success" });
       setTimeout(() => setToast(null), 3000);
     } catch (e) {
       console.error(e);
@@ -222,7 +222,7 @@ export default function LevelsManager({ initialLevels }: LevelsManagerProps) {
       {/* ── CENTRALIZED FEEDBACK ── */}
       {toast && (
         <Toast 
-          msg={toast.msg} 
+          message={toast.message} 
           type={toast.type} 
           onClose={() => setToast(null)} 
         />
