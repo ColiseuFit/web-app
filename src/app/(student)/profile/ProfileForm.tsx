@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import { updateProfile, updatePassword } from "./actions";
 import ConfirmModal from "@/components/ConfirmModal";
-import { Lock, ShieldCheck, User as UserIcon } from "lucide-react";
+import { Lock, ShieldCheck, User as UserIcon, Mail, Phone, Info } from "lucide-react";
 
 /**
  * ProfileForm Component
@@ -22,21 +22,93 @@ import { Lock, ShieldCheck, User as UserIcon } from "lucide-react";
  * - Ao realizar upload ou exclusão, o arquivo físico é removido do Supabase Storage
  *   para evitar custos desnecessários e acúmulo de lixo.
  */
-export default function ProfileForm({ user, profile }: { user: User; profile: any }) {
+
+interface ProfileFormProps {
+  user: any;
+  profile: any;
+  onDirtyChange?: (isDirty: boolean) => void;
+}
+
+export default function ProfileForm({ user, profile, onDirtyChange }: ProfileFormProps) {
   const supabase = createClient();
   
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);
+  const [isDirty, setIsDirtyInternal] = useState(false);
+  
+  const setIsDirty = (val: boolean) => {
+    setIsDirtyInternal(val);
+    if (onDirtyChange) onDirtyChange(val);
+  };
   
   const [avatarUrl, setAvatarUrl] = useState(profile?.avatar_url || "");
   const [uploading, setUploading] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  
+  // Estados para contadores e máscaras
+  const [bioText, setBioText] = useState(profile?.bio || "");
+  const [cpfValue, setCpfValue] = useState(profile?.cpf || "");
+  const [phoneValue, setPhoneValue] = useState(profile?.phone || "");
   
   const [passLoading, setPassLoading] = useState(false);
   const [passMessage, setPassMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const passFormRef = useRef<HTMLFormElement>(null);
+
+  // Trava de segurança para alterações não salvas
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isDirty) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [isDirty]);
+
+  // Cálculo de completude do perfil
+  const calculateCompleteness = () => {
+    const fields = [
+      profile?.first_name || "",
+      profile?.last_name || "",
+      profile?.birth_date || "",
+      profile?.gender || "",
+      cpfValue,
+      phoneValue,
+      bioText,
+      avatarUrl
+    ];
+    const filled = fields.filter(f => f && f.length > 0).length;
+    return Math.round((filled / fields.length) * 100);
+  };
+
+  const completeness = calculateCompleteness();
+
+  // Máscaras de Input
+  const maskCPF = (value: string) => {
+    return value
+      .replace(/\D/g, "")
+      .replace(/(\d{3})(\d)/, "$1.$2")
+      .replace(/(\d{3})(\d)/, "$1.$2")
+      .replace(/(\d{3})(\d{1,2})/, "$1-$2")
+      .replace(/(-\d{2})\d+?$/, "$1");
+  };
+
+  const maskPhone = (value: string) => {
+    const numbers = value.replace(/\D/g, "");
+    if (numbers.length <= 10) {
+      return numbers
+        .replace(/(\d{2})(\d)/, "($1) $2")
+        .replace(/(\d{4})(\d)/, "$1-$2");
+    } else {
+      return numbers
+        .replace(/(\d{2})(\d)/, "($1) $2")
+        .replace(/(\d{1})(\d{4})(\d)/, "$2-$3") // Ajuste para 9 dígitos
+        .replace(/(\d{5})(\d{4})/, "$1-$2");
+    }
+  };
 
   // Faz upload pro Storage e salva a URL pública temporariamente
   async function uploadAvatar(event: React.ChangeEvent<HTMLInputElement>) {
@@ -95,6 +167,7 @@ export default function ProfileForm({ user, profile }: { user: User; profile: an
       setMessage({ type: "error", text: res.error });
     } else {
       setMessage({ type: "success", text: "Perfil atualizado com sucesso!" });
+      setIsDirty(false); // Limpa o estado de alteração ao salvar
     }
     setLoading(false);
   }
@@ -119,7 +192,7 @@ export default function ProfileForm({ user, profile }: { user: User; profile: an
     border: "2px solid #000",
     padding: "14px 16px",
     color: "#000",
-    fontSize: "14px",
+    fontSize: "16px",
     fontWeight: 600,
     fontFamily: "'Inter', sans-serif",
     outline: "none",
@@ -244,95 +317,91 @@ export default function ProfileForm({ user, profile }: { user: User; profile: an
         )}
       </div>
 
-      <form action={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "48px" }}>
+      {/* ── MEDIDOR DE COMPLETUDE ── */}
+      <div style={{
+        background: "#000",
+        padding: "16px",
+        border: "2px solid #000",
+        boxShadow: "4px 4px 0px #E31B23",
+        marginBottom: "8px"
+      }}>
+        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
+          <span style={{ fontSize: "10px", fontWeight: 900, color: "#FFF", textTransform: "uppercase", letterSpacing: "0.1em" }}>
+            Status do Perfil
+          </span>
+          <span style={{ fontSize: "10px", fontWeight: 900, color: "#E31B23" }}>
+            {completeness}%
+          </span>
+        </div>
+        <div style={{ width: "100%", height: "8px", background: "#333", border: "1px solid #000" }}>
+          <div style={{ 
+            width: `${completeness}%`, 
+            height: "100%", 
+            background: "#E31B23",
+            transition: "width 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)"
+          }} />
+        </div>
+        <p style={{ fontSize: "9px", color: "#AAA", marginTop: "8px", textTransform: "uppercase", fontWeight: 700 }}>
+          {completeness === 100 ? "Perfil Pronto para Batalha" : "Complete seu perfil para visibilidade total"}
+        </p>
+      </div>
+
+      <form action={handleSubmit} onChange={() => setIsDirty(true)} style={{ display: "flex", flexDirection: "column", gap: "48px" }}>
         
-        {/* ── PERSONALIZAÇÃO ── */}
+        {/* ── SEÇÃO 1: IDENTIDADE DIGITAL ── */}
         <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "8px" }}>
-            <div style={{ width: "8px", height: "16px", background: "#E31B23" }} />
-            <h3 style={{ fontSize: "11px", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.1em", color: "#000" }}>PERSONALIZAÇÃO</h3>
+            <div style={{ width: "8px", height: "16px", background: "#000" }} />
+            <h3 style={{ fontSize: "11px", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.1em", color: "#000" }}>DADOS DO PERFIL</h3>
           </div>
 
           <div style={{ position: "relative" }}>
-            <label style={labelStyle}>Codinome de Atleta</label>
+            <label style={labelStyle}>E-mail da Conta</label>
+            <div style={{ position: "relative" }}>
+              <Mail size={14} style={{ position: "absolute", left: "16px", top: "50%", transform: "translateY(-50%)", color: "#CCC" }} />
+              <input 
+                type="text" 
+                defaultValue={user.email || ""} 
+                disabled
+                style={{ ...blockInputStyle, padding: "14px 16px 14px 44px", opacity: 0.5, cursor: "not-allowed" }}
+              />
+            </div>
+            <p style={{ fontSize: "9px", color: "#999", marginTop: "6px", fontWeight: 700 }}>O e-mail é vinculado à sua conta e não pode ser alterado aqui.</p>
+          </div>
+        </div>
+
+        {/* ── SEÇÃO 2: DADOS DE CADASTRO ── */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "8px" }}>
+            <div style={{ width: "8px", height: "16px", background: "#E31B23" }} />
+            <h3 style={{ fontSize: "11px", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.1em", color: "#000" }}>DADOS DE CADASTRO</h3>
+          </div>
+
+          <div style={{ position: "relative" }}>
+            <label style={labelStyle}>Primeiro Nome</label>
             <input 
               type="text" 
-              name="display_name" 
-              defaultValue={profile?.display_name || profile?.full_name || ""} 
-              placeholder="Ex: JOÃO SILVA" 
+              name="first_name" 
+              defaultValue={profile?.first_name || (profile?.full_name ? profile.full_name.split(' ')[0] : "")} 
+              placeholder="Ex: JOÃO" 
+              maxLength={100}
               style={blockInputStyle}
             />
           </div>
 
           <div style={{ position: "relative" }}>
-            <label style={labelStyle}>Gênero</label>
-            <select 
-              name="gender" 
-              defaultValue={profile?.gender || ""} 
-              style={{...blockInputStyle, appearance: "none"}}
-            >
-              <option value="" disabled>Selecione...</option>
-              <option value="Masculino">Masculino</option>
-              <option value="Feminino">Feminino</option>
-            </select>
-          </div>
-
-          <div style={{ position: "relative" }}>
-            <label style={labelStyle}>Ficha Biográfica</label>
-            <textarea 
-              name="bio" 
-              defaultValue={profile?.bio || ""} 
-              rows={4}
-              placeholder="Ex: FOCADO EM LPO E PERFORMANCE..." 
-              style={{ ...blockInputStyle, resize: "none" }}
+            <label style={labelStyle}>Sobrenome</label>
+            <input 
+              type="text" 
+              name="last_name" 
+              defaultValue={profile?.last_name || (profile?.full_name ? profile.full_name.split(' ').slice(1).join(' ') : "")} 
+              placeholder="Ex: DA SILVA" 
+              maxLength={100}
+              style={blockInputStyle}
             />
           </div>
-        </div>
-
-        {/* ── DADOS PESSOAIS ── */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "8px" }}>
-            <div style={{ width: "8px", height: "16px", background: "#E31B23" }} />
-            <h3 style={{ fontSize: "11px", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.1em", color: "#000" }}>DADOS PESSOAIS</h3>
-          </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-            <div style={{ position: "relative" }}>
-              <label style={labelStyle}>Primeiro Nome</label>
-              <input 
-                type="text" 
-                name="first_name" 
-                defaultValue={profile?.first_name || (profile?.full_name ? profile.full_name.split(' ')[0] : "")} 
-                placeholder="Ex: JOÃO" 
-                style={blockInputStyle}
-              />
-            </div>
-
-            <div style={{ position: "relative" }}>
-              <label style={labelStyle}>Sobrenome</label>
-              <input 
-                type="text" 
-                name="last_name" 
-                defaultValue={profile?.last_name || (profile?.full_name ? profile.full_name.split(' ').slice(1).join(' ') : "")} 
-                placeholder="Ex: DA SILVA" 
-                style={blockInputStyle}
-              />
-            </div>
-          </div>
-
-
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-            <div style={{ position: "relative" }}>
-              <label style={labelStyle}>CPF</label>
-              <input 
-                type="text" 
-                name="cpf" 
-                defaultValue={profile?.cpf || ""} 
-                placeholder="000.000.000-00" 
-                style={blockInputStyle}
-              />
-            </div>
-
             <div style={{ position: "relative" }}>
               <label style={labelStyle}>Nascimento</label>
               <input 
@@ -341,6 +410,100 @@ export default function ProfileForm({ user, profile }: { user: User; profile: an
                 defaultValue={profile?.birth_date || ""} 
                 style={{ ...blockInputStyle, padding: "13px 16px" }}
               />
+            </div>
+
+            <div style={{ position: "relative" }}>
+              <label style={labelStyle}>Gênero</label>
+              <select 
+                name="gender" 
+                defaultValue={profile?.gender || ""} 
+                style={{...blockInputStyle, appearance: "none"}}
+              >
+                <option value="" disabled>Selecione...</option>
+                <option value="Masculino">Masculino</option>
+                <option value="Feminino">Feminino</option>
+              </select>
+            </div>
+          </div>
+
+          <div style={{ position: "relative" }}>
+            <label style={labelStyle}>CPF</label>
+            <input 
+              type="text" 
+              name="cpf" 
+              value={cpfValue} 
+              placeholder="000.000.000-00" 
+              maxLength={14}
+              onChange={(e) => {
+                setCpfValue(maskCPF(e.target.value));
+                setIsDirty(true);
+              }}
+              style={blockInputStyle}
+            />
+          </div>
+
+          <div style={{ position: "relative" }}>
+            <label style={labelStyle}>Telefone / WhatsApp</label>
+            <div style={{ position: "relative" }}>
+              <Phone size={14} style={{ position: "absolute", left: "16px", top: "50%", transform: "translateY(-50%)", color: "#CCC" }} />
+              <input 
+                type="tel" 
+                name="phone" 
+                value={phoneValue} 
+                placeholder="(00) 00000-0000" 
+                maxLength={20}
+                onChange={(e) => {
+                  setPhoneValue(maskPhone(e.target.value));
+                  setIsDirty(true);
+                }}
+                style={{ ...blockInputStyle, padding: "14px 16px 14px 44px" }}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* ── SEÇÃO 3: PERFIL SOCIAL ── */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "8px" }}>
+            <div style={{ width: "8px", height: "16px", background: "#000" }} />
+            <h3 style={{ fontSize: "11px", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.1em", color: "#000" }}>PERFIL SOCIAL</h3>
+          </div>
+
+          <div style={{ position: "relative" }}>
+            <label style={labelStyle}>Apelido (Como os outros te verão)</label>
+            <input 
+              type="text" 
+              name="display_name" 
+              defaultValue={profile?.display_name || profile?.full_name || ""} 
+              placeholder="Ex: GABI, SANTANA, MONSTRO..." 
+              maxLength={50}
+              style={blockInputStyle}
+            />
+          </div>
+
+          <div style={{ position: "relative" }}>
+            <label style={labelStyle}>Ficha Biográfica</label>
+            <textarea 
+              name="bio" 
+              value={bioText} 
+              placeholder="Conte um pouco sobre sua jornada no fitness..." 
+              maxLength={150}
+              onChange={(e) => {
+                setBioText(e.target.value);
+                setIsDirty(true);
+              }}
+              style={{ ...blockInputStyle, height: "100px", resize: "none" }}
+            />
+            <div style={{ 
+              position: "absolute", 
+              bottom: "-20px", 
+              right: "0", 
+              fontSize: "10px", 
+              fontWeight: 900, 
+              color: bioText.length >= 140 ? "#E31B23" : "#AAA",
+              textTransform: "uppercase"
+            }}>
+              {bioText.length}/150
             </div>
           </div>
         </div>
@@ -362,35 +525,53 @@ export default function ProfileForm({ user, profile }: { user: User; profile: an
           </div>
         )}
 
-        <button 
-          type="submit" 
-          disabled={loading} 
-          style={{ 
-            marginTop: "8px",
-            background: "#E31B23",
-            color: "#FFFFFF",
-            border: "2px solid #000",
-            boxShadow: "4px 4px 0px #000",
-            padding: "16px",
-            fontSize: "12px",
-            fontWeight: 900,
-            textTransform: "uppercase",
-            letterSpacing: "0.15em",
-            cursor: "pointer",
-            transition: "all 0.1s",
-            fontFamily: "'Outfit', sans-serif",
-          }}
-          onMouseDown={(e) => {
-            e.currentTarget.style.transform = "translate(2px, 2px)";
-            e.currentTarget.style.boxShadow = "2px 2px 0px #000";
-          }}
-          onMouseUp={(e) => {
-            e.currentTarget.style.transform = "none";
-            e.currentTarget.style.boxShadow = "4px 4px 0px #000";
-          }}
-        >
-          {loading ? "PROCESSANDO..." : "SALVAR ALTERAÇÕES"}
-        </button>
+        {/* ── BOTÃO DE AÇÃO (STICKY UNIVERSAL) ── */}
+        <div style={{
+          position: "sticky",
+          bottom: "calc(env(safe-area-inset-bottom, 0px) + 82px)", // Cálculo dinâmico para iOS/Android
+          left: 0,
+          right: 0,
+          zIndex: 10,
+          padding: "16px 0",
+          background: "linear-gradient(to top, var(--bg) 90%, transparent)",
+          backdropFilter: "blur(4px)", // Toque premium de transparência
+          pointerEvents: "none",
+        }}>
+          <button 
+            type="submit" 
+            disabled={loading || !isDirty} 
+            style={{ 
+              width: "100%",
+              background: isDirty ? "#E31B23" : "#CCC",
+              color: "#FFFFFF",
+              border: "2px solid #000",
+              boxShadow: "6px 6px 0px #000",
+              padding: "20px",
+              fontSize: "14px",
+              fontWeight: 900,
+              textTransform: "uppercase",
+              letterSpacing: "0.15em",
+              cursor: isDirty ? "pointer" : "not-allowed",
+              transition: "all 0.1s",
+              fontFamily: "'Outfit', sans-serif",
+              pointerEvents: "auto", // Reativa cliques para o botão
+            }}
+            onMouseDown={(e) => {
+              if (isDirty) {
+                e.currentTarget.style.transform = "translate(2px, 2px)";
+                e.currentTarget.style.boxShadow = "2px 2px 0px #000";
+              }
+            }}
+            onMouseUp={(e) => {
+              if (isDirty) {
+                e.currentTarget.style.transform = "none";
+                e.currentTarget.style.boxShadow = "6px 6px 0px #000";
+              }
+            }}
+          >
+            {loading ? "PROCESSANDO..." : "CONFIRMAR ALTERAÇÕES"}
+          </button>
+        </div>
       </form>
 
       {/* ── SENHA E SEGURANÇA ── */}

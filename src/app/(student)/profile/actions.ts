@@ -10,19 +10,29 @@ import { updatePasswordSchema } from "@/lib/validations/security_schemas";
  * Garante tipagem estrita e segurança dos dados recebidos do formulário.
  */
 const profileSchema = z.object({
-  display_name: z.string().min(3, "O Codinome deve ter pelo menos 3 caracteres").max(50),
-  first_name: z.string().min(2, "Primeiro nome é obrigatório").max(100),
-  last_name: z.string().min(2, "Sobrenome é obrigatório").max(100),
-  bio: z.string().max(300).optional().nullable(),
+  display_name: z.string()
+    .min(3, "O Apelido deve ter pelo menos 3 caracteres")
+    .max(50, "O Apelido deve ter no máximo 50 caracteres")
+    .regex(/^[a-zA-Z0-9À-ÿ\s]+$/, "O Apelido não deve conter caracteres especiais"),
+  first_name: z.string()
+    .min(2, "Primeiro nome é obrigatório")
+    .max(100)
+    .regex(/^[a-zA-ZÀ-ÿ\s]+$/, "O nome deve conter apenas letras"),
+  last_name: z.string()
+    .min(2, "Sobrenome é obrigatório")
+    .max(100)
+    .regex(/^[a-zA-ZÀ-ÿ\s]+$/, "O sobrenome deve conter apenas letras"),
+  bio: z.string().max(150, "A biografia deve ter no máximo 150 caracteres").optional().nullable(),
   gender: z.string().optional().nullable(),
   cpf: z.string()
-    .refine((val) => val === "" || /^\d{3}\.\d{3}\.\d{3}-\d{2}$|^\d{11}$/.test(val), {
+    .refine((val) => val === "" || /^\d{3}\.\d. \d{3}-\d{2}$|^\d{11}$/.test(val), {
       message: "Formato de CPF inválido"
     })
     .optional()
     .nullable(),
   birth_date: z.string().optional().nullable(),
   avatar_url: z.string().url().optional().nullable().or(z.literal("")),
+  phone: z.string().max(20, "O telefone deve ter no máximo 20 caracteres").optional().nullable(),
 });
 
 /**
@@ -56,6 +66,7 @@ export async function updateProfile(formData: FormData) {
   const cpf = (formData.get("cpf") as string || "").trim();
   const birthDate = formData.get("birth_date") as string || "";
   const avatarUrl = formData.get("avatar_url") as string || "";
+  const phone = (formData.get("phone") as string || "").trim();
 
   const rawData = {
     display_name: displayName,
@@ -66,6 +77,7 @@ export async function updateProfile(formData: FormData) {
     cpf: cpf || undefined,
     birth_date: birthDate || undefined,
     avatar_url: avatarUrl || undefined,
+    phone: phone || undefined,
   };
 
   const validation = profileSchema.safeParse(rawData);
@@ -87,6 +99,7 @@ export async function updateProfile(formData: FormData) {
     cpf: validatedData.cpf || null,
     birth_date: validatedData.birth_date || null,
     avatar_url: validatedData.avatar_url || null,
+    phone: validatedData.phone || null,
     updated_at: new Date().toISOString(),
   };
 

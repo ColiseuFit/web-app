@@ -149,7 +149,7 @@ export default function PRRegistrationModal({ onClose, onSuccess, initialLevel }
                   onChange={(e) => setUnit(e.target.value as "kg" | "time" | "reps")}
                   style={{
                     width: "100%", background: "#FFF", border: "2px solid #000",
-                    padding: "18px", color: "#000", fontSize: "14px", fontWeight: 900, outline: "none",
+                    padding: "18px", color: "#000", fontSize: "16px", fontWeight: 900, outline: "none",
                     appearance: "none", borderRadius: "0"
                   }}
                 >

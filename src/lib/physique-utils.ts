@@ -1,5 +1,10 @@
 /**
- * Utility functions for biometric and physical evaluation calculations.
+ * Biblioteca Central de Cálculos Biométricos e Metabólicos.
+ * 
+ * @architecture
+ * - SSoT (Single Source of Truth) para toda a lógica antropométrica do Box.
+ * - Suporta normalização automática de unidades (m/cm) e gêneros (multi-idioma).
+ * - Implementa protocolos validados (Pollock, Guedes, Mifflin-St Jeor).
  */
 
 export interface Skinfolds {
@@ -14,12 +19,18 @@ export interface Skinfolds {
 }
 
 /**
- * Calculates Body Mass Index (BMI / IMC)
+ * Calcula o IMC (Índice de Massa Corporal).
+ * 
+ * @param {number} weight - Peso em Kg.
+ * @param {number} height - Altura (aceita metros ou centímetros).
+ * @returns {number | null} IMC formatado com 2 casas decimais ou null se dados inválidos.
+ * 
+ * @note Realiza auto-normalização de altura baseada no valor (threshold: 3).
  */
 export function calculateBMI(weight: number, height: number): number | null {
   if (!weight || !height || height <= 0) return null;
   
-  // Auto-normalize to meters (if > 3, assume it's cm)
+  // Auto-normalização: Se > 3, assume que está em cm e converte para metros
   const heightM = height > 3 ? height / 100 : height;
   
   const bmi = weight / (heightM * heightM);
@@ -27,7 +38,11 @@ export function calculateBMI(weight: number, height: number): number | null {
 }
 
 /**
- * Calculates Body Density using Pollock 7 Folds protocol
+ * Calcula a Densidade Corporal via Protocolo Pollock 7 Dobras.
+ * 
+ * @param {Skinfolds} skinfolds - Objeto contendo as 7 dobras obrigatórias.
+ * @param {number} age - Idade do avaliado.
+ * @param {string} gender - Gênero (suporta 'male', 'female', 'masculino', 'feminino').
  */
 export function calculateDensityPollock7(skinfolds: Skinfolds, age: number, gender: string): number | null {
   const { subscapular, triceps, chest, midaxillary, suprailiac, abdominal, thigh } = skinfolds;
@@ -40,9 +55,11 @@ export function calculateDensityPollock7(skinfolds: Skinfolds, age: number, gend
   const isFemale = gender.toLowerCase() === 'female' || gender.toLowerCase() === 'feminino';
 
   if (!isFemale) {
+    // Equação para Homens (Pollock 7)
     const res = 1.112 - (0.00043499 * sum7) + (0.00000055 * Math.pow(sum7, 2)) - (0.00028826 * age);
     return isFinite(res) ? res : null;
   } else {
+    // Equação para Mulheres (Pollock 7)
     const res = 1.097 - (0.00046971 * sum7) + (0.00000056 * Math.pow(sum7, 2)) - (0.00012828 * age);
     return isFinite(res) ? res : null;
   }
@@ -137,8 +154,14 @@ export function calculateBodyComposition(
 }
 
 /**
- * Calculates Basal Metabolic Rate (BMR / TMB) 
- * Using Mifflin-St Jeor Equation
+ * Calcula a Taxa Metabólica Basal (TMB / BMR).
+ * Protocolo: Mifflin-St Jeor.
+ * 
+ * @param {number} weight - Peso em Kg.
+ * @param {number} height - Altura (metros ou cm).
+ * @param {number} age - Idade em anos.
+ * @param {string} gender - Gênero ('male'/'female').
+ * @returns {number | null} Valor arredondado em Kcal/dia.
  */
 export function calculateBMR(
   weight: number, 
@@ -148,12 +171,12 @@ export function calculateBMR(
 ): number | null {
   if (!weight || !height || !age) return null;
   
-  // Auto-normalize to centimeters (if <= 3, assume it's meters)
+  // Normalização: TMB exige altura em centímetros
   const heightCm = height <= 3 ? height * 100 : height;
   
   const isFemale = gender.toLowerCase() === 'female' || gender.toLowerCase() === 'feminino';
   
-  // Mifflin-St Jeor Equation
+  // Equação de Mifflin-St Jeor
   let bmr = (10 * weight) + (6.25 * heightCm) - (5 * age);
   bmr = isFemale ? bmr - 161 : bmr + 5;
   

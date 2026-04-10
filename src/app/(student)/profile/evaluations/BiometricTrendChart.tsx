@@ -15,8 +15,18 @@ interface ChartProps {
 
 /**
  * BiometricTrendChart
- * Componente de gráfico customizado em SVG com estilo Neo-Brutalista.
- * Projetado para máxima performance e impacto visual em dispositivos móveis.
+ * 
+ * @description
+ * Componente SVG customizado para visualização de tendências biométricas (Peso e %BF).
+ * Utiliza Framer Motion para animações de traçado de linha.
+ * 
+ * @logic
+ * - Ordena dados cronologicamente.
+ * - Calcula o range dinâmico (min/max) com margem de respiro (2%) para evitar clipping.
+ * - Mapeia coordenadas cartesianas para coordenadas SVG.
+ * - Exibe deltas (Δ) de progresso com feedback visual de cor (Verde para melhora).
+ * 
+ * @style Neo-Brutalismo: Bordas sólidas, sombras secas e tipografia bold.
  */
 export default function BiometricTrendChart({ evaluations }: ChartProps) {
   // Precisamos de pelo menos 2 pontos para traçar uma linha
