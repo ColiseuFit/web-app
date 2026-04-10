@@ -2,6 +2,54 @@ import { z } from "zod";
 import { ALL_LEVELS } from "../constants/levels";
 
 /**
+ * Validação Matemática de CPF (Módulo 11 da Receita Federal)
+ */
+export function isValidCPF(cpf: string): boolean {
+  if (!cpf) return false;
+  // Retira tudo que não é dígito
+  const cleanCPF = cpf.replace(/[^\d]/g, '');
+  
+  if (cleanCPF.length !== 11) return false;
+  
+  // Rejeita CPFs com todos os dígitos iguais (ex: 111.111.111-11)
+  if (/^(\d)\1+$/.test(cleanCPF)) return false;
+
+  let sum = 0;
+  let remainder;
+
+  // Primeiro DV
+  for (let i = 1; i <= 9; i++) {
+    sum = sum + parseInt(cleanCPF.substring(i - 1, i)) * (11 - i);
+  }
+  remainder = (sum * 10) % 11;
+  if (remainder === 10 || remainder === 11) remainder = 0;
+  if (remainder !== parseInt(cleanCPF.substring(9, 10))) return false;
+
+  // Segundo DV
+  sum = 0;
+  for (let i = 1; i <= 10; i++) {
+    sum = sum + parseInt(cleanCPF.substring(i - 1, i)) * (12 - i);
+  }
+  remainder = (sum * 10) % 11;
+  if (remainder === 10 || remainder === 11) remainder = 0;
+  if (remainder !== parseInt(cleanCPF.substring(10, 11))) return false;
+
+  return true;
+}
+
+/**
+ * Validação comportamental de nomes de pessoas físicas
+ */
+export function isValidName(name: string): boolean {
+  if (!name || name.trim().length < 2) return false;
+  // Apenas letras, acentos e espaços
+  if (!/^[a-zA-ZÀ-ÿ\s]+$/.test(name)) return false;
+  // Impede que a pessoa digite algo como "AAA" ou "Jooão" propositalmente
+  if (/(.)\1{2,}/i.test(name)) return false;
+  return true;
+}
+
+/**
  * 🔐 SECURITY SCHEMAS: Gatekeeper Central da Plataforma Coliseu.
  * 
  * @architecture
@@ -25,7 +73,9 @@ export const loginSchema = z.object({
 export const createStudentSchema = z.object({
   email: z.string().email("E-mail inválido"),
   password: z.string().min(8, "A senha deve ter pelo menos 8 caracteres para maior segurança"),
-  full_name: z.string().min(3, "O nome completo deve ter pelo menos 3 caracteres"),
+  full_name: z.string()
+    .min(3, "O nome completo deve ter pelo menos 3 caracteres")
+    .refine((val) => isValidName(val), { message: "Nome inválido ou contém caracteres irreais" }),
   level: z.enum(ALL_LEVELS.map(l => l.key) as [string, ...string[]]).default("branco"),
   membership_type: z.enum(["club", "club_pass"]).default("club"),
 });
@@ -156,10 +206,19 @@ export const wodResultSchema = z.object({
 
 // 14. Schema para Pré-cadastro (Leads)
 export const preRegistrationSchema = z.object({
-  full_name: z.string().min(3, "Nome completo é obrigatório").max(100, "Nome deve ter no máximo 100 caracteres"),
+  full_name: z.string()
+    .max(100, "Nome deve ter no máximo 100 caracteres")
+    .refine((val) => isValidName(val), { message: "Nome inválido ou contém caracteres irreais" }),
   email: z.string().email("E-mail inválido").max(150, "E-mail deve ter no máximo 150 caracteres"),
   phone: z.string().min(10, "Telefone inválido").max(15, "Telefone muito longo"),
-  cpf: z.string().max(14, "CPF inválido").optional(),
+  cpf: z.string()
+    .refine((val) => {
+      if (!val || val.trim() === "") return true;
+      return isValidCPF(val);
+    }, {
+      message: "CPF Inválido ou inconsistente com a Receita Federal"
+    })
+    .optional(),
   birth_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data inválida").optional().or(z.literal("")),
   bio: z.string().max(500, "Objetivo não pode passar de 500 caracteres").optional(),
 });
@@ -173,6 +232,56 @@ export const preRegistrationSchema = z.object({
  */
 export const forgotPasswordSchema = z.object({
   email: z.string().email("E-mail inválido"),
+});
+
+/**
+ * 16. Profile Update Schema: Common for Student and Admin portals.
+ */
+export const profileSchema = z.object({
+  display_name: z.string()
+    .min(3, "O Apelido deve ter pelo menos 3 caracteres")
+    .max(50, "O Apelido deve ter no máximo 50 caracteres")
+    .regex(/^[a-zA-Z0-9À-ÿ\s]+$/, "O Apelido não deve conter caracteres especiais"),
+  first_name: z.string()
+    .max(100)
+    .refine((val) => isValidName(val), { message: "Primeiro nome inválido ou contém caracteres irreais" }),
+  last_name: z.string()
+    .max(100)
+    .refine((val) => isValidName(val), { message: "Sobrenome inválido ou contém caracteres irreais" }),
+  bio: z.string().max(150, "A biografia deve ter no máximo 150 caracteres").optional().nullable(),
+  gender: z.string().optional().nullable(),
+  cpf: z.string()
+    .refine((val) => {
+      if (!val || val.trim() === "") return true; // Campo opcional
+      return isValidCPF(val);
+    }, {
+      message: "CPF Inválido ou inconsistente com a Receita Federal"
+    })
+    .optional()
+    .nullable(),
+  birth_date: z.string()
+    .optional()
+    .nullable()
+    .refine((val) => {
+      if (!val || val.trim() === "") return true; // opcional
+      const date = new Date(val);
+      if (isNaN(date.getTime())) return false;
+      const age = Math.floor((Date.now() - date.getTime()) / (1000 * 60 * 60 * 24 * 365.25));
+      return age >= 10 && age <= 100;
+    }, { message: "Data de nascimento inválida ou fora do intervalo permitido (10–100 anos)" }),
+  avatar_url: z.string().url().optional().nullable().or(z.literal("")),
+  phone: z.string().max(20, "O telefone deve ter no máximo 20 caracteres").optional().nullable(),
+  emergency_contact_name: z.string().max(100).optional().nullable(),
+  emergency_contact_phone: z.string().max(20).optional().nullable(),
+  address_zip_code: z.string().max(15).optional().nullable(),
+  address_street: z.string().max(150).optional().nullable(),
+  address_number: z.string().max(20).optional().nullable(),
+  address_complement: z.string().max(100).optional().nullable(),
+  address_neighborhood: z.string().max(100).optional().nullable(),
+  address_city: z.string().max(100).optional().nullable(),
+  address_state: z.string().length(2, "A UF deve ter 2 caracteres").optional().nullable().or(z.literal("")),
+  level: z.string().optional().nullable(),
+  membership_type: z.string().optional().nullable(),
 });
 
 export type LoginInput = z.infer<typeof loginSchema>;
@@ -189,3 +298,4 @@ export type UpdatePasswordInput = z.infer<typeof updatePasswordSchema>;
 export type WodResultInput = z.infer<typeof wodResultSchema>;
 export type PreRegistrationInput = z.infer<typeof preRegistrationSchema>;
 export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
+export type ProfileInput = z.infer<typeof profileSchema>;

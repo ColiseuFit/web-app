@@ -12,6 +12,8 @@ import { SYSTEM_START_DATE } from "@/lib/constants/calendar";
 import { getMinWeekOffset } from "@/lib/date-utils";
 import { upsertWod, deleteWod } from "../../actions";
 import BenchmarkLibraryModal from "@/components/admin/BenchmarkLibraryModal";
+import ConfirmModal from "@/components/ConfirmModal";
+import AlertModal from "@/components/AlertModal";
 
 /**
  * WodsClient: Brutalist Split-Screen WOD Builder & Benchmark Integration.
@@ -107,6 +109,10 @@ export default function WodsClient({ initialWods, weekDates, weekOffset }: WodsC
   const [showModalitySelect, setShowModalitySelect] = useState(false);
   const [isBenchmarkModalOpen, setIsBenchmarkModalOpen] = useState(false);
 
+  // Modal State
+  const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+  const [alertConfig, setAlertConfig] = useState<{ title: string; message: string; type: "success" | "error" | "info" } | null>(null);
+
   // Find existing WOD for selected date
   const currentWod = initialWods.find((w) => w.date === selectedDate);
 
@@ -167,19 +173,31 @@ export default function WodsClient({ initialWods, weekDates, weekOffset }: WodsC
         router.refresh();
         setShowEditor(false);
       } else {
-        alert(result.error);
+        setAlertConfig({
+          title: "ERRO AO SALVAR",
+          message: result.error || "OCORREU UM ERRO INESPERADO.",
+          type: "error"
+        });
       }
     });
   }
 
   async function handleDelete() {
-    if (!confirm("Tem certeza que deseja remover a programação deste dia?")) return;
+    setShowConfirmDelete(true);
+  }
+
+  async function executeDelete() {
+    setShowConfirmDelete(false);
     startTransition(async () => {
       const result = await deleteWod(selectedDate);
       if (result.success) {
         handleDateChange(selectedDate);
       } else {
-        alert(result.error);
+        setAlertConfig({
+          title: "ERRO AO EXCLUIR",
+          message: result.error || "OCORREU UM ERRO AO REMOVER A PROGRAMAÇÃO.",
+          type: "error"
+        });
       }
     });
   }
@@ -779,6 +797,26 @@ export default function WodsClient({ initialWods, weekDates, weekOffset }: WodsC
           setResultType(b.result_type);
         }}
       />
+
+      {/* ── CENTRALIZED MODALS ── */}
+      {showConfirmDelete && (
+        <ConfirmModal
+          title="EXCLUIR PROGRAMAÇÃO"
+          message="TEM CERTEZA QUE DESEJA REMOVER O TREINO DESTE DIA? ESTA AÇÃO É IRREVERSÍVEL."
+          onConfirm={executeDelete}
+          onCancel={() => setShowConfirmDelete(false)}
+          isDanger={true}
+        />
+      )}
+
+      {alertConfig && (
+        <AlertModal
+          title={alertConfig.title}
+          message={alertConfig.message}
+          type={alertConfig.type}
+          onClose={() => setAlertConfig(null)}
+        />
+      )}
     </div>
   );
 }

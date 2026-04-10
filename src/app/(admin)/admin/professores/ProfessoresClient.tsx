@@ -19,6 +19,9 @@ import React, { useState, useTransition, useRef, useEffect } from "react";
 import { Search, Plus, UserPlus, Trash2, Shield, Loader2, X, User as UserIcon, Mail, Phone, Check } from "lucide-react";
 import { searchUsersForCoach, toggleCoachRole, getCoaches, createNewCoach } from "./actions";
 import { USER_ROLES, getRoleInfo } from "@/lib/constants/roles";
+import AthleteAvatar from "@/components/Identity/AthleteAvatar";
+import AthleteIdentity from "@/components/Identity/AthleteIdentity";
+import ConfirmModal from "@/components/ConfirmModal";
 
 type Mode = "search" | "create";
 
@@ -62,6 +65,12 @@ export default function ProfessoresClient({ initialCoaches }: { initialCoaches: 
 
   const [toast, setToast] = useState<Toast | null>(null);
 
+  // Confirmation state
+  const [pendingRoleToggle, setPendingRoleToggle] = useState<{
+    userId: string;
+    currentRole: string | null;
+  } | null>(null);
+
   function showToast(msg: string, type: "success" | "error") {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3000);
@@ -100,8 +109,11 @@ export default function ProfessoresClient({ initialCoaches }: { initialCoaches: 
    * @param {string | null} currentRole - Role atual para determinar a direção da transição.
    */
   async function handleToggleRole(userId: string, currentRole: string | null) {
-    if (!confirm(currentRole === USER_ROLES.COACH ? "Deseja remover as permissões de Professor deste usuário?" : "Deseja promover este usuário a Professor?")) return;
+    setPendingRoleToggle({ userId, currentRole });
+  }
 
+  async function executeToggleRole(userId: string, currentRole: string | null) {
+    setPendingRoleToggle(null);
     startTransition(async () => {
       const res = await toggleCoachRole(userId, currentRole !== "coach");
       if (res.error) {
@@ -193,20 +205,16 @@ export default function ProfessoresClient({ initialCoaches }: { initialCoaches: 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(380px, 1fr))", gap: 32 }}>
         {coaches.map((c) => (
           <div key={c.user_id} className="admin-card" style={{ padding: 24, display: "flex", alignItems: "center", gap: 24, position: "relative" }}>
-            <div style={{ 
-                width: 72, height: 72, background: "#F3F4F6", border: "4px solid #000", 
-                display: "flex", alignItems: "center", justifyItems: "center", justifyContent: "center",
-                fontWeight: 900, fontSize: 28, textTransform: "uppercase", position: "relative",
-                flexShrink: 0
-            }}>
-              {c.profile.avatar_url ? (
-                  <img src={c.profile.avatar_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-              ) : (
-                  c.profile.full_name?.[0] || "?"
-              )}
+            <div style={{ position: "relative" }}>
+              <AthleteAvatar 
+                url={c.profile.avatar_url} 
+                name={c.profile.full_name} 
+                size={72} 
+                shadowSize={4}
+              />
               {c.role === USER_ROLES.ADMIN && (
-                  <div style={{ position: "absolute", bottom: -10, right: -10, background: "#000", color: "#FFF", padding: 6, border: "3px solid #FFF", display: "flex" }}>
-                      <Shield size={14} fill="currentColor" />
+                  <div style={{ position: "absolute", bottom: -2, right: -2, background: "#000", color: "#FFF", padding: 4, border: "2px solid #FFF", display: "flex", zIndex: 10 }}>
+                      <Shield size={12} fill="currentColor" />
                   </div>
               )}
             </div>
@@ -381,21 +389,10 @@ export default function ProfessoresClient({ initialCoaches }: { initialCoaches: 
                           }}
                         >
                           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-                            <div style={{ 
-                                width: 48, height: 48, border: "2px solid #000", 
-                                background: "#F3F4F6", display: "flex", alignItems: "center", 
-                                justifyContent: "center", overflow: "hidden", fontWeight: 900
-                            }}>
-                              {user.avatar_url ? (
-                                <img src={user.avatar_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                              ) : (
-                                user.full_name?.[0] || "?"
-                              )}
-                            </div>
-                            <div>
-                              <p style={{ fontWeight: 900, textTransform: "uppercase", fontSize: 14, margin: 0 }}>{user.full_name}</p>
-                              <p style={{ fontSize: 11, color: "#666", fontWeight: 700, margin: 0 }}>{user.email}</p>
-                            </div>
+                          <AthleteIdentity 
+                            profile={user} 
+                            avatarSize={48}
+                          />
                           </div>
 
                           {coaches.some(c => c.user_id === user.id) ? (
@@ -541,6 +538,20 @@ export default function ProfessoresClient({ initialCoaches }: { initialCoaches: 
           {toast.type === "success" ? <Check size={20} /> : <X size={20} />}
           {toast.msg}
         </div>
+      )}
+
+      {/* ── ROLE TOGGLE CONFIRMATION ── */}
+      {pendingRoleToggle && (
+        <ConfirmModal
+          title={pendingRoleToggle.currentRole === USER_ROLES.COACH ? "REMOVER PERMISSÕES" : "PROMOVER PROFESSOR"}
+          message={pendingRoleToggle.currentRole === USER_ROLES.COACH 
+            ? "TEM CERTEZA QUE DESEJA REMOVER O ACESSO TÉCNICO DESTE USUÁRIO?" 
+            : "DESEJA CONCEDER ACESSO DE PROFESSOR A ESTE USUÁRIO?"
+          }
+          onConfirm={() => executeToggleRole(pendingRoleToggle.userId, pendingRoleToggle.currentRole)}
+          onCancel={() => setPendingRoleToggle(null)}
+          isDanger={pendingRoleToggle.currentRole === USER_ROLES.COACH}
+        />
       )}
     </div>
 

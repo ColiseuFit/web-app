@@ -6,6 +6,7 @@ import { X, User } from "lucide-react";
 import { hapticSelect } from "@/lib/haptic";
 import Link from "next/link";
 import { getLevelInfo, LevelInfo } from "@/lib/constants/levels";
+import AthleteAvatar from "./Identity/AthleteAvatar";
 
 interface LevelBadgeProps {
   level: string | LevelInfo;
@@ -14,6 +15,8 @@ interface LevelBadgeProps {
   avatarUrl?: string | null;
   /** Nome do atleta para exibição no modal (opcional) */
   athleteName?: string;
+  /** Se o avatar deve ser circular (novo padrão minimalista) */
+  rounded?: boolean;
 }
 
 /**
@@ -32,6 +35,7 @@ export default function LevelBadge({
   size = 110,
   avatarUrl,
   athleteName,
+  rounded,
 }: LevelBadgeProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -114,28 +118,14 @@ export default function LevelBadge({
           }} />
 
           {/* Foto de perfil ou placeholder */}
-          <div style={{
-            width: `${innerSize}px`, height: `${innerSize}px`,
-            background: "#FFF", overflow: "hidden",
-            position: "relative", zIndex: 3,
-            border: "2px solid #000",
-          }}>
-            {avatarUrl ? (
-              <img
-                src={avatarUrl}
-                alt="Foto do atleta"
-                style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-              />
-            ) : (
-              <div style={{
-                width: "100%", height: "100%",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                background: "#f0f0f0",
-              }}>
-                <User style={{ width: "45%", height: "45%", color: "#000", opacity: 0.15 }} />
-              </div>
-            )}
-          </div>
+          <AthleteAvatar
+            url={avatarUrl}
+            name={athleteName}
+            size={innerSize}
+            borderWidth={2}
+            shadowSize={0}
+            rounded={rounded}
+          />
         </div>
 
         {/* Ícone de nível (canto superior direito) */}

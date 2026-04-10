@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ArrowRight, Loader2 } from "lucide-react";
+import AlertModal from "@/components/AlertModal";
 
 /**
  * Botão de ativação de conta no fluxo de onboarding.
@@ -11,11 +12,15 @@ import { ArrowRight, Loader2 } from "lucide-react";
  */
 export default function VerifyButton({ link }: { link: string }) {
   const [clicked, setClicked] = useState(false);
+  const [errorModal, setErrorModal] = useState<{ title: string; message: string } | null>(null);
 
   const handleClick = () => {
     if (link === "[object Promise]") {
       console.error("Link inválido — recebeu Promise em vez de string.");
-      alert("Erro na ativação: Link inválido. Por favor, tente novamente.");
+      setErrorModal({
+        title: "LINK INVÁLIDO",
+        message: "O PROTOCOLO DE ATIVAÇÃO RECEBEU UM LINK CORROMPIDO. POR FAVOR, SOLICITE UM NOVO ACESSO."
+      });
       return;
     }
     setClicked(true);
@@ -23,6 +28,7 @@ export default function VerifyButton({ link }: { link: string }) {
   };
 
   return (
+    <>
     <button
       onClick={handleClick}
       disabled={clicked}
@@ -72,5 +78,15 @@ export default function VerifyButton({ link }: { link: string }) {
         </>
       )}
     </button>
+
+    {errorModal && (
+      <AlertModal
+        type="error"
+        title={errorModal.title}
+        message={errorModal.message}
+        onClose={() => setErrorModal(null)}
+      />
+    )}
+    </>
   );
 }

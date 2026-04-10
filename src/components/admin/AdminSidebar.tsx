@@ -11,6 +11,7 @@ import {
   ChevronLeft,
   Settings,
   Contact,
+  Trophy,
 } from "lucide-react";
 
 /**
@@ -27,6 +28,7 @@ const NAV_ITEMS = [
   { href: "/admin/professores", label: "Professores", icon: Contact },
   { href: "/admin/wods", label: "WODs", icon: Dumbbell },
   { href: "/admin/turmas", label: "Turmas", icon: CalendarClock },
+  { href: "/admin/gamificacao", label: "Gamificação", icon: Trophy },
   { href: "/admin/settings", label: "Config", icon: Settings },
 ];
 

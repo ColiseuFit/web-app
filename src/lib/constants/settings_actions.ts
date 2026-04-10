@@ -97,6 +97,33 @@ export async function updatePointsRule(id: string, points: number) {
   }
 
   revalidatePath("/admin/settings");
+  revalidatePath("/admin/gamificacao");
+  return { success: true };
+}
+
+/**
+ * Updates the active status of a points rule.
+ * @param id The rule ID.
+ * @param is_active The new active status.
+ */
+export async function updatePointsRuleStatus(id: string, is_active: boolean) {
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("points_rules")
+    .update({ 
+      is_active, 
+      updated_at: new Date().toISOString() 
+    })
+    .eq("id", id);
+
+  if (error) {
+    console.error("Error updating points rule status:", error);
+    return { success: false, error: error.message };
+  }
+
+  revalidatePath("/admin/settings");
+  revalidatePath("/admin/gamificacao");
   return { success: true };
 }
 

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Users, UserCheck, TrendingUp, Phone, Plus } from "lucide-react";
 import Link from "next/link";
+import AthleteIdentity from "@/components/Identity/AthleteIdentity";
 import { getLevelInfo, type LevelInfo } from "@/lib/constants/levels";
 import { getTodayDate } from "@/lib/date-utils";
 /**
@@ -35,7 +36,7 @@ interface RecentStudent {
   name: string;
   full_name: string;
   level: string;
-  created_at: string;
+  avatar_url?: string | null;
   phone: string | null;
   checked_in_today: boolean;
 }
@@ -167,28 +168,14 @@ export default function AdminDashboardClient({ stats, recentStudents, totalStude
               <tbody>
                 {recentStudents.map((student) => (
                   <tr key={student.id}>
-                    <td style={{ paddingLeft: "24px" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                        <div
-                          style={{
-                            width: "32px",
-                            height: "32px",
-                            background: "#000",
-                            color: "#FFF",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            fontSize: "12px",
-                            fontWeight: 800,
-                          }}
-                        >
-                          {student.name?.charAt(0)?.toUpperCase()}
-                        </div>
-                        <div>
-                          <div style={{ fontWeight: 800, fontSize: "14px" }}>{student.name}</div>
-                          <div style={{ fontSize: "11px", color: "#666" }}>{formatDate(student.created_at)}</div>
-                        </div>
-                      </div>
+                    <td style={{ paddingLeft: "16px" }}>
+                      <AthleteIdentity
+                        full_name={student.full_name}
+                        display_name={student.name}
+                        avatar_url={student.avatar_url}
+                        size={36}
+                        subordinateText={formatDate(student.created_at)}
+                      />
                     </td>
                     <td>
                       <span className={`admin-badge badge-${getLevelInfo(student.level, dynamicLevels).key}`}>

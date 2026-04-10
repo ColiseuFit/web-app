@@ -3,8 +3,6 @@
 import { useState } from "react";
 import { Settings as SettingsIcon, Zap, ShieldCheck, Trophy, Star, Dumbbell, CheckSquare } from "lucide-react";
 import GeneralSettingsManager from "./GeneralSettingsManager";
-import LevelsManager from "./LevelsManager";
-import PointsSettingsManager from "./PointsSettingsManager";
 import WodSettingsManager from "./WodSettingsManager";
 import CheckinSettingsManager from "./CheckinSettingsManager";
 
@@ -31,8 +29,6 @@ export default function SettingsTabs({ initialSettings, initialRules, initialLev
     { id: "geral", label: "Geral", icon: SettingsIcon },
     { id: "checkin", label: "Check-in", icon: CheckSquare },
     { id: "wod", label: "WOD", icon: Dumbbell },
-    { id: "metodologia", label: "Metodologia", icon: Zap },
-    { id: "pontuacao", label: "Pontuação", icon: Star },
     { id: "seguranca", label: "Segurança", icon: ShieldCheck }
   ];
 
@@ -100,34 +96,6 @@ export default function SettingsTabs({ initialSettings, initialRules, initialLev
 
         {activeTab === "wod" && (
           <WodSettingsManager initialSettings={initialSettings} />
-        )}
-
-        {activeTab === "metodologia" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
-            {/* Níveis Técnicos (Coliseu Levels) - Dynamic SSoT */}
-            <LevelsManager initialLevels={initialLevels.reduce((acc, curr) => {
-              acc[curr.key] = curr;
-              return acc;
-            }, {} as any)} />
-            
-            {/* Future: Points System Configuration */}
-            <div className="admin-card" style={{ opacity: 0.6, borderStyle: "dashed" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "16px" }}>
-                <Trophy size={24} />
-                <h2 style={{ fontSize: "16px", fontWeight: 800, textTransform: "uppercase", margin: 0 }}>Progressão & Níveis</h2>
-              </div>
-              <p style={{ fontSize: "13px", color: "#666", fontWeight: 500 }}>
-                Configure as pontuações para check-ins, PRs e participação em eventos.
-              </p>
-            </div>
-          </div>
-        )}
-
-        {activeTab === "pontuacao" && (
-          <PointsSettingsManager initialRules={initialRules.reduce((acc, curr) => {
-            acc[curr.key] = String(curr.points);
-            return acc;
-          }, {} as any)} />
         )}
 
         {activeTab === "seguranca" && (

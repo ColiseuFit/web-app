@@ -72,10 +72,11 @@ export default async function AdminDashboardPage() {
       new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     )
     .slice(0, 8)
-    .map((p: { id: string; full_name: string; display_name: string | null; level: string; created_at: string; phone: string | null }) => ({
+    .map((p: any) => ({
       id: p.id,
-      name: p.display_name || p.full_name,
+      name: p.display_name,
       full_name: p.full_name,
+      avatar_url: p.avatar_url,
       level: p.level,
       created_at: p.created_at,
       phone: p.phone,

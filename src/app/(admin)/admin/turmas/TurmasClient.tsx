@@ -48,6 +48,8 @@ import {
 import { LEVEL_CONFIG } from "@/lib/constants/levels";
 import { getTodayDate, checkIsSlotBlocked, getMinWeekOffset } from "@/lib/date-utils";
 import ClassCommandCenter from "./ClassCommandCenter";
+import { AthleteIdentity, AthleteAvatar } from "@/components/Identity/AthleteIdentity";
+import { getDisplayName } from "@/lib/identity-utils";
 import {
   upsertClassSlot,
   toggleClassSlot,
@@ -1950,8 +1952,11 @@ export default function TurmasClient({
                           </td>
 
                           {/* NOME */}
-                          <td style={{ padding: "10px 16px", fontWeight: 800, color: "#000" }}>
-                            {profile.full_name || "ALUNO SEM NOME"}
+                          <td style={{ padding: "10px 16px" }}>
+                            <AthleteIdentity
+                              profile={profile}
+                              avatarSize={32}
+                            />
                           </td>
 
                           {/* NÍVEL */}
@@ -2185,8 +2190,11 @@ export default function TurmasClient({
                        <label style={labelStyle}>MATRICULADOS ({enrollments.length}/{editingSlot.capacity})</label>
                        <div style={{ border: "2px solid #000", background: "#FFF", maxHeight: 300, overflowY: "auto" }}>
                          {enrollments.map(en => (
-                           <div key={en.id} style={{ padding: 10, borderBottom: "1px solid #EEE", display: "flex", justifyContent: "space-between" }}>
-                             <span style={{ fontSize: 12, fontWeight: 700 }}>{en.profiles.full_name}</span>
+                           <div key={en.id} style={{ padding: 10, borderBottom: "1px solid #EEE", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                             <AthleteIdentity
+                               profile={en.profiles}
+                               avatarSize={24}
+                             />
                              <button onClick={() => handleUnenroll(en.id, editingSlot.id)} style={{ color: "#DC2626", border: "none", background: "none" }}><UserMinus size={14} /></button>
                            </div>
                          ))}
@@ -2208,7 +2216,11 @@ export default function TurmasClient({
                                background: c.status === "missed" ? "#FEE2E2" : "transparent"
                              }}>
                                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                                 <div style={{ width: 4, height: 24, background: c.status === "missed" ? "#DC2626" : "#2563EB" }} />
+                                 <div style={{ width: 4, height: 32, background: c.status === "missed" ? "#DC2626" : "#2563EB" }} />
+                                 <AthleteIdentity
+                                   profile={c.profiles}
+                                   avatarSize={32}
+                                 />
                                  <div>
                                    <div style={{ fontSize: 12, fontWeight: 800, color: "#000" }}>{c.profiles.full_name}</div>
                                    {c.status === "missed" && (

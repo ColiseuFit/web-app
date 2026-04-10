@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 /**
  * INTERCEPTOR DE AÇÕES CRÍTICAS (ConfirmModal).
@@ -22,6 +22,7 @@ interface ConfirmModalProps {
   onConfirm: () => void;
   onCancel: () => void;
   isDanger?: boolean;
+  challengeText?: string;
 }
 
 export default function ConfirmModal({
@@ -32,7 +33,10 @@ export default function ConfirmModal({
   onConfirm,
   onCancel,
   isDanger = true,
+  challengeText,
 }: ConfirmModalProps) {
+  const [typedChallenge, setTypedChallenge] = useState("");
+  const isChallengeValid = !challengeText || typedChallenge === challengeText;
   
   // Bloquear scroll ao abrir
   useEffect(() => {
@@ -105,25 +109,56 @@ export default function ConfirmModal({
           {message}
         </p>
 
+        {challengeText && (
+          <div style={{ marginBottom: "24px" }}>
+            <p style={{ fontSize: "11px", fontWeight: 900, marginBottom: "8px", color: "#666" }}>
+              PARA CONTINUAR, DIGITE <strong>{challengeText}</strong>:
+            </p>
+            <input
+              type="text"
+              value={typedChallenge}
+              onChange={(e) => setTypedChallenge(e.target.value)}
+              placeholder="Digite aqui..."
+              autoFocus
+              style={{
+                width: "100%",
+                padding: "14px",
+                border: "3px solid #000",
+                fontWeight: 900,
+                fontSize: "14px",
+                backgroundColor: "#F9F9F9",
+                outline: "none",
+                boxSizing: "border-box"
+              }}
+            />
+          </div>
+        )}
+
         <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
           <button
             onClick={onConfirm}
+            disabled={!isChallengeValid}
             style={{
               padding: "18px",
-              background: isDanger ? "#E31B23" : "#000000",
-              color: "#FFFFFF",
+              background: isDanger ? (isChallengeValid ? "#E31B23" : "#FEE2E2") : (isChallengeValid ? "#000000" : "#E5E7EB"),
+              color: isChallengeValid ? "#FFFFFF" : "#999",
               border: "4px solid #000000",
               fontWeight: 900,
               fontSize: "14px",
               letterSpacing: "0.1em",
-              cursor: "pointer",
+              cursor: isChallengeValid ? "pointer" : "not-allowed",
               textTransform: "uppercase",
               fontFamily: "'Outfit', sans-serif",
-              transition: "transform 0.1s ease",
-              boxShadow: "4px 4px 0px #000000"
+              transition: "all 0.1s ease",
+              boxShadow: isChallengeValid ? "4px 4px 0px #000000" : "none",
+              transform: isChallengeValid ? "none" : "translate(2px, 2px)"
             }}
-            onMouseDown={e => e.currentTarget.style.transform = "translate(2px, 2px)"}
-            onMouseUp={e => e.currentTarget.style.transform = "none"}
+            onMouseDown={e => {
+              if (isChallengeValid) e.currentTarget.style.transform = "translate(2px, 2px)";
+            }}
+            onMouseUp={e => {
+              if (isChallengeValid) e.currentTarget.style.transform = "none";
+            }}
           >
             {confirmLabel}
           </button>

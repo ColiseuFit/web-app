@@ -64,6 +64,8 @@ import {
 } from "./actions";
 import { getLevelInfo } from "@/lib/constants/levels";
 import { DAY_LABELS } from "@/lib/constants/calendar";
+import { AthleteIdentity, AthleteAvatar } from "@/components/Identity/AthleteIdentity";
+import { getDisplayName } from "@/lib/identity-utils";
 
 // ── Types ──────────────────────────────────────────────────────
 
@@ -127,10 +129,6 @@ interface ClassCommandCenterProps {
 
 // ── Helpers ────────────────────────────────────────────────────
 
-function getDisplayName(p: Checkin["profiles"] | StudentResult | Enrollment["profiles"] | null): string {
-  if (!p) return "Aluno";
-  return (p as any).display_name || (p as any).full_name || "Aluno";
-}
 
 function friendlyError(raw: string): string {
   if (raw?.includes("duplicate key")) return "Aluno já está nesta aula.";
@@ -606,7 +604,12 @@ export default function ClassCommandCenter({
                       <div style={{ padding: 20, textAlign: "center", fontSize: 11, fontWeight: 800, color: "#999" }}>NENHUM ALUNO ENCONTRADO</div>
                     ) : searchResults.map(s => (
                       <div key={s.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderBottom: "1px solid #EEE" }}>
-                        <span style={{ fontSize: 13, fontWeight: 800 }}>{getDisplayName(s)}</span>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                          <AthleteIdentity
+                            profile={s as any}
+                            avatarSize={32}
+                          />
+                        </div>
                         <div style={{ display: "flex", gap: 8 }}>
                           <button
                             onClick={() => handleAddStudent(s)}
@@ -665,19 +668,26 @@ export default function ClassCommandCenter({
                       borderLeft: `10px solid ${isPresent ? levelInfo.color : "#DC2626"}`,
                     }}
                   >
-                    <div style={{ flex: 1, minWidth: 0, marginRight: 16 }}>
-                      <div style={{ 
-                        fontSize: 16, 
-                        fontWeight: 900, 
-                        textTransform: "uppercase",
-                        whiteSpace: "nowrap",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis"
-                      }} title={name}>
-                        {name}
-                      </div>
-                      <div style={{ fontSize: 11, fontWeight: 900, marginTop: 4, color: isPresent ? "#16A34A" : "#DC2626", display: "flex", alignItems: "center", gap: 6 }}>
-                        {isPresent ? "PRESENÇA CONFIRMADA" : "FALTA NO SISTEMA"}
+                    <div style={{ display: "flex", alignItems: "center", gap: 14, flex: 1, minWidth: 0, marginRight: 16 }}>
+                      <AthleteAvatar
+                        profile={c.profiles}
+                        size={52}
+                      />
+
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ 
+                          fontSize: 16, 
+                          fontWeight: 900, 
+                          textTransform: "uppercase",
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis"
+                        }} title={name}>
+                          {name}
+                        </div>
+                        <div style={{ fontSize: 11, fontWeight: 900, marginTop: 4, color: isPresent ? "#16A34A" : "#DC2626", display: "flex", alignItems: "center", gap: 6 }}>
+                          {isPresent ? "PRESENÇA CONFIRMADA" : "FALTA NO SISTEMA"}
+                        </div>
                       </div>
                     </div>
                     
@@ -788,10 +798,17 @@ export default function ClassCommandCenter({
                       borderLeft: `8px solid ${isPresent ? "#16A34A" : isMissed ? "#DC2626" : levelInfo.color}`,
                     }}
                   >
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ fontSize: 14, fontWeight: 800, textTransform: "uppercase" }}>{getDisplayName(en.profiles)}</div>
-                      <div style={{ fontSize: 10, fontWeight: 900, marginTop: 4, color: isPresent ? "#16A34A" : isMissed ? "#DC2626" : "#AAA" }}>
-                        {isPresent ? "✓ PRESENTE" : isMissed ? "✗ FALTA" : "○ AGUARDANDO"}
+                    <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
+                      <AthleteAvatar
+                        profile={en.profiles}
+                        size={42}
+                      />
+
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontSize: 14, fontWeight: 800, textTransform: "uppercase", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{getDisplayName(en.profiles)}</div>
+                        <div style={{ fontSize: 10, fontWeight: 900, marginTop: 4, color: isPresent ? "#16A34A" : isMissed ? "#DC2626" : "#AAA" }}>
+                          {isPresent ? "✓ PRESENTE" : isMissed ? "✗ FALTA" : "○ AGUARDANDO"}
+                        </div>
                       </div>
                     </div>
                     {isPresent ? <CheckCircle size={16} color="#16A34A" /> : isMissed ? <UserX size={16} color="#DC2626" /> : <Clock size={16} color="#DDD" />}
@@ -829,8 +846,18 @@ export default function ClassCommandCenter({
                   }}
                 >
                   <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
-                    <div style={{ width: 24, height: 24, background: "#000", color: "#FFF", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 900 }}>
-                      {idx + 1}
+                    <div style={{ position: "relative" }}>
+                      <AthleteAvatar
+                        profile={w.profiles}
+                        size={42}
+                      />
+                      <div style={{ 
+                        position: "absolute", bottom: -4, right: -4,
+                        width: 20, height: 20, background: "#000", color: "#FFF", border: "2px solid #FFF",
+                        borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 900 
+                      }}>
+                        {idx + 1}
+                      </div>
                     </div>
                     <div style={{ minWidth: 0 }}>
                       <div style={{ fontSize: 14, fontWeight: 800, textTransform: "uppercase", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>

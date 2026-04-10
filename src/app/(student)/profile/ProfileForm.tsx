@@ -5,7 +5,9 @@ import { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import { updateProfile, updatePassword } from "./actions";
 import ConfirmModal from "@/components/ConfirmModal";
-import { Lock, ShieldCheck, User as UserIcon, Mail, Phone, Info } from "lucide-react";
+import { Lock, ShieldCheck, User as UserIcon, Mail, Phone, Info, MapPin, HeartPulse, Share2, Sparkles, Pencil, Trash2 } from "lucide-react";
+import AthleteAvatar from "@/components/Identity/AthleteAvatar";
+import { getDisplayName } from "@/lib/identity-utils";
 
 /**
  * ProfileForm Component
@@ -50,9 +52,39 @@ export default function ProfileForm({ user, profile, onDirtyChange }: ProfileFor
   const [cpfValue, setCpfValue] = useState(profile?.cpf || "");
   const [phoneValue, setPhoneValue] = useState(profile?.phone || "");
   
+  // BUG FIX: Campos PESSOAL agora são controlados para não perder valor ao trocar de aba
+  const [firstName, setFirstName] = useState(
+    profile?.first_name || (profile?.full_name ? profile.full_name.split(' ')[0] : "")
+  );
+  const [lastName, setLastName] = useState(
+    profile?.last_name || (profile?.full_name ? profile.full_name.split(' ').slice(1).join(' ') : "")
+  );
+  const [birthDate, setBirthDate] = useState(profile?.birth_date || "");
+  const [gender, setGender] = useState(profile?.gender || "");
+  
+  // BUG FIX: displayName também controlado
+  const [displayName, setDisplayName] = useState(profile?.display_name || profile?.full_name || "");
+
+  // Campos de Emergência e Endereço
+  const [emergencyName, setEmergencyName] = useState(profile?.emergency_contact_name || "");
+  const [emergencyPhone, setEmergencyPhone] = useState(profile?.emergency_contact_phone || "");
+  
+  const [cep, setCep] = useState(profile?.address_zip_code || "");
+  const [street, setStreet] = useState(profile?.address_street || "");
+  const [number, setNumber] = useState(profile?.address_number || "");
+  const [complement, setComplement] = useState(profile?.address_complement || "");
+  const [neighborhood, setNeighborhood] = useState(profile?.address_neighborhood || "");
+  const [city, setCity] = useState(profile?.address_city || "");
+  const [stateUF, setStateUF] = useState(profile?.address_state || "");
+  const [fetchingCep, setFetchingCep] = useState(false);
+  const [cepError, setCepError] = useState("");
+  
   const [passLoading, setPassLoading] = useState(false);
   const [passMessage, setPassMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);
   
+  type TabType = "PESSOAL" | "ENDEREÇO" | "SOCIAL";
+  const [activeTab, setActiveTab] = useState<TabType>("PESSOAL");
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const passFormRef = useRef<HTMLFormElement>(null);
 
@@ -68,17 +100,25 @@ export default function ProfileForm({ user, profile, onDirtyChange }: ProfileFor
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [isDirty]);
 
-  // Cálculo de completude do perfil
+  // Cálculo de completude do perfil — usa estados locais para reatividade em tempo real
   const calculateCompleteness = () => {
     const fields = [
-      profile?.first_name || "",
-      profile?.last_name || "",
-      profile?.birth_date || "",
-      profile?.gender || "",
+      firstName,
+      lastName,
+      birthDate,
+      gender,
       cpfValue,
       phoneValue,
       bioText,
-      avatarUrl
+      avatarUrl,
+      emergencyName,
+      emergencyPhone,
+      cep,
+      street,
+      number,
+      neighborhood,
+      city,
+      stateUF
     ];
     const filled = fields.filter(f => f && f.length > 0).length;
     return Math.round((filled / fields.length) * 100);
@@ -96,17 +136,61 @@ export default function ProfileForm({ user, profile, onDirtyChange }: ProfileFor
       .replace(/(-\d{2})\d+?$/, "$1");
   };
 
-  const maskPhone = (value: string) => {
-    const numbers = value.replace(/\D/g, "");
+  /**
+   * Formata telefone fixo (XX) XXXX-XXXX ou celular (XX) XXXXX-XXXX.
+   * Corrigido para evitar regex encadeado com resultados incorretos.
+   */
+  const maskPhone = (value: string): string => {
+    const numbers = value.replace(/\D/g, "").slice(0, 11);
     if (numbers.length <= 10) {
+      // Fixo 8 dígitos: (XX) XXXX-XXXX
       return numbers
-        .replace(/(\d{2})(\d)/, "($1) $2")
-        .replace(/(\d{4})(\d)/, "$1-$2");
+        .replace(/^(\d{0,2})/, "($1")
+        .replace(/^\((\d{2})(\d)/, "($1) $2")
+        .replace(/(\d{4})(\d{1,4})$/, "$1-$2");
+    }
+    // Celular 9 dígitos: (XX) XXXXX-XXXX
+    return numbers.replace(/^(\d{2})(\d{5})(\d{4})$/, "($1) $2-$3");
+  };
+
+  const maskCEP = (value: string) => {
+    return value
+      .replace(/\D/g, "")
+      .replace(/(\d{5})(\d)/, "$1-$2")
+      .replace(/(-\d{3})\d+?$/, "$1");
+  };
+
+  const handleCepChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const rawValue = e.target.value;
+    const formatted = maskCEP(rawValue);
+    setCep(formatted);
+    setIsDirty(true);
+
+    const numericCep = formatted.replace(/\D/g, "");
+    if (numericCep.length === 8) {
+      setFetchingCep(true);
+      setCepError(""); // Limpa erro anterior
+      try {
+        const response = await fetch(`https://viacep.com.br/ws/${numericCep}/json/`);
+        const data = await response.json();
+        if (!data.erro) {
+          setStreet(data.logradouro || "");
+          setNeighborhood(data.bairro || "");
+          setCity(data.localidade || "");
+          setStateUF(data.uf || "");
+        } else {
+          // UX FIX: Feedback inline ao invés de silêncio
+          setCepError("CEP não encontrado. Verifique e tente novamente.");
+          setStreet(""); setNeighborhood(""); setCity(""); setStateUF("");
+        }
+      } catch (error) {
+        console.error("Erro ao buscar CEP", error);
+        setCepError("Erro ao consultar o CEP. Tente novamente.");
+      } finally {
+        setFetchingCep(false);
+      }
     } else {
-      return numbers
-        .replace(/(\d{2})(\d)/, "($1) $2")
-        .replace(/(\d{1})(\d{4})(\d)/, "$2-$3") // Ajuste para 9 dígitos
-        .replace(/(\d{5})(\d{4})/, "$1-$2");
+      setCepError(""); // Limpa erro ao editar
     }
   };
 
@@ -148,7 +232,8 @@ export default function ProfileForm({ user, profile, onDirtyChange }: ProfileFor
 
       setAvatarUrl(publicUrl);
     } catch (error: any) {
-      alert("Erro ao enviar imagem: " + error.message);
+      // OPT FIX: Usa o sistema de mensagens do componente ao invés do alert() nativo
+      setMessage({ type: "error", text: "Erro ao enviar imagem: " + (error.message || "Tente novamente.") });
     } finally {
       setUploading(false);
     }
@@ -221,25 +306,14 @@ export default function ProfileForm({ user, profile, onDirtyChange }: ProfileFor
       
       {/* Avatar Section */}
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: "40px" }}>
-        <div style={{
-          width: "120px",
-          height: "120px",
-          background: "#F9F9F9",
-          border: "2px solid #000",
-          boxShadow: "4px 4px 0px #000",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          overflow: "hidden",
-          position: "relative",
-          marginBottom: "16px",
-        }}>
-          {avatarUrl ? (
-            <img src={avatarUrl} alt="Avatar" style={{ width: "100%", height: "100%", objectFit: "cover", filter: "grayscale(100%) contrast(1.1)" }} />
-          ) : (
-            <UserIcon size={40} style={{ color: "#AAA" }} />
-          )}
-        </div>
+        <AthleteAvatar
+          url={avatarUrl}
+          name={displayName}
+          size={120}
+          borderWidth={2}
+          shadowSize={0} // FIX: Remove sombra pesada para visual minimalista
+          rounded={true} // FIX: Avatar circular
+        />
         
         <input 
           type="file" 
@@ -250,28 +324,36 @@ export default function ProfileForm({ user, profile, onDirtyChange }: ProfileFor
           style={{ display: "none" }}
         />
         
-        <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", justifyContent: "center" }}>
+        <div style={{ 
+          display: "flex", 
+          gap: "20px", 
+          marginTop: "16px",
+          justifyContent: "center"
+        }}>
           <button 
             type="button" 
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading}
             style={{
-              background: "#FFF",
-              border: "2px solid #000",
-              boxShadow: "3px 3px 0px #000",
+              background: "none",
+              border: "none",
               color: "#000",
-              padding: "8px 16px",
-              fontSize: "10px",
-              fontWeight: 700,
-              letterSpacing: "0.1em",
+              fontSize: "12px",
+              fontWeight: 800,
               textTransform: "uppercase",
+              letterSpacing: "0.05em",
               cursor: "pointer",
-              transition: "transform 0.1s",
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              padding: "4px",
+              transition: "opacity 0.2s"
             }}
-            onMouseOver={(e) => (e.currentTarget.style.transform = "translate(1px, 1px)")}
-            onMouseOut={(e) => (e.currentTarget.style.transform = "none")}
+            onMouseOver={(e) => (e.currentTarget.style.opacity = "0.7")}
+            onMouseOut={(e) => (e.currentTarget.style.opacity = "1")}
           >
-            {uploading ? "SINCRO..." : "ALTERAR FOTO"}
+            <Pencil size={14} />
+            {uploading ? "CARREGANDO..." : "Alterar"}
           </button>
 
           {avatarUrl && (
@@ -280,19 +362,25 @@ export default function ProfileForm({ user, profile, onDirtyChange }: ProfileFor
               onClick={() => setShowDeleteConfirm(true)}
               disabled={uploading}
               style={{
-                background: "transparent",
-                border: "2px solid #E31B23",
+                background: "none",
+                border: "none",
                 color: "#E31B23",
-                padding: "8px 16px",
-                fontSize: "10px",
-                fontWeight: 700,
-                letterSpacing: "0.1em",
+                fontSize: "12px",
+                fontWeight: 800,
                 textTransform: "uppercase",
+                letterSpacing: "0.05em",
                 cursor: "pointer",
-                transition: "all 0.2s",
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+                padding: "4px",
+                transition: "opacity 0.2s"
               }}
+              onMouseOver={(e) => (e.currentTarget.style.opacity = "0.7")}
+              onMouseOut={(e) => (e.currentTarget.style.opacity = "1")}
             >
-              REMOVER FOTO
+              <Trash2 size={14} />
+              Remover
             </button>
           )}
         </div>
@@ -346,8 +434,50 @@ export default function ProfileForm({ user, profile, onDirtyChange }: ProfileFor
         </p>
       </div>
 
+      {/* ── TABS NAVEGAÇÃO ── */}
+      <div style={{ display: "flex", gap: "8px", marginBottom: "32px", overflowX: "auto", paddingBottom: "8px" }}>
+        {(["PESSOAL", "ENDEREÇO", "SOCIAL"] as TabType[]).map((tab) => {
+          const isActive = activeTab === tab;
+          return (
+            <button
+              key={tab}
+              type="button"
+              onClick={() => setActiveTab(tab)}
+              style={{
+                flex: 1,
+                minWidth: "120px",
+                padding: "16px 8px",
+                background: isActive ? "#000" : "#FFF",
+                color: isActive ? "#FFF" : "#000",
+                border: "2px solid #000",
+                boxShadow: isActive ? "4px 4px 0px #E31B23" : "none",
+                transform: isActive ? "translate(-2px, -2px)" : "none",
+                fontSize: "11px",
+                fontWeight: 900,
+                textTransform: "uppercase",
+                letterSpacing: "0.1em",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "8px",
+                transition: "all 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275)"
+              }}
+            >
+              {tab === "PESSOAL" && <UserIcon size={14} />}
+              {tab === "ENDEREÇO" && <MapPin size={14} />}
+              {tab === "SOCIAL" && <Share2 size={14} />}
+              {tab}
+            </button>
+          );
+        })}
+      </div>
+
       <form action={handleSubmit} onChange={() => setIsDirty(true)} style={{ display: "flex", flexDirection: "column", gap: "48px" }}>
         
+        {/* === ABA: PESSOAL === */}
+        <div style={{ display: activeTab === "PESSOAL" ? "flex" : "none", flexDirection: "column", gap: "48px" }}>
+          
         {/* ── SEÇÃO 1: IDENTIDADE DIGITAL ── */}
         <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "8px" }}>
@@ -377,12 +507,14 @@ export default function ProfileForm({ user, profile, onDirtyChange }: ProfileFor
             <h3 style={{ fontSize: "11px", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.1em", color: "#000" }}>DADOS DE CADASTRO</h3>
           </div>
 
+          {/* BUG FIX: campos agora controlados — valor preservado ao trocar de aba */}
           <div style={{ position: "relative" }}>
             <label style={labelStyle}>Primeiro Nome</label>
             <input 
               type="text" 
               name="first_name" 
-              defaultValue={profile?.first_name || (profile?.full_name ? profile.full_name.split(' ')[0] : "")} 
+              value={firstName}
+              onChange={(e) => { setFirstName(e.target.value); setIsDirty(true); }}
               placeholder="Ex: JOÃO" 
               maxLength={100}
               style={blockInputStyle}
@@ -394,20 +526,22 @@ export default function ProfileForm({ user, profile, onDirtyChange }: ProfileFor
             <input 
               type="text" 
               name="last_name" 
-              defaultValue={profile?.last_name || (profile?.full_name ? profile.full_name.split(' ').slice(1).join(' ') : "")} 
+              value={lastName}
+              onChange={(e) => { setLastName(e.target.value); setIsDirty(true); }}
               placeholder="Ex: DA SILVA" 
               maxLength={100}
               style={blockInputStyle}
             />
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
             <div style={{ position: "relative" }}>
               <label style={labelStyle}>Nascimento</label>
               <input 
                 type="date" 
                 name="birth_date" 
-                defaultValue={profile?.birth_date || ""} 
+                value={birthDate}
+                onChange={(e) => { setBirthDate(e.target.value); setIsDirty(true); }}
                 style={{ ...blockInputStyle, padding: "13px 16px" }}
               />
             </div>
@@ -416,7 +550,8 @@ export default function ProfileForm({ user, profile, onDirtyChange }: ProfileFor
               <label style={labelStyle}>Gênero</label>
               <select 
                 name="gender" 
-                defaultValue={profile?.gender || ""} 
+                value={gender}
+                onChange={(e) => { setGender(e.target.value); setIsDirty(true); }}
                 style={{...blockInputStyle, appearance: "none"}}
               >
                 <option value="" disabled>Selecione...</option>
@@ -462,19 +597,184 @@ export default function ProfileForm({ user, profile, onDirtyChange }: ProfileFor
           </div>
         </div>
 
-        {/* ── SEÇÃO 3: PERFIL SOCIAL ── */}
+        </div> {/* Fim Aba PESSOAL */}
+
+        {/* === ABA: ENDEREÇO === */}
+        <div style={{ display: activeTab === "ENDEREÇO" ? "flex" : "none", flexDirection: "column", gap: "48px" }}>
+
+        {/* ── SEÇÃO 3: CONTATO DE EMERGÊNCIA ── */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "24px", padding: "24px", background: "#FEF2F2", border: "2px solid #000" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "8px" }}>
+            <HeartPulse size={18} color="#E31B23" />
+            <h3 style={{ fontSize: "11px", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.1em", color: "#000" }}>CONTATO DE EMERGÊNCIA</h3>
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+            <div style={{ position: "relative" }}>
+              <label style={labelStyle}>Nome do Contato</label>
+              <input 
+                type="text" 
+                name="emergency_contact_name" 
+                value={emergencyName}
+                onChange={(e) => { setEmergencyName(e.target.value); setIsDirty(true); }}
+                placeholder="Ex: MARIA CORREIA" 
+                maxLength={100}
+                style={blockInputStyle}
+              />
+            </div>
+            <div style={{ position: "relative" }}>
+              <label style={labelStyle}>Telefone</label>
+              <div style={{ position: "relative" }}>
+                <Phone size={14} style={{ position: "absolute", left: "16px", top: "50%", transform: "translateY(-50%)", color: "#CCC" }} />
+                <input 
+                  type="tel" 
+                  name="emergency_contact_phone" 
+                  value={emergencyPhone}
+                  onChange={(e) => { setEmergencyPhone(maskPhone(e.target.value)); setIsDirty(true); }}
+                  placeholder="(00) 00000-0000" 
+                  maxLength={20}
+                  style={{ ...blockInputStyle, padding: "14px 16px 14px 44px" }}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ── SEÇÃO 4: ENDEREÇO ── */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "8px" }}>
+            <div style={{ width: "8px", height: "16px", background: "#000" }} />
+            <h3 style={{ fontSize: "11px", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.1em", color: "#000" }}>ENDEREÇO</h3>
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+            <div style={{ position: "relative" }}>
+              <label style={labelStyle}>CEP</label>
+              <div style={{ position: "relative" }}>
+                <MapPin size={14} style={{ position: "absolute", left: "16px", top: "50%", transform: "translateY(-50%)", color: "#CCC" }} />
+                <input 
+                  type="text" 
+                  name="address_zip_code" 
+                  value={cep}
+                  onChange={handleCepChange}
+                  placeholder="00000-000" 
+                  maxLength={9}
+                  style={{ 
+                    ...blockInputStyle, 
+                    padding: "14px 16px 14px 44px",
+                    opacity: fetchingCep ? 0.5 : 1
+                  }}
+                />
+                {fetchingCep && <span style={{ position: "absolute", right: "16px", top: "50%", transform: "translateY(-50%)", fontSize: "10px", color: "#E31B23", fontWeight: 900 }}>Buscando...</span>}
+              </div>
+              {/* UX FIX: Feedback inline de CEP inválido */}
+              {cepError && <p style={{ fontSize: "10px", color: "#E31B23", fontWeight: 700, marginTop: "6px" }}>{cepError}</p>}
+            </div>
+
+            <div style={{ position: "relative", flex: 2 }}>
+              <label style={labelStyle}>Logradouro</label>
+              <input 
+                type="text" 
+                name="address_street" 
+                value={street}
+                onChange={(e) => { setStreet(e.target.value); setIsDirty(true); }}
+                placeholder="Ex: RUA DAS FLORES" 
+                maxLength={150}
+                style={blockInputStyle}
+              />
+            </div>
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+            <div style={{ position: "relative" }}>
+              <label style={labelStyle}>Número</label>
+              <input 
+                type="text" 
+                name="address_number" 
+                value={number}
+                onChange={(e) => { setNumber(e.target.value); setIsDirty(true); }}
+                placeholder="Ex: 123" 
+                maxLength={20}
+                style={blockInputStyle}
+              />
+            </div>
+
+            <div style={{ position: "relative" }}>
+              <label style={labelStyle}>Complemento</label>
+              <input 
+                type="text" 
+                name="address_complement" 
+                value={complement}
+                onChange={(e) => { setComplement(e.target.value); setIsDirty(true); }}
+                placeholder="Ex: APTO 4B (Opcional)" 
+                maxLength={100}
+                style={blockInputStyle}
+              />
+            </div>
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+            <div style={{ position: "relative" }}>
+              <label style={labelStyle}>Bairro</label>
+              <input 
+                type="text" 
+                name="address_neighborhood" 
+                value={neighborhood}
+                onChange={(e) => { setNeighborhood(e.target.value); setIsDirty(true); }}
+                placeholder="Ex: CENTRO" 
+                maxLength={100}
+                style={blockInputStyle}
+              />
+            </div>
+
+            <div style={{ position: "relative" }}>
+              <label style={labelStyle}>Cidade</label>
+              <input 
+                type="text" 
+                name="address_city" 
+                value={city}
+                onChange={(e) => { setCity(e.target.value); setIsDirty(true); }}
+                placeholder="Ex: SÃO PAULO" 
+                maxLength={100}
+                style={blockInputStyle}
+              />
+            </div>
+
+            <div style={{ position: "relative" }}>
+              <label style={labelStyle}>UF</label>
+              <input 
+                type="text" 
+                name="address_state" 
+                value={stateUF}
+                onChange={(e) => { setStateUF(e.target.value.toUpperCase()); setIsDirty(true); }}
+                placeholder="Ex: SP" 
+                maxLength={2}
+                style={blockInputStyle}
+              />
+            </div>
+          </div>
+        </div>
+
+        </div> {/* Fim Aba ENDEREÇO */}
+
+        {/* === ABA: SOCIAL === */}
+        <div style={{ display: activeTab === "SOCIAL" ? "flex" : "none", flexDirection: "column", gap: "48px" }}>
+
+        {/* ── SEÇÃO 5: PERFIL SOCIAL ── */}
         <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "8px" }}>
             <div style={{ width: "8px", height: "16px", background: "#000" }} />
             <h3 style={{ fontSize: "11px", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.1em", color: "#000" }}>PERFIL SOCIAL</h3>
           </div>
 
+          {/* BUG FIX: displayName agora controlado — valor preservado ao trocar de aba */}
           <div style={{ position: "relative" }}>
             <label style={labelStyle}>Apelido (Como os outros te verão)</label>
             <input 
               type="text" 
               name="display_name" 
-              defaultValue={profile?.display_name || profile?.full_name || ""} 
+              value={displayName}
+              onChange={(e) => { setDisplayName(e.target.value); setIsDirty(true); }}
               placeholder="Ex: GABI, SANTANA, MONSTRO..." 
               maxLength={50}
               style={blockInputStyle}
@@ -507,6 +807,8 @@ export default function ProfileForm({ user, profile, onDirtyChange }: ProfileFor
             </div>
           </div>
         </div>
+
+        </div> {/* Fim Abas no Form */}
 
         {message && (
           <div style={{
@@ -575,7 +877,7 @@ export default function ProfileForm({ user, profile, onDirtyChange }: ProfileFor
       </form>
 
       {/* ── SENHA E SEGURANÇA ── */}
-      <div style={{ marginTop: "64px", borderTop: "2px solid #EEE", paddingTop: "48px" }}>
+      <div style={{ display: activeTab === "SOCIAL" ? "block" : "none", marginTop: "64px", borderTop: "2px solid #EEE", paddingTop: "48px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "32px" }}>
           <div style={{ width: "8px", height: "16px", background: "#E31B23" }} />
           <h3 style={{ fontSize: "11px", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.1em", color: "#000" }}>SEGURANÇA DA CONTA</h3>

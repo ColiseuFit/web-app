@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { X, Save, Activity, Ruler, Target, Camera, FileText, Upload, Trash2, CheckCircle2, User, ImageIcon, Info, HeartPulse } from "lucide-react";
 import { upsertPhysicalEvaluation, uploadEvaluationPhoto, getStudentBiometricsInfo } from "../../actions";
 import { calculateBMI, calculateBodyComposition, calculateAge } from "../../../../lib/physique-utils";
+import AlertModal from "@/components/AlertModal";
 
 interface PhysicalEvaluationFormProps {
   studentId: string;
@@ -138,6 +139,7 @@ export default function PhysicalEvaluationForm({
   };
   
   const [uploadingPos, setUploadingPos] = useState<string | null>(null);
+  const [alertConfig, setAlertConfig] = useState<{ title: string; message: string; type: "success" | "error" | "info" } | null>(null);
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>, label: string) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -165,11 +167,19 @@ export default function PhysicalEvaluationForm({
           return { ...prev, photos: newPhotos };
         });
       } else {
-        alert(result.error || "Erro no upload");
+        setAlertConfig({
+          title: "ERRO DE UPLOAD",
+          message: result.error || "OCORREU UM ERRO AO ENVIAR A FOTO.",
+          type: "error"
+        });
       }
     } catch (err) {
       console.error("Upload handler critical error:", err);
-      alert("Erro crítico ao processar o upload.");
+      setAlertConfig({
+        title: "ERRO CRÍTICO",
+        message: "NÃO FOI POSSÍVEL PROCESSAR O UPLOAD. TENTE NOVAMENTE.",
+        type: "error"
+      });
     } finally {
       setUploadingPos(null);
     }
@@ -236,7 +246,11 @@ export default function PhysicalEvaluationForm({
     if (result.success) {
       onSuccess();
     } else {
-      alert(result.error);
+      setAlertConfig({
+        title: "ERRO AO SALVAR",
+        message: result.error || "HOUVE UM ERRO AO SALVAR A AVALIAÇÃO FÍSICA.",
+        type: "error"
+      });
     }
     setLoading(false);
   }
@@ -762,6 +776,15 @@ export default function PhysicalEvaluationForm({
           CANCELAR
         </button>
       </footer>
+
+      {alertConfig && (
+        <AlertModal
+          title={alertConfig.title}
+          message={alertConfig.message}
+          type={alertConfig.type}
+          onClose={() => setAlertConfig(null)}
+        />
+      )}
     </div>
   );
 }

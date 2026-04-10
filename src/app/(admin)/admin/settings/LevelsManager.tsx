@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import { Edit2, Save, X, RotateCcw, AlertTriangle } from "lucide-react";
 import { LevelInfo, LEVEL_CONFIG } from "@/lib/constants/levels";
 import { getCachedLevels, updateLevelAction } from "@/lib/constants/levels_actions";
+import Toast, { ToastStatus } from "@/components/Toast";
+import AlertModal from "@/components/AlertModal";
 
 /**
  * LevelsManager: The Administrative Methodology Interface.
@@ -35,6 +37,9 @@ export default function LevelsManager({ initialLevels }: LevelsManagerProps) {
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [editValues, setEditValues] = useState<Partial<LevelInfo>>({});
   const [isSaving, setIsSaving] = useState(false);
+  
+  const [toast, setToast] = useState<{ msg: string; type: ToastStatus } | null>(null);
+  const [alertConfig, setAlertConfig] = useState<{ title: string; message: string; type: "success" | "error" | "info" } | null>(null);
 
   useEffect(() => {
     if (initialLevels) return;
@@ -75,10 +80,15 @@ export default function LevelsManager({ initialLevels }: LevelsManagerProps) {
       }));
       
       setEditingKey(null);
-      alert("Nível atualizado com sucesso!");
+      setToast({ msg: "Nível atualizado com sucesso!", type: "success" });
+      setTimeout(() => setToast(null), 3000);
     } catch (e) {
       console.error(e);
-      alert("Erro ao salvar. Verifique o console.");
+      setAlertConfig({
+        title: "ERRO AO SALVAR",
+        message: "HOUVE UM ERRO AO ATUALIZAR AS DEFINIÇÕES DO NÍVEL TÉCNICO.",
+        type: "error"
+      });
     } finally {
       setIsSaving(false);
     }
@@ -208,6 +218,24 @@ export default function LevelsManager({ initialLevels }: LevelsManagerProps) {
           Recomendamos editar apenas os nomes de exibição, cores e requisitos técnicos.
         </p>
       </div>
+
+      {/* ── CENTRALIZED FEEDBACK ── */}
+      {toast && (
+        <Toast 
+          msg={toast.msg} 
+          type={toast.type} 
+          onClose={() => setToast(null)} 
+        />
+      )}
+
+      {alertConfig && (
+        <AlertModal
+          title={alertConfig.title}
+          message={alertConfig.message}
+          type={alertConfig.type}
+          onClose={() => setAlertConfig(null)}
+        />
+      )}
     </div>
   );
 }

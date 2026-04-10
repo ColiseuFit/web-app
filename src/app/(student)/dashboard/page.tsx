@@ -178,22 +178,22 @@ export default async function AppDashboard({ searchParams }: PageProps) {
           }}>
             <LevelBadge 
               level={level} 
-              size={130} 
+              size={120} 
               avatarUrl={profile?.avatar_url}
               athleteName={profile?.first_name ? profile.first_name.toUpperCase() : displayName.split(' ')[0].toUpperCase()}
+              rounded={true}
             />
           </div>
 
           <div style={{ zIndex: 1, position: "relative", animation: "slideInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards" }}>
             <h1 className="font-display" style={{ 
-              fontSize: "clamp(42px, 12vw, 56px)", 
-              lineHeight: 0.8,
+              fontSize: "clamp(36px, 10vw, 48px)", 
+              lineHeight: 1,
               fontWeight: 900,
-              letterSpacing: "-0.04em",
+              letterSpacing: "-0.05em",
               color: "#000",
               textTransform: "uppercase",
-              marginBottom: "8px",
-              textShadow: `6px 6px 0px ${level.color}30`
+              marginBottom: "4px",
             }}>
               {profile?.first_name ? profile.first_name.toUpperCase() : displayName.split(' ')[0].toUpperCase()}
             </h1>

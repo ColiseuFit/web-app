@@ -13,6 +13,8 @@ import {
 } from "./actions";
 import { getLevelInfo } from "@/lib/constants/levels";
 import { getTodayDate } from "@/lib/date-utils";
+import { AthleteIdentity, AthleteAvatar } from "@/components/Identity/AthleteIdentity";
+import { getDisplayName } from "@/lib/identity-utils";
 /**
  * CloseClassModal: Admin-side class closing interface.
  * 
@@ -52,10 +54,6 @@ interface StudentResult {
 type ToastType = "error" | "success" | "warning";
 interface ToastState { message: string; type: ToastType }
 
-function getDisplayName(p: Checkin["profiles"] | StudentResult | null): string {
-  if (!p) return "Aluno";
-  return (p as any).display_name || (p as any).full_name || "Aluno";
-}
 
 function friendlyError(raw: string): string {
   if (raw.includes("duplicate key")) return "Este aluno já está nesta aula.";
@@ -265,7 +263,12 @@ export default function CloseClassModal({ slot, onClose, onSuccess }: CloseClass
                   <div style={{ padding: 20, textAlign: "center", fontSize: 12, fontWeight: 800, color: "#999" }}>NENHUM ALUNO ENCONTRADO</div>
                 ) : searchResults.map(s => (
                   <div key={s.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 20px", borderBottom: "2px solid #F3F4F6" }}>
-                    <span style={{ fontSize: 13, fontWeight: 900, textTransform: "uppercase" }}>{getDisplayName(s)}</span>
+                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                      <AthleteIdentity
+                        profile={s as any}
+                        avatarSize={40}
+                      />
+                    </div>
                     <button 
                       onClick={() => handleAddStudent(s)} 
                       disabled={addingId === s.id}
@@ -326,10 +329,17 @@ export default function CloseClassModal({ slot, onClose, onSuccess }: CloseClass
                       <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
                         <div style={{ 
                           width: 8, 
-                          height: 32, 
+                          height: 48, 
                           background: getLevelInfo(c.profiles?.level || "INTRO").color,
-                          borderRadius: 2
+                          borderRadius: 2,
+                          flexShrink: 0
                         }} />
+                        
+                        <AthleteAvatar
+                          profile={c.profiles}
+                          size={48}
+                        />
+
                         <div style={{ minWidth: 0 }}>
                           <div style={{ fontSize: 13, fontWeight: 900, textTransform: "uppercase", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{getDisplayName(c.profiles)}</div>
                           <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 2 }}>

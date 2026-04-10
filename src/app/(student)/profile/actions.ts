@@ -2,38 +2,8 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
-import { z } from "zod";
-import { updatePasswordSchema } from "@/lib/validations/security_schemas";
+import { updatePasswordSchema, isValidCPF, isValidName, profileSchema } from "@/lib/validations/security_schemas";
 
-/**
- * Esquema de validação para o perfil do aluno.
- * Garante tipagem estrita e segurança dos dados recebidos do formulário.
- */
-const profileSchema = z.object({
-  display_name: z.string()
-    .min(3, "O Apelido deve ter pelo menos 3 caracteres")
-    .max(50, "O Apelido deve ter no máximo 50 caracteres")
-    .regex(/^[a-zA-Z0-9À-ÿ\s]+$/, "O Apelido não deve conter caracteres especiais"),
-  first_name: z.string()
-    .min(2, "Primeiro nome é obrigatório")
-    .max(100)
-    .regex(/^[a-zA-ZÀ-ÿ\s]+$/, "O nome deve conter apenas letras"),
-  last_name: z.string()
-    .min(2, "Sobrenome é obrigatório")
-    .max(100)
-    .regex(/^[a-zA-ZÀ-ÿ\s]+$/, "O sobrenome deve conter apenas letras"),
-  bio: z.string().max(150, "A biografia deve ter no máximo 150 caracteres").optional().nullable(),
-  gender: z.string().optional().nullable(),
-  cpf: z.string()
-    .refine((val) => val === "" || /^\d{3}\.\d. \d{3}-\d{2}$|^\d{11}$/.test(val), {
-      message: "Formato de CPF inválido"
-    })
-    .optional()
-    .nullable(),
-  birth_date: z.string().optional().nullable(),
-  avatar_url: z.string().url().optional().nullable().or(z.literal("")),
-  phone: z.string().max(20, "O telefone deve ter no máximo 20 caracteres").optional().nullable(),
-});
 
 /**
  * Atualiza os dados do perfil do aluno.
@@ -67,6 +37,15 @@ export async function updateProfile(formData: FormData) {
   const birthDate = formData.get("birth_date") as string || "";
   const avatarUrl = formData.get("avatar_url") as string || "";
   const phone = (formData.get("phone") as string || "").trim();
+  const emergencyContactName = (formData.get("emergency_contact_name") as string || "").trim();
+  const emergencyContactPhone = (formData.get("emergency_contact_phone") as string || "").trim();
+  const addressZipCode = (formData.get("address_zip_code") as string || "").trim();
+  const addressStreet = (formData.get("address_street") as string || "").trim();
+  const addressNumber = (formData.get("address_number") as string || "").trim();
+  const addressComplement = (formData.get("address_complement") as string || "").trim();
+  const addressNeighborhood = (formData.get("address_neighborhood") as string || "").trim();
+  const addressCity = (formData.get("address_city") as string || "").trim();
+  const addressState = (formData.get("address_state") as string || "").trim();
 
   const rawData = {
     display_name: displayName,
@@ -78,6 +57,15 @@ export async function updateProfile(formData: FormData) {
     birth_date: birthDate || undefined,
     avatar_url: avatarUrl || undefined,
     phone: phone || undefined,
+    emergency_contact_name: emergencyContactName || undefined,
+    emergency_contact_phone: emergencyContactPhone || undefined,
+    address_zip_code: addressZipCode || undefined,
+    address_street: addressStreet || undefined,
+    address_number: addressNumber || undefined,
+    address_complement: addressComplement || undefined,
+    address_neighborhood: addressNeighborhood || undefined,
+    address_city: addressCity || undefined,
+    address_state: addressState || undefined,
   };
 
   const validation = profileSchema.safeParse(rawData);
@@ -100,6 +88,15 @@ export async function updateProfile(formData: FormData) {
     birth_date: validatedData.birth_date || null,
     avatar_url: validatedData.avatar_url || null,
     phone: validatedData.phone || null,
+    emergency_contact_name: validatedData.emergency_contact_name || null,
+    emergency_contact_phone: validatedData.emergency_contact_phone || null,
+    address_zip_code: validatedData.address_zip_code || null,
+    address_street: validatedData.address_street || null,
+    address_number: validatedData.address_number || null,
+    address_complement: validatedData.address_complement || null,
+    address_neighborhood: validatedData.address_neighborhood || null,
+    address_city: validatedData.address_city || null,
+    address_state: validatedData.address_state || null,
     updated_at: new Date().toISOString(),
   };
 
@@ -112,6 +109,7 @@ export async function updateProfile(formData: FormData) {
     return { error: "Erro ao salvar perfil: " + error.message };
   }
 
+  revalidatePath("/");
   revalidatePath("/dashboard");
   revalidatePath("/profile");
   revalidatePath("/profile/edit");

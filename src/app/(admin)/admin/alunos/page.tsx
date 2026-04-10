@@ -112,6 +112,15 @@ export default async function AlunosPage({
     membership_type: p.membership_type ?? "club",
     email: p.email,
     member_number: p.member_number,
+    emergency_contact_name: p.emergency_contact_name,
+    emergency_contact_phone: p.emergency_contact_phone,
+    address_zip_code: p.address_zip_code,
+    address_street: p.address_street,
+    address_number: p.address_number,
+    address_complement: p.address_complement,
+    address_neighborhood: p.address_neighborhood,
+    address_city: p.address_city,
+    address_state: p.address_state,
   }));
 
   const totalPages = Math.ceil((totalCount || 0) / pageSize);

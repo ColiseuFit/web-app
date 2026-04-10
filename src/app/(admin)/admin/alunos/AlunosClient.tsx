@@ -5,8 +5,12 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Search, Plus, Phone, X, UserPlus, ChevronDown, Pencil, Trash2, User, Mail, Calendar, CreditCard, Info, Activity, ShieldCheck, Lock as LockIcon, Mail as MailIcon, ChevronLeft, ChevronRight, Copy, Check, Tag } from "lucide-react";
 import { createStudent, updateStudent, deleteStudent, getStudentEvaluations, deletePhysicalEvaluation, updateStudentAuth, updatePreRegistration } from "../../actions";
 import PhysicalEvaluationForm from "./PhysicalEvaluationForm";
+import ConfirmModal from "@/components/ConfirmModal";
+import AlertModal from "@/components/AlertModal";
 import { getLevelInfo, LevelInfo } from "@/lib/constants/levels";
 import { MEMBERSHIP_TYPES, getMembershipLabel } from "@/lib/constants/membership";
+import AthleteIdentity from "@/components/Identity/AthleteIdentity";
+import AthleteAvatar from "@/components/Identity/AthleteAvatar";
 
 /**
  * AlunosClient: Central de Inteligência e Gestão de Alunos (CRM).
@@ -42,6 +46,15 @@ interface Student {
   membership_type: string;
   email: string | null;
   member_number: number | null;
+  emergency_contact_name: string | null;
+  emergency_contact_phone: string | null;
+  address_zip_code: string | null;
+  address_street: string | null;
+  address_number: string | null;
+  address_complement: string | null;
+  address_neighborhood: string | null;
+  address_city: string | null;
+  address_state: string | null;
 }
 
 // We will define this inside the component to use dynamic levels
@@ -108,6 +121,15 @@ export default function AlunosClient({
   const [copied, setCopied] = useState(false);
   const [leadLevels, setLeadLevels] = useState<Record<string, string>>({});
   const [leadMembershipTypes, setLeadMembershipTypes] = useState<Record<string, string>>({});
+  
+  // Generic confirmation state
+  const [pendingAction, setPendingAction] = useState<{
+    id: string;
+    type: "delete-student" | "reject-lead" | "delete-eval";
+    title: string;
+    message: string;
+    isDanger?: boolean;
+  } | null>(null);
 
   // Auto-hide success messages (Except when showing a generated password)
   useEffect(() => {
@@ -175,6 +197,39 @@ export default function AlunosClient({
     setLoading(false);
   }
 
+  const [isFetchingCEP, setIsFetchingCEP] = useState(false);
+
+  const handleCEPBlur = async (e: React.FocusEvent<HTMLInputElement>) => {
+    const cep = e.target.value.replace(/\D/g, "");
+    if (cep.length !== 8) return;
+
+    setIsFetchingCEP(true);
+    try {
+      const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+      const data = await response.json();
+
+      if (!data.erro) {
+        // We use a little trick to find the inputs in the DOM since this is a simple form
+        const form = e.target.form;
+        if (form) {
+          const street = form.elements.namedItem("address_street") as HTMLInputElement;
+          const neighborhood = form.elements.namedItem("address_neighborhood") as HTMLInputElement;
+          const city = form.elements.namedItem("address_city") as HTMLInputElement;
+          const state = form.elements.namedItem("address_state") as HTMLInputElement;
+
+          if (street) street.value = data.logradouro;
+          if (neighborhood) neighborhood.value = data.bairro;
+          if (city) city.value = data.localidade;
+          if (state) state.value = data.uf;
+        }
+      }
+    } catch (err) {
+      console.error("ViaCEP Error:", err);
+    } finally {
+      setIsFetchingCEP(false);
+    }
+  };
+
   async function handleUpdate(formData: FormData) {
     if (!selectedStudent) return;
     setLoading(true);
@@ -190,8 +245,18 @@ export default function AlunosClient({
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("TEM CERTEZA? Esta ação removerá o aluno e seu acesso permanentemente.")) return;
+    setPendingAction({
+      id,
+      type: "delete-student",
+      title: "EXCLUIR ATLETA",
+      message: "TEM CERTEZA? ESTA AÇÃO REMOVERÁ O ALUNO E SEU ACESSO PERMANENTEMENTE DO MONOLITO.",
+      isDanger: true
+    });
+  }
+
+  async function executeDelete(id: string) {
     setLoading(true);
+    setPendingAction(null);
     const result = await deleteStudent(id);
     if (result?.success) {
       setSelectedStudent(null);
@@ -224,9 +289,19 @@ export default function AlunosClient({
   }
 
   async function handleRejectLead(id: string) {
-    if (!confirm("Tem certeza que deseja REJEITAR este pré-cadastro?")) return;
+    setPendingAction({
+      id,
+      type: "reject-lead",
+      title: "REJEITAR PRÉ-CADASTRO",
+      message: "TEM CERTEZA QUE DESEJA REJEITAR ESTE CANDIDATO? OS DADOS SERÃO ARQUIVADOS.",
+      isDanger: true
+    });
+  }
+
+  async function executeRejectLead(id: string) {
     const { rejectPreRegistration } = await import("../../actions");
     setLoadingLeadId(id);
+    setPendingAction(null);
     const result = await rejectPreRegistration(id);
     if (result.success) {
       // Background revalidation will refresh the list
@@ -262,7 +337,17 @@ export default function AlunosClient({
   }
 
   async function handleDeleteEval(id: string) {
-    if (!confirm("Excluir esta avaliação permanentemente?")) return;
+    setPendingAction({
+      id,
+      type: "delete-eval",
+      title: "EXCLUIR AVALIAÇÃO",
+      message: "EXCLUIR ESTA AVALIAÇÃO BIOMÉTRICA PERMANENTEMENTE?",
+      isDanger: true
+    });
+  }
+
+  async function executeDeleteEval(id: string) {
+    setPendingAction(null);
     const res = await deletePhysicalEvaluation(id);
     if (res.success) {
       if (selectedStudent) fetchEvaluations(selectedStudent.id);
@@ -469,15 +554,11 @@ export default function AlunosClient({
                 {students.map((student: Student) => (
                   <tr key={student.id}>
                     <td style={{ paddingLeft: "24px" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                        <div style={{ width: "36px", height: "36px", background: "#000", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "14px", fontWeight: 800, color: "#FFF", flexShrink: 0 }}>
-                          {student.full_name?.charAt(0)?.toUpperCase()}
-                        </div>
-                        <div>
-                          <div style={{ fontWeight: 800, fontSize: "14px", color: "#000" }}>{student.display_name || student.full_name}</div>
-                          {student.display_name && student.display_name !== student.full_name && <div style={{ fontSize: "11px", color: "#666" }}>{student.full_name}</div>}
-                        </div>
-                      </div>
+                      <AthleteIdentity 
+                        profile={student} 
+                        avatarSize={42}
+                        subtitle={student.member_number ? `#${student.member_number}` : undefined}
+                      />
                     </td>
                     <td><span className={`admin-badge badge-${getLevelInfo(student.level, dynamicLevels).key}`}>{getLevelInfo(student.level, dynamicLevels).label}</span></td>
                     <td style={{ fontSize: "11px", fontWeight: 800, textTransform: "uppercase" }}>{getMembershipLabel(student.membership_type)}</td>
@@ -577,7 +658,11 @@ export default function AlunosClient({
                   {preRegistrations.map((lead: any) => (
                     <tr key={lead.id}>
                       <td style={{ paddingLeft: "24px", paddingRight: "12px" }}>
-                        <div style={{ fontWeight: 800, fontSize: "14px", color: "#000", lineHeight: "1.2", overflow: "hidden" }}>{lead.full_name}</div>
+                        <AthleteIdentity 
+                          profile={lead} 
+                          avatarSize={36}
+                          mode="compact" // Leads usually have name alongside, but here we want the name too
+                        />
                       </td>
                       <td style={{ paddingLeft: "16px", borderLeft: "1px solid #F3F4F6" }}>
                         <div style={{ fontSize: "13px", fontWeight: 600 }}>{lead.phone}</div>
@@ -734,19 +819,30 @@ export default function AlunosClient({
               background: "#000", 
               color: "#FFF" 
             }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <div style={{ width: 12, height: 12, background: "#FFF" }} />
+              <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
+                <AthleteAvatar 
+                  url={selectedStudent.avatar_url} 
+                  name={selectedStudent.full_name} 
+                  size={64} 
+                  borderWidth={3}
+                  shadowSize={4}
+                />
                 <div>
                   <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                    <h2 style={{ fontSize: 18, fontWeight: 900, textTransform: "uppercase", margin: 0, borderBottom: "2px solid #FFF", paddingBottom: 2 }}>{selectedStudent.full_name}</h2>
-                    <span style={{ fontSize: 12, fontWeight: 900, background: "#FFF", color: "#000", padding: "2px 10px", borderRadius: 0 }}>
-                      MATRÍCULA #{selectedStudent.member_number || "---"}
+                    <h2 style={{ fontSize: 22, fontWeight: 900, textTransform: "uppercase", margin: 0, letterSpacing: "0.05em" }}>{selectedStudent.full_name}</h2>
+                    <span style={{ fontSize: 12, fontWeight: 900, background: "#FFF", color: "#000", padding: "2px 10px" }}>
+                      #{selectedStudent.member_number || "---"}
                     </span>
                   </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
                     <span style={{ fontSize: 10, fontWeight: 900, background: getLevelInfo(selectedStudent.level, dynamicLevels).color, color: getLevelInfo(selectedStudent.level, dynamicLevels).textColor, padding: "2px 8px", border: "1px solid #FFF", textTransform: "uppercase" }}>
                       {getLevelInfo(selectedStudent.level, dynamicLevels).label}
                     </span>
+                    {selectedStudent.display_name && selectedStudent.display_name !== selectedStudent.full_name && (
+                      <span style={{ fontSize: 11, fontWeight: 700, color: "#AAA", fontStyle: "italic" }}>
+                        "{selectedStudent.display_name}"
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -860,6 +956,69 @@ export default function AlunosClient({
                         </select>
                       </div>
 
+                      <div style={{ background: "#000", color: "#FFF", padding: "2px 20px", display: "inline-block", width: "fit-content", fontSize: 11, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.1em" }}>
+                        Contato de Emergência
+                      </div>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                          <label style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", color: "#666" }}>Nome do Contato</label>
+                          <input type="text" name="emergency_contact_name" defaultValue={selectedStudent.emergency_contact_name || ""} style={{ width: "100%", padding: 14, border: "3px solid #000", fontWeight: 800, outline: "none" }} />
+                        </div>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                          <label style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", color: "#666" }}>Telefone do Contato</label>
+                          <input type="text" name="emergency_contact_phone" defaultValue={selectedStudent.emergency_contact_phone || ""} style={{ width: "100%", padding: 14, border: "3px solid #000", fontWeight: 800, outline: "none" }} />
+                        </div>
+                      </div>
+
+                      <div style={{ background: "#000", color: "#FFF", padding: "2px 20px", display: "inline-block", width: "fit-content", fontSize: 11, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.1em" }}>
+                        Endereço
+                      </div>
+                      <div style={{ display: "grid", gridTemplateColumns: "140px 1fr", gap: 20 }}>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                          <label style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", color: "#666" }}>
+                            CEP {isFetchingCEP && <span style={{ color: "#EAB308", fontSize: 10 }}>...BUSCANDO</span>}
+                          </label>
+                          <input 
+                            type="text" 
+                            name="address_zip_code" 
+                            defaultValue={selectedStudent.address_zip_code || ""} 
+                            onBlur={handleCEPBlur}
+                            placeholder="00000-000"
+                            style={{ width: "100%", padding: 14, border: "3px solid #000", fontWeight: 800, outline: "none" }} 
+                          />
+                        </div>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                          <label style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", color: "#666" }}>Rua / Logradouro</label>
+                          <input type="text" name="address_street" defaultValue={selectedStudent.address_street || ""} style={{ width: "100%", padding: 14, border: "3px solid #000", fontWeight: 800, outline: "none" }} />
+                        </div>
+                      </div>
+
+                      <div style={{ display: "grid", gridTemplateColumns: "120px 1fr 1fr", gap: 20 }}>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                          <label style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", color: "#666" }}>Número</label>
+                          <input type="text" name="address_number" defaultValue={selectedStudent.address_number || ""} style={{ width: "100%", padding: 14, border: "3px solid #000", fontWeight: 800, outline: "none" }} />
+                        </div>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                          <label style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", color: "#666" }}>Bairro</label>
+                          <input type="text" name="address_neighborhood" defaultValue={selectedStudent.address_neighborhood || ""} style={{ width: "100%", padding: 14, border: "3px solid #000", fontWeight: 800, outline: "none" }} />
+                        </div>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                          <label style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", color: "#666" }}>Complemento</label>
+                          <input type="text" name="address_complement" defaultValue={selectedStudent.address_complement || ""} style={{ width: "100%", padding: 14, border: "3px solid #000", fontWeight: 800, outline: "none" }} />
+                        </div>
+                      </div>
+
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 100px", gap: 20 }}>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                          <label style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", color: "#666" }}>Cidade</label>
+                          <input type="text" name="address_city" defaultValue={selectedStudent.address_city || ""} style={{ width: "100%", padding: 14, border: "3px solid #000", fontWeight: 800, outline: "none" }} />
+                        </div>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                          <label style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", color: "#666" }}>UF (Estado)</label>
+                          <input type="text" name="address_state" defaultValue={selectedStudent.address_state || ""} maxLength={2} style={{ width: "100%", padding: 14, border: "3px solid #000", fontWeight: 800, outline: "none" }} />
+                        </div>
+                      </div>
+
                       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                         <label style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", color: "#666" }}>Bio / Notas Gerais</label>
                         <textarea name="bio" defaultValue={selectedStudent.bio || ""} rows={4} style={{ width: "100%", padding: 14, border: "3px solid #000", fontWeight: 800, outline: "none", resize: "none" }} />
@@ -926,6 +1085,32 @@ export default function AlunosClient({
                         <div>
                           <p style={{ fontSize: 11, fontWeight: 800, color: "#666", textTransform: "uppercase", marginBottom: 4 }}>Status do Atleta</p>
                           <p style={{ fontSize: 14, fontWeight: 900, margin: 0, color: "#059669" }}>ATIVO</p>
+                        </div>
+                      </div>
+
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, padding: "0 20px" }}>
+                        <div>
+                          <p style={{ fontSize: 11, fontWeight: 800, color: "#666", textTransform: "uppercase", marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
+                            <Phone size={12} /> Emergência
+                          </p>
+                          <div style={{ padding: "12px 16px", border: "1px solid #EEE", borderRadius: 4 }}>
+                            <div style={{ fontWeight: 900, fontSize: 13 }}>{selectedStudent.emergency_contact_name || "---"}</div>
+                            <div style={{ fontWeight: 700, fontSize: 11, color: "#666", marginTop: 2 }}>{selectedStudent.emergency_contact_phone || "---"}</div>
+                          </div>
+                        </div>
+                        <div>
+                          <p style={{ fontSize: 11, fontWeight: 800, color: "#666", textTransform: "uppercase", marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
+                            <User size={12} /> Endereço Residencial
+                          </p>
+                          <div style={{ padding: "12px 16px", border: "1px solid #EEE", borderRadius: 4 }}>
+                            <div style={{ fontWeight: 900, fontSize: 12, lineHeight: 1.4 }}>
+                              {selectedStudent.address_street ? `${selectedStudent.address_street}, ${selectedStudent.address_number}` : "---"}
+                              {selectedStudent.address_complement && <span style={{ fontWeight: 600, color: "#666" }}> ({selectedStudent.address_complement})</span>}
+                            </div>
+                            <div style={{ fontWeight: 700, fontSize: 10, color: "#666", marginTop: 2, textTransform: "uppercase" }}>
+                              {selectedStudent.address_neighborhood} {selectedStudent.address_neighborhood && "•"} {selectedStudent.address_city}-{selectedStudent.address_state} {selectedStudent.address_zip_code && `[${selectedStudent.address_zip_code}]`}
+                            </div>
+                          </div>
                         </div>
                       </div>
 
@@ -1384,6 +1569,21 @@ export default function AlunosClient({
             </div>
           </div>
         </div>
+      )}
+
+      {/* ── CENTRAL CONFIRMATION MODAL ── */}
+      {pendingAction && (
+        <ConfirmModal
+          title={pendingAction.title}
+          message={pendingAction.message}
+          onConfirm={() => {
+            if (pendingAction.type === "delete-student") executeDelete(pendingAction.id);
+            else if (pendingAction.type === "reject-lead") executeRejectLead(pendingAction.id);
+            else if (pendingAction.type === "delete-eval") executeDeleteEval(pendingAction.id);
+          }}
+          onCancel={() => setPendingAction(null)}
+          isDanger={pendingAction.isDanger}
+        />
       )}
     </div>
   );

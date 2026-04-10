@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { Resend } from "resend";
 
-import { createStudentSchema, wodSchema, physicalEvaluationSchema } from "@/lib/validations/security_schemas";
+import { createStudentSchema, updateAuthSchema, ProfileInput, profileSchema, wodSchema, physicalEvaluationSchema } from "@/lib/validations/security_schemas";
 
 /**
  * Creates a new student athlete in both Auth and Database.
@@ -149,31 +149,38 @@ export async function updateStudent(studentId: string, formData: FormData) {
   }
   const supabaseAdmin = createAdminClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceRoleKey);
 
-  // Dynamic updates object to avoid overwriting missing fields with null
-  const fields = [
-    "full_name", "display_name", "first_name", "last_name", 
-    "level", "phone", "cpf", "gender", "bio", "birth_date", "membership_type", "email"
-  ];
-  
-  const updates: any = {
-    updated_at: new Date().toISOString(),
-  };
-
-  fields.forEach(field => {
-    const value = formData.get(field);
-    if (value !== null) {
-      if (field === "birth_date") {
-        updates[field] = value || null;
-      } else {
-        updates[field] = value as string;
-      }
+  // 1. Gather all fields from formData
+  const rawData: any = {};
+  formData.forEach((value, key) => {
+    if (typeof value === "string") {
+      rawData[key] = value || null;
     }
   });
 
-  // Explicitly handle birth_date if present
-  const birthDate = formData.get("birth_date");
-  if (birthDate !== null) {
-    updates.birth_date = birthDate || null;
+  // 2. Validate using SSoT Profile Schema (Partial allow for selective updates)
+  const validation = profileSchema.partial().safeParse(rawData);
+  if (!validation.success) {
+    const errorMsg = validation.error.errors[0]?.message || "Dados inválidos.";
+    return { error: errorMsg };
+  }
+
+  const updates: any = {
+    ...validation.data,
+    updated_at: new Date().toISOString(),
+  };
+
+  // 3. Search stability: Calculate full_name if first/last name changed
+  if (updates.first_name && updates.last_name) {
+    updates.full_name = `${updates.first_name} ${updates.last_name}`;
+  } else if (updates.first_name) {
+    updates.full_name = updates.first_name;
+  }
+
+  // Pre-calculated full_name for search stability if both names are provided
+  if (updates.first_name && updates.last_name) {
+    updates.full_name = `${updates.first_name} ${updates.last_name}`;
+  } else if (updates.first_name) {
+    updates.full_name = updates.first_name;
   }
 
   const { error } = await supabaseAdmin

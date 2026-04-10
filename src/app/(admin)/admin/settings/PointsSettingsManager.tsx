@@ -2,7 +2,8 @@
 
 import { useState, useTransition, useEffect } from "react";
 import { Trophy, Star, CheckCircle2, UserCheck, Loader2, Ban, Play, AlertCircle } from "lucide-react";
-import { getPointsRules, updatePointsRule } from "@/lib/constants/settings_actions";
+import { getPointsRules, updatePointsRule, updatePointsRuleStatus } from "@/lib/constants/settings_actions";
+import Toast from "@/components/Toast";
 
 interface PointsSettingsManagerProps {
   initialRules: Record<string, string>;
@@ -23,7 +24,7 @@ export default function PointsSettingsManager({ initialRules }: PointsSettingsMa
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
-  const [saveStatus, setSaveStatus] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ msg: string, type: "success" | "error" } | null>(null);
 
   // Carregar regras do Banco de Dados (SSoT)
   const loadRules = async () => {
@@ -47,15 +48,12 @@ export default function PointsSettingsManager({ initialRules }: PointsSettingsMa
   const handleUpdatePoints = async (id: string, newPoints: number) => {
     // Estado otimista
     setRules(prev => prev.map(r => r.id === id ? { ...r, points: newPoints } : r));
-    setSaveStatus("pending");
-    
     startTransition(async () => {
       const result = await updatePointsRule(id, newPoints);
       if (result.success) {
-        setSaveStatus("success");
-        setTimeout(() => setSaveStatus(null), 2000);
+        setToast({ msg: "REGRA ATUALIZADA!", type: "success" });
       } else {
-        setSaveStatus("error");
+        setToast({ msg: "ERRO AO SALVAR", type: "error" });
       }
     });
   };
@@ -64,13 +62,15 @@ export default function PointsSettingsManager({ initialRules }: PointsSettingsMa
     const newStatus = !currentStatus;
     // Estado otimista
     setRules(prev => prev.map(r => r.id === id ? { ...r, is_active: newStatus } : r));
-    
     startTransition(async () => {
-      // Usamos a mesma action para atualizar campos parciais se necessário, 
-      // ou garantimos que a action suporte atualização de status.
-      // Por enquanto, atualizamos apenas os pontos ou mantemos o status local.
-      // Nota: Implementar updatePointsRuleStatus se necessário no futuro.
-      await updatePointsRule(id, rules.find(r => r.id === id)?.points || 0); 
+      const result = await updatePointsRuleStatus(id, newStatus); 
+      if (result.success) {
+        setToast({ msg: newStatus ? "REGRA ATIVADA!" : "REGRA DESATIVADA!", type: "success" });
+      } else {
+        setToast({ msg: "ERRO AO ALTERAR STATUS", type: "error" });
+        // Reverter local caso erro
+        setRules(prev => prev.map(r => r.id === id ? { ...r, is_active: currentStatus } : r));
+      }
     });
   };
 
@@ -99,11 +99,6 @@ export default function PointsSettingsManager({ initialRules }: PointsSettingsMa
             <Trophy size={24} />
             <h2 style={{ fontSize: "16px", fontWeight: 800, textTransform: "uppercase", margin: 0 }}>Gestão de Pontuação</h2>
           </div>
-          {saveStatus === "success" && (
-            <span style={{ fontSize: "10px", fontWeight: 900, color: "#10B981", background: "#D1FAE5", padding: "4px 12px", border: "2px solid #059669" }}>
-              SINCRONIZADO
-            </span>
-          )}
         </div>
 
         <p style={{ fontSize: "13px", color: "#666", fontWeight: 600, marginBottom: "32px", background: "#F5F5F5", padding: "16px", borderLeft: "4px solid #000" }}>
@@ -186,6 +181,14 @@ export default function PointsSettingsManager({ initialRules }: PointsSettingsMa
           Use valores altos (ex: 200 pontos) para incentivar perfis completos e valores recorrentes (ex: 10 pontos) para manter a frequência diária.
         </p>
       </div>
+
+      {toast && (
+        <Toast 
+          msg={toast.msg} 
+          type={toast.type} 
+          onClose={() => setToast(null)} 
+        />
+      )}
     </div>
   );
 }
