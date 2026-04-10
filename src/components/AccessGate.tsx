@@ -4,7 +4,7 @@ import { Lock, X } from "lucide-react";
 
 interface AccessGateProps {
   message: string;
-  upgradeLink: string | null;
+  upgradeLink: string | null | undefined;
   /** Se verdadeiro, renderiza como um modal centralizado. Se falso, renderiza como uma seção inline. */
   isModal?: boolean;
   onClose?: () => void;
