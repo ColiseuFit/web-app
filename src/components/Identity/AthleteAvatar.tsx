@@ -5,6 +5,12 @@ import { User } from "lucide-react";
 import { getInitials } from "@/lib/identity-utils";
 
 interface AthleteAvatarProps {
+  profile?: {
+    avatar_url?: string | null;
+    display_name?: string | null;
+    full_name?: string | null;
+    [key: string]: any;
+  } | null;
   url?: string | null;
   name?: string | null;
   size?: number;
@@ -19,6 +25,7 @@ interface AthleteAvatarProps {
  * Centraliza o design Neo-Brutalista de avatares com fallback automático.
  */
 export default function AthleteAvatar({ 
+  profile,
   url, 
   name, 
   size = 40,
@@ -27,7 +34,9 @@ export default function AthleteAvatar({
   rounded = false
 }: AthleteAvatarProps) {
   const [error, setError] = useState(false);
-  const initials = getInitials(name || "");
+  const effectiveUrl = url || profile?.avatar_url;
+  const effectiveName = name || profile?.display_name || profile?.full_name || "";
+  const initials = getInitials(effectiveName);
 
   const containerStyle = {
     width: `${size}px`,
@@ -46,10 +55,10 @@ export default function AthleteAvatar({
   };
 
   // Se não tem URL ou deu erro, mostra iniciais ou ícone
-  if (!url || error) {
+  if (!effectiveUrl || error) {
     return (
-      <div style={containerStyle} title={name || "Atleta"}>
-        {name ? (
+      <div style={containerStyle} title={effectiveName || "Atleta"}>
+        {effectiveName ? (
           <span style={{ 
             fontSize: `${size / 2.5}px`, 
             fontWeight: 900, 
@@ -68,8 +77,8 @@ export default function AthleteAvatar({
   return (
     <div style={containerStyle}>
       <img
-        src={url}
-        alt={name || "Avatar"}
+        src={effectiveUrl}
+        alt={effectiveName || "Avatar"}
         onError={() => setError(true)}
         style={{
           width: "100%",

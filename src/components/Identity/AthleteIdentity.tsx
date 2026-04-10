@@ -71,8 +71,7 @@ export function AthleteIdentity({
     }}>
       <AthleteAvatar url={currentAvatarUrl} name={currentName} size={effectiveAvatarSize} />
       
-      {mode !== "avatar" && (
-        <div style={{ display: "flex", flexDirection: "column" }}>
+      <div style={{ display: "flex", flexDirection: "column" }}>
           <span style={{ 
             fontSize: mode === "compact" ? "11px" : "13px", 
             fontWeight: 800, 
@@ -96,7 +95,6 @@ export function AthleteIdentity({
             </span>
           )}
         </div>
-      )}
     </div>
   );
 }

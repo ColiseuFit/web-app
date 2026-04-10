@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { CheckCircle, AlertTriangle } from "lucide-react";
 
+export type ToastStatus = "success" | "error";
+
 /**
  * Toast Notification (Brutalista / Iron Monolith).
  * Exibe mensagens de feedback com alto impacto visual.
