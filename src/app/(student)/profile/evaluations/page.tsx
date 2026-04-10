@@ -1,6 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { Flame, Activity, Trophy } from "lucide-react";
+import { calculateAge, calculateBMR, calculateTDEE } from "@/lib/physique-utils";
 import BottomNav from "@/components/BottomNav";
 import DashboardStyles from "@/components/DashboardStyles";
 
@@ -21,6 +23,32 @@ export default async function EvaluationsPage() {
     .select("*")
     .eq("student_id", user.id)
     .order("evaluation_date", { ascending: false });
+
+  // Busca dados complementares do perfil para cálculos metabólicos
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("gender, birth_date")
+    .eq("id", user.id)
+    .single();
+
+  const latest = evaluations?.[0];
+  const first = evaluations?.[evaluations?.length - 1];
+
+  // Cálculos Metabólicos (Baseado na mais recente)
+  const age = profile?.birth_date && latest
+    ? calculateAge(profile.birth_date, latest.evaluation_date) 
+    : 30;
+  
+  const bmr = latest 
+    ? calculateBMR(latest.weight, latest.height, age, profile?.gender || 'male')
+    : null;
+  
+  const tdee = bmr ? calculateTDEE(bmr) : null;
+
+  // Progresso acumulado
+  const weightLostSinceStart = (latest && first && first.id !== latest.id) 
+    ? (first.weight - latest.weight).toFixed(1) 
+    : null;
 
   return (
     <div style={{ backgroundColor: "#FFF", color: "#000", minHeight: "100vh", paddingBottom: "120px" }}>
@@ -48,11 +76,31 @@ export default async function EvaluationsPage() {
       <main style={{ maxWidth: "480px", margin: "0 auto", padding: "24px 20px" }}>
 
         {/* ── PERFORMANCE SNAPSHOT ── */}
-        <section style={{ marginBottom: "32px" }}>
+        <section style={{ marginBottom: "40px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "20px" }}>
-            <h2 className="font-display" style={{ fontSize: "18px", letterSpacing: "0.05em", fontWeight: 900 }}>STATUS DE PERFORMANCE</h2>
+            <h2 className="font-display" style={{ fontSize: "16px", letterSpacing: "0.05em", fontWeight: 900 }}>PERFORMANCE & INSIGHTS</h2>
             <div style={{ flex: 1, height: "2px", background: "#000" }} />
           </div>
+
+          {/* VITÓRIA ACUMULADA */}
+          {weightLostSinceStart && parseFloat(weightLostSinceStart) > 0 && (
+            <div style={{ 
+              background: "#E31B23", 
+              color: "#FFF", 
+              padding: "20px", 
+              marginBottom: "20px", 
+              border: "3px solid #000",
+              boxShadow: "6px 6px 0px #000"
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "12px" }}>
+                <Trophy color="#FFF" size={20} />
+                <div style={{ fontSize: "10px", fontWeight: 900, letterSpacing: "0.1em" }}>VITÓRIA ACUMULADA</div>
+              </div>
+              <div style={{ fontSize: "16px", fontWeight: 950, lineHeight: 1.2 }}>
+                Desde sua primeira avaliação, você já eliminou <span style={{ background: "#000", padding: "0 4px" }}>{weightLostSinceStart}KG</span> de peso total.
+              </div>
+            </div>
+          )}
 
           <div style={{
             background: "#FFF",
@@ -60,49 +108,52 @@ export default async function EvaluationsPage() {
             padding: "24px",
             position: "relative",
             overflow: "hidden",
-            boxShadow: "4px 4px 0px #F0F0F0"
+            boxShadow: "4px 4px 0px #F0F0F0",
+            marginBottom: "20px"
           }}>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px", position: "relative", zIndex: 1 }}>
               <div>
-                <div style={{ fontSize: "9px", fontWeight: 900, color: "#000", marginBottom: "4px", letterSpacing: "0.1em", opacity: 0.5 }}>TENDÊNCIA PESO</div>
+                <div style={{ fontSize: "9px", fontWeight: 900, color: "#000", marginBottom: "4px", letterSpacing: "0.1em", opacity: 0.5 }}>PESO ATUAL</div>
                 <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                  <span style={{ fontFamily: "var(--font-display, 'Outfit', sans-serif)", fontSize: "28px", fontWeight: 950 }}>{evaluations?.[0]?.weight || "--"} <span style={{ fontSize: "14px", fontWeight: 800, color: "#999" }}>KG</span></span>
-                  {evaluations && evaluations.length > 1 && (
-                    <span style={{ fontSize: "12px", fontWeight: 900, color: (evaluations[0].weight < evaluations[1].weight) ? "#10B981" : "#E31B23" }}>
-                      {evaluations[0].weight < evaluations[1].weight ? "↓" : "↑"}
-                    </span>
-                  )}
+                  <span style={{ fontFamily: "var(--font-display, 'Outfit', sans-serif)", fontSize: "28px", fontWeight: 950 }}>{latest?.weight || "--"} <span style={{ fontSize: "14px", fontWeight: 800, color: "#999" }}>KG</span></span>
                 </div>
               </div>
               <div style={{ borderLeft: "2px dashed #EEE", paddingLeft: "24px" }}>
-                <div style={{ fontSize: "9px", fontWeight: 900, color: "#000", marginBottom: "4px", letterSpacing: "0.1em", opacity: 0.5 }}>TENDÊNCIA %BF</div>
+                <div style={{ fontSize: "9px", fontWeight: 900, color: "#000", marginBottom: "4px", letterSpacing: "0.1em", opacity: 0.5 }}>% GORDURA</div>
                 <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                  <span style={{ fontFamily: "var(--font-display, 'Outfit', sans-serif)", fontSize: "28px", fontWeight: 950, color: "#E31B23" }}>{evaluations?.[0]?.body_fat_percentage || "--"}%</span>
-                  {evaluations && evaluations.length > 1 && (
-                    <span style={{ fontSize: "12px", fontWeight: 900, color: (evaluations[0].body_fat_percentage < evaluations[1].body_fat_percentage) ? "#10B981" : "#E31B23" }}>
-                      {evaluations[0].body_fat_percentage < evaluations[1].body_fat_percentage ? "↓" : "↑"}
-                    </span>
-                  )}
+                  <span style={{ fontFamily: "var(--font-display, 'Outfit', sans-serif)", fontSize: "28px", fontWeight: 950, color: "#E31B23" }}>{latest?.body_fat_percentage || "--"}%</span>
                 </div>
               </div>
             </div>
-
-            <div style={{
-              marginTop: "20px",
-              padding: "12px",
-              background: "#F9F9F9",
-              border: "1px dashed #000",
-              textAlign: "center",
-              fontSize: "10px",
-              fontWeight: 900,
-              letterSpacing: "0.1em",
-              color: evaluations && evaluations.length > 0 ? "#E31B23" : "#000"
-            }}>
-              {evaluations && evaluations.length > 1
-                ? (evaluations[0].body_fat_percentage < evaluations[1].body_fat_percentage ? "ESTADO: EM EVOLUÇÃO (GORDURA EM QUEDA)" : "ESTADO: MANUTENÇÃO TÉCNICA REQUERIDA")
-                : "ESTADO: AGUARDANDO DADOS PARA COMPARATIVO"}
-            </div>
           </div>
+
+          {/* INSIGHTS METABÓLICOS */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "12px" }}>
+             <div style={{ background: "#000", color: "#FFF", padding: "20px", border: "2px solid #000", boxShadow: "4px 4px 0px #AAA" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "12px" }}>
+                  <Flame size={14} color="#E31B23" />
+                  <div style={{ fontSize: "8px", fontWeight: 900, opacity: 0.8, letterSpacing: "0.1em" }}>TMB (REPOUSO)</div>
+                </div>
+                <div style={{ display: "flex", alignItems: "baseline", gap: "4px" }}>
+                  <div style={{ fontFamily: "var(--font-display, 'Outfit', sans-serif)", fontSize: "20px", fontWeight: 950 }}>{bmr || "--"}</div>
+                  <div style={{ fontSize: "10px", fontWeight: 900, opacity: 0.6 }}>KCAL</div>
+                </div>
+             </div>
+
+             <div style={{ background: "#FFF", color: "#000", padding: "20px", border: "2px solid #000", boxShadow: "4px 4px 0px #000" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "12px" }}>
+                  <Activity size={14} color="#E31B23" />
+                  <div style={{ fontSize: "8px", fontWeight: 900, opacity: 0.5, letterSpacing: "0.1em" }}>GAS. DIÁRIO</div>
+                </div>
+                <div style={{ display: "flex", alignItems: "baseline", gap: "4px" }}>
+                  <div style={{ fontFamily: "var(--font-display, 'Outfit', sans-serif)", fontSize: "20px", fontWeight: 950 }}>{tdee || "--"}</div>
+                  <div style={{ fontSize: "10px", fontWeight: 900, opacity: 0.6 }}>KCAL</div>
+                </div>
+             </div>
+          </div>
+          <p style={{ fontSize: "9px", color: "#999", fontWeight: 700, lineHeight: 1.4 }}>
+            *Insights calculados com base na sua avaliação mais recente e perfil atual.
+          </p>
         </section>
 
         {/* ── LISTA DE AVALIAÇÕES ── */}

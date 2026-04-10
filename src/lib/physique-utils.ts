@@ -18,14 +18,18 @@ export interface Skinfolds {
  */
 export function calculateBMI(weight: number, height: number): number | null {
   if (!weight || !height || height <= 0) return null;
-  const bmi = weight / (height * height);
+  
+  // Auto-normalize to meters (if > 3, assume it's cm)
+  const heightM = height > 3 ? height / 100 : height;
+  
+  const bmi = weight / (heightM * heightM);
   return isFinite(bmi) ? parseFloat(bmi.toFixed(2)) : null;
 }
 
 /**
  * Calculates Body Density using Pollock 7 Folds protocol
  */
-export function calculateDensityPollock7(skinfolds: Skinfolds, age: number, gender: 'male' | 'female'): number | null {
+export function calculateDensityPollock7(skinfolds: Skinfolds, age: number, gender: string): number | null {
   const { subscapular, triceps, chest, midaxillary, suprailiac, abdominal, thigh } = skinfolds;
   
   if (!subscapular || !triceps || !chest || !midaxillary || !suprailiac || !abdominal || !thigh || !age) {
@@ -33,8 +37,9 @@ export function calculateDensityPollock7(skinfolds: Skinfolds, age: number, gend
   }
 
   const sum7 = subscapular + triceps + chest + midaxillary + suprailiac + abdominal + thigh;
+  const isFemale = gender.toLowerCase() === 'female' || gender.toLowerCase() === 'feminino';
 
-  if (gender === 'male') {
+  if (!isFemale) {
     const res = 1.112 - (0.00043499 * sum7) + (0.00000055 * Math.pow(sum7, 2)) - (0.00028826 * age);
     return isFinite(res) ? res : null;
   } else {
@@ -46,8 +51,10 @@ export function calculateDensityPollock7(skinfolds: Skinfolds, age: number, gend
 /**
  * Calculates Body Density using Pollock 3 Folds protocol
  */
-export function calculateDensityPollock3(skinfolds: Skinfolds, age: number, gender: 'male' | 'female'): number | null {
-  if (gender === 'male') {
+export function calculateDensityPollock3(skinfolds: Skinfolds, age: number, gender: string): number | null {
+  const isFemale = gender.toLowerCase() === 'female' || gender.toLowerCase() === 'feminino';
+
+  if (!isFemale) {
     const { chest, abdominal, thigh } = skinfolds;
     if (!chest || !abdominal || !thigh || !age) return null;
     const sum3 = chest + abdominal + thigh;
@@ -65,8 +72,10 @@ export function calculateDensityPollock3(skinfolds: Skinfolds, age: number, gend
 /**
  * Calculates Body Density using Guedes 3 Folds protocol
  */
-export function calculateDensityGuedes(skinfolds: Skinfolds, gender: 'male' | 'female'): number | null {
-  if (gender === 'male') {
+export function calculateDensityGuedes(skinfolds: Skinfolds, gender: string): number | null {
+  const isFemale = gender.toLowerCase() === 'female' || gender.toLowerCase() === 'feminino';
+
+  if (!isFemale) {
     const { triceps, suprailiac, abdominal } = skinfolds;
     if (!triceps || !suprailiac || !abdominal) return null;
     const sum3 = triceps + suprailiac + abdominal;
@@ -98,7 +107,7 @@ export function calculateBodyComposition(
   height: number, 
   skinfolds: Skinfolds, 
   age: number, 
-  gender: 'male' | 'female', 
+  gender: string, 
   protocol: string
 ) {
   const bmi = calculateBMI(weight, height);
@@ -128,7 +137,39 @@ export function calculateBodyComposition(
 }
 
 /**
- * Calculates age based on birth date and target date
+ * Calculates Basal Metabolic Rate (BMR / TMB) 
+ * Using Mifflin-St Jeor Equation
+ */
+export function calculateBMR(
+  weight: number, 
+  height: number, 
+  age: number, 
+  gender: 'male' | 'female' | string
+): number | null {
+  if (!weight || !height || !age) return null;
+  
+  // Auto-normalize to centimeters (if <= 3, assume it's meters)
+  const heightCm = height <= 3 ? height * 100 : height;
+  
+  const isFemale = gender.toLowerCase() === 'female' || gender.toLowerCase() === 'feminino';
+  
+  // Mifflin-St Jeor Equation
+  let bmr = (10 * weight) + (6.25 * heightCm) - (5 * age);
+  bmr = isFemale ? bmr - 161 : bmr + 5;
+  
+  return Math.round(bmr);
+}
+
+/**
+ * Calculates Total Daily Energy Expenditure (TDEE / GET) estimation
+ * Based on sedentary activity level (baseline)
+ */
+export function calculateTDEE(bmr: number, activityLevel: number = 1.2): number {
+  return Math.round(bmr * activityLevel);
+}
+
+/**
+ * Calculations summary for physical evaluation
  */
 export function calculateAge(birthDate: string | Date, referenceDate: string | Date = new Date()): number {
   const birth = new Date(birthDate);

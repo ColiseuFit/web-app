@@ -64,7 +64,7 @@ export default async function EvaluationDetailPage({ params }: { params: Promise
   return (
     <EvaluationDetailsClient 
       evaluation={evaluationWithFreshPhotos} 
-      previous={previousWithFreshPhotos} 
+      previous={previousWithFreshPhotos}
     />
   );
 }

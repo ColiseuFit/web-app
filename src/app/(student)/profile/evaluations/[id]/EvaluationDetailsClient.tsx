@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback } from "react";
 import Link from "next/link";
 import { ChevronDown, Maximize2, X } from "lucide-react";
+import { motion } from "framer-motion";
 import BottomNav from "@/components/BottomNav";
 import DashboardStyles from "@/components/DashboardStyles";
 
@@ -46,7 +47,7 @@ interface EvaluationData {
  */
 export default function EvaluationDetailsClient({ 
   evaluation, 
-  previous 
+  previous
 }: { 
   evaluation: EvaluationData; 
   previous: EvaluationData | null;
@@ -192,9 +193,6 @@ export default function EvaluationDetailsClient({
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "32px" }}>
               <div style={{ fontSize: "14px", fontWeight: 900, color: "#E31B23", fontFamily: "var(--font-display, 'Outfit', sans-serif)" }}>
                 {new Date(evaluation.evaluation_date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric', timeZone: 'UTC' }).toUpperCase()}
-              </div>
-              <div style={{ fontSize: "10px", fontWeight: 900, background: "#000", color: "#FFF", padding: "4px 8px" }}>
-                ESTADO: <span style={{ color: "#10B981" }}>EM EVOLUÇÃO</span>
               </div>
             </div>
 
@@ -500,6 +498,7 @@ export default function EvaluationDetailsClient({
                 </p>
               )}
             </section>
+
 
 
             {/* GALERIA COMPLETA */}
