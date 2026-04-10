@@ -342,7 +342,7 @@ export default function GamificacaoClient({ students, dynamicLevels, initialRule
               <Star size={48} strokeWidth={1} style={{ marginBottom: "16px" }} />
               <h3 style={{ fontSize: "16px", fontWeight: 900, margin: "0 0 8px", textTransform: "uppercase", color: "#666" }}>Selecione um Aluno</h3>
               <p style={{ fontSize: "13px", fontWeight: 600, textAlign: "center", maxWidth: "300px" }}>
-                Utilize a busca ao lado para encontrar um atleta e gerenciar sua pontuação manualmente.
+                Utilize a busca ao lado para encontrar um aluno e gerenciar sua pontuação manualmente.
               </p>
             </div>
           )}

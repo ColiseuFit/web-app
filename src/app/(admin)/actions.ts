@@ -8,7 +8,7 @@ import { Resend } from "resend";
 import { createStudentSchema, updateAuthSchema, ProfileInput, profileSchema, wodSchema, physicalEvaluationSchema } from "@/lib/validations/security_schemas";
 
 /**
- * Creates a new student athlete in both Auth and Database.
+ * Cria um novo aluno tanto no Auth quanto no Banco de Dados.
  * 
  * @security
  * - Role Requirement: Only 'admin' or 'reception' roles can execute this action.
@@ -17,7 +17,7 @@ import { createStudentSchema, updateAuthSchema, ProfileInput, profileSchema, wod
  *   Profile/Role cross-table before the user has logged in requires elevated privileges.
  * - Validation: Enforces input shape via `createStudentSchema` (Zod).
  * 
- * @param {FormData} formData - The raw form data mapped to: email, password, full_name, level.
+ * @param {FormData} formData - Dados brutos do formulário: email, password, full_name, level, membership_type.
  * @returns {Promise<{ success?: boolean; error?: string }>} An object indicating success or failure message.
  * @throws {Error} Does not throw unhandled errors; catches and returns `{ error: string }`.
  */
@@ -28,7 +28,7 @@ export async function createStudent(formData: FormData) {
     password: formData.get("password"),
     full_name: formData.get("full_name"),
     level: formData.get("level") || "branco",
-    membership_type: formData.get("membership_type") || "club",
+    membership_type: formData.get("membership_type") || "club", // Vínculo
   };
 
   const validation = createStudentSchema.safeParse(rawData);
@@ -96,7 +96,7 @@ export async function createStudent(formData: FormData) {
       full_name: fullName,
       email: email,
       level: level,
-      membership_type: membershipType,
+      membership_type: membershipType, // Vínculo
     });
 
   if (profileError) {
@@ -120,14 +120,14 @@ export async function createStudent(formData: FormData) {
 }
 
 /**
- * Updates an existing student's data in the profiles table.
+ * Atualiza os dados de um aluno existente na tabela de profiles.
  * 
  * @security
  * - Role Requirement: Only 'admin' or 'reception' roles.
  * - Standard Client: Uses the standard authenticated client (No RLS Bypass). 
  *   RLS Policies on `profiles` must allow UPDATE operations for Admins.
  * 
- * @param {string} studentId - The specific UUID of the student to update.
+ * @param {string} studentId - O UUID específico do aluno a ser atualizado.
  * @param {FormData} formData - Form data containing up to 10 updated fields (full_name, display_name, level, phone, etc.).
  * @returns {Promise<{ success?: boolean; error?: string }>} Form operation status.
  */
@@ -199,9 +199,9 @@ export async function updateStudent(studentId: string, formData: FormData) {
 }
 
 /**
- * Fetches basic biometrics metadata for a student.
+ * Busca metadados biométricos básicos de um aluno.
  * 
- * @param {string} studentId - The student identifier.
+ * @param {string} studentId - O identificador do aluno.
  * @returns {Promise<{ gender: string | null; birth_date: string | null } | null>}
  */
 export async function getStudentBiometricsInfo(studentId: string) {
@@ -220,17 +220,15 @@ export async function getStudentBiometricsInfo(studentId: string) {
 }
 
 /**
- * Permanently deletes a student from both Database and Auth.
+ * Remove permanentemente um aluno do Banco de Dados e Auth.
  * 
- * @CAUTION This action is IRREVERSIBLE and cascades throughout the DB.
+ * @CAUTION Esta ação é IRREVERSÍVEL e cascateia por todo o Banco de Dados.
  * 
  * @security
- * - Role Requirement: ONLY 'admin' can execute this. ('reception' is blocked).
- * - RLS Bypass: Uses Admin API (`deleteUser`) to wipe the Auth credential. Supabase 
- *   handles the cascading deletions onto the `profiles` table automatically if configured,
- *   but this action guarantees the identity is completely destroyed.
+ * - Role Requirement: APENAS 'admin' pode executar isso. ('reception' é bloqueado).
+ * - RLS Bypass: Usa Admin API (`deleteUser`) para limpar a credencial.
  * 
- * @param {string} studentId - The specific UUID of the student to be removed.
+ * @param {string} studentId - O UUID específico do aluno a ser removido.
  * @returns {Promise<{ success?: boolean; error?: string }>} Deletion status.
  */
 export async function deleteStudent(studentId: string) {
@@ -271,7 +269,7 @@ export async function deleteStudent(studentId: string) {
  * - RLS Bypass: Utiliza `SUPABASE_SERVICE_ROLE_KEY` para interagir diretamente com a Auth Admin API do Supabase.
  * - Registro: Falhas críticas são logadas no servidor para auditoria.
  * 
- * @param {string} studentId - O UUID único do atleta no Supabase Auth.
+ * @param {string} studentId - O UUID único do aluno no Supabase Auth.
  * @param {FormData} formData - Objeto contendo os campos opcionais 'email' e 'password'.
  * @returns {Promise<{ success?: boolean; error?: string }>} Objeto indicando o status da operação.
  * 
@@ -460,9 +458,9 @@ export async function upsertPhysicalEvaluation(data: any) {
 }
 
 /**
- * Retrieves all physical evaluations for a specific athlete.
+ * Retrieves all physical evaluations for a specific student.
  * 
- * @param {string} studentId - UUID of the athlete.
+ * @param {string} studentId - UUID of the student.
  * @returns {Promise<{ evaluations?: any[]; error?: string }>} List of evaluations sorted by date (descending).
  */
 export async function getStudentEvaluations(studentId: string) {
@@ -518,7 +516,7 @@ export async function deletePhysicalEvaluation(id: string) {
  * - Buffer: Converte o `File` do navegador para `Uint8Array` no servidor para máxima estabilidade no SDK do Supabase.
  * - Fallback: Garante `contentType` padrão (image/jpeg) caso o arquivo venha sem metadados claros.
  * 
- * @param {FormData} formData - Payload contendo 'file' (Imagem) e 'studentId' (UUID do atleta).
+ * @param {FormData} formData - Payload contendo 'file' (Imagem) e 'studentId' (UUID do aluno).
  * @returns {Promise<{ success?: boolean; url?: string; path?: string; error?: string }>} URLs de acesso e status do upload.
  */
 export async function uploadEvaluationPhoto(formData: FormData) {
@@ -572,14 +570,14 @@ export async function uploadEvaluationPhoto(formData: FormData) {
 }
 
 /**
- * Converts a pre-registration lead into a full student account.
+ * Converte um lead de pré-cadastro em uma conta completa de aluno.
  * 
  * @security
- * - Role Requirement: Only 'admin' or 'reception' roles can execute this action.
- * - RLS Bypass: Uses `SUPABASE_SERVICE_ROLE_KEY` to create Auth credential and insert cross-table rows.
+ * - Role Requirement: Apenas roles 'admin' ou 'reception' podem executar esta ação.
+ * - RLS Bypass: Usa `SUPABASE_SERVICE_ROLE_KEY` para criar credencial e inserir linhas cruzadas.
  * 
- * @param {string} preRegistrationId - The UUID of the pre-registration lead.
- * @returns {Promise<{ success?: boolean; error?: string }>} An object indicating success or failure.
+ * @param {string} preRegistrationId - O UUID do lead de pré-cadastro.
+ * @returns {Promise<{ success?: boolean; error?: string }>} Objeto indicando sucesso ou erro.
  */
 export async function approvePreRegistration(preRegistrationId: string, customLevel?: string, membershipType: string = 'club') {
   const supabase = await createClient();
@@ -677,7 +675,7 @@ export async function approvePreRegistration(preRegistrationId: string, customLe
       cpf: lead.cpf,
       birth_date: lead.birth_date,
       level: customLevel || "branco",
-      membership_type: membershipType,
+      membership_type: membershipType, // Vínculo
     });
 
   if (profileError) {

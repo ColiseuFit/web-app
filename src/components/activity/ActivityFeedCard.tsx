@@ -411,7 +411,7 @@ function ResultEntryBlock({
 /**
  * ActivityFeedCard (Neo-Brutalist Light Edition — V2.1)
  * 
- * O "Diário de Bordo" do atleta Coliseu com entrada de resultado integrada.
+ * O "Diário de Bordo" do aluno Coliseu com entrada de resultado integrada.
  * 
  * @change v2.1 — Resultado removido do WodView e migrado para cá. O input é
  *   tipado conforme `result_type` do WOD e só aparece após confirmação do Coach.

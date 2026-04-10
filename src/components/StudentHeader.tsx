@@ -44,7 +44,7 @@ export default function StudentHeader() {
         <div style={{ display: "flex", justifyContent: "flex-end" }}>
           <Link 
             href="/profile"
-            aria-label="Perfil do Atleta"
+            aria-label="Perfil do Aluno"
             style={{ 
               color: "#000", 
               background: "#FFF",

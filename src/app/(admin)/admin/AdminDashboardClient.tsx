@@ -160,7 +160,7 @@ export default function AdminDashboardClient({ stats, recentStudents, totalStude
             <table className="admin-table">
               <thead>
                 <tr>
-                  <th style={{ paddingLeft: "24px" }}>Atleta</th>
+                  <th style={{ paddingLeft: "24px" }}>Aluno</th>
                   <th>Nível</th>
                   <th>Status Hoje</th>
                   <th style={{ width: "60px" }}></th>

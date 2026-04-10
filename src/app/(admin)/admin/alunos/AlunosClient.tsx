@@ -248,7 +248,7 @@ export default function AlunosClient({
     setPendingAction({
       id,
       type: "delete-student",
-      title: "EXCLUIR ATLETA",
+      title: "EXCLUIR ALUNO",
       message: "TEM CERTEZA? ESTA AÇÃO REMOVERÁ O ALUNO E SEU ACESSO PERMANENTEMENTE DO MONOLITO.",
       isDanger: true
     });
@@ -478,10 +478,10 @@ export default function AlunosClient({
                 </select>
               </div>
               <div>
-                <label style={{ display: "block", fontSize: 12, fontWeight: 500, color: "var(--admin-text-secondary)", marginBottom: 6 }}>Plano / Categoria</label>
+                <label style={{ display: "block", fontSize: 12, fontWeight: 500, color: "var(--admin-text-secondary)", marginBottom: 6 }}>Vínculo / Categoria</label>
                 <select name="membership_type" defaultValue="club">
                   {MEMBERSHIP_TYPES.map((type) => (
-                    <option key={type.key} value={type.key}>
+                    <option key={type.id} value={type.id}>
                       {type.label}
                     </option>
                   ))}
@@ -541,9 +541,9 @@ export default function AlunosClient({
             <table className="admin-table">
               <thead>
                 <tr>
-                  <th style={{ paddingLeft: "24px" }}>Nome do Atleta</th>
+                  <th style={{ paddingLeft: "24px" }}>Nome do Aluno</th>
                   <th style={{ width: "120px" }}>Nível</th>
-                  <th style={{ width: "130px" }}>Plano</th>
+                  <th style={{ width: "130px" }}>Vínculo</th>
                   <th style={{ width: "110px" }}>Pontuação</th>
                   <th style={{ width: "75px" }}>Data</th>
                   <th style={{ width: "160px" }}>Contato</th>
@@ -646,11 +646,11 @@ export default function AlunosClient({
               <table className="admin-table" style={{ width: "100%" }}>
                 <thead>
                   <tr>
-                    <th style={{ paddingLeft: "24px", textAlign: "left" }}>Candidato</th>
+                    <th style={{ paddingLeft: "24px", textAlign: "left" }}>Aluno</th>
                     <th style={{ width: "180px", textAlign: "left", paddingLeft: "16px", borderLeft: "1px solid #E5E7EB" }}>Contato</th>
                     <th style={{ width: "70px", textAlign: "left", paddingLeft: "12px", borderLeft: "1px solid #E5E7EB" }}>Data</th>
                     <th style={{ width: "125px", textAlign: "center", borderLeft: "1px solid #E5E7EB" }}>Nível</th>
-                    <th style={{ width: "145px", textAlign: "center", borderLeft: "1px solid #E5E7EB" }}>Plano</th>
+                    <th style={{ width: "145px", textAlign: "center", borderLeft: "1px solid #E5E7EB" }}>Vínculo</th>
                     <th style={{ width: "210px", textAlign: "center", borderLeft: "1px solid #E5E7EB" }}>Ações</th>
                   </tr>
                 </thead>
@@ -713,7 +713,7 @@ export default function AlunosClient({
                           }}
                         >
                           {MEMBERSHIP_TYPES.map((type) => (
-                            <option key={type.key} value={type.key}>
+                            <option key={type.id} value={type.id}>
                               {type.label}
                             </option>
                           ))}
@@ -950,9 +950,9 @@ export default function AlunosClient({
                       </div>
                       
                       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                        <label style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", color: "#666" }}>Plano de Acesso</label>
+                        <label style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", color: "#666" }}>Vínculo de Acesso</label>
                         <select name="membership_type" defaultValue={selectedStudent.membership_type || "club"} style={{ width: "100%", padding: 14, border: "3px solid #000", fontWeight: 800, outline: "none" }}>
-                          {MEMBERSHIP_TYPES.map(t => <option key={t.key} value={t.key}>{t.label}</option>)}
+                          {MEMBERSHIP_TYPES.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
                         </select>
                       </div>
 
@@ -1042,7 +1042,7 @@ export default function AlunosClient({
                         <div className="admin-card" style={{ padding: "20px 24px", border: "3px solid #000", background: "#F9FAFB", boxShadow: "4px 4px 0px rgba(0,0,0,0.05)" }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 8, color: "#666", marginBottom: 8 }}>
                             <Tag size={14} />
-                            <span style={{ fontSize: 10, fontWeight: 900, textTransform: "uppercase" }}>Plano</span>
+                            <span style={{ fontSize: 10, fontWeight: 900, textTransform: "uppercase" }}>Vínculo</span>
                           </div>
                           <div style={{ fontSize: 16, fontWeight: 900, color: getMembershipLabel(selectedStudent.membership_type).includes("Pass") ? "#DC2626" : "#000" }}>
                             {getMembershipLabel(selectedStudent.membership_type)}
@@ -1083,7 +1083,7 @@ export default function AlunosClient({
                           <p style={{ fontSize: 14, fontWeight: 900, margin: 0 }}>{selectedStudent.gender || "---"}</p>
                         </div>
                         <div>
-                          <p style={{ fontSize: 11, fontWeight: 800, color: "#666", textTransform: "uppercase", marginBottom: 4 }}>Status do Atleta</p>
+                          <p style={{ fontSize: 11, fontWeight: 800, color: "#666", textTransform: "uppercase", marginBottom: 4 }}>Status do Aluno</p>
                           <p style={{ fontSize: 14, fontWeight: 900, margin: 0, color: "#059669" }}>ATIVO</p>
                         </div>
                       </div>
@@ -1128,7 +1128,7 @@ export default function AlunosClient({
                           <Pencil size={18} /> EDITAR PERFIL
                         </button>
                         <button onClick={() => handleDelete(selectedStudent.id)} className="admin-btn admin-btn-ghost" style={{ flex: 1, height: 56, color: "#DC2626" }}>
-                          <Trash2 size={18} /> EXCLUIR ATLETA
+                          <Trash2 size={18} /> EXCLUIR ALUNO
                         </button>
                       </div>
                     </div>

@@ -1,17 +1,25 @@
 /**
- * 🎫 MEMBERSHIP TYPES: Classificação SSoT para controle de acesso.
+ * 🎫 MEMBERSHIP TYPES: Classificação SSoT para controle de acesso (Vínculo).
  * 
  * @description
- * Define os tipos de planos disponíveis no Coliseu para segmentação de funcionalidades.
- * - 'club': Aluno nativo com acesso total ao box e ferramentas do app.
- * - 'club_pass': Aluno vinculado por plataformas parceiras com acesso limitado.
+ * Define a natureza do vínculo do aluno com o Coliseu.
+ * - 'club': Membro nativo com acesso total ao box e ferramentas do app.
+ * - 'club_pass': Membro vinculado por plataformas parceiras (Gympass, TotalPass).
  */
 export const MEMBERSHIP_TYPES = [
-  { key: "club", label: "Aluno Club", color: "#000000" },
-  { key: "club_pass", label: "Aluno ClubPass", color: "#DC2626" },
-];
+  { 
+    id: 'club', 
+    label: 'Clube',
+    description: 'Acesso às aulas CrossTraining do CT Coliseu.'
+  },
+  { 
+    id: 'club_pass', 
+    label: 'Clube Pass',
+    description: 'Membro com acesso via Gympass ou TotalPass.'
+  }
+] as const;
 
 export function getMembershipLabel(key: string | null | undefined) {
-  const type = MEMBERSHIP_TYPES.find((t) => t.key === key);
-  return type ? type.label : "Aluno Club";
+  const type = MEMBERSHIP_TYPES.find((t) => t.id === key);
+  return type ? type.label : "Aluno";
 }

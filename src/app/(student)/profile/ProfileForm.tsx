@@ -12,7 +12,7 @@ import { getDisplayName } from "@/lib/identity-utils";
 /**
  * ProfileForm Component
  * 
- * Responsável pela gestão da identidade do atleta (perfil e segurança).
+ * Responsável pela gestão da identidade do aluno (perfil e segurança).
  * 
  * @design (Iron Monolith Light)
  * - Cores literais (#FFF/#000) utilizadas para garantir paridade total com o design system,

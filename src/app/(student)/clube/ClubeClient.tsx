@@ -111,7 +111,7 @@ export default function ClubeClient() {
               O CLUBE ESTÁ<br/>EM CONSTRUÇÃO
             </h2>
             <p className="font-headline" style={{ fontSize: "12px", fontWeight: 800, color: "#000", letterSpacing: "0.05em", opacity: 0.7 }}>
-              ESTAMOS PREPARANDO UM ESPAÇO ÉPICO PARA VOCÊS ACOMPANHAREM SEUS RECORDES, PONTUAÇÕES E LIGAS SEMANAIS CONTRA OUTROS ATLETAS DO COLISEU.
+              ESTAMOS PREPARANDO UM ESPAÇO ÉPICO PARA VOCÊS ACOMPANHAREM SEUS RECORDES, PONTUAÇÕES E LIGAS SEMANAIS CONTRA OUTROS ALUNOS DO COLISEU.
             </p>
           </div>
 
