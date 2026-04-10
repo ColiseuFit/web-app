@@ -25,7 +25,7 @@ export default async function EvaluationsPage() {
   return (
     <div style={{ backgroundColor: "#FFF", color: "#000", minHeight: "100vh", paddingBottom: "120px" }}>
       <DashboardStyles />
-      
+
       {/* ── HEADER ── */}
       <header style={{
         background: "#FFF",
@@ -46,7 +46,7 @@ export default async function EvaluationsPage() {
       </header>
 
       <main style={{ maxWidth: "480px", margin: "0 auto", padding: "24px 20px" }}>
-        
+
         {/* ── PERFORMANCE SNAPSHOT ── */}
         <section style={{ marginBottom: "32px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "20px" }}>
@@ -54,8 +54,8 @@ export default async function EvaluationsPage() {
             <div style={{ flex: 1, height: "2px", background: "#000" }} />
           </div>
 
-          <div style={{ 
-            background: "#FFF", 
+          <div style={{
+            background: "#FFF",
             border: "2px solid #000",
             padding: "24px",
             position: "relative",
@@ -78,7 +78,7 @@ export default async function EvaluationsPage() {
                 <div style={{ fontSize: "9px", fontWeight: 900, color: "#000", marginBottom: "4px", letterSpacing: "0.1em", opacity: 0.5 }}>TENDÊNCIA %BF</div>
                 <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                   <span style={{ fontFamily: "var(--font-display, 'Outfit', sans-serif)", fontSize: "28px", fontWeight: 950, color: "#E31B23" }}>{evaluations?.[0]?.body_fat_percentage || "--"}%</span>
-                   {evaluations && evaluations.length > 1 && (
+                  {evaluations && evaluations.length > 1 && (
                     <span style={{ fontSize: "12px", fontWeight: 900, color: (evaluations[0].body_fat_percentage < evaluations[1].body_fat_percentage) ? "#10B981" : "#E31B23" }}>
                       {evaluations[0].body_fat_percentage < evaluations[1].body_fat_percentage ? "↓" : "↑"}
                     </span>
@@ -87,7 +87,7 @@ export default async function EvaluationsPage() {
               </div>
             </div>
 
-            <div style={{ 
+            <div style={{
               marginTop: "20px",
               padding: "12px",
               background: "#F9F9F9",
@@ -98,7 +98,7 @@ export default async function EvaluationsPage() {
               letterSpacing: "0.1em",
               color: evaluations && evaluations.length > 0 ? "#E31B23" : "#000"
             }}>
-              {evaluations && evaluations.length > 1 
+              {evaluations && evaluations.length > 1
                 ? (evaluations[0].body_fat_percentage < evaluations[1].body_fat_percentage ? "ESTADO: EM EVOLUÇÃO (GORDURA EM QUEDA)" : "ESTADO: MANUTENÇÃO TÉCNICA REQUERIDA")
                 : "ESTADO: AGUARDANDO DADOS PARA COMPARATIVO"}
             </div>
@@ -116,9 +116,9 @@ export default async function EvaluationsPage() {
             <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
               {evaluations.map((ev) => (
                 <Link key={ev.id} href={`/profile/evaluations/${ev.id}`} style={{ textDecoration: "none", color: "inherit" }}>
-                  <div style={{ 
-                    background: "#FFF", 
-                    padding: "20px", 
+                  <div style={{
+                    background: "#FFF",
+                    padding: "20px",
                     border: "2px solid #000",
                     borderLeft: "6px solid #E31B23",
                     display: "flex",
@@ -151,9 +151,9 @@ export default async function EvaluationsPage() {
               ))}
             </div>
           ) : (
-            <div style={{ 
-              background: "#FFF", 
-              padding: "40px 24px", 
+            <div style={{
+              background: "#FFF",
+              padding: "40px 24px",
               textAlign: "center",
               border: "2px dashed #000",
             }}>

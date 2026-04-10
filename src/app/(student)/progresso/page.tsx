@@ -1,68 +1,21 @@
 import { Metadata } from "next";
-import { createClient } from "@/lib/supabase/server";
-import { redirect } from "next/navigation";
 import StudentHeader from "@/components/StudentHeader";
 import BottomNav from "@/components/BottomNav";
 import DashboardStyles from "@/components/DashboardStyles";
-import ProgressDashboardClient from "@/components/progress/ProgressDashboardClient";
-import { getWeekDates } from "@/lib/date-utils";
-import { Target } from "lucide-react";
+import { Hammer, TrendingUp } from "lucide-react";
 
 /**
  * Progresso Page
  * 
- * Dashboard de evolução técnica e métricas de performance.
- * 
- * @architecture
- * - Padrão Neo-Brutalist Light (Monolito de Ferro).
- * - Hidratação em Paralelo: Busca PRs, Metas e Frequência simultaneamente.
- * - SSoT: Centraliza a verdade do progresso do aluno via Supabase.
+ * @status EM CONSTRUÇÃO (RESTRITO)
+ * - Esta página foi revertida para o modo "Em Breve" para alinhar com o roadmap de lançamento.
+ * - O código funcional do dashboard está preservado em components/progress para futura ativação.
  */
 export const metadata: Metadata = {
   title: "Meu Progresso",
 };
 
-export default async function ProgressPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
-  if (!user) redirect("/login");
-
-  // 1. Definição do Período Atual (Semana de Treino)
-  const currentWeekDates = getWeekDates(0);
-
-  // 2. Busca de Dados em Paralelo (Performance Sênior)
-  const [
-    { data: profile },
-    { data: prs },
-    { data: goals },
-    { data: settings },
-    { data: weeklyCheckIns }
-  ] = await Promise.all([
-    supabase.from("profiles").select("full_name, display_name, level").eq("id", user.id).single(),
-    // Buscamos PRs do aluno - A query mapeia movement_id para movement_key conforme interface do Client
-    supabase.from("personal_records").select("*").eq("student_id", user.id).order("date", { ascending: false }),
-    supabase.from("student_goals").select("*").eq("student_id", user.id).order("created_at", { ascending: true }),
-    supabase.from("student_settings").select("weekly_frequency_target").eq("student_id", user.id).maybeSingle(),
-    // Contagem de check-ins na semana atual (SSoT join com wods)
-    supabase.from("check_ins")
-      .select("id, wods!inner(date)")
-      .eq("student_id", user.id)
-      .neq("status", "missed")
-      .neq("status", "cancelled")
-      .in("wods.date", currentWeekDates)
-  ]);
-
-  // 3. Normalização de Dados para o Cliente
-  const mappedPrs = (prs || []).map((pr: any) => ({
-    ...pr,
-    movement_key: pr.movement_id // Adaptando movement_id do DB para movement_key esperado no componente
-  }));
-
-  const studentName = profile?.display_name || profile?.full_name || "Atleta";
-  const targetFrequency = settings?.weekly_frequency_target || 3; // Default 3x/semana
-  const currentCheckInsCount = weeklyCheckIns?.length || 0;
-
+export default function ProgressPage() {
   return (
     <>
       <DashboardStyles />
@@ -77,32 +30,86 @@ export default async function ProgressPage() {
       <StudentHeader />
 
       <main className="animate-in" style={{ 
-        maxWidth: "500px", margin: "0 auto", padding: "0 0 120px", 
+        maxWidth: "500px", margin: "0 auto", padding: "0 20px 120px", 
       }}>
         
         {/* ── HEADER DE IMPACTO ── */}
-        <section style={{ paddingTop: "32px", paddingBottom: "32px", textAlign: "center", paddingLeft: "20px", paddingRight: "20px" }}>
+        <section style={{ paddingTop: "32px", paddingBottom: "32px", textAlign: "center" }}>
           <div style={{ display: "inline-flex", alignItems: "center", gap: "8px", background: "#E31B23", color: "white", padding: "4px 12px", border: "2px solid #000", boxShadow: "4px 4px 0px #000", marginBottom: "16px" }}>
-            <Target size={14} strokeWidth={3} />
-            <span style={{ fontSize: "10px", fontWeight: 900, letterSpacing: "0.2em" }}>METAS E RECORDES</span>
+            <TrendingUp size={14} strokeWidth={3} />
+            <span style={{ fontSize: "10px", fontWeight: 900, letterSpacing: "0.2em" }}>EVOLUÇÃO TÉCNICA</span>
           </div>
-          <h1 className="font-display" style={{ fontSize: "48px", fontWeight: 950, lineHeight: 0.8, textTransform: "uppercase", letterSpacing: "-0.04em", margin: 0 }}>
+          <h1 className="font-display" style={{ fontSize: "52px", fontWeight: 950, lineHeight: 0.8, textTransform: "uppercase", letterSpacing: "-0.04em", margin: 0 }}>
              MEU<br/>PROGRESSO
           </h1>
           <p className="font-headline" style={{ fontSize: "12px", fontWeight: 800, color: "#000", marginTop: "12px", letterSpacing: "0.15em", textTransform: "uppercase", opacity: 0.6 }}>
-            ACOMPANHE SUA EVOLUÇÃO
+            ACOMPANHE SUA JORNADA
           </p>
         </section>
 
-        {/* ── INTERATIVIDADE DO PROGRESSO ── */}
-        <ProgressDashboardClient 
-          initialPrs={mappedPrs}
-          initialGoals={goals || []}
-          studentName={studentName}
-          targetFrequency={targetFrequency}
-          currentCheckIns={currentCheckInsCount}
-          studentLevel={profile?.level}
-        />
+        {/* ── EM BREVE CONTAINER (PARIDADE COM CLUBE) ── */}
+        <section
+          style={{
+            background: "#FFF",
+            border: "3px solid #000",
+            boxShadow: "10px 10px 0px #000",
+            position: "relative",
+            overflow: "hidden",
+            padding: "40px 20px",
+            textAlign: "center",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: "24px",
+          }}
+        >
+          {/* Fita de Construção */}
+          <div style={{
+            position: "absolute",
+            top: "20px",
+            right: "-40px",
+            background: "#FFD700",
+            color: "#000",
+            borderTop: "2px solid #000",
+            borderBottom: "2px solid #000",
+            padding: "4px 40px",
+            transform: "rotate(45deg)",
+            fontSize: "10px",
+            fontWeight: 900,
+            letterSpacing: "0.2em",
+            zIndex: 10
+          }}>
+            WORK IN PROGRESS
+          </div>
+
+          <div style={{ 
+            width: "80px", 
+            height: "80px", 
+            background: "#F0F0F0", 
+            border: "3px solid #000", 
+            display: "flex", 
+            alignItems: "center", 
+            justifyContent: "center",
+            boxShadow: "4px 4px 0px #E31B23",
+            borderRadius: "50%"
+          }}>
+            <Hammer size={40} color="#000" strokeWidth={2.5} />
+          </div>
+
+          <div>
+            <h2 className="font-display" style={{ fontSize: "28px", fontWeight: 950, color: "#000", lineHeight: 1, marginBottom: "12px" }}>
+              O PROGRESSO ESTÁ<br/>EM CONSTRUÇÃO
+            </h2>
+            <p className="font-headline" style={{ fontSize: "12px", fontWeight: 800, color: "#000", letterSpacing: "0.05em", opacity: 0.7 }}>
+              ESTAMOS FINALIZANDO OS ÚLTIMOS DETALHES PARA VOCÊ ACOMPANHAR SEUS RECORDES PESSOAIS, METAS SEMANAIS E EVOLUÇÃO TÉCNICA EM TEMPO REAL.
+            </p>
+          </div>
+
+          <div style={{ display: "inline-block", background: "#000", color: "#FFF", padding: "12px 24px", fontSize: "14px", fontWeight: 900, letterSpacing: "0.1em", border: "2px solid #000" }}>
+            EM BREVE
+          </div>
+
+        </section>
 
       </main>
 

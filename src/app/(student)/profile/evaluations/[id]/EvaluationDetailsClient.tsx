@@ -52,6 +52,7 @@ export default function EvaluationDetailsClient({
 }) {
   const [activeTab, setActiveTab] = useState<"resumo" | "antropometria" | "composicao" | "postura">("resumo");
   const [evolutionSplit, setEvolutionSplit] = useState(50); // For the slider (0-100)
+  const [selectedPose, setSelectedPose] = useState("Frente");
 
   // Cálculos
   const bmi = (evaluation.weight && evaluation.height) 
@@ -85,6 +86,12 @@ export default function EvaluationDetailsClient({
     { id: "composicao", label: "COMPOSIÇÃO" },
     { id: "postura", label: "POSTURA" },
   ];
+
+  const availablePoses = ["Frente", "Costas", "Lateral Direita", "Lateral Esquerda", "Postural"];
+  
+  // Get matching photos
+  const currentPhoto = evaluation.photos.find(p => p.label === selectedPose) || evaluation.photos[0];
+  const previousPhoto = previous?.photos.find(p => p.label === selectedPose);
 
   return (
     <div style={{ backgroundColor: "#FFF", color: "#000", fontFamily: "'Inter', sans-serif", minHeight: "100vh", paddingBottom: "100px" }}>
@@ -218,17 +225,57 @@ export default function EvaluationDetailsClient({
             </div>
 
             {/* RADAR DE EVOLUÇÃO (Visual Wow) */}
-            {previous && evaluation.photos.length > 0 && previous.photos.length > 0 && (
-              <section style={{ marginBottom: "40px" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "20px" }}>
-                  <h2 style={{ fontFamily: "var(--font-display, 'Outfit', sans-serif)", fontSize: "14px", fontWeight: 900 }}>RADAR DE EVOLUÇÃO</h2>
-                  <div style={{ flex: 1, height: "2px", background: "#000" }} />
-                </div>
-                
+            <section style={{ marginBottom: "40px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "20px" }}>
+                <h2 style={{ fontFamily: "var(--font-display, 'Outfit', sans-serif)", fontSize: "14px", fontWeight: 900 }}>RADAR DE EVOLUÇÃO</h2>
+                <div style={{ flex: 1, height: "2px", background: "#000" }} />
+              </div>
+
+              {/* POSE SELECTOR */}
+              <div style={{ 
+                display: "flex", 
+                gap: "8px", 
+                marginBottom: "20px", 
+                overflowX: "auto", 
+                paddingBottom: "8px",
+                msOverflowStyle: "none",
+                scrollbarWidth: "none"
+              }}>
+                {availablePoses.map(pose => {
+                  const hasPhoto = evaluation.photos.some(p => p.label === pose);
+                  if (!hasPhoto) return null;
+
+                  return (
+                    <button
+                      key={pose}
+                      onClick={() => setSelectedPose(pose)}
+                      style={{
+                        padding: "8px 16px",
+                        background: selectedPose === pose ? "#000" : "#FFF",
+                        color: selectedPose === pose ? "#FFF" : "#000",
+                        border: "2px solid #000",
+                        fontSize: "10px",
+                        fontWeight: 900,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.05em",
+                        whiteSpace: "nowrap",
+                        cursor: "pointer",
+                        boxShadow: selectedPose === pose ? "none" : "2px 2px 0px #000",
+                        transform: selectedPose === pose ? "translate(2px, 2px)" : "none",
+                        transition: "all 0.1s ease"
+                      }}
+                    >
+                      {pose}
+                    </button>
+                  );
+                })}
+              </div>
+              
+              {previous && currentPhoto && previousPhoto ? (
                 <div style={{ position: "relative", aspectRatio: "3/4", background: "#F5F5F5", overflow: "hidden", border: "2px solid #000", boxShadow: "6px 6px 0px #000" }}>
                   {/* Previous Image */}
                   <img 
-                    src={previous.photos[0].url} 
+                    src={previousPhoto.url} 
                     style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", filter: "grayscale(100%) opacity(0.6)" }} 
                   />
                   {/* Current Image (Clipped) */}
@@ -239,16 +286,20 @@ export default function EvaluationDetailsClient({
                     overflow: "hidden", 
                     borderRight: "4px solid #E31B23",
                     zIndex: 2,
-                    boxShadow: "2px 0 10px rgba(0,0,0,0.5)"
+                    boxShadow: "2px 0 10px rgba(0,0,0,0.3)"
                   }}>
                     <img 
-                      src={evaluation.photos[0].url} 
+                      src={currentPhoto.url} 
                       style={{ width: "440px", height: "100%", objectFit: "cover" }} 
                     />
                   </div>
                   {/* Labels */}
-                  <div style={{ position: "absolute", left: "12px", top: "12px", fontSize: "10px", fontWeight: 900, color: "#000", background: "#FFF", border: "2px solid #000", padding: "2px 6px", zIndex: 3 }}>ANTERIOR</div>
-                  <div style={{ position: "absolute", right: "12px", top: "12px", fontSize: "10px", fontWeight: 900, color: "#FFF", zIndex: 3, background: "#E31B23", border: "2px solid #000", padding: "2px 6px" }}>ATUAL</div>
+                  <div style={{ position: "absolute", left: "12px", top: "12px", fontSize: "10px", fontWeight: 900, color: "#000", background: "#FFF", border: "2px solid #000", padding: "2px 6px", zIndex: 3 }}>
+                    {new Date(previous.evaluation_date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }).toUpperCase()}
+                  </div>
+                  <div style={{ position: "absolute", right: "12px", top: "12px", fontSize: "10px", fontWeight: 900, color: "#FFF", zIndex: 3, background: "#E31B23", border: "2px solid #000", padding: "2px 6px" }}>
+                    ATUAL
+                  </div>
                   
                   {/* Slider Control */}
                   <input 
@@ -269,9 +320,31 @@ export default function EvaluationDetailsClient({
                     }}
                   />
                 </div>
-                <p style={{ fontSize: "9px", color: "#000", opacity: 0.6, marginTop: "16px", textAlign: "center", letterSpacing: "0.1em", fontWeight: 900 }}>DESLIZE PARA COMPARAR DEFINIÇÃO E VOLUME</p>
-              </section>
-            )}
+              ) : (
+                <div style={{ 
+                  aspectRatio: "3/4", 
+                  background: "#F9F9F9", 
+                  border: "2px dashed #CCC", 
+                  display: "flex", 
+                  flexDirection: "column", 
+                  alignItems: "center", 
+                  justifyContent: "center",
+                  padding: "40px",
+                  textAlign: "center"
+                }}>
+                  <div style={{ opacity: 0.3, marginBottom: "16px" }}>
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                      <path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                  <span style={{ fontSize: "11px", fontWeight: 900, color: "#999", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                    {!previous ? "Aguardando próxima avaliação para comparar" : "Registro de foto não encontrado no histórico"}
+                  </span>
+                </div>
+              )}
+              <p style={{ fontSize: "9px", color: "#000", opacity: 0.6, marginTop: "16px", textAlign: "center", letterSpacing: "0.1em", fontWeight: 900 }}>DESLIZE PARA COMPARAR DEFINIÇÃO E VOLUME</p>
+            </section>
+
 
             {/* GALERIA COMPLETA */}
             {evaluation.photos.length > 0 && (
