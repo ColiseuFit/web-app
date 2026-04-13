@@ -17,6 +17,11 @@ export const metadata: Metadata = {
     telephone: false,
   },
   metadataBase: new URL("https://clube.coliseufit.com"),
+  appleWebApp: {
+    title: "Coliseu Clube",
+    statusBarStyle: "black-translucent",
+    capable: true,
+  },
   openGraph: {
     title: "Coliseu Clube",
     description: "Acompanhe seus treinos, PRs e evolua na sua jornada fitness no Coliseu.",
@@ -32,7 +37,6 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: "/favicon.svg",
-    apple: "/favicon.svg",
   },
 };
 
