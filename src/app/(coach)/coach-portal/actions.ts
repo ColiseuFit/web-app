@@ -40,3 +40,9 @@ export async function loginCoach(formData: FormData) {
 
   redirect("/coach");
 }
+
+export async function logoutCoach() {
+  const supabase = await createClient();
+  await supabase.auth.signOut();
+  redirect("/coach-portal");
+}
