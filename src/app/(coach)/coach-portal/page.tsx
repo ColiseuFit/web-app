@@ -2,78 +2,19 @@
 
 import { useState } from "react";
 import { ShieldCheck, Mail, Lock, Eye, EyeOff, ArrowRight } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
-import { useRouter } from "next/navigation";
 import AdminStyles from "@/components/admin/AdminStyles";
-import { USER_ROLES } from "@/lib/constants/roles";
+import { loginCoach } from "./actions";
 
 /**
  * Coach Login Page: High Contrast Premium B&W (Adapted from Admin).
  * Designed for coaches to access the performance tracking portal.
  */
-export default function CoachLoginPage() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+export default function CoachLoginPage({ searchParams }: { searchParams: { error?: string } }) {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  const supabase = createClient();
-  const router = useRouter();
-
-  async function handleLogin(e: React.FormEvent) {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) throw error;
-
-
-      let roleData = null;
-      let attempts = 0;
-
-      // MASTER KEY BYPASS: Priority for root admin (both domains)
-      const isAdminEmail = data.user?.email === "admin@coliseufit.com";
-
-      if (isAdminEmail) {
-        roleData = { role: USER_ROLES.ADMIN };
-      } else {
-        // Retry logic for role lookup (allow for RLS/Session propagation)
-        while (attempts < 2 && !roleData) {
-          if (attempts > 0) await new Promise(r => setTimeout(r, 600));
-          
-          const { data: fetchRole, error: roleError } = await supabase
-            .from("user_roles")
-            .select("role")
-            .eq("user_id", data.user?.id)
-            .maybeSingle();
-
-          if (roleError) console.error("Error fetching role:", roleError);
-          roleData = fetchRole;
-          attempts++;
-        }
-      }
-
- 
-
-      // RBAC Check for Coach Portal
-      if (!roleData || (roleData.role !== USER_ROLES.ADMIN && roleData.role !== USER_ROLES.COACH && roleData.role !== USER_ROLES.RECEPTION)) {
-        await supabase.auth.signOut();
-        throw new Error(`Acesso negado: Perfil sem permissões de instrutor. (UID: ${data.user?.id?.substring(0, 8)}...)`);
-      }
-
-      // Success: Redirect to coach dashboard
-      router.push("/coach");
-      router.refresh();
-    } catch (err: any) {
-      console.error("Coach login failure:", err);
-      setError(err.message || "Erro de autenticação.");
-    } finally {
-      setLoading(false);
-    }
-  }
+  // Error from fallback SSR Search Params or standard client React State
+  const errorMessage = searchParams?.error || null;
 
   const inputBase: React.CSSProperties = {
     display: "block",
@@ -154,8 +95,8 @@ export default function CoachLoginPage() {
             </p>
           </div>
 
-          <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
-            {error && (
+          <form action={loginCoach} style={{ display: "flex", flexDirection: "column", gap: "24px" }} onSubmit={() => setLoading(true)}>
+            {errorMessage && (
               <div
                 style={{
                   padding: "16px",
@@ -166,7 +107,7 @@ export default function CoachLoginPage() {
                   fontWeight: 600,
                 }}
               >
-                {error}
+                {errorMessage}
               </div>
             )}
 
@@ -199,10 +140,9 @@ export default function CoachLoginPage() {
                 />
                 <input
                   type="email"
+                  name="email"
                   required
                   autoComplete="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
                   placeholder="instrutor@coliseufit.com"
                   style={inputBase}
                 />
@@ -238,10 +178,9 @@ export default function CoachLoginPage() {
                 />
                 <input
                   type={showPassword ? "text" : "password"}
+                  name="password"
                   required
                   autoComplete="current-password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   style={{ ...inputBase, paddingRight: "52px" }}
                 />
