@@ -1,14 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import { ShieldCheck, Mail, Lock, Eye, EyeOff, ArrowRight } from "lucide-react";
+import { ShieldCheck, Mail, Lock, Eye, EyeOff, ArrowRight, Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import AdminStyles from "@/components/admin/AdminStyles";
 
 /**
- * Admin Login Page: High Contrast Premium B&W.
- * Designed for maximum legibility and operational focus.
+ * Admin Login Page — Safari/iOS compatible.
+ *
+ * @fixes
+ * - box-sizing: border-box em todos os inputs para evitar overflow no Safari.
+ * - Botão olho posicionado sem depender de transform herdado do input em foco.
+ * - Evita onMouseEnter/Leave que não disparam em touch (iOS).
+ * - WebkitAppearance: none para remover estilos nativos do Safari em inputs/buttons.
  */
 export default function AdminLoginPage() {
   const [email, setEmail] = useState("");
@@ -29,8 +34,6 @@ export default function AdminLoginPage() {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
 
-
-      // Pequena espera para garantir que o Supabase reflita a sessão nos headers do cliente
       let roleData = null;
       let attempts = 0;
 
@@ -41,20 +44,18 @@ export default function AdminLoginPage() {
       } else {
         while (attempts < 2 && !roleData) {
           if (attempts > 0) await new Promise(r => setTimeout(r, 600));
-          
+
           const { data: fetchRole, error: roleError } = await supabase
             .from("user_roles")
             .select("role")
             .eq("user_id", data.user?.id)
             .maybeSingle();
 
-          if (roleError) console.error("Erro ao buscar cargo (Aguardando ajuste de RLS):", roleError);
+          if (roleError) console.error("Erro ao buscar cargo:", roleError);
           roleData = fetchRole;
           attempts++;
         }
       }
-
- 
 
       if (!roleData || (roleData.role !== "admin" && roleData.role !== "reception")) {
         await supabase.auth.signOut();
@@ -71,16 +72,36 @@ export default function AdminLoginPage() {
     }
   }
 
+  const inputBase: React.CSSProperties = {
+    display: "block",
+    width: "100%",
+    boxSizing: "border-box",         // ← Safari fix: inclui border+padding na largura
+    padding: "16px 16px 16px 48px",
+    fontSize: "16px",                 // ← iOS: 16px previne zoom automático no foco
+    fontWeight: 600,
+    border: "2px solid #000",
+    background: "#FFF",
+    color: "#000",
+    borderRadius: "0px",
+    outline: "none",
+    WebkitAppearance: "none",         // ← Remove estilo nativo do Safari
+    appearance: "none",
+  };
+
   return (
     <div className="admin-shell">
       <AdminStyles />
+      <style>{`
+        * { box-sizing: border-box; }
+        input, button { -webkit-appearance: none; appearance: none; }
+      `}</style>
       <div
         style={{
           minHeight: "100vh",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "#000000", // Fundo preto profundo para destacar o card
+          background: "#000000",
           padding: "24px",
         }}
       >
@@ -90,8 +111,7 @@ export default function AdminLoginPage() {
             maxWidth: "440px",
             background: "#FFFFFF",
             padding: "48px",
-            borderRadius: "0px", // Brutalismo: cantos retos ou muito pouco arredondados
-            boxShadow: "20px 20px 0px rgba(255, 255, 255, 0.1)", // Sombra sólida estilizada
+            boxShadow: "20px 20px 0px rgba(255, 255, 255, 0.1)",
             border: "1px solid #FFFFFF",
           }}
         >
@@ -141,13 +161,15 @@ export default function AdminLoginPage() {
                   color: "#9F1239",
                   fontSize: "13px",
                   fontWeight: 600,
+                  boxSizing: "border-box",
                 }}
               >
                 {error}
               </div>
             )}
 
-            <div className="input-group">
+            {/* EMAIL */}
+            <div>
               <label
                 style={{
                   display: "block",
@@ -170,39 +192,24 @@ export default function AdminLoginPage() {
                     top: "50%",
                     transform: "translateY(-50%)",
                     color: "#000",
+                    pointerEvents: "none",
+                    zIndex: 1,
                   }}
                 />
                 <input
                   type="email"
                   required
+                  autoComplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="admin@coliseufit.com"
-                  style={{
-                    width: "100%",
-                    padding: "16px 16px 16px 48px",
-                    fontSize: "16px",
-                    fontWeight: "600",
-                    border: "2px solid #000",
-                    background: "#FFF",
-                    color: "#000",
-                    transition: "all 0.1s ease",
-                    borderRadius: "0px",
-                    outline: "none",
-                  }}
-                  onFocus={(e) => {
-                    e.currentTarget.style.boxShadow = "6px 6px 0px #000";
-                    e.currentTarget.style.transform = "translate(-2px, -2px)";
-                  }}
-                  onBlur={(e) => {
-                    e.currentTarget.style.boxShadow = "none";
-                    e.currentTarget.style.transform = "none";
-                  }}
+                  style={inputBase}
                 />
               </div>
             </div>
 
-            <div className="input-group">
+            {/* PASSWORD */}
+            <div>
               <label
                 style={{
                   display: "block",
@@ -216,6 +223,11 @@ export default function AdminLoginPage() {
               >
                 Chave de Acesso
               </label>
+              {/* 
+                Safari fix: O wrapper position:relative precisa ser um elemento separado 
+                do input para que o botão-olho não seja arrastado pelo transform do foco.
+                Solução: padding-right no input + botão absolute alinhado pelo top:0/bottom:0.
+              */}
               <div style={{ position: "relative" }}>
                 <Lock
                   size={20}
@@ -225,59 +237,67 @@ export default function AdminLoginPage() {
                     top: "50%",
                     transform: "translateY(-50%)",
                     color: "#000",
+                    pointerEvents: "none",
+                    zIndex: 1,
                   }}
                 />
                 <input
                   type={showPassword ? "text" : "password"}
                   required
+                  autoComplete="current-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   style={{
-                    width: "100%",
-                    padding: "16px 48px 16px 48px",
-                    fontSize: "16px",
-                    fontWeight: "600",
-                    border: "2px solid #000",
-                    background: "#FFF",
-                    color: "#000",
-                    transition: "all 0.1s ease",
-                    borderRadius: "0px",
-                    outline: "none",
-                  }}
-                  onFocus={(e) => {
-                    e.currentTarget.style.boxShadow = "6px 6px 0px #000";
-                    e.currentTarget.style.transform = "translate(-2px, -2px)";
-                  }}
-                  onBlur={(e) => {
-                    e.currentTarget.style.boxShadow = "none";
-                    e.currentTarget.style.transform = "none";
+                    ...inputBase,
+                    paddingRight: "52px", // espaço para o botão olho
                   }}
                 />
+                {/* 
+                  Eye button: usa top/bottom:0 + margin:auto em vez de transform:translateY
+                  para evitar o bug do Safari onde transform de pai afeta position:absolute 
+                */}
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   style={{
                     position: "absolute",
-                    right: "14px",
-                    top: "50%",
-                    transform: "translateY(-50%)",
+                    right: "0",
+                    top: "0",
+                    bottom: "0",
+                    width: "52px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
                     background: "none",
                     border: "none",
                     cursor: "pointer",
                     color: "#000",
+                    WebkitAppearance: "none",
+                    appearance: "none",
+                    padding: 0,
+                    zIndex: 2,
+                    // Área de toque aumentada para iOS
+                    minHeight: "44px",
                   }}
+                  aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
                 >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
               </div>
             </div>
 
+            {/* SUBMIT */}
             <button
               type="submit"
               disabled={loading}
               style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "12px",
                 width: "100%",
+                boxSizing: "border-box",
                 height: "56px",
                 background: "#000",
                 color: "#FFF",
@@ -286,21 +306,31 @@ export default function AdminLoginPage() {
                 fontWeight: 700,
                 textTransform: "uppercase",
                 letterSpacing: "0.1em",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: "12px",
                 cursor: loading ? "not-allowed" : "pointer",
-                transition: "all 0.2s ease",
                 marginTop: "8px",
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = "#333")}
-              onMouseLeave={(e) => (e.currentTarget.style.background = "#000")}
+                WebkitAppearance: "none",
+                appearance: "none",
+                // Cor de tap highlight removida no iOS
+                WebkitTapHighlightColor: "transparent",
+              } as React.CSSProperties}
             >
-              {loading ? "Verificando..." : "Entrar no Sistema"}
-              {!loading && <ArrowRight size={18} />}
+              {loading ? (
+                <>
+                  <Loader2 size={18} style={{ animation: "spin 1s linear infinite" }} />
+                  Verificando...
+                </>
+              ) : (
+                <>
+                  Entrar no Sistema
+                  <ArrowRight size={18} />
+                </>
+              )}
             </button>
           </form>
+
+          <style>{`
+            @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+          `}</style>
 
           <div
             style={{

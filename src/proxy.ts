@@ -9,7 +9,7 @@ import { NextResponse, type NextRequest } from "next/server";
  * - Updates Supabase sessions and handles protected route redirects.
  * - Consolidates logic to avoid external dependency issues.
  */
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
     request,
   });

@@ -75,9 +75,29 @@ export default function CoachLoginPage() {
     }
   }
 
+  const inputBase: React.CSSProperties = {
+    display: "block",
+    width: "100%",
+    boxSizing: "border-box",
+    padding: "16px 16px 16px 48px",
+    fontSize: "16px",
+    fontWeight: 600,
+    border: "2px solid #000",
+    background: "#FFF",
+    color: "#000",
+    borderRadius: "0px",
+    outline: "none",
+    WebkitAppearance: "none",
+    appearance: "none",
+  };
+
   return (
     <div className="admin-shell">
       <AdminStyles />
+      <style>{`
+        * { box-sizing: border-box; }
+        input, button { -webkit-appearance: none; appearance: none; }
+      `}</style>
       <div
         style={{
           minHeight: "100vh",
@@ -94,7 +114,6 @@ export default function CoachLoginPage() {
             maxWidth: "440px",
             background: "#FFFFFF",
             padding: "48px",
-            borderRadius: "0px",
             boxShadow: "20px 20px 0px rgba(255, 255, 255, 0.1)",
             border: "1px solid #FFFFFF",
           }}
@@ -151,7 +170,7 @@ export default function CoachLoginPage() {
               </div>
             )}
 
-            <div className="input-group">
+            <div>
               <label
                 style={{
                   display: "block",
@@ -174,39 +193,23 @@ export default function CoachLoginPage() {
                     top: "50%",
                     transform: "translateY(-50%)",
                     color: "#000",
+                    pointerEvents: "none",
+                    zIndex: 1,
                   }}
                 />
                 <input
                   type="email"
                   required
+                  autoComplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="instrutor@coliseufit.com"
-                  style={{
-                    width: "100%",
-                    padding: "16px 16px 16px 48px",
-                    fontSize: "16px",
-                    fontWeight: "600",
-                    border: "2px solid #000",
-                    background: "#FFF",
-                    color: "#000",
-                    transition: "all 0.1s ease",
-                    borderRadius: "0px",
-                    outline: "none",
-                  }}
-                  onFocus={(e) => {
-                    e.currentTarget.style.boxShadow = "6px 6px 0px #000";
-                    e.currentTarget.style.transform = "translate(-2px, -2px)";
-                  }}
-                  onBlur={(e) => {
-                    e.currentTarget.style.boxShadow = "none";
-                    e.currentTarget.style.transform = "none";
-                  }}
+                  style={inputBase}
                 />
               </div>
             </div>
 
-            <div className="input-group">
+            <div>
               <label
                 style={{
                   display: "block",
@@ -229,50 +232,45 @@ export default function CoachLoginPage() {
                     top: "50%",
                     transform: "translateY(-50%)",
                     color: "#000",
+                    pointerEvents: "none",
+                    zIndex: 1,
                   }}
                 />
                 <input
                   type={showPassword ? "text" : "password"}
                   required
+                  autoComplete="current-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  style={{
-                    width: "100%",
-                    padding: "16px 48px 16px 48px",
-                    fontSize: "16px",
-                    fontWeight: "600",
-                    border: "2px solid #000",
-                    background: "#FFF",
-                    color: "#000",
-                    transition: "all 0.1s ease",
-                    borderRadius: "0px",
-                    outline: "none",
-                  }}
-                  onFocus={(e) => {
-                    e.currentTarget.style.boxShadow = "6px 6px 0px #000";
-                    e.currentTarget.style.transform = "translate(-2px, -2px)";
-                  }}
-                  onBlur={(e) => {
-                    e.currentTarget.style.boxShadow = "none";
-                    e.currentTarget.style.transform = "none";
-                  }}
+                  style={{ ...inputBase, paddingRight: "52px" }}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
+                  aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
                   style={{
                     position: "absolute",
-                    right: "14px",
-                    top: "50%",
-                    transform: "translateY(-50%)",
+                    right: "0",
+                    top: "0",
+                    bottom: "0",
+                    width: "52px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
                     background: "none",
                     border: "none",
                     cursor: "pointer",
                     color: "#000",
-                  }}
+                    WebkitAppearance: "none",
+                    appearance: "none",
+                    padding: 0,
+                    zIndex: 2,
+                    minHeight: "44px",
+                    WebkitTapHighlightColor: "transparent",
+                  } as React.CSSProperties}
                 >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
               </div>
             </div>
@@ -281,7 +279,12 @@ export default function CoachLoginPage() {
               type="submit"
               disabled={loading}
               style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "12px",
                 width: "100%",
+                boxSizing: "border-box",
                 height: "56px",
                 background: "#000",
                 color: "#FFF",
@@ -290,16 +293,12 @@ export default function CoachLoginPage() {
                 fontWeight: 700,
                 textTransform: "uppercase",
                 letterSpacing: "0.1em",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: "12px",
                 cursor: loading ? "not-allowed" : "pointer",
-                transition: "all 0.2s ease",
                 marginTop: "8px",
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = "#333")}
-              onMouseLeave={(e) => (e.currentTarget.style.background = "#000")}
+                WebkitAppearance: "none",
+                appearance: "none",
+                WebkitTapHighlightColor: "transparent",
+              } as React.CSSProperties}
             >
               {loading ? "Verificando..." : "Entrar no Portal"}
               {!loading && <ArrowRight size={18} />}
