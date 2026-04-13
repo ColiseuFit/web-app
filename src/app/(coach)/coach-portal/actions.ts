@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { USER_ROLES } from "@/lib/constants/roles";
 
 export async function loginCoach(formData: FormData) {
@@ -36,6 +37,16 @@ export async function loginCoach(formData: FormData) {
   if (!isAdmin && (!roleData || (roleData.role !== USER_ROLES.ADMIN && roleData.role !== USER_ROLES.COACH && roleData.role !== USER_ROLES.RECEPTION))) {
     await supabase.auth.signOut();
     redirect("/coach-portal?error=Acesso não autorizado para este perfil.");
+  }
+
+  const headersList = await headers();
+  const userAgent = headersList.get("user-agent") || "";
+  
+  // Legacy Hardware Detection for JS-less routing
+  const isLegacyHardware = userAgent.includes("OS 9_") || userAgent.includes("OS 10_") || userAgent.includes("iPad; CPU OS 9");
+
+  if (isLegacyHardware) {
+    redirect("/coach-lite");
   }
 
   redirect("/coach");

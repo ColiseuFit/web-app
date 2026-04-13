@@ -1,26 +1,20 @@
-"use client";
-
-import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight, Calendar, RotateCcw } from "lucide-react";
 import { getTodayDate } from "@/lib/date-utils";
+import Link from "next/link";
 
 /**
  * Componente de navegação por data para o Portal do Coach.
- * Permite retroceder e avançar datas via searchParams.
+ * Utiliza SSR puramente via `next/link` para suportar Progressive Enhancement
+ * em hardwares legados sem depender de CSR (`useRouter`).
  */
 export default function DateNavigator({ activeDateStr }: { activeDateStr: string }) {
-  const router = useRouter();
   const today = getTodayDate();
   
-  const handleNavigate = (days: number) => {
+  const getNavUrl = (days: number) => {
     const current = new Date(activeDateStr + "T00:00:00Z");
     current.setUTCDate(current.getUTCDate() + days);
     const newDateStr = current.toISOString().split("T")[0];
-    router.push(`/coach?date=${newDateStr}`);
-  };
-
-  const handleGoToToday = () => {
-    router.push("/coach");
+    return `?date=${newDateStr}`;
   };
 
   const isToday = activeDateStr === today;
@@ -37,8 +31,8 @@ export default function DateNavigator({ activeDateStr }: { activeDateStr: string
         padding: "4px"
       }}>
         {/* Voltar 1 Dia */}
-        <button 
-          onClick={() => handleNavigate(-1)}
+        <Link 
+          href={getNavUrl(-1)}
           aria-label="Dia Anterior"
           style={{ 
             background: "#F7F7F7", 
@@ -48,11 +42,12 @@ export default function DateNavigator({ activeDateStr }: { activeDateStr: string
             cursor: "pointer", 
             display: "flex", 
             alignItems: "center",
-            boxShadow: "2px 2px 0px #000"
+            boxShadow: "2px 2px 0px #000",
+            textDecoration: "none"
           }}
         >
           <ChevronLeft size={20} strokeWidth={3} />
-        </button>
+        </Link>
 
         {/* Data Central */}
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
@@ -73,8 +68,8 @@ export default function DateNavigator({ activeDateStr }: { activeDateStr: string
         </div>
 
         {/* Avançar 1 Dia */}
-        <button 
-          onClick={() => handleNavigate(1)}
+        <Link 
+          href={getNavUrl(1)}
           aria-label="Próximo Dia"
           style={{ 
             background: "#F7F7F7", 
@@ -84,17 +79,18 @@ export default function DateNavigator({ activeDateStr }: { activeDateStr: string
             cursor: "pointer", 
             display: "flex", 
             alignItems: "center",
-            boxShadow: "2px 2px 0px #000"
+            boxShadow: "2px 2px 0px #000",
+            textDecoration: "none"
           }}
         >
           <ChevronRight size={20} strokeWidth={3} />
-        </button>
+        </Link>
       </div>
 
       {/* Botão de rápido retorno para HOJE */}
       {!isToday && (
-        <button 
-          onClick={handleGoToToday}
+        <Link 
+          href="?"
           className="font-headline"
           style={{
             background: "#000",
@@ -108,12 +104,13 @@ export default function DateNavigator({ activeDateStr }: { activeDateStr: string
             alignItems: "center",
             justifyContent: "center",
             gap: "8px",
-            boxShadow: "2px 2px 0px #000"
+            boxShadow: "2px 2px 0px #000",
+            textDecoration: "none"
           }}
         >
           <RotateCcw size={14} />
           VOLTAR PARA HOJE
-        </button>
+        </Link>
       )}
     </div>
   );
