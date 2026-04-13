@@ -157,6 +157,6 @@ export const config = {
      * Protected routes matcher.
      * Excludes static assets and public icons.
      */
-    "/((?!_next/static|_next/image|favicon.ico|icon.svg|manifest.json|manifest.webmanifest|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|icon.svg|apple-icon|manifest.json|manifest.webmanifest|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

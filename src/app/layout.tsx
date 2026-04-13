@@ -35,9 +35,6 @@ export const metadata: Metadata = {
     title: "Coliseu Clube",
     description: "Acompanhe seus treinos, PRs e evolua na sua jornada fitness no Coliseu.",
   },
-  icons: {
-    icon: "/favicon.svg",
-  },
 };
 
 export default function RootLayout({
