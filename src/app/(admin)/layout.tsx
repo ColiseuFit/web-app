@@ -11,6 +11,9 @@ export const metadata: Metadata = {
   },
   description: "Painel de Gestão Operacional da Coliseu.",
   robots: { index: false, follow: false },
+  appleWebApp: {
+    title: "Coliseu Admin",
+  },
 };
 
 export default function RootAdminLayout({ children }: { children: React.ReactNode }) {

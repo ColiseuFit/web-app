@@ -7,6 +7,9 @@ import "@/app/globals.css";
 export const metadata = {
   title: "Portal do Coach | Coliseu",
   robots: { index: false, follow: false },
+  appleWebApp: {
+    title: "Coliseu Coach",
+  },
 };
 
 export default function CoachLayout({ children }: { children: React.ReactNode }) {
