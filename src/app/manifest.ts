@@ -3,7 +3,7 @@ import type { MetadataRoute } from 'next'
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: 'Coliseu Clube',
-    short_name: 'Coliseu',
+    short_name: 'Coliseu Clube',
     description: 'Plataforma exclusiva para membros do Coliseu. Acompanhe seus treinos, PRs e evolua na Arena.',
     start_url: '/login',
     display: 'standalone',
