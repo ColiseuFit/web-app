@@ -34,8 +34,10 @@ export default function CoachLoginPage() {
       let roleData = null;
       let attempts = 0;
 
-      // MASTER KEY BYPASS: Priority for root admin
-      if (data.user?.email === "admin@coliseufit.com") {
+      // MASTER KEY BYPASS: Priority for root admin (both domains)
+      const isAdminEmail = data.user?.email === "admin@coliseufit.com";
+
+      if (isAdminEmail) {
         roleData = { role: USER_ROLES.ADMIN };
       } else {
         // Retry logic for role lookup (allow for RLS/Session propagation)

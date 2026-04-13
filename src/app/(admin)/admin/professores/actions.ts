@@ -72,7 +72,11 @@ export async function getCoaches() {
         first_name,
         last_name,
         avatar_url,
-        phone
+        phone,
+        email,
+        bio,
+        birth_date,
+        gender
       )
     `)
     .in("role", [USER_ROLES.COACH, USER_ROLES.ADMIN])
@@ -89,6 +93,49 @@ export async function getCoaches() {
     .filter(d => d.profile);
 
   return { data: sanitized };
+}
+
+/**
+ * updateCoachProfile: Atualiza dados do perfil de um membro da equipe técnica.
+ * 
+ * @operation
+ * Permite que o Admin edite full_name, phone, email e bio de qualquer coach
+ * diretamente pelo painel de Gestão de Professores, usando service_role para
+ * bypass de RLS.
+ * 
+ * @security Restricted: Admin-Only (via getAdminContext).
+ * @param {string} userId - UUID do coach a ser atualizado.
+ * @param {object} updates - Campos a atualizar (full_name, phone, email, bio).
+ * @returns {Promise<{ success?: boolean; error?: string }>}
+ */
+export async function updateCoachProfile(
+  userId: string,
+  updates: { full_name?: string; phone?: string; email?: string; bio?: string }
+) {
+  const ctx = await getAdminContext();
+  if ("error" in ctx) return { error: ctx.error };
+
+  // Build the update payload, splitting full_name into first/last
+  const payload: Record<string, string | null> = {};
+  if (updates.full_name !== undefined) {
+    payload.full_name = updates.full_name;
+    const parts = updates.full_name.trim().split(" ");
+    payload.first_name = parts[0] || "";
+    payload.last_name = parts.slice(1).join(" ") || "";
+  }
+  if (updates.phone !== undefined) payload.phone = updates.phone;
+  if (updates.email !== undefined) payload.email = updates.email;
+  if (updates.bio !== undefined) payload.bio = updates.bio;
+
+  const { error } = await ctx.adminClient
+    .from("profiles")
+    .update(payload)
+    .eq("id", userId);
+
+  if (error) return { error: "Erro ao atualizar perfil: " + error.message };
+
+  revalidatePath("/admin/professores");
+  return { success: true };
 }
 
 /**

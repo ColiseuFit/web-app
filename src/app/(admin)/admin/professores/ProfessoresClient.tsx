@@ -8,6 +8,7 @@
  * - Ciclo de Vida IAM: 
  *   1. Promoção: Transforma um aluno existente em Coach via `user_roles`.
  *   2. Onboarding: Criação direta de novos perfis com credenciais automáticas (`coliseu123`).
+ *   3. Edição: Painel expansível permite atualizar dados de perfil (nome, telefone, e-mail, bio).
  * - SSoT de Permissões: Todas as mudanças de role impactam imediatamente as políticas de RLS 
  *   do Supabase em todo o ecossistema (App, Admin, Coach Portal).
  * 
@@ -16,8 +17,8 @@
  */
 
 import React, { useState, useTransition, useRef, useEffect } from "react";
-import { Search, Plus, UserPlus, Trash2, Shield, Loader2, X, User as UserIcon, Mail, Phone, Check } from "lucide-react";
-import { searchUsersForCoach, toggleCoachRole, getCoaches, createNewCoach } from "./actions";
+import { Search, Plus, UserPlus, Trash2, Shield, Loader2, X, Mail, Phone, Check, Edit3, Save, ChevronDown, ChevronUp, User as UserIcon } from "lucide-react";
+import { searchUsersForCoach, toggleCoachRole, getCoaches, createNewCoach, updateCoachProfile } from "./actions";
 import { USER_ROLES, getRoleInfo } from "@/lib/constants/roles";
 import AthleteAvatar from "@/components/Identity/AthleteAvatar";
 import AthleteIdentity from "@/components/Identity/AthleteIdentity";
@@ -31,6 +32,9 @@ interface Profile {
   avatar_url?: string;
   phone?: string;
   email?: string;
+  bio?: string;
+  birth_date?: string;
+  gender?: string;
   user_roles?: { role: string }[];
 }
 
@@ -48,6 +52,13 @@ interface Toast {
 export default function ProfessoresClient({ initialCoaches }: { initialCoaches: CoachEntry[] }) {
   const [coaches, setCoaches] = useState<CoachEntry[]>(initialCoaches);
   const [isPending, startTransition] = useTransition();
+
+  // Expanded card for editing
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [editData, setEditData] = useState<{ full_name: string; phone: string; email: string; bio: string }>({
+    full_name: "", phone: "", email: "", bio: ""
+  });
+  const [isSaving, setIsSaving] = useState(false);
 
   // Search/Add State
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -95,18 +106,43 @@ export default function ProfessoresClient({ initialCoaches }: { initialCoaches: 
   }, [searchTerm, isDrawerOpen]);
 
   /**
+   * handleExpandCard: Abre o painel de edição de um coach específico.
+   * Preenche os campos de edição com os dados atuais do perfil.
+   */
+  function handleExpandCard(coach: CoachEntry) {
+    if (expandedId === coach.user_id) {
+      setExpandedId(null);
+      return;
+    }
+    setExpandedId(coach.user_id);
+    setEditData({
+      full_name: coach.profile.full_name || "",
+      phone: coach.profile.phone || "",
+      email: coach.profile.email || "",
+      bio: coach.profile.bio || "",
+    });
+  }
+
+  /**
+   * handleSaveProfile: Persiste as alterações do perfil via Server Action.
+   * Usa estado otimista para feedback instantâneo.
+   */
+  async function handleSaveProfile(userId: string) {
+    setIsSaving(true);
+    const res = await updateCoachProfile(userId, editData);
+    if (res.error) {
+      showToast(res.error, "error");
+    } else {
+      showToast("Perfil atualizado com sucesso!", "success");
+      // Refresh data
+      const fresh = await getCoaches();
+      if (fresh.data) setCoaches(fresh.data);
+    }
+    setIsSaving(false);
+  }
+
+  /**
    * handleToggleRole: Orquestrador de Promoção/Democração Técnica.
-   * 
-   * @operation
-   * Interage com a tabela `user_roles` para adicionar ou remover a role 'coach'.
-   * 
-   * @security
-   * - Restrição: Apenas Admins podem promover novos Coaches.
-   * - Persistência: Usa revalidatePath no servidor para garantir paridade visual 
-   *   entre a lista local e o banco de dados.
-   * 
-   * @param {string} userId - UUID do perfil alvo no Supabase Auth.
-   * @param {string | null} currentRole - Role atual para determinar a direção da transição.
    */
   async function handleToggleRole(userId: string, currentRole: string | null) {
     setPendingRoleToggle({ userId, currentRole });
@@ -128,12 +164,7 @@ export default function ProfessoresClient({ initialCoaches }: { initialCoaches: 
   }
 
   /**
-   * Creates a new Coach profile from scratch.
-   * 
-   * @lifecycle
-   * 1. Calls `createNewCoach` to handle Auth + DB insertion.
-   * 2. Displays the generated frictionless password (`coliseu123`) to the Admin.
-   * 3. Refreshes the local cache and resets form state.
+   * handleCreateCoach: Transação Atômica de Onboarding Staff.
    */
   const handleCreateCoach = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -151,6 +182,28 @@ export default function ProfessoresClient({ initialCoaches }: { initialCoaches: 
     } else {
       showToast(res.error || "Erro ao cadastrar", "error");
     }
+  };
+
+  /** Estilo reutilizável para inputs do formulário de edição */
+  const inputStyle: React.CSSProperties = {
+    width: "100%",
+    padding: "12px 16px",
+    border: "3px solid #E5E7EB",
+    fontWeight: 700,
+    fontSize: 14,
+    outline: "none",
+    background: "#FAFAFA",
+    transition: "border-color 0.15s",
+  };
+
+  const labelStyle: React.CSSProperties = {
+    fontSize: 11,
+    fontWeight: 900,
+    textTransform: "uppercase",
+    color: "#999",
+    letterSpacing: "0.08em",
+    marginBottom: 6,
+    display: "block",
   };
 
   return (
@@ -193,79 +246,204 @@ export default function ProfessoresClient({ initialCoaches }: { initialCoaches: 
         </div>
         <div className="admin-card" style={{ display: "flex", flexDirection: "column", gap: 8, borderLeft: "6px solid #16A34A" }}>
           <span style={{ fontSize: 12, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.1em", color: "#666" }}>
-            SISTEMA
+            COACHES
           </span>
-          <span style={{ fontSize: 14, fontWeight: 800, color: "#000", marginTop: 8 }}>
-            SUPABASE AUTH + RLS
+          <span style={{ fontSize: 48, fontWeight: 900, color: "#000", lineHeight: 1 }}>
+            {coaches.filter(c => c.role === USER_ROLES.COACH).length}
           </span>
         </div>
       </div>
 
       {/* COACHES GRID */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(380px, 1fr))", gap: 32 }}>
-        {coaches.map((c) => (
-          <div key={c.user_id} className="admin-card" style={{ padding: 24, display: "flex", alignItems: "center", gap: 24, position: "relative" }}>
-            <div style={{ position: "relative" }}>
-              <AthleteAvatar 
-                url={c.profile.avatar_url} 
-                name={c.profile.full_name} 
-                size={72} 
-                shadowSize={4}
-              />
-              {c.role === USER_ROLES.ADMIN && (
-                  <div style={{ position: "absolute", bottom: -2, right: -2, background: "#000", color: "#FFF", padding: 4, border: "2px solid #FFF", display: "flex", zIndex: 10 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(420px, 1fr))", gap: 24 }}>
+        {coaches.map((c) => {
+          const isExpanded = expandedId === c.user_id;
+          return (
+            <div 
+              key={c.user_id} 
+              className="admin-card" 
+              style={{ 
+                padding: 0, 
+                overflow: "hidden",
+                transition: "box-shadow 0.2s",
+                boxShadow: isExpanded ? "8px 8px 0px rgba(0,0,0,0.15)" : undefined,
+              }}
+            >
+              {/* ── CARD HEADER (sempre visível) ── */}
+              <div style={{ padding: 24, display: "flex", alignItems: "center", gap: 20, position: "relative" }}>
+                <div style={{ position: "relative", flexShrink: 0 }}>
+                  <AthleteAvatar 
+                    url={c.profile.avatar_url} 
+                    name={c.profile.full_name} 
+                    size={72} 
+                    shadowSize={4}
+                  />
+                  {c.role === USER_ROLES.ADMIN && (
+                    <div style={{ position: "absolute", bottom: -2, right: -2, background: "#000", color: "#FFF", padding: 4, border: "2px solid #FFF", display: "flex", zIndex: 10 }}>
                       <Shield size={12} fill="currentColor" />
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 18, fontWeight: 900, textTransform: "uppercase", marginBottom: 4, letterSpacing: "-0.02em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {c.profile.full_name}
                   </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ fontSize: 10, fontWeight: 900, background: getRoleInfo(c.role).color, color: "#FFF", padding: "2px 8px", textTransform: "uppercase" }}>
+                        {c.role === USER_ROLES.ADMIN ? "ADMIN / COACH" : getRoleInfo(c.role).label.toUpperCase()}
+                      </span>
+                    </div>
+                    {/* ── Dados de contato compactos ── */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+                      <span style={{ fontSize: 12, color: "#666", fontWeight: 700, display: "flex", alignItems: "center", gap: 6 }}>
+                        <Mail size={12} /> {c.profile.email || "Sem e-mail"}
+                      </span>
+                      <span style={{ fontSize: 12, color: "#666", fontWeight: 700, display: "flex", alignItems: "center", gap: 6 }}>
+                        <Phone size={12} /> {c.profile.phone || "Sem telefone"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ── Action Buttons ── */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 8, flexShrink: 0 }}>
+                  <button 
+                    onClick={() => handleExpandCard(c)}
+                    className="admin-btn admin-btn-ghost"
+                    style={{ border: "2px solid #E5E7EB", color: isExpanded ? "#000" : "#999", padding: 8, background: isExpanded ? "#F3F4F6" : "transparent" }}
+                    title="Editar Perfil"
+                  >
+                    {isExpanded ? <ChevronUp size={18} /> : <Edit3 size={18} />}
+                  </button>
+                  {c.role === USER_ROLES.COACH && (
+                    <button 
+                      onClick={() => handleToggleRole(c.user_id, USER_ROLES.COACH)}
+                      className="admin-btn admin-btn-ghost"
+                      style={{ border: "2px solid #FECACA", color: "#EF4444", padding: 8 }}
+                      title="Remover Permissões"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* ── PAINEL DE EDIÇÃO (expansível) ── */}
+              {isExpanded && (
+                <div style={{ 
+                  borderTop: "4px solid #000", 
+                  background: "#FAFAFA", 
+                  padding: 28,
+                  animation: "expandIn 0.2s ease-out",
+                }}>
+                  <style>{`
+                    @keyframes expandIn {
+                      from { opacity: 0; max-height: 0; }
+                      to { opacity: 1; max-height: 600px; }
+                    }
+                  `}</style>
+
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 24 }}>
+                    <div style={{ width: 8, height: 8, background: "#000" }} />
+                    <span style={{ fontSize: 13, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                      Editar Perfil
+                    </span>
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 20 }}>
+                    <div>
+                      <label style={labelStyle}>Nome Completo</label>
+                      <input
+                        type="text"
+                        value={editData.full_name}
+                        onChange={(e) => setEditData(prev => ({ ...prev, full_name: e.target.value }))}
+                        style={inputStyle}
+                        onFocus={(e) => { e.currentTarget.style.borderColor = "#000"; }}
+                        onBlur={(e) => { e.currentTarget.style.borderColor = "#E5E7EB"; }}
+                      />
+                    </div>
+                    <div>
+                      <label style={labelStyle}>WhatsApp</label>
+                      <input
+                        type="tel"
+                        value={editData.phone}
+                        onChange={(e) => setEditData(prev => ({ ...prev, phone: e.target.value }))}
+                        style={inputStyle}
+                        placeholder="(00) 00000-0000"
+                        onFocus={(e) => { e.currentTarget.style.borderColor = "#000"; }}
+                        onBlur={(e) => { e.currentTarget.style.borderColor = "#E5E7EB"; }}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ marginBottom: 20 }}>
+                    <label style={labelStyle}>E-mail</label>
+                    <input
+                      type="email"
+                      value={editData.email}
+                      onChange={(e) => setEditData(prev => ({ ...prev, email: e.target.value }))}
+                      style={inputStyle}
+                      placeholder="professor@coliseufit.com"
+                      onFocus={(e) => { e.currentTarget.style.borderColor = "#000"; }}
+                      onBlur={(e) => { e.currentTarget.style.borderColor = "#E5E7EB"; }}
+                    />
+                  </div>
+
+                  <div style={{ marginBottom: 24 }}>
+                    <label style={labelStyle}>Bio / Especialidades</label>
+                    <textarea
+                      value={editData.bio}
+                      onChange={(e) => setEditData(prev => ({ ...prev, bio: e.target.value }))}
+                      rows={3}
+                      placeholder="Ex: CrossFit L2, Especialista em Halterofilismo, Personal Trainer..."
+                      style={{
+                        ...inputStyle,
+                        resize: "vertical",
+                        minHeight: 80,
+                        fontFamily: "inherit",
+                      }}
+                      onFocus={(e) => { e.currentTarget.style.borderColor = "#000"; }}
+                      onBlur={(e) => { e.currentTarget.style.borderColor = "#E5E7EB"; }}
+                    />
+                  </div>
+
+                  <div style={{ display: "flex", gap: 12, justifyContent: "flex-end" }}>
+                    <button
+                      onClick={() => setExpandedId(null)}
+                      className="admin-btn admin-btn-ghost"
+                      style={{ height: 48, paddingInline: 24, border: "2px solid #E5E7EB" }}
+                    >
+                      CANCELAR
+                    </button>
+                    <button
+                      onClick={() => handleSaveProfile(c.user_id)}
+                      disabled={isSaving}
+                      className="admin-btn admin-btn-primary"
+                      style={{ height: 48, paddingInline: 32, gap: 8 }}
+                    >
+                      {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+                      SALVAR ALTERAÇÕES
+                    </button>
+                  </div>
+                </div>
               )}
             </div>
-
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 18, fontWeight: 900, textTransform: "uppercase", marginBottom: 4, letterSpacing: "-0.02em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {c.profile.full_name}
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <span style={{ fontSize: 10, fontWeight: 900, background: getRoleInfo(c.role).color, color: "#FFF", padding: "2px 8px", textTransform: "uppercase" }}>
-                        {c.role === USER_ROLES.ADMIN ? "ADMIN / COACH" : getRoleInfo(c.role).label.toUpperCase()}
-                    </span>
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 4 }}>
-                    <span style={{ fontSize: 12, color: "#666", fontWeight: 700, display: "flex", alignItems: "center", gap: 6 }}>
-                      <Phone size={12} /> {c.profile.phone || "N/A"}
-                    </span>
-                    {c.profile.email && (
-                      <span style={{ fontSize: 12, color: "#666", fontWeight: 700, display: "flex", alignItems: "center", gap: 6 }}>
-                        <Mail size={12} /> {c.profile.email.split('@')[0]}...
-                      </span>
-                    )}
-                  </div>
-              </div>
-            </div>
-
-            {c.role === USER_ROLES.COACH && (
-                <button 
-                    onClick={() => handleToggleRole(c.user_id, USER_ROLES.COACH)}
-                    className="admin-btn admin-btn-ghost"
-                    style={{ position: "absolute", top: 12, right: 12, border: "none", color: "#999", padding: 8 }}
-                    title="Remover Permissões"
-                >
-                    <Trash2 size={18} />
-                </button>
-            )}
-          </div>
-        ))}
+          );
+        })}
 
         {coaches.length === 0 && (
-            <div style={{ gridColumn: "1 / -1", padding: 80, textAlign: "center", background: "#F9FAFB", border: "4px dashed #CCC", display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
-                <div style={{ fontSize: 16, fontWeight: 900, color: "#999", textTransform: "uppercase", letterSpacing: "0.1em" }}>Nenhum professor cadastrado</div>
-                <button 
-                  onClick={() => setIsDrawerOpen(true)} 
-                  className="admin-btn admin-btn-primary"
-                  style={{ height: 48, paddingInline: 32 }}
-                >
-                  ADICIONAR O PRIMEIRO
-                </button>
-            </div>
+          <div style={{ gridColumn: "1 / -1", padding: 80, textAlign: "center", background: "#F9FAFB", border: "4px dashed #CCC", display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
+            <div style={{ fontSize: 16, fontWeight: 900, color: "#999", textTransform: "uppercase", letterSpacing: "0.1em" }}>Nenhum professor cadastrado</div>
+            <button 
+              onClick={() => setIsDrawerOpen(true)} 
+              className="admin-btn admin-btn-primary"
+              style={{ height: 48, paddingInline: 32 }}
+            >
+              ADICIONAR O PRIMEIRO
+            </button>
+          </div>
         )}
       </div>
 

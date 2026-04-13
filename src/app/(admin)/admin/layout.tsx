@@ -21,8 +21,9 @@ export default async function AuthenticatedAdminLayout({ children }: { children:
 
   let roleData = null;
 
-  // MASTER KEY BYPASS: Acesso garantido para o administrador raiz
-  if (user.email === "admin@coliseufit.com") {
+  const isAdminEmail = user.email === "admin@coliseufit.com";
+
+  if (isAdminEmail) {
     roleData = { role: USER_ROLES.ADMIN };
   } else {
     const { data: fetchRole } = await supabase

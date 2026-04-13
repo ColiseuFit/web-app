@@ -60,11 +60,9 @@ export async function proxy(request: NextRequest) {
       isRewritten = true;
     } else if (path === '/dashboard') {
       const redirectUrl = request.nextUrl.clone();
-      redirectUrl.hostname = hostname.replace('admin', 'clube');
+      const newHostname = hostname.replace('admin.', 'clube.');
+      redirectUrl.hostname = newHostname;
       redirectUrl.pathname = '/dashboard';
-      if (hostname.includes('localhost')) {
-          redirectUrl.port = request.nextUrl.port || '3000';
-      }
       return NextResponse.redirect(redirectUrl);
     } else if (
       !path.startsWith('/admin') && 
@@ -118,8 +116,26 @@ export async function proxy(request: NextRequest) {
   // Redirect to dashboard if authenticated user tries to access login
   if (user && isAuthPage) {
     const redirectUrl = request.nextUrl.clone();
-    const isAdminDomain = hostname.startsWith('admin');
-    redirectUrl.pathname = isAdminDomain ? "/admin" : "/dashboard";
+    
+    // Check role to decide redirection
+    const { data: roleData } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id)
+      .single();
+
+    const role = roleData?.role || 'student';
+    const isStaff = role === 'admin' || role === 'coach' || role === 'reception';
+
+    if (isStaff) {
+      // If logging in through admin/coach portal or being staff on any portal, send to staff area
+      // unless they are specifically on a student subdomain (clube.)
+      const isStudentDomain = hostname.includes('clube.');
+      redirectUrl.pathname = isStudentDomain ? "/dashboard" : (role === 'coach' ? "/coach" : "/admin");
+    } else {
+      redirectUrl.pathname = "/dashboard";
+    }
+
     return NextResponse.redirect(redirectUrl);
   }
 

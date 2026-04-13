@@ -34,8 +34,9 @@ export default function AdminLoginPage() {
       let roleData = null;
       let attempts = 0;
 
-      // MASTER KEY BYPASS: Prioridade absoluta para o admin raiz
-      if (data.user?.email === "admin@coliseufit.com") {
+      const isAdminEmail = data.user?.email === "admin@coliseufit.com";
+
+      if (isAdminEmail) {
         roleData = { role: "admin" };
       } else {
         while (attempts < 2 && !roleData) {

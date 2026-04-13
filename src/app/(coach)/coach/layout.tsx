@@ -17,8 +17,9 @@ export default async function AuthenticatedCoachLayout({ children }: { children:
 
   let roleData = null;
   
-  // MASTER KEY BYPASS: Acesso garantido para o administrador raiz
-  if (user.email === "admin@coliseufit.com") {
+  const isAdminEmail = user.email === "admin@coliseufit.com";
+
+  if (isAdminEmail) {
     roleData = { role: USER_ROLES.ADMIN };
   } else {
     const { data: fetchRole } = await supabase
@@ -31,7 +32,7 @@ export default async function AuthenticatedCoachLayout({ children }: { children:
 
   // RBAC Check: Coach, Admin, or Reception only
   if (!roleData || (roleData.role !== USER_ROLES.ADMIN && roleData.role !== USER_ROLES.COACH && roleData.role !== USER_ROLES.RECEPTION)) {
-    redirect("/dashboard?error=unauthorized_coach");
+    redirect("/coach-portal?error=unauthorized");
   }
 
   return (
