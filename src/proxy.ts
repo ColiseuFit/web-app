@@ -9,6 +9,18 @@ import { NextResponse, type NextRequest } from "next/server";
  * - Updates Supabase sessions and handles protected route redirects.
  * - Consolidates logic to avoid external dependency issues.
  */
+/**
+ * Global Authentication & Session Proxy (Next.js 16).
+ * 
+ * @standards
+ * - Migrado de `middleware` para `proxy` conforme padrões Next.js 16.
+ * - Gerencia redirecionamentos baseados em domínio (Admin vs Clube).
+ * - Implementa detecção de User-Agent para redirecionar hardware legado (iOS 9) para o Modo Lite.
+ * - Whitelist estratégica para rotas de autenticação e ativos PWA.
+ * 
+ * @param request Objeto NextRequest recebido.
+ * @returns NextResponse com redirecionamento, reescrita ou bypass.
+ */
 export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
     request,
@@ -154,8 +166,12 @@ export async function proxy(request: NextRequest) {
 export const config = {
   matcher: [
     /*
-     * Protected routes matcher.
-     * Excludes static assets and public icons.
+     * Matcher de rotas protegidas.
+     * EXCEÇÕES (Whitelist):
+     * - _next/static, _next/image: Ativos internos do framework.
+     * - favicon.ico, icon.svg, manifest.*: Identidade visual básica.
+     * - apple-icon: Essencial para que o iOS baixe o ícone PWA sem redirecionar para o Login.
+     * - Extensões de imagem comuns para evitar interceptação de ativos públicos.
      */
     "/((?!_next/static|_next/image|favicon.ico|icon.svg|apple-icon|manifest.json|manifest.webmanifest|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],

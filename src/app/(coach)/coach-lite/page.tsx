@@ -9,9 +9,13 @@ import { toggleLiteAttendance, addLiteStudent, closeLiteClass } from "./actions"
 
 /**
  * Coach Lite Dashboard (100% SSR + Server Actions)
- * Otimizado especificamente para rodar no iOS 9 / Browsers Legados.
- * NADA DE JAVASCRIPT CLIENT-SIDE (sem useState, useRouter, Hydration).
- * Cada clique aciona uma Action nativa (HTML `<form>`) e um refetch ultrarrápido SSoT.
+ * Otimizado especificamente para rodar no iOS 9.3.5 / Safari 9 (Browsers Legados).
+ * 
+ * ESTRATÉGIA TÉCNICA:
+ * - Proibido o uso de 'use client' ou qualquer hook do React (useState, useEffect).
+ * - Navegação baseada em URL Search Params para manter o estado da UI via Servidor.
+ * - Formulários HTML nativos (`method="GET"` e `action={serverAction}`) substituem roteamento JS.
+ * - CSS Inline e componentes de layout simplificados para evitar bugs de renderização em motores WebKit antigos.
  */
 export default async function CoachLitePage(props: { searchParams: Promise<{ date?: string, expand?: string, q?: string, error?: string }> }) {
   const supabase = await createClient();

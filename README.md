@@ -15,10 +15,12 @@ O Coliseu Clube V2 é construído sobre uma arquitetura de Monolito de Ferro, fo
 O projeto utiliza um stack moderno focado em performance extrema e isolamento de dados:
 
 ```mermaid
+graph TD
     A[Next.js App Router] -->|src/proxy.ts| B[Mult-Portal Routing]
     B -->|/login| C[Student App]
     B -->|/admin-portal| D[Admin Hub]
     B -->|/coach-portal| E[Coach Portal]
+    E -->|Legacy Hardware Detect| ELite[Coach Lite SSR]
     A -->|Server Actions + Zod| F[Supabase Auth]
     A -->|Parallel Data Loading| G[Supabase Postgres]
     G -->|RLS Row Isolation| H[Profiles & Score]
@@ -31,25 +33,23 @@ O projeto utiliza um stack moderno focado em performance extrema e isolamento de
 2. **Estética Funcional (Neo-Brutalism):** Design de alto contraste (Nike/Adidas style), focado em ação e clareza visual.
 3. **SSoT (Single Source of Truth):** Toda aula ou resultado depende do marcador `validated_at`. Nada é deletado, apenas invalidado ou inacessível.
 4. **Resiliência UTC-3:** Operações de tempo centralizadas para garantir paridade entre fuso do servidor e do box.
-5. **Feedback Engine (NB):** Substituição de alertas nativos por interface Neo-Brutalista imersiva.
+5. **Progressive Enhancement:** Suporte a hardware legado via modo `/coach-lite` (100% SSR).
 
 ---
 
 ## 🚀 ESTRUTURA DE DIRETÓRIOS
 
 - `src/app/(student)`: Experiência mobile do aluno (Fundo Branco/Neo-Brutalism).
-- `src/app/(coach)`: Interface operacional para coaches no tatame.
+- `src/app/(coach)`: Interface operacional para coaches no tatame. Inclui `/coach-lite`.
 - `src/app/(admin)`: Painel de gestão estratégica e financeira.
 - `docs/`: Sistema de conhecimento distribuído (Playbooks e SOPs).
-  - `docs/PLAYBOOKS/STUDENT_APP.md`: Guia mestre da experiência do aluno (Membership Tiers & Check-in).
-  - `docs/PLAYBOOKS/ACTIVITY_DASHBOARD.md`: Matriz de Atividade, Streaks e Heatmap Semanal.
-  - `docs/PLAYBOOKS/AVALIACOES_FISICAS.md`: Hub de Progresso, Biometria e Evolução Visual.
-  - `docs/PLAYBOOKS/RESULTS_LOGGING.md`: Procedimentos de Check-in e Lançamento de Score.
-  - `docs/PLAYBOOKS/ATHLETE_IDENTITY_PROFILE.md`: Gestão de perfil, avatares e benchmarks.
-  - `docs/PLAYBOOKS/RECUPERACAO_SENHA.md`: Documentação técnica do fluxo de "Esqueci Minha Senha".
+  - `docs/PLAYBOOKS/COACH_LITE_LEGACY.md`: Guia para suporte a iPad 2/iOS 9.
+  - `docs/PLAYBOOKS/STUDENT_APP.md`: Guia mestre da experiência do aluno.
+  ... (outros playbooks)
 
 ---
 ---
-**Versão: 3.0.0 (Abril/2026) - Membership Stabilization & Access Gates**  
-**Status da Auditoria:** 🏛️ LEGACY PROOF (Protocolo 1.0.6) - 100% Concluído  
+**Versão: 3.1.0 (Abril/2026) - Legacy Hardware Stabilization & PWA Optimization**  
+**Status da Auditoria:** 🏛️ LEGACY PROOF (Protocolo 1.0.3) - Em Auditoria Final  
 **Equipe:** Antigravity AI & Coliseu Engineering Team
+

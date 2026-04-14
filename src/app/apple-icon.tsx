@@ -7,6 +7,17 @@ export const size = {
 };
 export const contentType = "image/png";
 
+/**
+ * Gerador Dinâmico de Ícone Apple (Apple Touch Icon).
+ * 
+ * MOTIVAÇÃO:
+ * O iOS Safari (especialmente versões legadas e o motor PWA atual) falha ao renderizar
+ * arquivos .svg como ícones de "Adicionar à Tela de Início".
+ * 
+ * SOLUÇÃO:
+ * Utilizamos `next/og` (Edge Runtime) para converter o SVG do Coliseu em um PNG estático
+ * de 180x180 em tempo real, garantindo compatibilidade universal com o ecossistema Apple.
+ */
 export default function AppleIcon() {
   return new ImageResponse(
     (
