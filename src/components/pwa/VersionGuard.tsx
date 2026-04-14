@@ -76,27 +76,27 @@ export function VersionGuard() {
   if (!hasUpdate) return null;
 
   return (
-    <div className="fixed bottom-24 left-0 right-0 z-[9999] px-4 animate-in slide-in-from-bottom duration-500">
-      <div className="max-w-md mx-auto bg-black border-[3px] border-[#E31B23] shadow-[8px_8px_0px_rgba(227,27,35,0.3)] p-4 flex items-center justify-between gap-4">
+    <div className="fixed bottom-28 left-0 right-0 z-[9999] px-4 flex justify-center pointer-events-none animate-in slide-in-from-bottom duration-500">
+      <div className="pointer-events-auto bg-[#E31B23] border-[4px] border-black shadow-[10px_10px_0px_#000] p-4 md:p-6 flex flex-col sm:flex-row items-center gap-4 sm:gap-8 max-w-lg w-full sm:w-auto">
         <div className="flex gap-4 items-center">
-          <div className="bg-[#E31B23] p-2 rounded-none border-2 border-black animate-pulse">
-            <RefreshCw size={18} className="text-white" />
+          <div className="bg-white p-3 border-2 border-black rotate-[-2deg]">
+            <RefreshCw size={24} className="text-[#E31B23] animate-spin-slow" />
           </div>
-          <div>
-            <p className="text-white font-black text-xs uppercase tracking-tighter mb-0.5">
-              Nova Versão Disponível
-            </p>
-            <p className="text-[#E31B23] text-[9px] font-bold uppercase tracking-widest">
-              Arena Coliseu v{APP_VERSION} 
+          <div className="flex flex-col">
+            <h3 className="text-white font-black text-lg md:text-xl uppercase leading-none tracking-tighter">
+              Arena Atualizada
+            </h3>
+            <p className="text-black/80 text-[10px] md:text-[11px] font-bold uppercase tracking-widest mt-1">
+              Versão {APP_VERSION} disponível
             </p>
           </div>
         </div>
 
         <button
           onClick={handleUpdate}
-          className="bg-[#E31B23] text-white px-5 py-2.5 text-[11px] font-black uppercase border-2 border-black hover:bg-white hover:text-[#E31B23] transition-all transform active:scale-95 shadow-[4px_4px_0px_#000] active:shadow-none"
+          className="w-full sm:w-auto bg-black text-white px-8 py-3 text-sm font-black uppercase border-2 border-white hover:bg-white hover:text-black hover:border-black transition-all transform active:translate-y-1 active:shadow-none shadow-[4px_4px_0px_rgba(255,255,255,0.2)]"
         >
-          Atualizar
+          Entrar na Nova Versão
         </button>
       </div>
     </div>
