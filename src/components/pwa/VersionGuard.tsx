@@ -76,27 +76,26 @@ export function VersionGuard() {
   if (!hasUpdate) return null;
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-[9999] p-2 animate-in slide-in-from-top duration-500">
-      <div className="max-w-md mx-auto bg-[#E31B23] border-[3px] border-black shadow-[4px_4px_0px_#000000] p-4 flex items-center justify-between gap-4">
-        <div className="flex gap-3 items-center">
-          <div className="bg-white p-2 border-2 border-black">
-            <Download size={20} className="text-[#E31B23]" />
+    <div className="fixed bottom-24 left-0 right-0 z-[9999] px-4 animate-in slide-in-from-bottom duration-500">
+      <div className="max-w-md mx-auto bg-black border-[3px] border-[#E31B23] shadow-[8px_8px_0px_rgba(227,27,35,0.3)] p-4 flex items-center justify-between gap-4">
+        <div className="flex gap-4 items-center">
+          <div className="bg-[#E31B23] p-2 rounded-none border-2 border-black animate-pulse">
+            <RefreshCw size={18} className="text-white" />
           </div>
           <div>
-            <p className="text-white font-black text-xs uppercase leading-tight">
-              Atualização Disponível
+            <p className="text-white font-black text-xs uppercase tracking-tighter mb-0.5">
+              Nova Versão Disponível
             </p>
-            <p className="text-white/80 text-[10px] uppercase font-bold">
-              v{APP_VERSION} ➔ Nova Versão
+            <p className="text-[#E31B23] text-[9px] font-bold uppercase tracking-widest">
+              Arena Coliseu v{APP_VERSION} 
             </p>
           </div>
         </div>
 
         <button
           onClick={handleUpdate}
-          className="bg-black text-white px-4 py-2 text-xs font-black uppercase border-2 border-white hover:bg-white hover:text-black transition-colors flex items-center gap-2 active:translate-y-1 active:translate-x-1 active:shadow-none"
+          className="bg-[#E31B23] text-white px-5 py-2.5 text-[11px] font-black uppercase border-2 border-black hover:bg-white hover:text-[#E31B23] transition-all transform active:scale-95 shadow-[4px_4px_0px_#000] active:shadow-none"
         >
-          <RefreshCw size={14} />
           Atualizar
         </button>
       </div>
