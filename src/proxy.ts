@@ -54,9 +54,9 @@ export async function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname;
   const url = request.nextUrl.clone();
 
-  // EARLY BYPASS: Auth and Verification routes must be handled by their respective pages
+  // EARLY BYPASS: Auth, Verification and Version routes must be handled by their respective handlers
   // without interference from domain-specific redirect logic during the handshake.
-  if (path.startsWith('/auth') || path.startsWith('/api/auth')) {
+  if (path.startsWith('/auth') || path.startsWith('/api/auth') || path === '/api/version') {
     return supabaseResponse;
   }
 
@@ -170,9 +170,9 @@ export const config = {
      * EXCEÇÕES (Whitelist):
      * - _next/static, _next/image: Ativos internos do framework.
      * - favicon.ico, icon.svg, manifest.*: Identidade visual básica.
-     * - apple-icon: Essencial para que o iOS baixe o ícone PWA sem redirecionar para o Login.
+     * - apple-icon, api/version: Essenciais para o funcionamento do PWA e atualizações.
      * - Extensões de imagem comuns para evitar interceptação de ativos públicos.
      */
-    "/((?!_next/static|_next/image|favicon.ico|icon.svg|apple-icon|manifest.json|manifest.webmanifest|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|icon.svg|apple-icon|api/version|manifest.json|manifest.webmanifest|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

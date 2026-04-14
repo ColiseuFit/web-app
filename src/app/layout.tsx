@@ -37,6 +37,8 @@ export const metadata: Metadata = {
   },
 };
 
+import { VersionGuard } from "@/components/pwa/VersionGuard";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -63,6 +65,7 @@ export default function RootLayout({
         />
       </head>
       <body className="antialiased">
+        <VersionGuard />
         {children}
       </body>
     </html>
