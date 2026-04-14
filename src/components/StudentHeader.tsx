@@ -7,8 +7,14 @@ import { User } from "lucide-react";
 import { logout } from "@/app/(auth)/actions";
 
 /**
+ * StudentHeader
+ * 
  * Header unificado para as páginas do Aluno.
- * Contém o branding do Coliseu e o botão de Logout/SAIR.
+ * 
+ * Nota Técnica (Notch/Safe Area):
+ * Este componente utiliza a variável CSS `--sat` (Safe Area Top) para o padding superior.
+ * Isso garante que em iPhones com notch (em modo PWA), o conteúdo não seja cortado
+ * pela status bar. O valor é configurado dinamicamente em globals.css via env().
  */
 export default function StudentHeader() {
   return (

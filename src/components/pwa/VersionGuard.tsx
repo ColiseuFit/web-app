@@ -11,6 +11,22 @@ import { RefreshCw, Download } from "lucide-react";
  * 1. Compara a versão local (hardcoded no build) com a versão retornada pela API.
  * 2. Se houver discrepância, exibe um banner Neo-Brutalista.
  */
+/**
+ * VersionGuard (PWA Update Guard)
+ * 
+ * Este componente monitora a versão da aplicação comparando o APP_VERSION local 
+ * (cacheado no dispositivo) com o valor retornado pelo servidor em /api/version.
+ * 
+ * Lógica de Operação:
+ * 1. Check Inicial: Verifica ao montar o componente.
+ * 2. Visibility Change: Verifica sempre que o aluno volta para a aba do app.
+ * 3. Polling: Verifica a cada 5 minutos como rede de segurança.
+ * 
+ * Por que XMLHttpRequest?
+ * Para garantir compatibilidade total com hardware legado (iPad 2 / iOS 9), 
+ * o motor WebKit antigo não suporta a API `fetch`. Usamos XHR para manter o 
+ * princípio "Legacy Proof".
+ */
 export function VersionGuard() {
   const [hasUpdate, setHasUpdate] = useState(false);
   const [isChecking, setIsChecking] = useState(false);

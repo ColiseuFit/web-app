@@ -45,11 +45,12 @@ graph TD
 - `docs/`: Sistema de conhecimento distribuído (Playbooks e SOPs).
   - `docs/PLAYBOOKS/COACH_LITE_LEGACY.md`: Guia para suporte a iPad 2/iOS 9.
   - `docs/PLAYBOOKS/STUDENT_APP.md`: Guia mestre da experiência do aluno.
+  - `docs/PLAYBOOKS/PWA_UPDATE_GUARD.md`: Procedimento de versionamento e atualização de cache.
   ... (outros playbooks)
 
 ---
 ---
-**Versão: 3.1.0 (Abril/2026) - Legacy Hardware Stabilization & PWA Optimization**  
-**Status da Auditoria:** 🏛️ LEGACY PROOF (Protocolo 1.0.3) - Em Auditoria Final  
+**Versão: 3.1.5 (Abril/2026) - PWA Update Guard & Safe Area Stabilization**  
+**Status da Auditoria:** 🏛️ LEGACY PROOF (Protocolo 1.0.3) - CONCLUÍDA  
 **Equipe:** Antigravity AI & Coliseu Engineering Team
 
