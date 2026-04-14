@@ -48,6 +48,16 @@
   --lvl-rx:        #E52521;  /* L4 RX        - vermelho    */
   --lvl-elite:     #C5A059;  /* L5 Elite     - dourado     */
   --lvl-blue:      #1A73E8;  /* misc (ConfirmModal) */
+
+  /*
+   * Safe Area Insets (iOS PWA / viewport-fit=cover)
+   * Mapeia as variáveis nativas do iOS para tokens CSS reutilizáveis.
+   * Retornam 0 em Android e navegadores desktop, sem impacto no layout.
+   */
+  --sat: env(safe-area-inset-top);
+  --sar: env(safe-area-inset-right);
+  --sab: env(safe-area-inset-bottom);
+  --sal: env(safe-area-inset-left);
 }
 
 .student-layout-wrapper {

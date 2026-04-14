@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -37,6 +37,19 @@ export const metadata: Metadata = {
   },
 };
 
+/**
+ * Viewport Export Oficial (Next.js 16)
+ * Usar a exportação `viewport` é a forma canônica de definir o viewport no Next.js 16.
+ * Isso evita conflito de tags duplicadas que o iOS poderia ignorar,
+ * garantindo que `viewport-fit=cover` seja lido corretamente pelo WebKit.
+ */
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#131313",
+};
+
 import { VersionGuard } from "@/components/pwa/VersionGuard";
 
 export default function RootLayout({
@@ -47,13 +60,7 @@ export default function RootLayout({
   return (
     <html lang="pt-BR">
       <head>
-        <meta name="theme-color" content="#131313" />
         <meta name="mobile-web-app-capable" content="yes" />
-        {/* 
-          Viewport-fit=cover: Permite que o conteúdo se estenda até as bordas da tela
-          em dispositivos com notch (iPhone X+), criando uma experiência imersiva.
-        */}
-        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
         {/*
           Splash Screen: Data URI SVG inline com fundo #131313 e logo centralizado.
           Elimina o flash branco ao abrir o PWA pela Home Screen no iOS.

@@ -19,11 +19,11 @@ export default function StudentHeader() {
       zIndex: 200,
       /* 
         Safe Area Fix (PWA / viewport-fit=cover):
-        env(safe-area-inset-top) retorna a altura da status bar/notch do iOS.
-        O padding-top é calculado como: safe area + espaçamento interno (16px).
-        Em Androids e navegadores normais, env() retorna 0 e o layout não é afetado.
+        Usamos var(--sat) que mapeia env(safe-area-inset-top) definido globalmente em :root.
+        Isso garante compatibilidade com iOS/WebKit onde env() inline pode ter delay de resolução.
+        Em Android e desktop, --sat = 0px, sem impacto visual.
       */
-      paddingTop: "calc(env(safe-area-inset-top) + 16px)",
+      paddingTop: "calc(var(--sat, 0px) + 16px)",
       paddingBottom: "16px",
       paddingLeft: "16px",
       paddingRight: "16px",
