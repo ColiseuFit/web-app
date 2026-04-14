@@ -17,7 +17,16 @@ export default function StudentHeader() {
       position: "sticky",
       top: 0,
       zIndex: 200,
-      padding: "16px",
+      /* 
+        Safe Area Fix (PWA / viewport-fit=cover):
+        env(safe-area-inset-top) retorna a altura da status bar/notch do iOS.
+        O padding-top é calculado como: safe area + espaçamento interno (16px).
+        Em Androids e navegadores normais, env() retorna 0 e o layout não é afetado.
+      */
+      paddingTop: "calc(env(safe-area-inset-top) + 16px)",
+      paddingBottom: "16px",
+      paddingLeft: "16px",
+      paddingRight: "16px",
       borderBottom: "2px solid #000",
     }}>
       <div style={{ maxWidth: "480px", margin: "0 auto", display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center" }}>
