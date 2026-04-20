@@ -26,6 +26,13 @@ export default async function EvaluationDetailPage({ params }: { params: Promise
     notFound();
   }
 
+  // Busca o perfil do aluno para cálculos biométricos (SSoT)
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("gender, birth_date, full_name")
+    .eq("id", user.id)
+    .single();
+
   // Busca a avaliação imediatamente anterior para comparativo de evolução
   const { data: previousEvaluation } = await supabase
     .from("physical_evaluations")
@@ -65,6 +72,7 @@ export default async function EvaluationDetailPage({ params }: { params: Promise
     <EvaluationDetailsClient 
       evaluation={evaluationWithFreshPhotos} 
       previous={previousWithFreshPhotos}
+      student={profile}
     />
   );
 }

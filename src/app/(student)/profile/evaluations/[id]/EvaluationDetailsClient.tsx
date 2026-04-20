@@ -6,6 +6,8 @@ import { ChevronDown, Maximize2, X } from "lucide-react";
 import { motion } from "framer-motion";
 import BottomNav from "@/components/BottomNav";
 import DashboardStyles from "@/components/DashboardStyles";
+import { calculateBodyComposition, calculateBMI, calculateAge } from "@/lib/physique-utils";
+import { AlertCircle } from "lucide-react";
 
 interface Photo {
   url: string;
@@ -28,6 +30,12 @@ interface EvaluationData {
   protocol?: string;
 }
 
+interface StudentProfile {
+  gender?: string | null;
+  birth_date?: string | null;
+  full_name?: string | null;
+}
+
 /**
  * Componente de visualização detalhada da avaliação física do atleta.
  * 
@@ -47,10 +55,12 @@ interface EvaluationData {
  */
 export default function EvaluationDetailsClient({ 
   evaluation, 
-  previous
+  previous,
+  student
 }: { 
   evaluation: EvaluationData; 
   previous: EvaluationData | null;
+  student: StudentProfile | null;
 }) {
   const [activeTab, setActiveTab] = useState<"resumo" | "antropometria" | "composicao" | "postura">("resumo");
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
@@ -92,17 +102,42 @@ export default function EvaluationDetailsClient({
     target.addEventListener("pointerup", onUp);
   }, []);
 
-  // Cálculos
-  const bmi = (evaluation.weight && evaluation.height) 
-    ? (evaluation.weight / (evaluation.height * evaluation.height)).toFixed(1) 
-    : "--";
+  // --- CÁLCULOS E SELF-HEALING ---
+  // 1. Idade e Gênero base (SSoT)
+  const age = student?.birth_date ? calculateAge(student.birth_date, evaluation.evaluation_date) : 30; // 30 is a safe average fallback if missing
+  const gender = student?.gender || "masculino";
+
+  // 2. IMC
+  const bmi = calculateBMI(evaluation.weight, evaluation.height) || "--";
   
-  const leanMass = (evaluation.weight && evaluation.body_fat_percentage)
-    ? (evaluation.weight * (1 - evaluation.body_fat_percentage / 100)).toFixed(1)
+  // 3. Percentual de Gordura (Pilar da Operação Antigravity)
+  const getHealedBF = (evalObj: EvaluationData) => {
+    // Se já temos o valor persistido, usamos ele (respeitando a autoridade do Coach)
+    if (evalObj.body_fat_percentage && evalObj.body_fat_percentage > 0) return evalObj.body_fat_percentage;
+
+    // Se não, tentamos calcular em tempo real (Self-Healing) estritamente via Pollock 7
+    const results = calculateBodyComposition(
+      evalObj.weight,
+      evalObj.height,
+      evalObj.skinfolds as any,
+      age,
+      gender,
+      "Pollock 7 Dobras"
+    );
+
+    return (results.bf !== null && results.bf > 0) ? results.bf : null;
+  };
+
+  const bodyFat = getHealedBF(evaluation);
+  const prevBodyFat = previous ? getHealedBF(previous) : null;
+
+  // 4. Massa Magra
+  const leanMass = (evaluation.weight && bodyFat)
+    ? (evaluation.weight * (1 - bodyFat / 100)).toFixed(1)
     : "--";
 
-  const prevLeanMass = (previous?.weight && previous?.body_fat_percentage)
-    ? (previous.weight * (1 - previous.body_fat_percentage / 100)).toFixed(1)
+  const prevLeanMass = (previous?.weight && prevBodyFat)
+    ? (previous.weight * (1 - prevBodyFat / 100)).toFixed(1)
     : null;
 
   const getDelta = (curr: number, prev: number | undefined) => {
@@ -187,6 +222,27 @@ export default function EvaluationDetailsClient({
 
       <main style={{ maxWidth: "480px", margin: "0 auto", padding: "24px 20px" }}>
         
+        {/* WARNING: Gênero Ausente */}
+        {(!student?.gender) && activeTab === "resumo" && (
+          <div style={{ 
+            background: "#FFF4F4", 
+            border: "2px solid #E31B23", 
+            padding: "16px", 
+            marginBottom: "24px", 
+            display: "flex", 
+            gap: "12px",
+            boxShadow: "4px 4px 0px #000"
+          }}>
+            <AlertCircle color="#E31B23" size={20} />
+            <div>
+              <div style={{ fontSize: "10px", fontWeight: 900, color: "#E31B23", marginBottom: "4px" }}>PERFIL INCOMPLETO</div>
+              <p style={{ fontSize: "11px", fontWeight: 700, color: "#000" }}>
+                Não identificamos seu gênero no perfil. Isso pode afetar a precisão de alguns cálculos nesta avaliação.
+                <Link href="/profile" style={{ textDecoration: "underline", marginLeft: "4px", color: "#E31B23" }}>Completar agora →</Link>
+              </p>
+            </div>
+          </div>
+        )}
         {/* ── CONTENT: RESUMO ── */}
         {activeTab === "resumo" && (
           <div className="animate-fadeIn">
@@ -213,10 +269,12 @@ export default function EvaluationDetailsClient({
               <div style={{ background: "#FFF", padding: "20px", border: "2px solid #000", boxShadow: "3px 3px 0px #F0F0F0" }}>
                 <div style={{ fontSize: "8px", fontWeight: 900, color: "#000", opacity: 0.5, marginBottom: "4px", letterSpacing: "0.1em" }}>GORDURA CORPO</div>
                 <div style={{ display: "flex", alignItems: "baseline", gap: "8px" }}>
-                  <div style={{ fontFamily: "var(--font-display, 'Outfit', sans-serif)", fontSize: "24px", fontWeight: 950, color: "#E31B23" }}>{evaluation.body_fat_percentage}%</div>
-                  {previous && (
-                    <span style={{ fontSize: "10px", fontWeight: 900, color: getStatusColor(evaluation.body_fat_percentage - previous.body_fat_percentage) }}>
-                      {getDelta(evaluation.body_fat_percentage, previous.body_fat_percentage)}
+                  <div style={{ fontFamily: "var(--font-display, 'Outfit', sans-serif)", fontSize: "24px", fontWeight: 950, color: "#E31B23" }}>
+                    {bodyFat ? `${bodyFat}%` : "--"}
+                  </div>
+                  {prevBodyFat && bodyFat && (
+                    <span style={{ fontSize: "10px", fontWeight: 900, color: getStatusColor(bodyFat - prevBodyFat) }}>
+                      {getDelta(bodyFat, prevBodyFat)}
                     </span>
                   )}
                 </div>
@@ -592,7 +650,6 @@ export default function EvaluationDetailsClient({
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "40px" }}>
               {[
                 { key: "triceps", label: "TRÍCEPS" },
-                { key: "biceps", label: "BÍCEPS" },
                 { key: "subscapular", label: "SUBESCAPULAR" },
                 { key: "chest", label: "PEITORAL" },
                 { key: "midaxillary", label: "AXILAR MÉDIA" },

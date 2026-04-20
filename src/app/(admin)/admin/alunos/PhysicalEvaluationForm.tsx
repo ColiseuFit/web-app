@@ -28,7 +28,7 @@ export default function PhysicalEvaluationForm({
     weight: initialData?.weight || "",
     height: initialData?.height || "",
     body_fat_percentage: initialData?.body_fat_percentage || "",
-    protocol: initialData?.protocol || "Pollock 7 Dobras",
+    protocol: "Pollock 7 Dobras",
     measurements: initialData?.measurements || {
       neck: "", shoulder: "", chest: "", waist: "", abdomen: "", hip: "",
       thigh_right: "", thigh_left: "", calf_right: "", calf_left: "",
@@ -36,7 +36,7 @@ export default function PhysicalEvaluationForm({
       forearm_right: "", forearm_left: ""
     },
     skinfolds: initialData?.skinfolds || {
-      subscapular: "", triceps: "", biceps: "", chest: "", midaxillary: "",
+      subscapular: "", triceps: "", chest: "", midaxillary: "",
       suprailiac: "", abdominal: "", thigh: ""
     },
     bone_diameters: initialData?.bone_diameters || {
@@ -91,7 +91,7 @@ export default function PhysicalEvaluationForm({
       age = calculateAge(studentMeta.birth_date);
     }
 
-    // 1. Tentar calcular via Protocolo de Dobras
+    // 1. Tentar calcular via Protocolo de Dobras (Sempre Pollock 7)
     if (weightVal > 0 && studentMeta?.gender) {
       const result = calculateBodyComposition(
         weightVal,
@@ -99,7 +99,7 @@ export default function PhysicalEvaluationForm({
         formData.skinfolds,
         age,
         studentMeta.gender as "male" | "female",
-        formData.protocol
+        "Pollock 7 Dobras"
       );
 
       if (result.bf !== null && result.bf > 0) {
@@ -110,7 +110,6 @@ export default function PhysicalEvaluationForm({
     }
 
     // 2. Se o protocolo não deu resultado (dobras vazias), mas o Coach digitou o % manual
-    // Ou se o protocolo selecionado for Bioimpedância
     if (bodyFat === 0 && formData.body_fat_percentage) {
       bodyFat = parseFloat(formData.body_fat_percentage.toString()) || 0;
       if (bodyFat > 0 && weightVal > 0) {
@@ -227,17 +226,17 @@ export default function PhysicalEvaluationForm({
       ...formData,
       weight: formData.weight ? safeRound(formData.weight) : undefined,
       height: formData.height ? safeRound(formData.height) : undefined,
-      body_fat_percentage: calculatedResults.bodyFat > 0 && formData.protocol !== "Bioimpedância" 
-        ? safeRound(calculatedResults.bodyFat, 1) // BF usually 1 decimal
-        : (formData.body_fat_percentage ? safeRound(formData.body_fat_percentage, 1) : undefined),
-      measurements: Object.fromEntries(Object.entries(formData.measurements).map(([k, v]) => [k, safeRound(v)])),
-      skinfolds: Object.fromEntries(Object.entries(formData.skinfolds).map(([k, v]) => [k, safeRound(v)])),
-      bone_diameters: Object.fromEntries(Object.entries(formData.bone_diameters).map(([k, v]) => [k, safeRound(v)])),
-      waist_hip_ratio: safeRound(formData.waist_hip_ratio),
+      body_fat_percentage: calculatedResults.bodyFat > 0 
+        ? safeRound(calculatedResults.bodyFat, 1) 
+        : (formData.body_fat_percentage ? safeRound(formData.body_fat_percentage, 1) : null),
+      measurements: Object.fromEntries(Object.entries(formData.measurements).map(([k, v]) => [k, v !== "" ? safeRound(v) : null])),
+      skinfolds: Object.fromEntries(Object.entries(formData.skinfolds).map(([k, v]) => [k, v !== "" ? safeRound(v) : null])),
+      bone_diameters: Object.fromEntries(Object.entries(formData.bone_diameters).map(([k, v]) => [k, v !== "" ? safeRound(v) : null])),
+      waist_hip_ratio: formData.waist_hip_ratio ? safeRound(formData.waist_hip_ratio) : null,
       lean_mass_components: {
         fat_mass: safeRound(calculatedResults.fatMass),
         lean_mass: safeRound(calculatedResults.leanMass),
-        bmi: safeRound(calculatedResults.bmi),
+        bmi: safeRound(calculatedResults.bmi, 1),
         age_at_evaluation: calculatedResults.age
       }
     };
@@ -312,14 +311,11 @@ export default function PhysicalEvaluationForm({
                  <input type="date" value={formData.evaluation_date} onChange={e => handleInputChange("evaluation_date", e.target.value)} required />
                </div>
                <div>
-                 <label style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: "#666", marginBottom: 8, display: "block" }}>Protocolo</label>
-                 <select value={formData.protocol} onChange={e => handleInputChange("protocol", e.target.value)}>
-                   <option value="Pollock 7 Dobras">Pollock 7 Dobras</option>
-                   <option value="Pollock 3 Dobras">Pollock 3 Dobras</option>
-                   <option value="Guedes">Guedes</option>
-                   <option value="Bioimpedância">Bioimpedância</option>
-                 </select>
-               </div>
+                  <label style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: "#666", marginBottom: 8, display: "block" }}>Protocolo Ativo</label>
+                  <div style={{ padding: "10px 12px", background: "#f0f0f0", border: "2px solid #EEE", fontWeight: 900, color: "#E31B23", fontSize: 14 }}>
+                    POLLOCK 7 DOBRAS
+                  </div>
+                </div>
              </div>
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 24 }}>
@@ -508,7 +504,6 @@ export default function PhysicalEvaluationForm({
                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "12px 24px" }}>
                 {[
                   { key: "triceps", label: "TRÍCEPS" },
-                  { key: "biceps", label: "BÍCEPS" },
                   { key: "subscapular", label: "SUBESCAPULAR" },
                   { key: "chest", label: "PEITORAL" },
                   { key: "midaxillary", label: "AXILAR MÉDIA" },
@@ -575,7 +570,7 @@ export default function PhysicalEvaluationForm({
               <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
                 <div>
                   <span style={{ fontSize: 10, fontWeight: 900, color: "#999", textTransform: "uppercase", letterSpacing: "0.2em", display: "block", marginBottom: 8 }}>
-                    ESTIMATIVA {formData.protocol.toUpperCase()}
+                    ESTIMATIVA POLLOCK 7 DOBRAS
                   </span>
                   <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
                     <div style={{ fontSize: 64, fontFamily: "var(--font-display)", fontWeight: 900, color: "#E31B23", lineHeight: 1 }}>

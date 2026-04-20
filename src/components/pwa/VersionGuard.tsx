@@ -2,15 +2,8 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { APP_VERSION } from "@/lib/constants/version";
-import { RefreshCw, Download } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 
-/**
- * VersionGuard: Monitora novas versões do app e notifica o aluno.
- * 
- * Lógica:
- * 1. Compara a versão local (hardcoded no build) com a versão retornada pela API.
- * 2. Se houver discrepância, exibe um banner Neo-Brutalista.
- */
 /**
  * VersionGuard (PWA Update Guard)
  * 
@@ -29,6 +22,7 @@ import { RefreshCw, Download } from "lucide-react";
  */
 export function VersionGuard() {
   const [hasUpdate, setHasUpdate] = useState(false);
+  const [serverVersion, setServerVersion] = useState<string | null>(null);
   const [isChecking, setIsChecking] = useState(false);
 
   const checkVersion = useCallback(async () => {
@@ -40,13 +34,16 @@ export function VersionGuard() {
       // Usamos XMLHttpRequest para compatibilidade total (iOS 9 / iPad 2)
       // onde o 'fetch' não é nativo.
       const xhr = new XMLHttpRequest();
+      // Cache busting preventivo via timestamp
       xhr.open("GET", "/api/version?t=" + new Date().getTime(), true);
+      
       xhr.onreadystatechange = function() {
         if (xhr.readyState === 4 && xhr.status === 200) {
           try {
             const data = JSON.parse(xhr.responseText);
             if (data.version && data.version !== APP_VERSION) {
               console.log("[VersionGuard] Nova versao detectada:", data.version);
+              setServerVersion(data.version);
               setHasUpdate(true);
             }
           } catch (e) {
@@ -85,8 +82,9 @@ export function VersionGuard() {
   }, [checkVersion]);
 
   const handleUpdate = () => {
-    // Força o recarregamento ignorando o cache do browser
-    window.location.reload();
+    // Força o recarregamento ignorando o cache do browser (Legacy Style)
+    // No iOS 9, reload(true) ajuda a garantir o bypass de certos caches de proxy/webview
+    (window.location as any).reload(true);
   };
 
   if (!hasUpdate) return null;
@@ -103,7 +101,7 @@ export function VersionGuard() {
               Arena Atualizada
             </h3>
             <p className="text-black/80 text-[10px] md:text-[11px] font-bold uppercase tracking-widest mt-1">
-              Versão {APP_VERSION} disponível
+              Versão {serverVersion || "disponível"}
             </p>
           </div>
         </div>
@@ -118,3 +116,4 @@ export function VersionGuard() {
     </div>
   );
 }
+

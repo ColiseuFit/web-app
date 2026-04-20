@@ -4,18 +4,21 @@
  * @architecture
  * - SSoT (Single Source of Truth) para toda a lógica antropométrica do Box.
  * - Suporta normalização automática de unidades (m/cm) e gêneros (multi-idioma).
- * - Implementa protocolos validados (Pollock, Guedes, Mifflin-St Jeor).
+ * - Implementa o protocolo Pollock 7 Dobras e a equação de Mifflin-St Jeor.
  */
 
 export interface Skinfolds {
   subscapular?: number;
   triceps?: number;
-  biceps?: number;
   chest?: number;
   midaxillary?: number;
   suprailiac?: number;
   abdominal?: number;
   thigh?: number;
+}
+
+function hasAllFolds(skinfolds: Skinfolds, required: (keyof Skinfolds)[]): boolean {
+  return required.every(fold => skinfolds[fold] !== undefined && skinfolds[fold] !== null);
 }
 
 /**
@@ -45,13 +48,14 @@ export function calculateBMI(weight: number, height: number): number | null {
  * @param {string} gender - Gênero (suporta 'male', 'female', 'masculino', 'feminino').
  */
 export function calculateDensityPollock7(skinfolds: Skinfolds, age: number, gender: string): number | null {
-  const { subscapular, triceps, chest, midaxillary, suprailiac, abdominal, thigh } = skinfolds;
+  const required: (keyof Skinfolds)[] = ['subscapular', 'triceps', 'chest', 'midaxillary', 'suprailiac', 'abdominal', 'thigh'];
   
-  if (!subscapular || !triceps || !chest || !midaxillary || !suprailiac || !abdominal || !thigh || !age) {
+  if (!hasAllFolds(skinfolds, required) || !age) {
     return null;
   }
 
-  const sum7 = subscapular + triceps + chest + midaxillary + suprailiac + abdominal + thigh;
+  const sum7 = (skinfolds.subscapular || 0) + (skinfolds.triceps || 0) + (skinfolds.chest || 0) + 
+               (skinfolds.midaxillary || 0) + (skinfolds.suprailiac || 0) + (skinfolds.abdominal || 0) + (skinfolds.thigh || 0);
   const isFemale = gender.toLowerCase() === 'female' || gender.toLowerCase() === 'feminino';
 
   if (!isFemale) {
@@ -61,48 +65,6 @@ export function calculateDensityPollock7(skinfolds: Skinfolds, age: number, gend
   } else {
     // Equação para Mulheres (Pollock 7)
     const res = 1.097 - (0.00046971 * sum7) + (0.00000056 * Math.pow(sum7, 2)) - (0.00012828 * age);
-    return isFinite(res) ? res : null;
-  }
-}
-
-/**
- * Calculates Body Density using Pollock 3 Folds protocol
- */
-export function calculateDensityPollock3(skinfolds: Skinfolds, age: number, gender: string): number | null {
-  const isFemale = gender.toLowerCase() === 'female' || gender.toLowerCase() === 'feminino';
-
-  if (!isFemale) {
-    const { chest, abdominal, thigh } = skinfolds;
-    if (!chest || !abdominal || !thigh || !age) return null;
-    const sum3 = chest + abdominal + thigh;
-    const res = 1.10938 - (0.0008267 * sum3) + (0.0000016 * Math.pow(sum3, 2)) - (0.0002574 * age);
-    return isFinite(res) ? res : null;
-  } else {
-    const { triceps, suprailiac, thigh } = skinfolds;
-    if (!triceps || !suprailiac || !thigh || !age) return null;
-    const sum3 = triceps + suprailiac + thigh;
-    const res = 1.0994921 - (0.0009929 * sum3) + (0.0000023 * Math.pow(sum3, 2)) - (0.0001392 * age);
-    return isFinite(res) ? res : null;
-  }
-}
-
-/**
- * Calculates Body Density using Guedes 3 Folds protocol
- */
-export function calculateDensityGuedes(skinfolds: Skinfolds, gender: string): number | null {
-  const isFemale = gender.toLowerCase() === 'female' || gender.toLowerCase() === 'feminino';
-
-  if (!isFemale) {
-    const { triceps, suprailiac, abdominal } = skinfolds;
-    if (!triceps || !suprailiac || !abdominal) return null;
-    const sum3 = triceps + suprailiac + abdominal;
-    const res = 1.17136 - (0.06706 * Math.log10(sum3));
-    return isFinite(res) ? res : null;
-  } else {
-    const { subscapular, suprailiac, thigh } = skinfolds;
-    if (!subscapular || !suprailiac || !thigh) return null;
-    const sum3 = subscapular + suprailiac + thigh;
-    const res = 1.16650 - (0.07063 * Math.log10(sum3));
     return isFinite(res) ? res : null;
   }
 }
@@ -118,6 +80,7 @@ export function calculateBF(density: number): number {
 
 /**
  * Full Body Composition calculation
+ * Strictly enforced to "Pollock 7 Dobras" protocol.
  */
 export function calculateBodyComposition(
   weight: number, 
@@ -125,24 +88,12 @@ export function calculateBodyComposition(
   skinfolds: Skinfolds, 
   age: number, 
   gender: string, 
-  protocol: string
+  _protocol?: string // Ignored to enforce Pollock 7 standard
 ) {
   const bmi = calculateBMI(weight, height);
-  let density: number | null = null;
-
-  switch (protocol) {
-    case 'Pollock 7 Dobras':
-      density = calculateDensityPollock7(skinfolds, age, gender);
-      break;
-    case 'Pollock 3 Dobras':
-      density = calculateDensityPollock3(skinfolds, age, gender);
-      break;
-    case 'Guedes':
-      density = calculateDensityGuedes(skinfolds, gender);
-      break;
-    default:
-      return { bmi, bf: null, leanMass: null, fatMass: null };
-  }
+  
+  // Enforce Pollock 7
+  const density = calculateDensityPollock7(skinfolds, age, gender);
 
   if (density === null) return { bmi, bf: null, leanMass: null, fatMass: null };
 
