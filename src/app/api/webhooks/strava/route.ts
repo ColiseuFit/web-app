@@ -36,13 +36,18 @@ export async function POST(request: Request) {
 
     const { object_type, aspect_type, object_id, owner_id } = body;
 
+    // LOG DE DIAGNÓSTICO
+    console.log(`[DIAG] object_type=${object_type}, aspect_type=${aspect_type}, owner_id=${owner_id}, object_id=${object_id}`);
+
     // Só nos interessa quando um treino de corrida (Activity) for CRIADO
     if (object_type !== "activity" || aspect_type !== "create") {
+      console.log(`[DIAG] Ignorado: object_type=${object_type}, aspect_type=${aspect_type}`);
       return NextResponse.json({ status: "ignored" });
     }
 
     // 1. Encontrar de qual aluno é esse evento (busca pelo owner_id no provider_athlete_id)
-    const { data: integration } = await supabase
+    console.log(`[DIAG] Buscando integração para owner_id=${owner_id} (string: "${owner_id.toString()}")`);
+    const { data: integration, error: integrationError } = await supabase
       .from("athlete_integrations")
       .select("student_id, access_token, refresh_token, expires_at")
       .eq("provider", "strava")
@@ -50,9 +55,10 @@ export async function POST(request: Request) {
       .single();
 
     if (!integration) {
-      console.log(`Webhook Ignorado: Nenhum aluno encontrado com owner_id ${owner_id}`);
+      console.log(`[DIAG] Nenhuma integração encontrada para owner_id=${owner_id}. Erro Supabase:`, JSON.stringify(integrationError));
       return NextResponse.json({ status: "success" }); // Strava precisa de 200 OK rápido
     }
+    console.log(`[DIAG] Integração encontrada! student_id=${integration.student_id}`);
 
     // 2. Chamar a API do Strava para pegar detalhes do treino (ex: KM, Tempo)
     // Precisaria checar aqui se o expires_at do access_token já venceu e atualizá-lo
