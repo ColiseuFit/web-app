@@ -56,7 +56,7 @@ export async function proxy(request: NextRequest) {
 
   // EARLY BYPASS: Auth, Verification, Webhooks and Version routes must be handled by their respective handlers
   // without interference from domain-specific redirect logic during the handshake.
-  if (path.startsWith('/auth') || path.startsWith('/api/auth') || path.startsWith('/api/webhooks') || path === '/api/version') {
+  if (path.startsWith('/auth') || path.startsWith('/api/auth') || path.startsWith('/api/webhooks') || path.startsWith('/api/internal') || path === '/api/version') {
     return supabaseResponse;
   }
 
