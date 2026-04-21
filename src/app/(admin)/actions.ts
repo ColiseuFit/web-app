@@ -6,6 +6,8 @@ import { revalidatePath } from "next/cache";
 import { Resend } from "resend";
 
 import { createStudentSchema, updateAuthSchema, ProfileInput, profileSchema, wodSchema, physicalEvaluationSchema } from "@/lib/validations/security_schemas";
+import { enrichEvaluation } from "@/lib/physique-utils";
+
 
 /**
  * Cria um novo aluno tanto no Auth quanto no Banco de Dados.
@@ -472,8 +474,22 @@ export async function getStudentEvaluations(studentId: string) {
     console.error("[getStudentEvaluations] Error:", error);
     return { error: "Não foi possível carregar o histórico de avaliações." };
   }
-  return { evaluations: data };
+
+  // 1. Fetch student info for healing (SSoT: Need gender/birth_date)
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("gender, birth_date")
+    .eq("id", studentId)
+    .single();
+
+  // 2. Apply Self-Healing to all records
+  const healedEvaluations = (data || []).map(ev => 
+    enrichEvaluation(ev, { gender: profile?.gender, birth_date: profile?.birth_date })
+  );
+
+  return { evaluations: healedEvaluations };
 }
+
 
 /**
  * Deletes a specific physical evaluation record.

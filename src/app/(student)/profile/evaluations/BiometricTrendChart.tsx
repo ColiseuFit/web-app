@@ -60,7 +60,9 @@ export default function BiometricTrendChart({ evaluations }: ChartProps) {
     color: string,
     unit: string
   ) => {
-    const values = data.map(d => d[key]);
+    const values = data.map(d => Number(d[key])).filter(v => !isNaN(v) && v > 0);
+    if (values.length === 0) return null;
+
     const minVal = Math.min(...values) * 0.98;
     const maxVal = Math.max(...values) * 1.02;
     const range = maxVal - minVal;
@@ -153,10 +155,10 @@ export default function BiometricTrendChart({ evaluations }: ChartProps) {
           {/* Labels de Data no Eixo X (Início e Fim) */}
           <div style={{ display: "flex", justifyContent: "space-between", marginTop: "8px" }}>
             <span style={{ fontSize: "8px", fontWeight: 800, color: "#CCC" }}>
-              {new Date(data[0].evaluation_date).toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }).toUpperCase()}
+              {new Date(data[0].evaluation_date + "T12:00:00Z").toLocaleDateString('pt-BR', { month: 'short', year: '2-digit', timeZone: 'UTC' }).toUpperCase()}
             </span>
             <span style={{ fontSize: "8px", fontWeight: 800, color: "#000" }}>
-              {new Date(data[data.length - 1].evaluation_date).toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }).toUpperCase()}
+              {new Date(data[data.length - 1].evaluation_date + "T12:00:00Z").toLocaleDateString('pt-BR', { month: 'short', year: '2-digit', timeZone: 'UTC' }).toUpperCase()}
             </span>
           </div>
         </div>

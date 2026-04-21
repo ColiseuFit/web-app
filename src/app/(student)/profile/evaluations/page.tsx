@@ -2,7 +2,8 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Flame, Activity, Trophy, Camera, TrendingUp } from "lucide-react";
-import { calculateAge, calculateBMR, calculateTDEE } from "@/lib/physique-utils";
+import { calculateAge, calculateBMR, calculateTDEE, enrichEvaluation } from "@/lib/physique-utils";
+
 import BottomNav from "@/components/BottomNav";
 import DashboardStyles from "@/components/DashboardStyles";
 import BiometricTrendChart from "./BiometricTrendChart";
@@ -26,15 +27,20 @@ export default async function EvaluationsPage() {
     .eq("student_id", user.id)
     .order("evaluation_date", { ascending: false });
 
-  // Busca dados complementares do perfil para cálculos metabólicos
   const { data: profile } = await supabase
     .from("profiles")
     .select("gender, birth_date")
     .eq("id", user.id)
     .single();
 
-  const latest = evaluations?.[0];
-  const first = evaluations?.[evaluations?.length - 1];
+  // Enriquecimento de dados (Self-Healing via Centralized Engine)
+  const enrichedEvaluations = (evaluations || []).map(ev => 
+    enrichEvaluation(ev, { gender: profile?.gender, birth_date: profile?.birth_date })
+  );
+
+
+  const latest = enrichedEvaluations?.[0];
+  const first = enrichedEvaluations?.[enrichedEvaluations?.length - 1];
 
   // Cálculos Metabólicos (Baseado na mais recente)
   const age = profile?.birth_date && latest
@@ -181,7 +187,7 @@ export default async function EvaluationsPage() {
             *Insights calculados com base na sua avaliação mais recente e perfil atual.
           </p>
 
-          <BiometricTrendChart evaluations={evaluations || []} />
+          <BiometricTrendChart evaluations={enrichedEvaluations} />
         </section>
 
         {/* ── EVOLUÇÃO VISUAL ── */}
@@ -270,9 +276,9 @@ export default async function EvaluationsPage() {
             <div style={{ flex: 1, height: "2px", background: "#000" }} />
           </div>
 
-          {evaluations && evaluations.length > 0 ? (
+          {enrichedEvaluations && enrichedEvaluations.length > 0 ? (
             <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-              {evaluations.map((ev) => (
+              {enrichedEvaluations.map((ev) => (
                 <Link key={ev.id} href={`/profile/evaluations/${ev.id}`} style={{ textDecoration: "none", color: "inherit" }}>
                   <div style={{
                     background: "#FFF",

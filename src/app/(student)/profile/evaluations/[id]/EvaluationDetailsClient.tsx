@@ -36,7 +36,12 @@ interface EvaluationData {
   photos: Photo[];
   notes?: string;
   protocol?: string;
+  // Enriched fields from Self-Healing Engine
+  lean_mass?: number;
+  bmi?: number;
+  _isHealed?: boolean;
 }
+
 
 interface StudentProfile {
   gender?: string | null;
@@ -115,38 +120,17 @@ export default function EvaluationDetailsClient({
   const age = student?.birth_date ? calculateAge(student.birth_date, evaluation.evaluation_date) : 30; // 30 is a safe average fallback if missing
   const gender = student?.gender || "masculino";
 
-  // 2. IMC
-  const bmi = calculateBMI(evaluation.weight, evaluation.height) || "--";
+  // 2. IMC (Pre-calculated by server or fallback here)
+  const bmi = evaluation.bmi || calculateBMI(evaluation.weight, evaluation.height) || "--";
   
   // 3. Percentual de Gordura (Pilar da Operação Antigravity)
-  const getHealedBF = (evalObj: EvaluationData) => {
-    // Se já temos o valor persistido, usamos ele (respeitando a autoridade do Coach)
-    if (evalObj.body_fat_percentage && evalObj.body_fat_percentage > 0) return evalObj.body_fat_percentage;
-
-    // Se não, tentamos calcular em tempo real (Self-Healing) estritamente via Pollock 7
-    const results = calculateBodyComposition(
-      evalObj.weight,
-      evalObj.height,
-      evalObj.skinfolds,
-      age,
-      gender,
-      "Pollock 7 Dobras"
-    );
-
-    return (results.bf !== null && results.bf > 0) ? results.bf : null;
-  };
-
-  const bodyFat = getHealedBF(evaluation);
-  const prevBodyFat = previous ? getHealedBF(previous) : null;
+  const bodyFat = evaluation.body_fat_percentage;
+  const prevBodyFat = previous?.body_fat_percentage;
 
   // 4. Massa Magra
-  const leanMass = (evaluation.weight && bodyFat)
-    ? (evaluation.weight * (1 - bodyFat / 100)).toFixed(1)
-    : "--";
+  const leanMass = evaluation.lean_mass?.toFixed(1) || "--";
+  const prevLeanMass = previous?.lean_mass?.toFixed(1) || null;
 
-  const prevLeanMass = (previous?.weight && prevBodyFat)
-    ? (previous.weight * (1 - prevBodyFat / 100)).toFixed(1)
-    : null;
 
   const getDelta = (curr: number, prev: number | undefined) => {
     if (!prev) return null;

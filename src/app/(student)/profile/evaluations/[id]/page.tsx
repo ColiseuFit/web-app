@@ -1,6 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { notFound, redirect } from "next/navigation";
 import EvaluationDetailsClient from "./EvaluationDetailsClient";
+import { enrichEvaluation } from "@/lib/physique-utils";
+
 
 /**
  * Página de Detalhes de uma Avaliação Física (Server Component).
@@ -71,11 +73,16 @@ export default async function EvaluationDetailPage({ params }: { params: Promise
   const evaluationWithFreshPhotos = await refreshSignedUrls(evaluation);
   const previousWithFreshPhotos = await refreshSignedUrls(previousEvaluation);
 
+  // 4. Enrich evaluations (Self-Healing)
+  const enrichedEvaluation = enrichEvaluation(evaluationWithFreshPhotos, { gender: profile?.gender, birth_date: profile?.birth_date });
+  const enrichedPrevious = enrichEvaluation(previousWithFreshPhotos, { gender: profile?.gender, birth_date: profile?.birth_date });
+
   return (
     <EvaluationDetailsClient 
-      evaluation={evaluationWithFreshPhotos} 
-      previous={previousWithFreshPhotos}
+      evaluation={enrichedEvaluation} 
+      previous={enrichedPrevious}
       student={profile}
     />
   );
+
 }

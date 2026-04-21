@@ -14,6 +14,7 @@ import { getTodayDate } from "@/lib/date-utils";
 import { getLevelInfo } from "@/lib/constants/levels";
 import { getCachedLevels } from "@/lib/constants/levels_actions";
 import { getBoxSettings } from "@/lib/constants/settings_actions";
+import { enrichEvaluation } from "@/lib/physique-utils";
 
 export const metadata: Metadata = {
   title: "Meu Perfil",
@@ -47,8 +48,9 @@ export default async function ProfilePage() {
   // 1. Data Fetching
   const [
     { data: profile },
-    { data: latestEvaluation },
+    { data: rawLatestEvaluation },
     { data: checkInsCount },
+
     { data: prs },
     { data: benchmarks },
     dynamicLevels,
@@ -77,10 +79,13 @@ export default async function ProfilePage() {
     ? `https://wa.me/55${whatsappNumber}?text=${encodeURIComponent("Olá! Gostaria de saber mais sobre como fazer o upgrade para o Plano Clube Premium.")}`
     : null;
 
-  // Cálculo de massa magra se houver dados
-  const leanMass = (latestEvaluation?.weight && latestEvaluation?.body_fat_percentage)
-    ? (latestEvaluation.weight * (1 - latestEvaluation.body_fat_percentage / 100)).toFixed(1)
+  // 1.5 Auto-Healing (Dynamic Enrichment)
+  const latestEvaluation = rawLatestEvaluation 
+    ? enrichEvaluation(rawLatestEvaluation, { gender: profile?.gender, birth_date: profile?.birth_date })
     : null;
+
+  // Massa magra agora vem do objeto enriquecido
+  const leanMass = latestEvaluation?.lean_mass;
 
   /**
    * Identidade Visual do Nível (Coliseu Levels) no Perfil

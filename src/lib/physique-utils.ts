@@ -179,15 +179,80 @@ export function calculateTDEE(bmr: number, activityLevel: number = 1.2): number 
 }
 
 /**
- * Calculations summary for physical evaluation
+ * Calcula a idade a partir da data de nascimento.
+ * SSoT: Segue o protocolo de Tempo do Iron Monolith usando âncoras UTC.
  */
 export function calculateAge(birthDate: string | Date, referenceDate: string | Date = new Date()): number {
-  const birth = new Date(birthDate);
-  const ref = new Date(referenceDate);
-  let age = ref.getFullYear() - birth.getFullYear();
-  const m = ref.getMonth() - birth.getMonth();
-  if (m < 0 || (m === 0 && ref.getDate() < birth.getDate())) {
+  if (!birthDate) return 0;
+  
+  // Normalizamos para o meio-dia UTC para evitar deslocamentos de fuso no cálculo de anos
+  const birthStr = typeof birthDate === 'string' ? birthDate.split('T')[0] : birthDate.toISOString().split('T')[0];
+  const birth = new Date(birthStr + "T12:00:00Z");
+  
+  const refStr = typeof referenceDate === 'string' ? referenceDate.split('T')[0] : referenceDate.toISOString().split('T')[0];
+  const ref = new Date(refStr + "T12:00:00Z");
+
+  let age = ref.getUTCFullYear() - birth.getUTCFullYear();
+  const m = ref.getUTCMonth() - birth.getUTCMonth();
+
+  if (m < 0 || (m === 0 && ref.getUTCDate() < birth.getUTCDate())) {
     age--;
   }
+
   return age;
 }
+
+/**
+ * Motor de "Self-Healing" Biométrico.
+ * Centraliza a lógica de recuperação de dados ausentes para garantir consistência em toda a UI.
+ * 
+ * @param {any} evaluation - O registro bruto da avaliação física vindo do banco.
+ * @param {any} profile - Dados do perfil do aluno (gender, birth_date).
+ * @returns {any} Uma versão enriquecida da avaliação com campos calculados se necessário.
+ */
+export function enrichEvaluation(evaluation: any, profile: { gender?: string; birth_date?: string }) {
+  if (!evaluation) return null;
+
+  const enriched = { ...evaluation };
+  
+  // Garantir que campos numéricos básicos sejam números
+  enriched.weight = Number(enriched.weight) || 0;
+  enriched.height = Number(enriched.height) || 0;
+  
+  // 1. Recuperação de % de Gordura via Pollock 7 (Se nulo na DB)
+  if ((enriched.body_fat_percentage === null || enriched.body_fat_percentage === undefined || enriched.body_fat_percentage === 0) && profile.birth_date && profile.gender) {
+    const age = calculateAge(profile.birth_date, enriched.evaluation_date);
+    const skinfolds = enriched.skinfolds as Skinfolds;
+    
+    if (skinfolds) {
+      const results = calculateBodyComposition(
+        enriched.weight,
+        enriched.height,
+        skinfolds,
+        age,
+        profile.gender
+      );
+      
+      if (results.bf !== null) {
+        enriched.body_fat_percentage = results.bf;
+        enriched._isHealed = true; // Flag interna para debug/audit
+      }
+    }
+  }
+
+  // 2. Cálculo derivado de Massa Magra
+  if (enriched.weight > 0 && enriched.body_fat_percentage > 0) {
+    const fatMass = (enriched.weight * enriched.body_fat_percentage) / 100;
+    enriched.lean_mass = parseFloat((enriched.weight - fatMass).toFixed(1));
+  } else {
+    enriched.lean_mass = null;
+  }
+
+  // 3. Garantir IMC (BMI)
+  if (!enriched.bmi && enriched.weight > 0 && enriched.height > 0) {
+    enriched.bmi = calculateBMI(enriched.weight, enriched.height);
+  }
+
+  return enriched;
+}
+
