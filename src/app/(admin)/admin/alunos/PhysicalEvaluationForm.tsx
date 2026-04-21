@@ -1,16 +1,25 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import { X, Save, Activity, Ruler, Target, Camera, FileText, Upload, Trash2, CheckCircle2, User, ImageIcon, Info, HeartPulse } from "lucide-react";
 import { upsertPhysicalEvaluation, uploadEvaluationPhoto, getStudentBiometricsInfo } from "../../actions";
-import { calculateBMI, calculateBodyComposition, calculateAge } from "../../../../lib/physique-utils";
+import { 
+  calculateBMI, 
+  calculateBodyComposition, 
+  calculateAge,
+  type Skinfolds,
+  type Measurements,
+  type BoneDiameters,
+  type PosturalAnalysis
+} from "../../../../lib/physique-utils";
 import AlertModal from "@/components/AlertModal";
 
 interface PhysicalEvaluationFormProps {
   studentId: string;
   onClose: () => void;
   onSuccess: () => void;
-  initialData?: any;
+  initialData?: any; // Mantendo any aqui temporarily pois os dados do Supabase podem variar, mas tiparemos o uso interno
 }
 
 export default function PhysicalEvaluationForm({ 
@@ -133,7 +142,7 @@ export default function PhysicalEvaluationForm({
     }
   }, [formData.measurements.waist, formData.measurements.hip, formData.waist_hip_ratio]);
 
-  const handleInputChange = (field: string, value: any) => {
+  const handleInputChange = (field: string, value: string | number | null) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
   
@@ -153,8 +162,8 @@ export default function PhysicalEvaluationForm({
       if (result.success && result.url) {
         setFormData(prev => {
           // Se já existe uma foto para este label, substitui. Senão adiciona.
-          const existingIndex = prev.photos.findIndex((p: any) => p.label === label);
-          const newPhoto = { url: result.url, label, path: result.path };
+          const existingIndex = prev.photos.findIndex((p: { label: string }) => p.label === label);
+          const newPhoto = { url: result.url as string, label, path: result.path };
           const newPhotos = [...prev.photos];
           
           if (existingIndex >= 0) {
@@ -187,18 +196,18 @@ export default function PhysicalEvaluationForm({
   const removePhoto = (index: number) => {
     setFormData(prev => ({
       ...prev,
-      photos: prev.photos.filter((_: any, i: number) => i !== index)
+      photos: prev.photos.filter((_: { label: string }, i: number) => i !== index)
     }));
   };
 
-  const handleNestedChange = (category: string, field: string, value: any) => {
+  const handleNestedChange = (category: "measurements" | "skinfolds" | "bone_diameters" | "postural_analysis", field: string, value: string | number) => {
     setFormData(prev => ({
       ...prev,
       [category]: { ...((prev as any)[category]), [field]: value }
     }));
   };
 
-  const formatOnBlur = (field: string, value: any, category?: string, decimals = 2) => {
+  const formatOnBlur = (field: string, value: string | number | null, category?: "measurements" | "skinfolds" | "bone_diameters", decimals = 2) => {
     const parsed = parseFloat(value?.toString() || "");
     if (isNaN(parsed)) return;
     
@@ -215,7 +224,7 @@ export default function PhysicalEvaluationForm({
     setLoading(true);
     
     // Helper to safely parse and round numbers
-    const safeRound = (val: any, decimals = 2) => {
+    const safeRound = (val: string | number | null | undefined, decimals = 2) => {
       const parsed = parseFloat(val?.toString() || "0");
       if (isNaN(parsed)) return 0;
       return parseFloat(parsed.toFixed(decimals));
@@ -229,9 +238,9 @@ export default function PhysicalEvaluationForm({
       body_fat_percentage: calculatedResults.bodyFat > 0 
         ? safeRound(calculatedResults.bodyFat, 1) 
         : (formData.body_fat_percentage ? safeRound(formData.body_fat_percentage, 1) : null),
-      measurements: Object.fromEntries(Object.entries(formData.measurements).map(([k, v]) => [k, v !== "" ? safeRound(v) : null])),
-      skinfolds: Object.fromEntries(Object.entries(formData.skinfolds).map(([k, v]) => [k, v !== "" ? safeRound(v) : null])),
-      bone_diameters: Object.fromEntries(Object.entries(formData.bone_diameters).map(([k, v]) => [k, v !== "" ? safeRound(v) : null])),
+      measurements: Object.fromEntries(Object.entries(formData.measurements).map(([k, v]) => [k, v !== "" ? safeRound(v as string) : null])),
+      skinfolds: Object.fromEntries(Object.entries(formData.skinfolds).map(([k, v]) => [k, v !== "" ? safeRound(v as string) : null])),
+      bone_diameters: Object.fromEntries(Object.entries(formData.bone_diameters).map(([k, v]) => [k, v !== "" ? safeRound(v as string) : null])),
       waist_hip_ratio: formData.waist_hip_ratio ? safeRound(formData.waist_hip_ratio) : null,
       lean_mass_components: {
         fat_mass: safeRound(calculatedResults.fatMass),
@@ -279,7 +288,7 @@ export default function PhysicalEvaluationForm({
         {tabs.map(tab => (
           <button
             key={tab.id}
-            onClick={() => setActiveTab(tab.id as any)}
+            onClick={() => setActiveTab(tab.id as "geral" | "antropo" | "composicao" | "postura" | "fotos")}
             style={{
               padding: "16px 20px",
               background: "none",
@@ -445,7 +454,7 @@ export default function PhysicalEvaluationForm({
                     </label>
                     <input 
                       type="number" step="0.1" 
-                      value={(formData.measurements as any)[field.key]} 
+                      value={(formData.measurements as any)[field.key] as string} 
                       onChange={e => handleNestedChange("measurements", field.key, e.target.value)} 
                       onBlur={() => formatOnBlur(field.key, (formData.measurements as any)[field.key], "measurements")}
                       style={{ 
@@ -480,7 +489,7 @@ export default function PhysicalEvaluationForm({
                     <label style={{ fontSize: 10, fontWeight: 800, color: "#666", marginBottom: 4 }}>{field.label}</label>
                     <input 
                       type="number" step="0.1" 
-                      value={(formData.measurements as any)[field.key]} 
+                      value={(formData.measurements as any)[field.key] as string} 
                       onChange={e => handleNestedChange("measurements", field.key, e.target.value)} 
                       onBlur={() => formatOnBlur(field.key, (formData.measurements as any)[field.key], "measurements")}
                       style={{ width: "100%", textAlign: "left", padding: "6px 8px", border: "2px solid #EEE", fontWeight: 800, outline: "none" }}
@@ -515,7 +524,7 @@ export default function PhysicalEvaluationForm({
                     <label style={{ fontSize: 10, fontWeight: 800, color: "#666", marginBottom: 4 }}>{field.label}</label>
                     <input 
                       type="number" step="0.1" 
-                      value={(formData.skinfolds as any)[field.key]} 
+                      value={(formData.skinfolds as any)[field.key] as string} 
                       onChange={e => handleNestedChange("skinfolds", field.key, e.target.value)} 
                       onBlur={() => formatOnBlur(field.key, (formData.skinfolds as any)[field.key], "skinfolds")}
                       style={{ width: "100%", textAlign: "left", padding: "6px 8px", border: "2px solid #EEE", fontWeight: 800, outline: "none" }}
@@ -542,7 +551,7 @@ export default function PhysicalEvaluationForm({
                     <label style={{ fontSize: 10, fontWeight: 800, color: "#666", marginBottom: 4 }}>{field.label}</label>
                     <input 
                       type="number" step="0.1" 
-                      value={(formData.bone_diameters as any)[field.key]} 
+                      value={(formData.bone_diameters as any)[field.key] as string} 
                       onChange={e => handleNestedChange("bone_diameters", field.key, e.target.value)} 
                       onBlur={() => formatOnBlur(field.key, (formData.bone_diameters as any)[field.key], "bone_diameters")}
                       style={{ width: "100%", textAlign: "left", padding: "6px 8px", border: "2px solid #EEE", fontWeight: 800, outline: "none" }}
@@ -626,7 +635,7 @@ export default function PhysicalEvaluationForm({
                   {view.label}
                 </label>
                 <textarea 
-                  value={(formData.postural_analysis as any)[view.key]} 
+                  value={(formData.postural_analysis as any)[view.key] as string} 
                   onChange={e => handleNestedChange("postural_analysis", view.key, e.target.value)} 
                   rows={4} 
                   style={{ width: "100%", padding: 12, border: "2px solid #000", fontSize: 13, fontWeight: 500, outline: "none", resize: "none" }} 
@@ -675,7 +684,13 @@ export default function PhysicalEvaluationForm({
 
                       {photo ? (
                         <>
-                          <img src={photo.url} alt={pos} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                          <Image 
+                            src={photo.url} 
+                            alt={pos} 
+                            fill
+                            unoptimized
+                            style={{ objectFit: "cover" }} 
+                          />
                           <div style={{ 
                             position: "absolute", inset: 0, 
                             background: "rgba(0,0,0,0.4)", 
@@ -739,7 +754,7 @@ export default function PhysicalEvaluationForm({
         zIndex: 10
       }}>
         <button 
-          onClick={(e) => { e.preventDefault(); handleSubmit(e as any); }} 
+          onClick={(e) => { e.preventDefault(); handleSubmit(e); }} 
           disabled={loading} 
           className="admin-btn admin-btn-primary" 
           style={{ 

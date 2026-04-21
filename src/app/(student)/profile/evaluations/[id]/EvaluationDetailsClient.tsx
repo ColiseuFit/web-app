@@ -2,12 +2,20 @@
 
 import { useState, useRef, useCallback } from "react";
 import Link from "next/link";
-import { ChevronDown, Maximize2, X } from "lucide-react";
+import Image from "next/image";
+import { ChevronDown, Maximize2, X, AlertCircle } from "lucide-react";
 import { motion } from "framer-motion";
 import BottomNav from "@/components/BottomNav";
 import DashboardStyles from "@/components/DashboardStyles";
-import { calculateBodyComposition, calculateBMI, calculateAge } from "@/lib/physique-utils";
-import { AlertCircle } from "lucide-react";
+import { 
+  calculateBodyComposition, 
+  calculateBMI, 
+  calculateAge,
+  type Skinfolds,
+  type Measurements,
+  type BoneDiameters,
+  type PosturalAnalysis
+} from "@/lib/physique-utils";
 
 interface Photo {
   url: string;
@@ -21,10 +29,10 @@ interface EvaluationData {
   height: number;
   body_fat_percentage: number;
   waist_hip_ratio?: number;
-  measurements: Record<string, any>;
-  skinfolds: Record<string, any>;
-  bone_diameters: Record<string, any>;
-  postural_analysis: Record<string, any>;
+  measurements: Measurements;
+  skinfolds: Skinfolds;
+  bone_diameters: BoneDiameters;
+  postural_analysis: PosturalAnalysis;
   photos: Photo[];
   notes?: string;
   protocol?: string;
@@ -119,7 +127,7 @@ export default function EvaluationDetailsClient({
     const results = calculateBodyComposition(
       evalObj.weight,
       evalObj.height,
-      evalObj.skinfolds as any,
+      evalObj.skinfolds,
       age,
       gender,
       "Pollock 7 Dobras"
@@ -200,7 +208,7 @@ export default function EvaluationDetailsClient({
         {tabs.map(tab => (
           <button
             key={tab.id}
-            onClick={() => setActiveTab(tab.id as any)}
+            onClick={() => setActiveTab(tab.id as "resumo" | "antropometria" | "composicao" | "postura")}
             style={{
               flex: 1,
               padding: "16px 0",
@@ -387,9 +395,12 @@ export default function EvaluationDetailsClient({
                   {previous && previousPhoto ? (
                     <>
                       {/* Previous Image */}
-                      <img 
+                      <Image 
                         src={previousPhoto.url} 
-                        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", filter: "grayscale(100%) opacity(0.6)" }} 
+                        alt="Foto anterior"
+                        fill
+                        unoptimized
+                        style={{ objectFit: "cover", filter: "grayscale(100%) opacity(0.6)" }} 
                       />
                       {/* Current Image (Clipped) */}
                       <div style={{ 
@@ -401,9 +412,13 @@ export default function EvaluationDetailsClient({
                         zIndex: 2,
                         boxShadow: "2px 0 10px rgba(0,0,0,0.3)"
                       }}>
-                        <img 
+                        <Image 
                           src={currentPhoto.url} 
-                          style={{ width: "100%", height: "100%", objectFit: "cover" }} 
+                          alt="Foto atual"
+                          fill
+                          priority
+                          unoptimized
+                          style={{ objectFit: "cover" }} 
                         />
                       </div>
                       {/* Drag Handle Overlay — toda a área é a zona de arraste */}
@@ -492,9 +507,13 @@ export default function EvaluationDetailsClient({
                   ) : (
                     <>
                       {/* Only Current Image */}
-                      <img 
+                      <Image 
                         src={currentPhoto.url} 
-                        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} 
+                        alt="Foto de evolução"
+                        fill
+                        priority
+                        unoptimized
+                        style={{ objectFit: "cover" }} 
                       />
                       <div style={{ 
                         position: "absolute", 
@@ -579,7 +598,15 @@ export default function EvaluationDetailsClient({
                         cursor: "zoom-in"
                       }}
                     >
-                      <img src={photo.url} alt={photo.label} style={{ width: "100%", aspectRatio: "1/1", objectFit: "cover", marginBottom: "8px", border: "1px solid #000" }} />
+                      <div style={{ position: "relative", width: "100%", aspectRatio: "1/1", marginBottom: "8px", border: "1px solid #000" }}>
+                        <Image 
+                          src={photo.url} 
+                          alt={photo.label || "Foto da galeria"} 
+                          fill
+                          unoptimized
+                          style={{ objectFit: "cover" }} 
+                        />
+                      </div>
                       <div style={{ fontSize: "10px", fontWeight: 900, color: "#000", textAlign: "center", textTransform: "uppercase" }}>{photo.label || `FOTO ${i+1}`}</div>
                     </div>
                   ))}
@@ -626,7 +653,7 @@ export default function EvaluationDetailsClient({
                     <span style={{ fontSize: "11px", fontWeight: 900, color: "#000", textTransform: "uppercase", letterSpacing: "0.05em" }}>{field.label}</span>
                     <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                       <span style={{ fontFamily: "var(--font-display, 'Outfit', sans-serif)", fontWeight: 950, fontSize: "18px" }}>{value}</span>
-                      {previous?.measurements?.[field.key] && (
+                      {previous?.measurements && (
                         <span style={{ fontSize: "11px", fontWeight: 900, color: getStatusColor(Number(value) - Number(previous.measurements[field.key]), true) }}>
                           {getDelta(Number(value), Number(previous.measurements[field.key]))}
                         </span>
@@ -662,7 +689,7 @@ export default function EvaluationDetailsClient({
                 return (
                   <div key={field.key} style={{ background: "#FFF", padding: "16px", border: "2px solid #000", boxShadow: "2px 2px 0px #000" }}>
                     <div style={{ fontSize: "10px", fontWeight: 900, color: "#000", opacity: 0.6, marginBottom: "4px", textTransform: "uppercase" }}>{field.label}</div>
-                    <div style={{ fontFamily: "var(--font-display, 'Outfit', sans-serif)", fontSize: "20px", fontWeight: 950 }}>{value}</div>
+                    <div style={{ fontFamily: "var(--font-display, 'Outfit', sans-serif)", fontSize: "20px", fontWeight: 950 }}>{value as number}</div>
                   </div>
                 );
               })}
@@ -681,7 +708,7 @@ export default function EvaluationDetailsClient({
                 return (
                   <div key={field.key} style={{ background: "#FFF", padding: "16px", textAlign: "center", border: "2px dashed #000" }}>
                     <div style={{ fontSize: "10px", fontWeight: 900, opacity: 0.6, marginBottom: "4px", textTransform: "uppercase" }}>{field.label}</div>
-                    <div style={{ fontFamily: "var(--font-display, 'Outfit', sans-serif)", fontSize: "18px", fontWeight: 950 }}>{value}</div>
+                    <div style={{ fontFamily: "var(--font-display, 'Outfit', sans-serif)", fontSize: "18px", fontWeight: 950 }}>{value as number}</div>
                   </div>
                 );
               })}
@@ -766,12 +793,12 @@ export default function EvaluationDetailsClient({
               background: "#000"
             }}
           >
-            <img 
+            <Image 
               src={fullscreenImage} 
               alt="Visualização ampliada"
+              fill
+              unoptimized
               style={{
-                maxWidth: "100vw",
-                maxHeight: "85vh",
                 display: "block",
                 objectFit: "contain"
               }} 

@@ -15,6 +15,42 @@ export interface Skinfolds {
   suprailiac?: number;
   abdominal?: number;
   thigh?: number;
+  [key: string]: number | undefined;
+}
+
+export interface Measurements {
+  neck?: number;
+  shoulder?: number;
+  chest?: number;
+  waist?: number;
+  abdomen?: number;
+  hip?: number;
+  thigh_right?: number;
+  thigh_left?: number;
+  calf_right?: number;
+  calf_left?: number;
+  arm_right?: number;
+  arm_left?: number;
+  arm_flexed_right?: number;
+  arm_flexed_left?: number;
+  forearm_right?: number;
+  forearm_left?: number;
+  [key: string]: number | undefined;
+}
+
+export interface BoneDiameters {
+  humerus?: number;
+  femur?: number;
+  wrist?: number;
+  ankle?: number;
+  [key: string]: number | undefined;
+}
+
+export interface PosturalAnalysis {
+  anterior?: string;
+  posterior?: string;
+  lateral_right?: string;
+  lateral_left?: string;
 }
 
 function hasAllFolds(skinfolds: Skinfolds, required: (keyof Skinfolds)[]): boolean {
