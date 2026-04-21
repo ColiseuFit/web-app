@@ -69,9 +69,18 @@ export async function POST(request: Request) {
 
     const activity = await activityReq.json();
 
-    // 3. Verifica se é corrida (Run ou TrailRun)
-    if (activity.type !== "Run" && activity.type !== "TrailRun") {
-      return NextResponse.json({ status: "ignored_not_a_run" });
+    // 3. Verifica se é corrida (API v3 usa sport_type, versões antigas usam type)
+    // Aceita todos os tipos de corrida do Strava
+    const RUN_TYPES = new Set([
+      "Run", "TrailRun", "VirtualRun", 
+      "Treadmill", "Hike", "Walk" // Inclui variações comuns
+    ]);
+    const activitySportType = activity.sport_type ?? activity.type;
+    console.log(`Tipo da atividade recebida: sport_type=${activity.sport_type}, type=${activity.type}`);
+    
+    if (!RUN_TYPES.has(activitySportType)) {
+      console.log(`Atividade ignorada: tipo "${activitySportType}" não é corrida.`);
+      return NextResponse.json({ status: "ignored_not_a_run", type: activitySportType });
     }
 
     // 4. Inserir no Tracking (running_workouts) de forma livre (treino assíncrono/avulso)
