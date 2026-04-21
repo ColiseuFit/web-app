@@ -157,12 +157,11 @@ export default function RunningAnalytics({ workouts, stats }: RunningAnalyticsPr
           href="https://www.strava.com"
           target="_blank"
           rel="noopener noreferrer"
-          style={{ display: "flex", alignItems: "center", gap: 6, opacity: 0.5, textDecoration: "none" }}
-          aria-label="Data powered by Strava"
+          style={{ display: "flex", alignItems: "center", gap: 6, textDecoration: "none" }}
+          aria-label="Powered by Strava"
         >
-          <span style={{ fontSize: 9, fontWeight: 800, color: "#666", textTransform: "uppercase", letterSpacing: "0.05em" }}>Data powered by</span>
-          {/* Asset oficial — horizontal black */}
-          <StravaPoweredByLogo height={16} style={{ opacity: 0.6 }} />
+          {/* Asset oficial — horizontal black (já contém o texto Powered By) */}
+          <StravaPoweredByLogo height={18} style={{ opacity: 0.8 }} />
         </a>
       </div>
     </div>

@@ -347,9 +347,9 @@ export default function RunningHubTabs({
                       <div style={{ fontSize: 16, fontWeight: 950 }}>{w.actual_distance_km} KM</div>
                       <div style={{ fontSize: 10, fontWeight: 700, color: "#666" }}>{formatPace(w.actual_pace_seconds_per_km)}/km</div>
                       {/* Link obrigatório quando dado vem do Strava — Brand Guidelines §3 */}
-                      {w.strava_activity_id && (
+                      {(w.strava_activity_id || w.target_description?.includes("Strava")) && (
                         <a
-                          href={`https://www.strava.com/activities/${w.strava_activity_id}`}
+                          href={w.strava_activity_id ? `https://www.strava.com/activities/${w.strava_activity_id}` : "https://www.strava.com/dashboard"}
                           target="_blank"
                           rel="noopener noreferrer"
                           style={{
