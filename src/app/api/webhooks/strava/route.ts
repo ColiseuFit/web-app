@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
 // Endpoint público, usaremos a service_key para admin access
@@ -121,23 +121,25 @@ async function processStravaEvent(body: {
 
 /**
  * Tratamento de Webhooks do Strava (Real-time events)
- * Retorna 200 imediatamente e processa em background para evitar timeout.
+ * Retorna 200 imediatamente e processa em background usando after()
  */
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    console.log("Strava Webhook Event:", JSON.stringify(body));
+    console.log("Strava Webhook Event received:", JSON.stringify(body));
 
-    // Responde ao Strava imediatamente (exige resposta em < 2s)
-    // O processamento acontece via waitUntil para não bloquear
-    const response = NextResponse.json({ status: "received" });
-
-    // Processa de forma assíncrona sem bloquear a resposta
-    processStravaEvent(body).catch(err => {
-      console.error("[STRAVA] Erro no processamento assíncrono:", String(err));
+    // Agenda o processamento para DEPOIS que a resposta for enviada
+    // Isso evita o timeout de 2s do Strava e garante que o processo não seja morto pela Vercel
+    after(async () => {
+      try {
+        await processStravaEvent(body);
+      } catch (err) {
+        console.error("[STRAVA] Erro fatal no after():", err);
+      }
     });
 
-    return response;
+    // Responde ao Strava imediatamente (máximo 2s)
+    return NextResponse.json({ status: "received" });
   } catch (err) {
     console.error("Webhook parse error:", err);
     return NextResponse.json({ status: "error" });
