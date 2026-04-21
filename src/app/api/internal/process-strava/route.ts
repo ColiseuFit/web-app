@@ -172,10 +172,27 @@ export async function POST(request: Request) {
     `[PROCESS-STRAVA] Métricas: ${distanceKm.toFixed(2)}km | pace=${paceSecPerKm}s/km | ${expPoints}XP`
   );
 
+  // 6.1. Verificar se este treino já foi processado (Idempotência)
+  const { data: existingWorkout } = await supabase
+    .from("running_workouts")
+    .select("id")
+    .eq("strava_activity_id", object_id)
+    .maybeSingle();
+
+  if (existingWorkout) {
+    console.log(`[PROCESS-STRAVA] ⚠️ Treino já existe (strava_activity_id=${object_id}). Pulando inserção.`);
+    await supabase
+      .from("strava_webhook_events")
+      .update({ status: "done", processed_at: new Date().toISOString() })
+      .eq("id", eventId);
+    return NextResponse.json({ status: "skipped", reason: "already_exists" });
+  }
+
   // 7. Inserir workout no banco
   const { error: insertErr } = await supabase.from("running_workouts").insert({
     student_id: integration.student_id,
     plan_id: null,
+    strava_activity_id: object_id,
     scheduled_date: new Date(activity.start_date as string).toISOString().split("T")[0],
     target_description: `Strava: ${activity.name}`,
     completed_at: new Date(activity.start_date as string).toISOString(),
