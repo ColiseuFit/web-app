@@ -8,7 +8,7 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 /**
- * Strava Webhook Verification (Handshake obrigatório na criação do Webhook via ngrok)
+ * Strava Webhook Verification (Handshake obrigatório na criação do Webhook)
  */
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -27,78 +27,75 @@ export async function GET(request: Request) {
 }
 
 /**
- * Tratamento de Webhooks do Strava (Real-time events)
+ * Processamento assíncrono do evento: busca detalhes e salva no banco.
+ * Separado para poder retornar 200 ao Strava imediatamente.
  */
-export async function POST(request: Request) {
+async function processStravaEvent(body: {
+  object_type: string;
+  aspect_type: string;
+  object_id: number;
+  owner_id: number;
+}) {
+  const { object_type, aspect_type, object_id, owner_id } = body;
+
+  console.log(`[STRAVA] Processando: type=${object_type}, aspect=${aspect_type}, owner=${owner_id}, activity=${object_id}`);
+
+  // Só processa criação de atividade
+  if (object_type !== "activity" || aspect_type !== "create") {
+    console.log(`[STRAVA] Ignorado (não é criação de atividade)`);
+    return;
+  }
+
+  // 1. Encontrar a integração do aluno pelo owner_id do Strava
+  const { data: integration, error: integrationError } = await supabase
+    .from("athlete_integrations")
+    .select("student_id, access_token, refresh_token, expires_at")
+    .eq("provider", "strava")
+    .eq("provider_athlete_id", owner_id.toString())
+    .single();
+
+  if (!integration) {
+    console.log(`[STRAVA] Nenhuma integração para owner_id=${owner_id}. Erro:`, integrationError?.message);
+    return;
+  }
+
+  console.log(`[STRAVA] Integração encontrada: student_id=${integration.student_id}`);
+
+  // 2. Buscar detalhes da atividade na API do Strava com timeout de 8s
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 8000);
+
   try {
-    const body = await request.json();
-    console.log("Strava Webhook Event:", JSON.stringify(body, null, 2));
-
-    const { object_type, aspect_type, object_id, owner_id } = body;
-
-    // LOG DE DIAGNÓSTICO
-    console.log(`[DIAG] object_type=${object_type}, aspect_type=${aspect_type}, owner_id=${owner_id}, object_id=${object_id}`);
-
-    // Só nos interessa quando um treino de corrida (Activity) for CRIADO
-    if (object_type !== "activity" || aspect_type !== "create") {
-      console.log(`[DIAG] Ignorado: object_type=${object_type}, aspect_type=${aspect_type}`);
-      return NextResponse.json({ status: "ignored" });
-    }
-
-    // 1. Encontrar de qual aluno é esse evento (busca pelo owner_id no provider_athlete_id)
-    console.log(`[DIAG] Buscando integração para owner_id=${owner_id} (string: "${owner_id.toString()}")`);
-    const { data: integration, error: integrationError } = await supabase
-      .from("athlete_integrations")
-      .select("student_id, access_token, refresh_token, expires_at")
-      .eq("provider", "strava")
-      .eq("provider_athlete_id", owner_id.toString())
-      .single();
-
-    if (!integration) {
-      console.log(`[DIAG] Nenhuma integração encontrada para owner_id=${owner_id}. Erro Supabase:`, JSON.stringify(integrationError));
-      return NextResponse.json({ status: "success" }); // Strava precisa de 200 OK rápido
-    }
-    console.log(`[DIAG] Integração encontrada! student_id=${integration.student_id}`);
-
-    // 2. Chamar a API do Strava para pegar detalhes do treino (ex: KM, Tempo)
-    // Precisaria checar aqui se o expires_at do access_token já venceu e atualizá-lo
-    // Para simplificar no MVP, assumimos sucesso da request
-    
     const activityReq = await fetch(`https://www.strava.com/api/v3/activities/${object_id}`, {
-      headers: { "Authorization": `Bearer ${integration.access_token}` }
+      headers: { "Authorization": `Bearer ${integration.access_token}` },
+      signal: controller.signal
     });
+    clearTimeout(timeoutId);
 
     if (!activityReq.ok) {
-      console.error("Erro ao buscar atividade no Strava");
-      return NextResponse.json({ status: "refresh_needed" });
+      const errBody = await activityReq.text();
+      console.error(`[STRAVA] Erro ao buscar atividade ${object_id}: HTTP ${activityReq.status}`, errBody);
+      return;
     }
 
     const activity = await activityReq.json();
+    const activitySportType: string = activity.sport_type ?? activity.type;
+    console.log(`[STRAVA] Atividade recebida: name="${activity.name}", sport_type="${activitySportType}", distance=${activity.distance}m`);
 
-    // 3. Verifica se é corrida (API v3 usa sport_type, versões antigas usam type)
-    // Aceita todos os tipos de corrida do Strava
-    const RUN_TYPES = new Set([
-      "Run", "TrailRun", "VirtualRun", 
-      "Treadmill", "Hike", "Walk" // Inclui variações comuns
-    ]);
-    const activitySportType = activity.sport_type ?? activity.type;
-    console.log(`Tipo da atividade recebida: sport_type=${activity.sport_type}, type=${activity.type}`);
-    
+    // 3. Verifica se é corrida
+    const RUN_TYPES = new Set(["Run", "TrailRun", "VirtualRun", "Treadmill", "Hike", "Walk"]);
     if (!RUN_TYPES.has(activitySportType)) {
-      console.log(`Atividade ignorada: tipo "${activitySportType}" não é corrida.`);
-      return NextResponse.json({ status: "ignored_not_a_run", type: activitySportType });
+      console.log(`[STRAVA] Ignorado: tipo "${activitySportType}" não é corrida`);
+      return;
     }
 
-    // 4. Inserir no Tracking (running_workouts) de forma livre (treino assíncrono/avulso)
-    const distanceKm = activity.distance / 1000; // metros para km
-    const movingTime = activity.moving_time;     // segundos
-    
-    // Pace e XP
-    const paceSecPerKm = Math.floor(movingTime / distanceKm);
-    
-    // XP Gamification Híbrida: 10 XP por KM (ex)
+    // 4. Calcular métricas
+    const distanceKm = activity.distance / 1000;
+    const movingTime = activity.moving_time;
+    const paceSecPerKm = distanceKm > 0 ? Math.floor(movingTime / distanceKm) : 0;
     const expPoints = Math.floor(distanceKm * 10);
 
+    // 5. Inserir no banco
     const { error: insertErr } = await supabase
       .from("running_workouts")
       .insert({
@@ -112,17 +109,37 @@ export async function POST(request: Request) {
       });
 
     if (insertErr) {
-      console.error("Erro ao salvar treino de corrida:", insertErr);
+      console.error("[STRAVA] Erro ao salvar treino:", insertErr.message, insertErr.details);
     } else {
-      console.log(`Treino salvo! Aluno ${integration.student_id} ganhou ${expPoints} XP.`);
-      // Opcional: Atualizar a pontuação na tabela Profiles chamando Stored Procedure ou RPC
+      console.log(`[STRAVA] ✅ Treino salvo! ${distanceKm.toFixed(1)}km | ${expPoints}XP | student=${integration.student_id}`);
     }
+  } catch (fetchErr) {
+    clearTimeout(timeoutId);
+    console.error("[STRAVA] Fetch para API do Strava falhou:", String(fetchErr));
+  }
+}
 
-    // Sempre responda 200 em 2s para o Strava não desabilitar o Webhook
-    return NextResponse.json({ status: "success" });
+/**
+ * Tratamento de Webhooks do Strava (Real-time events)
+ * Retorna 200 imediatamente e processa em background para evitar timeout.
+ */
+export async function POST(request: Request) {
+  try {
+    const body = await request.json();
+    console.log("Strava Webhook Event:", JSON.stringify(body));
+
+    // Responde ao Strava imediatamente (exige resposta em < 2s)
+    // O processamento acontece via waitUntil para não bloquear
+    const response = NextResponse.json({ status: "received" });
+
+    // Processa de forma assíncrona sem bloquear a resposta
+    processStravaEvent(body).catch(err => {
+      console.error("[STRAVA] Erro no processamento assíncrono:", String(err));
+    });
+
+    return response;
   } catch (err) {
-    console.error("Webhook Falhou:", err);
-    // Retornamos 200 mesmo no erro pois o Strava fica estressando se falhar muito
-    return NextResponse.json({ status: "error", error: String(err) });
+    console.error("Webhook parse error:", err);
+    return NextResponse.json({ status: "error" });
   }
 }
