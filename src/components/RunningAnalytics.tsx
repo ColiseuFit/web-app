@@ -4,6 +4,19 @@ import { useMemo } from "react";
 import { formatPace } from "@/lib/constants/running";
 import { TrendingUp, TrendingDown, Footprints, Zap, Calendar } from "lucide-react";
 
+/**
+ * Brand Guidelines Strava §2: Proibido recriar logos manualmente.
+ * Usa asset oficial "Powered by" do kit 1.2.
+ */
+const StravaPoweredByLogo = ({ height = 16, style }: { height?: number; style?: React.CSSProperties }) => (
+  <img
+    src="/strava/pwrdBy_strava_black.svg"
+    alt="Powered by Strava"
+    style={{ height, width: "auto", display: "block", ...style }}
+  />
+);
+
+
 interface Workout {
   id: string;
   completed_at: string | null;
@@ -57,11 +70,11 @@ export default function RunningAnalytics({ workouts, stats }: RunningAnalyticsPr
       <div className="nb-card" style={{ padding: 20 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
           <div>
-            <p style={{ fontSize: 9, fontWeight: 900, color: "#888", letterSpacing: "0.1em", textTransform: "uppercase", margin: 0 }}>
-              Volume nas últimas 4 semanas
+            <p style={{ fontSize: 9, fontWeight: 950, color: "#000", letterSpacing: "0.1em", textTransform: "uppercase", margin: 0 }}>
+              Volume de Rodagem (Últimos 30 dias)
             </p>
-            <h3 style={{ fontSize: 24, fontWeight: 950, margin: "4px 0 0 0" }}>
-              {stats.currentMonthKm.toFixed(1)} <span style={{ fontSize: 14 }}>KM</span>
+            <h3 style={{ fontSize: 28, fontWeight: 950, margin: "4px 0 0 0", letterSpacing: "-0.04em" }}>
+              {stats.currentMonthKm.toFixed(1)} <span style={{ fontSize: 14, fontWeight: 800 }}>KM</span>
             </h3>
           </div>
           
@@ -69,11 +82,14 @@ export default function RunningAnalytics({ workouts, stats }: RunningAnalyticsPr
             display: "flex", 
             alignItems: "center", 
             gap: 4, 
-            padding: "4px 8px", 
-            background: stats.kmTrend >= 0 ? "#D1FAE5" : "#FEE2E2",
+            padding: "4px 10px", 
+            background: stats.kmTrend >= 0 ? "var(--nb-red)" : "#000",
+            color: "#FFF",
             border: "2px solid #000",
+            boxShadow: "2px 2px 0px rgba(0,0,0,0.1)",
             fontSize: 11,
-            fontWeight: 900
+            fontWeight: 900,
+            textTransform: "uppercase"
           }}>
             {stats.kmTrend >= 0 ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
             {Math.abs(stats.kmTrend)}%
@@ -81,19 +97,34 @@ export default function RunningAnalytics({ workouts, stats }: RunningAnalyticsPr
         </div>
 
         {/* GRÁFICO DE BARRAS SVG */}
-        <div style={{ height: 80, display: "flex", alignItems: "flex-end", gap: 12, paddingBottom: 24 }}>
+        <div style={{ height: 100, display: "flex", alignItems: "flex-end", gap: 12, paddingBottom: 24, borderBottom: "2px dashed #EEE" }}>
           {weeklyData.map((week, i) => {
-            const height = (week.volume / maxVolume) * 100;
+            const height = Math.max(8, (week.volume / maxVolume) * 100); // Mínimo de 8% para visibilidade
             return (
-              <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+              <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 10, height: "100%", justifyContent: "flex-end" }}>
                 <div style={{ 
                   width: "100%", 
                   height: `${height}%`, 
-                  background: i === 3 ? "var(--nb-red)" : "#000",
-                  border: "2px solid #000",
-                  transition: "height 0.5s ease-out"
-                }} />
-                <span style={{ fontSize: 8, fontWeight: 900, textTransform: "uppercase", color: "#666" }}>
+                  background: i === 3 ? "var(--nb-red)" : "var(--nb-blue)",
+                  border: "3px solid #000",
+                  boxShadow: "2px 2px 0px rgba(0,0,0,0.1)",
+                  transition: "all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)",
+                  position: "relative"
+                }} className="nb-card-hover">
+                   {week.volume > 0 && (
+                     <div style={{ 
+                       position: "absolute", 
+                       top: -18, 
+                       fontSize: 9, 
+                       fontWeight: 900, 
+                       width: "100%", 
+                       textAlign: "center" 
+                     }}>
+                       {week.volume.toFixed(0)}
+                     </div>
+                   )}
+                </div>
+                <span style={{ fontSize: 8, fontWeight: 950, textTransform: "uppercase", color: "#666", letterSpacing: "0.05em" }}>
                   {week.label}
                 </span>
               </div>
@@ -105,20 +136,34 @@ export default function RunningAnalytics({ workouts, stats }: RunningAnalyticsPr
       {/* ── CARDS SECUNDÁRIOS ── */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
         <div className="nb-card" style={{ padding: 16, background: "#FFF" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, color: "#3498DB" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, color: "var(--nb-blue)" }}>
             <Calendar size={16} />
-            <span style={{ fontSize: 9, fontWeight: 900, textTransform: "uppercase", color: "#666" }}>Acumulado Total</span>
+            <span style={{ fontSize: 9, fontWeight: 950, textTransform: "uppercase", color: "#000", letterSpacing: "0.05em" }}>Acumulado Total</span>
           </div>
           <div style={{ fontSize: 18, fontWeight: 950 }}>{stats.totalKm.toFixed(1)} <span style={{ fontSize: 11 }}>KM</span></div>
         </div>
 
         <div className="nb-card" style={{ padding: 16, background: "#FFF" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, color: "#E67E22" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, color: "var(--nb-yellow)" }}>
             <Zap size={16} />
-            <span style={{ fontSize: 9, fontWeight: 900, textTransform: "uppercase", color: "#666" }}>Consistência</span>
+            <span style={{ fontSize: 9, fontWeight: 950, textTransform: "uppercase", color: "#000", letterSpacing: "0.05em" }}>Consistência</span>
           </div>
-          <div style={{ fontSize: 18, fontWeight: 950 }}>{stats.totalSessions} <span style={{ fontSize: 11 }}>Logados</span></div>
+          <div style={{ fontSize: 18, fontWeight: 950 }}>{stats.totalSessions} <span style={{ fontSize: 11 }}>Sessões</span></div>
         </div>
+      </div>
+      {/* Footer de Atribuição — Brand Guidelines §1.2: "Powered by Strava" com link obrigatório */}
+      <div style={{ display: "flex", justifyContent: "center", marginTop: 24, borderTop: "2px dashed #EEE", paddingTop: 16 }}>
+        <a
+          href="https://www.strava.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ display: "flex", alignItems: "center", gap: 6, opacity: 0.5, textDecoration: "none" }}
+          aria-label="Data powered by Strava"
+        >
+          <span style={{ fontSize: 9, fontWeight: 800, color: "#666", textTransform: "uppercase", letterSpacing: "0.05em" }}>Data powered by</span>
+          {/* Asset oficial — horizontal black */}
+          <StravaPoweredByLogo height={16} style={{ opacity: 0.6 }} />
+        </a>
       </div>
     </div>
   );

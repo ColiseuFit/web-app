@@ -5,6 +5,20 @@ import { formatPace } from "@/lib/constants/running";
 import RunningWorkoutForm from "./RunningWorkoutForm";
 import { ChevronDown, ChevronRight, Calendar } from "lucide-react";
 
+/**
+ * Brand Guidelines Strava §2: Proibido recriar logos manualmente.
+ * Usa o asset oficial stacked do kit 1.2 para atribuição em listas.
+ */
+const StravaOfficialBadge = () => (
+  <div style={{ display: "flex", alignItems: "center", lineHeight: 0 }}>
+    <img 
+      src="/strava/pwrdBy_strava_stack_orange.svg" 
+      alt="Powered by Strava" 
+      style={{ height: 24, width: "auto" }} 
+    />
+  </div>
+);
+
 interface Workout {
   id: string;
   scheduled_date: string;
@@ -14,6 +28,8 @@ interface Workout {
   completed_at: string | null;
   actual_distance_km: number | null;
   actual_pace_seconds_per_km: number | null;
+  /** ID da atividade no Strava — presente quando o treino foi sincronizado via API */
+  strava_activity_id?: number | null;
 }
 
 interface RunningWorkoutsListProps {
@@ -109,25 +125,52 @@ export default function RunningWorkoutsList({ workouts }: RunningWorkoutsListPro
                     background: weekDone ? "#000" : "var(--nb-surface)", 
                     color: weekDone ? "#FFF" : "#000", 
                     cursor: "pointer", 
-                    border: "3px solid #000",
-                    boxShadow: weekDone ? "0px 0px 0px #000" : "4px 4px 0px #000", 
-                    transition: "all 0.1s"
+                    border: "4px solid #000",
+                    boxShadow: weekDone ? "0px 0px 0px #000" : "6px 6px 0px #000", 
+                    transition: "all 0.1s",
+                    position: "relative"
                   }}
+                  className="nb-card-hover"
                 >
-                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                    {isExpanded ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
-                    <span style={{ fontSize: "15px", fontWeight: 950, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "12px", zIndex: 2 }}>
+                    <div style={{ 
+                      background: weekDone ? "var(--nb-yellow)" : "#000", 
+                      color: weekDone ? "#000" : "#FFF",
+                      padding: "4px",
+                      borderRadius: "2px",
+                      display: "flex"
+                    }}>
+                      {isExpanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+                    </div>
+                    <span style={{ fontSize: "16px", fontWeight: 950, textTransform: "uppercase", letterSpacing: "0.06em" }}>
                       SEMANA {weekNum}
                     </span>
                   </div>
-                  <span style={{ 
-                    fontSize: "10px", fontWeight: 900, 
-                    background: weekDone ? "rgba(255,255,255,0.2)" : "#F3F4F6", 
-                    color: weekDone ? "#FFF" : "#6B7280",
-                    padding: "4px 8px", border: weekDone ? "none" : "2px solid #E5E7EB"
-                  }}>
-                    {completedCount}/{weekWorkouts.length} CONCLUÍDOS
-                  </span>
+
+                  {/* Barra de progresso sutil no fundo */}
+                  {!weekDone && (
+                    <div style={{ 
+                      position: "absolute", 
+                      bottom: 0, 
+                      left: 0, 
+                      height: "4px", 
+                      width: `${(completedCount / weekWorkouts.length) * 100}%`,
+                      background: "var(--nb-red)",
+                      transition: "width 0.3s ease"
+                    }} />
+                  )}
+
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, zIndex: 2 }}>
+                    <span style={{ 
+                      fontSize: "10px", fontWeight: 900, 
+                      background: weekDone ? "rgba(255,255,255,0.2)" : "#F3F4F6", 
+                      color: weekDone ? "#FFF" : "#6B7280",
+                      padding: "4px 10px", border: weekDone ? "none" : "2px solid #000",
+                      textTransform: "uppercase"
+                    }}>
+                      {completedCount}/{weekWorkouts.length}
+                    </span>
+                  </div>
                 </div>
 
                 {/* Conteúdo da Semana (Sessões) */}
@@ -139,10 +182,10 @@ export default function RunningWorkoutsList({ workouts }: RunningWorkoutsListPro
                         className="nb-card"
                         style={{ 
                           padding: "16px", 
-                          background: workout.completed_at ? "#F0FDF4" : "#fff",
+                          background: workout.completed_at ? "var(--nb-surface)" : "#fff",
                           border: "3px solid #000",
                           boxShadow: "4px 4px 0px #000",
-                          opacity: workout.completed_at ? 0.9 : 1,
+                          opacity: 1,
                           animation: `slideInUp ${0.2 + idx * 0.05}s ease-out forwards` 
                         }}
                       >
@@ -151,11 +194,12 @@ export default function RunningWorkoutsList({ workouts }: RunningWorkoutsListPro
                             {new Date(workout.scheduled_date + "T12:00:00Z").toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'short' })}
                           </span>
                           <div style={{ display: "flex", gap: "6px" }}>
+                          {/* Badge Strava — Brand Guidelines §1.2: identifica atividade sincronizada */}
                             {workout.target_description.includes("Strava") && (
-                              <span style={{ fontSize: "9px", fontWeight: 950, background: "#FC4C02", color: "#FFF", padding: "3px 6px", border: "1px solid #000" }}>STRAVA</span>
+                              <StravaOfficialBadge />
                             )}
                             {workout.completed_at && (
-                              <span style={{ fontSize: "9px", fontWeight: 900, background: "#10B981", color: "#FFF", padding: "3px 6px", border: "1px solid #000" }}>CONCLUÍDO</span>
+                              <span style={{ fontSize: "9px", fontWeight: 950, background: "var(--nb-blue)", color: "#FFF", padding: "3px 8px", border: "1px solid #000" }}>CONCLUÍDO</span>
                             )}
                           </div>
                         </div>
@@ -164,14 +208,14 @@ export default function RunningWorkoutsList({ workouts }: RunningWorkoutsListPro
                         </h4>
                         
                         {workout.completed_at ? (
-                          <div style={{ display: "flex", gap: "16px", marginTop: "12px", padding: "10px", background: "#D1FAE5", border: "2px solid #059669" }}>
+                          <div style={{ display: "flex", gap: "16px", marginTop: "12px", padding: "10px", background: "var(--nb-blue)", color: "#FFF", border: "2px solid #000" }}>
                             <div style={{ flex: 1 }}>
-                              <span style={{ fontSize: "9px", fontWeight: 900, color: "#065F46", display: "block" }}>DISTÂNCIA REALIZADA</span>
-                              <span style={{ fontWeight: 900, color: "#059669" }}>{workout.actual_distance_km} KM</span>
+                              <span style={{ fontSize: "9px", fontWeight: 950, color: "rgba(255,255,255,0.7)", display: "block", textTransform: "uppercase" }}>Resultado</span>
+                              <span style={{ fontWeight: 950 }}>{workout.actual_distance_km} KM</span>
                             </div>
                             <div style={{ flex: 1 }}>
-                              <span style={{ fontSize: "9px", fontWeight: 900, color: "#065F46", display: "block" }}>PACE MÉDIO</span>
-                              <span style={{ fontWeight: 900, color: "#059669" }}>{workout.actual_pace_seconds_per_km ? formatPace(workout.actual_pace_seconds_per_km) : '--:--'}/km</span>
+                              <span style={{ fontSize: "9px", fontWeight: 950, color: "rgba(255,255,255,0.7)", display: "block", textTransform: "uppercase" }}>Pace Médio</span>
+                              <span style={{ fontWeight: 950 }}>{workout.actual_pace_seconds_per_km ? formatPace(workout.actual_pace_seconds_per_km) : '--:--'}/km</span>
                             </div>
                           </div>
                         ) : (

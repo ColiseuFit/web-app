@@ -4,11 +4,9 @@ import { Metadata } from "next";
 import StudentHeader from "@/components/StudentHeader";
 import BottomNav from "@/components/BottomNav";
 import DashboardStyles from "@/components/DashboardStyles";
-import { formatPace } from "@/lib/constants/running";
-import { Footprints, Timer, Zap, TrendingUp, History } from "lucide-react";
-import RunningWorkoutsList from "@/components/RunningWorkoutsList";
-import RunningAnalytics from "@/components/RunningAnalytics";
+import { Footprints, Timer, Zap, TrendingUp } from "lucide-react";
 import { getStudentRunningHistory } from "@/lib/actions/running_actions";
+import RunningHubTabs from "@/components/RunningHubTabs";
 
 
 export const metadata: Metadata = {
@@ -39,7 +37,8 @@ export default async function RunningDashboardPage() {
     { data: profile },
     historyData,
     { data: stravaIntegration }
-  ] = await Promise.all([    supabase
+  ] = await Promise.all([
+    supabase
       .from("running_plans")
       .select("id, title, level_tag, status, created_at, running_workouts(*)")
       .eq("student_id", user.id)
@@ -52,19 +51,19 @@ export default async function RunningDashboardPage() {
       .eq("student_id", user.id)
       .not("completed_at", "is", null)
       .gte("completed_at", firstDayOfMonth),
-      supabase
-        .from("profiles")
-        .select("level, running_level, running_pace, full_name, points_total")
-        .eq("id", user.id)
-        .single(),
-      getStudentRunningHistory(user.id),
-      supabase
-        .from("athlete_integrations")
-        .select("id, provider, updated_at")
-        .eq("student_id", user.id)
-        .eq("provider", "strava")
-        .maybeSingle()
-    ]);
+    supabase
+      .from("profiles")
+      .select("level, running_level, running_pace, full_name, points_total")
+      .eq("id", user.id)
+      .single(),
+    getStudentRunningHistory(user.id),
+    supabase
+      .from("athlete_integrations")
+      .select("id, provider, updated_at")
+      .eq("student_id", user.id)
+      .eq("provider", "strava")
+      .maybeSingle()
+  ]);
 
   // ── Métricas mensais ──────────────────────────────────────────────────────
   const totalKmMonth = (monthlyWorkouts || []).reduce(
@@ -94,326 +93,168 @@ export default async function RunningDashboardPage() {
 
       <main style={{ paddingBottom: "100px" }}>
 
-        {/* ── HERO BANNER ── */}
+        {/* ── HERO BANNER (Fixed Context) ── */}
         <div style={{
-          background: "var(--nb-bg)",
-          color: "#FFF",
-          padding: "32px 20px 28px",
-          borderBottom: "6px solid #000",
+          background: "#FFF",
+          color: "#000",
+          padding: "40px 24px 32px",
+          borderBottom: "8px solid #000",
           position: "relative",
           overflow: "hidden",
+          marginBottom: 24
         }} className="animate-in">
-          {/* Grafismo Neon Brutalist */}
+          {/* Grafismo Neon Brutalist de fundo */}
           <div style={{
             position: "absolute",
-            right: -10,
-            top: -10,
-            fontSize: "120px",
+            right: -20,
+            top: -20,
+            fontSize: "160px",
             fontWeight: 950,
-            opacity: 0.1,
-            color: "#FFF",
-            lineHeight: 0.8,
+            opacity: 0.04,
+            color: "#000",
+            lineHeight: 0.7,
+            letterSpacing: "-0.05em",
             pointerEvents: "none",
-            userSelect: "none"
+            userSelect: "none",
+            transform: "rotate(-5deg)"
           }}>RUN</div>
 
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", position: "relative" }}>
-            <div>
-              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", position: "relative", zIndex: 2 }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
                 <div style={{
                   background: "var(--nb-red)",
-                  padding: "8px",
+                  padding: "10px",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  border: "2px solid #000",
-                  boxShadow: "3px 3px 0px #000"
+                  border: "3px solid #000",
+                  boxShadow: "4px 4px 0px #000",
+                  borderRadius: "2px"
                 }}>
-                  <Footprints size={20} color="#FFF" />
+                  <Footprints size={22} color="#FFF" />
                 </div>
-                <span style={{ fontSize: 10, fontWeight: 900, letterSpacing: "0.2em", textTransform: "uppercase" }}>
-                  Coliseu Running Hub
-                </span>
+                <div style={{ display: "flex", flexDirection: "column" }}>
+                  <span style={{ fontSize: 10, fontWeight: 900, letterSpacing: "0.2em", textTransform: "uppercase", color: "var(--nb-red)" }}>
+                    CENTRAL DE TREINO
+                  </span>
+                  <span style={{ fontSize: 12, fontWeight: 800, opacity: 0.8, color: "#000" }}>
+                    COLISEU RUNNING
+                  </span>
+                </div>
               </div>
 
-              <h1 style={{ fontSize: 32, fontWeight: 950, margin: 0, letterSpacing: "-0.04em", lineHeight: 1.1 }}>
-                PORTAL DO<br /><span style={{ color: "var(--nb-yellow)" }}>ATLETA</span>
+              <h1 style={{ fontSize: 38, fontWeight: 950, margin: 0, letterSpacing: "-0.05em", lineHeight: 1.0, textTransform: "uppercase" }}>
+                SALVE,<br />
+                <span style={{ 
+                  color: "#FFF",
+                  background: "var(--nb-red)",
+                  padding: "0 8px",
+                  display: "inline-block",
+                  transform: "skewX(-5deg)",
+                  marginLeft: "-4px"
+                }}>{firstName}!</span> ⚡
               </h1>
             </div>
 
-            {/* XP Badge */}
+            {/* XP Badge Circular / Premium */}
             <div style={{
-              background: "var(--nb-blue)",
-              padding: "12px",
-              border: "3px solid #000",
-              boxShadow: "4px 4px 0px #000",
+              background: "var(--nb-yellow)",
+              width: "84px",
+              height: "84px",
+              border: "4px solid #000",
+              boxShadow: "6px 6px 0px #000",
               display: "flex",
               flexDirection: "column",
-              alignItems: "center"
+              alignItems: "center",
+              justifyContent: "center",
+              position: "relative",
+              transform: "rotate(3deg)"
             }}>
-              <span style={{ fontSize: 9, fontWeight: 900, opacity: 0.8 }}>TOTAL XP</span>
-              <span style={{ fontSize: 20, fontWeight: 950 }}>{profile?.points_total || 0}</span>
+              <span style={{ fontSize: 8, fontWeight: 950, marginBottom: -4, opacity: 0.8, textTransform: "uppercase" }}>Km Total</span>
+              <span style={{ fontSize: 22, fontWeight: 950 }}>{historyData.stats.totalKm.toFixed(0)}</span>
+              <div style={{ fontSize: 9, fontWeight: 900, marginTop: -2 }}>ACUMULADO</div>
             </div>
           </div>
 
           <div style={{
-            marginTop: 24,
-            paddingTop: 20,
-            borderTop: "2px solid rgba(255,255,255,0.1)",
+            marginTop: 40,
+            paddingTop: 24,
+            borderTop: "3px solid #000",
             display: "flex",
             flexDirection: "column",
-            gap: 12,
+            gap: 16,
             position: "relative",
           }}>
-            <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10 }}>
-              <span style={{
-                fontSize: 10,
-                fontWeight: 900,
+            <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 12 }}>
+              <div style={{
                 background: "var(--nb-yellow)",
                 color: "#000",
-                padding: "6px 12px",
-                textTransform: "uppercase",
-                letterSpacing: "0.1em",
-                border: "2px solid #000",
-                boxShadow: "3px 3px 0px #000"
+                padding: "8px 16px",
+                border: "3px solid #000",
+                boxShadow: "4px 4px 0px #000",
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                transform: "rotate(-1deg)"
               }}>
-                {profile?.running_level || activePlan?.level_tag || profile?.level || "INICIANTE"}
-              </span>
+                <Zap size={14} fill="#000" />
+                <span style={{ fontSize: 12, fontWeight: 950, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                  {profile?.running_level || activePlan?.level_tag || "INICIANTE"}
+                </span>
+              </div>
               
               {profile?.running_pace && (
-                <span style={{
-                  fontSize: 10,
-                  fontWeight: 900,
+                <div style={{
                   background: "#000",
                   color: "#FFF",
-                  padding: "6px 12px",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.1em",
-                  border: "2px solid #FFF",
+                  padding: "8px 16px",
+                  border: "3px solid var(--nb-yellow)",
                   display: "inline-flex",
                   alignItems: "center",
-                  gap: "6px"
+                  gap: "8px",
+                  transform: "rotate(1deg)"
                 }}>
-                  <Timer size={12} /> PACE {profile.running_pace}
-                </span>
+                  <Timer size={14} /> 
+                  <span style={{ fontSize: 12, fontWeight: 900 }}>PACE {profile.running_pace}</span>
+                </div>
               )}
-
-              <span style={{ fontSize: 15, fontWeight: 800, marginLeft: "auto" }}>
-                FALA, {firstName}! ⚡
-              </span>
             </div>
             
             {activePlan?.title && (
-              <div style={{ fontSize: 10, fontWeight: 900, color: "rgba(255,255,255,0.5)", letterSpacing: "0.1em", textTransform: "uppercase", display: "flex", alignItems: "center", gap: 6 }}>
-                <TrendingUp size={12} /> FOCO ATUAL: {activePlan.title}
+              <div style={{ 
+                fontSize: 11, 
+                fontWeight: 900, 
+                color: "rgba(255,255,255,0.6)", 
+                letterSpacing: "0.05em", 
+                textTransform: "uppercase", 
+                display: "flex", 
+                alignItems: "center", 
+                gap: 8,
+                background: "rgba(0,0,0,0.3)",
+                padding: "6px 12px",
+                width: "fit-content",
+                borderRadius: "20px"
+              }}>
+                <TrendingUp size={14} /> FOCO: {activePlan.title}
               </div>
             )}
           </div>
         </div>
 
-        {/* ── MÉTRICAS E PERFORMANCE ── */}
-        <div style={{ padding: "20px 16px 0" }}>
-          <p style={{ fontSize: 9, fontWeight: 900, color: "#888", letterSpacing: "0.12em", textTransform: "uppercase", margin: "0 0 12px 0" }}>
-            Métricas de {now.toLocaleString("pt-BR", { month: "long", timeZone: "UTC" }).toUpperCase()}
-          </p>
-
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 20 }}>
-            {/* KM no mês */}
-            <div style={{
-              padding: "16px 14px",
-              background: "#FFF",
-              border: "3px solid #000",
-              boxShadow: "4px 4px 0px #000",
-            }}>
-              <Footprints size={18} color="#3498DB" style={{ marginBottom: 8 }} />
-              <div style={{ fontSize: 22, fontWeight: 950, color: "#000", lineHeight: 1 }}>
-                {totalKmMonth.toFixed(1)}
-              </div>
-              <div style={{ fontSize: 9, fontWeight: 900, color: "#888", marginTop: 4, textTransform: "uppercase" }}>
-                km
-              </div>
-            </div>
-
-            {/* Tempo total */}
-            <div style={{
-              padding: "16px 14px",
-              background: "#FFF",
-              border: "3px solid #000",
-              boxShadow: "4px 4px 0px #000",
-            }}>
-              <Timer size={18} color="#8E44AD" style={{ marginBottom: 8 }} />
-              <div style={{ fontSize: 22, fontWeight: 950, color: "#000", lineHeight: 1 }}>
-                {timeDisplay}
-              </div>
-              <div style={{ fontSize: 9, fontWeight: 900, color: "#888", marginTop: 4, textTransform: "uppercase" }}>
-                tempo
-              </div>
-            </div>
-
-            {/* Treinos concluídos */}
-            <div style={{
-              padding: "16px 14px",
-              background: "#FFF",
-              border: "3px solid #000",
-              boxShadow: "4px 4px 0px #000",
-            }}>
-              <Zap size={18} color="#E67E22" style={{ marginBottom: 8 }} />
-              <div style={{ fontSize: 22, fontWeight: 950, color: "#000", lineHeight: 1 }}>
-                {completedThisMonth}
-              </div>
-              <div style={{ fontSize: 9, fontWeight: 900, color: "#888", marginTop: 4, textTransform: "uppercase" }}>
-                logs
-              </div>
-            </div>
-          </div>
-
-          {/* Integração Strava Card */}
-          <div style={{
-            background: stravaIntegration ? "#FC4C02" : "#FFF",
-            border: "3px solid #000",
-            boxShadow: stravaIntegration ? "4px 4px 0px #000" : "4px 4px 0px #FC4C02",
-            padding: "20px",
-            marginBottom: "24px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            transition: "all 0.2s"
-          }} className="animate-in">
-            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-              <div style={{
-                width: 48, height: 48,
-                background: stravaIntegration ? "#FFF" : "#FC4C02",
-                color: stravaIntegration ? "#FC4C02" : "#FFF",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                border: "3px solid #000",
-                boxShadow: "2px 2px 0px #000",
-                fontWeight: 950, fontSize: 24,
-                fontStyle: "italic"
-              }}>
-                S
-              </div>
-              <div>
-                <p style={{ margin: 0, fontSize: 16, fontWeight: 950, color: stravaIntegration ? "#FFF" : "#000", letterSpacing: "-0.02em", textTransform: "uppercase" }}>
-                  {stravaIntegration ? "STRAVA SYNC ON" : "CONNECT STRAVA"}
-                </p>
-                <p style={{ margin: "2px 0 0 0", fontSize: 10, fontWeight: 800, color: stravaIntegration ? "rgba(255,255,255,0.7)" : "#666", textTransform: "uppercase" }}>
-                  {stravaIntegration ? `Último sinal: ${new Date(stravaIntegration.updated_at).toLocaleDateString('pt-BR')}` : "Sincronize treinos automaticamente"}
-                </p>
-              </div>
-            </div>
-            
-            {!stravaIntegration ? (
-              <a 
-                href="/api/auth/strava"
-                className="nb-button-main"
-                style={{
-                  padding: "12px 20px",
-                  fontSize: 11,
-                  textDecoration: "none",
-                  boxShadow: "3px 3px 0px #000"
-                }}
-              >
-                Ativar
-              </a>
-            ) : (
-               <div style={{
-                padding: "10px 14px",
-                background: "rgba(0,0,0,0.2)",
-                color: "#FFF",
-                fontSize: 10,
-                fontWeight: 950,
-                letterSpacing: "0.1em",
-                textTransform: "uppercase",
-                border: "2px solid rgba(255,255,255,0.4)",
-              }}>
-                OK
-              </div>
-            )}
-          </div>
-
-          {/* Gráficos de Tendência */}
-          <RunningAnalytics 
-            workouts={historyData.workouts} 
-            stats={historyData.stats} 
-          />
-        </div>
-
-        {/* ── PLANO ATIVO / SESSÕES ── */}
-        <div style={{ padding: "0 16px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
-            <TrendingUp size={16} />
-            <p style={{ fontSize: 9, fontWeight: 900, color: "#888", letterSpacing: "0.12em", textTransform: "uppercase", margin: 0 }}>
-              {activePlan ? `Sessões do Plano • ${completedInPlan}/${workouts.length} concluídas` : "Plano de Treino"}
-            </p>
-          </div>
-
-          {!activePlan ? (
-            /* Empty State */
-            <div style={{
-              padding: "48px 24px",
-              textAlign: "center",
-              background: "#FFF",
-              border: "3px dashed #CCC",
-            }}>
-              <div style={{
-                width: 56,
-                height: 56,
-                background: "#F5F5F5",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                margin: "0 auto 16px",
-              }}>
-                <Footprints size={28} color="#CCC" />
-              </div>
-              <p style={{ fontSize: 14, fontWeight: 900, color: "#333", margin: "0 0 8px 0" }}>
-                NENHUM PLANO ATIVO
-              </p>
-              <p style={{ fontSize: 12, color: "#999", margin: 0, lineHeight: 1.5 }}>
-                Solicite ao seu coach um programa<br />de corrida personalizado.
-              </p>
-            </div>
-          ) : (
-            <RunningWorkoutsList 
-              workouts={workouts} 
-            />
-          )}
-        </div>
-
-        {/* ── HISTÓRICO DE LOGS ── */}
-        {historyData.workouts.length > 0 && (
-          <div style={{ padding: "32px 16px 0" }}>
-             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
-              <History size={16} />
-              <p style={{ fontSize: 9, fontWeight: 900, color: "#888", letterSpacing: "0.12em", textTransform: "uppercase", margin: 0 }}>
-                Histórico de Corridas
-              </p>
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {historyData.workouts.slice(0, 5).map(w => (
-                 <div key={w.id} className="nb-card" style={{ padding: "12px 16px", background: "#FFF" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <div>
-                        <div style={{ fontSize: 10, fontWeight: 900, color: "var(--nb-red)", textTransform: "uppercase" }}>
-                          {new Date(w.completed_at!).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}
-                        </div>
-                        <div style={{ fontSize: 13, fontWeight: 800 }}>{w.target_description || "Corrida Registrada"}</div>
-                      </div>
-                      <div style={{ textAlign: "right" }}>
-                        <div style={{ fontSize: 14, fontWeight: 900 }}>{w.actual_distance_km} KM</div>
-                        <div style={{ fontSize: 10, fontWeight: 700, color: "#666" }}>{formatPace(w.actual_pace_seconds_per_km)}/km</div>
-                      </div>
-                    </div>
-                 </div>
-              ))}
-              {historyData.workouts.length > 5 && (
-                <p style={{ fontSize: 10, textAlign: "center", fontWeight: 700, color: "#999", marginTop: 8 }}>
-                  Mostrando as últimas 5 corridas.
-                </p>
-              )}
-            </div>
-          </div>
-        )}
+        {/* ── CONTEÚDO EM ABAS ── */}
+        <RunningHubTabs 
+          activePlan={activePlan}
+          historyData={historyData}
+          stravaIntegration={stravaIntegration}
+          metrics={{
+            totalKmMonth,
+            timeDisplay,
+            completedThisMonth,
+            completedInPlan,
+            totalWorkoutsInPlan: (activePlan as any)?.running_workouts?.length || 0
+          }}
+        />
 
       </main>
 
