@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
-// Segredo interno para autorizar o endpoint de processamento
-// Evita que qualquer pessoa chame /api/internal/process-strava diretamente
 const INTERNAL_SECRET = process.env.INTERNAL_WEBHOOK_SECRET ?? "coliseu_internal_2026";
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://clube.coliseufit.com";
+
+// maxDuration permite que a função fique viva por até 30s
+// O Promise.race garante que respondemos ao Strava em < 2s
+export const maxDuration = 30;
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -72,19 +74,28 @@ export async function POST(request: Request) {
 
   console.log(`[STRAVA] Evento salvo na fila: id=${event.id}`);
 
-  // 2. Dispara o processador em background (fire-and-forget, sem await)
-  // Cada evento recebe sua própria invocação serverless, sem riscos de timeout
-  fetch(`${SITE_URL}/api/internal/process-strava`, {
+  // 2. Tenta processar inline com timeout de 1.5s
+  // Promise.race: se o processador terminar a tempo, ótimo.
+  // Se não, respondemos 200 mesmo assim e o evento fica pendente na fila.
+  const processorUrl = `${SITE_URL}/api/internal/process-strava`;
+  const processPromise = fetch(processorUrl, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       "x-internal-secret": INTERNAL_SECRET,
     },
     body: JSON.stringify({ eventId: event.id }),
-  }).catch((err) => {
-    console.error("[STRAVA] Falha ao disparar processador:", err);
+  }).then(r => r.json()).catch((err) => {
+    console.error("[STRAVA] Processador retornou erro:", err);
   });
 
-  // 3. Responde ao Strava em < 2s
+  const timeoutPromise = new Promise(resolve =>
+    setTimeout(() => resolve({ status: "timeout" }), 1500)
+  );
+
+  const result = await Promise.race([processPromise, timeoutPromise]);
+  console.log("[STRAVA] Resultado do processador:", JSON.stringify(result));
+
+  // 3. Responde ao Strava em < 2s (garantido pelo timeout acima)
   return NextResponse.json({ status: "received" });
 }
