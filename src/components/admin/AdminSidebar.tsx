@@ -12,7 +12,9 @@ import {
   Settings,
   Contact,
   Trophy,
+  Zap,
 } from "lucide-react";
+import { logout } from "@/app/(auth)/actions";
 
 /**
  * AdminSidebar: Clean vertical navigation for the Admin ecosystem.
@@ -28,6 +30,7 @@ const NAV_ITEMS = [
   { href: "/admin/professores", label: "Professores", icon: Contact },
   { href: "/admin/wods", label: "WODs", icon: Dumbbell },
   { href: "/admin/turmas", label: "Turmas", icon: CalendarClock },
+  { href: "/admin/running", label: "Corrida", icon: Zap },
   { href: "/admin/gamificacao", label: "Gamificação", icon: Trophy },
   { href: "/admin/settings", label: "Config", icon: Settings },
 ];
@@ -159,7 +162,7 @@ export default function AdminSidebar() {
       {/* ── BOTTOM: Back to Student App ── */}
       <div style={{ padding: "16px 12px 24px", borderTop: "2px solid #000", background: "#F9F9F9" }}>
         <a
-          href="/dashboard"
+          href="/dashboard?viewAsStudent=true"
           style={{
             display: "flex",
             alignItems: "center",
@@ -181,31 +184,38 @@ export default function AdminSidebar() {
           <ChevronLeft size={18} strokeWidth={2.5} />
           <span>App do Aluno</span>
         </a>
-        <Link
-          href="/login"
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-            padding: "12px 16px",
-            fontSize: "13px",
-            fontWeight: 700,
-            color: "#666",
-            textDecoration: "none",
-            textTransform: "uppercase",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = "#000";
-            e.currentTarget.style.color = "#FFF";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = "transparent";
-            e.currentTarget.style.color = "#666";
-          }}
-        >
-          <LogOut size={18} strokeWidth={2.5} />
-          <span>Sair</span>
-        </Link>
+        <form action={logout}>
+          <button
+            type="submit"
+            style={{
+              width: "100%",
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              padding: "12px 16px",
+              fontSize: "13px",
+              fontWeight: 700,
+              color: "#666",
+              textDecoration: "none",
+              textTransform: "uppercase",
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              transition: "all 0.1s ease",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "#000";
+              e.currentTarget.style.color = "#FFF";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "transparent";
+              e.currentTarget.style.color = "#666";
+            }}
+          >
+            <LogOut size={18} strokeWidth={2.5} />
+            <span>Sair</span>
+          </button>
+        </form>
       </div>
     </aside>
   );

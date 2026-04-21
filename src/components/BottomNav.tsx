@@ -1,6 +1,6 @@
 "use client";
 
-import { Home, History, TrendingUp, Users, User } from "lucide-react";
+import { Home, History, TrendingUp, Users, LayoutGrid, User } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -23,6 +23,12 @@ export default function BottomNav() {
       icon: History, 
       label: "ATIVIDADE",
       active: pathname.includes("/treinos"),
+    },
+    {
+      href: "/programas",
+      icon: LayoutGrid,
+      label: "PROGRAMAS",
+      active: pathname.includes("/programas"),
     },
     {
       href: "/progresso",

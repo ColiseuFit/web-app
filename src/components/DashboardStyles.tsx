@@ -113,6 +113,24 @@ export default function DashboardStyles() {
       transform: translate(2px, 2px);
       box-shadow: 2px 2px 0px #000;
     }
+
+    /* Blue Mode (Running Hub) */
+    :root {
+      --nb-blue: #3498DB;
+      --nb-blue-dark: #2980B9;
+    }
+
+    .nb-card-blue {
+      border: 3px solid #000;
+      box-shadow: 4px 4px 0px #000;
+      background: #FFF;
+      transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .nb-card-blue:hover {
+      transform: translate(-3px, -3px);
+      box-shadow: 7px 7px 0px var(--nb-blue);
+    }
   `;
 
 

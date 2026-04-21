@@ -2,15 +2,19 @@
 
 import { useState, useRef, useEffect } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Search, Plus, Phone, X, UserPlus, ChevronDown, Pencil, Trash2, User, Mail, Calendar, CreditCard, Info, Activity, ShieldCheck, Lock as LockIcon, Mail as MailIcon, ChevronLeft, ChevronRight, Copy, Check, Tag } from "lucide-react";
+import { Search, Plus, Phone, X, UserPlus, ChevronDown, Pencil, Trash2, User, Mail, Calendar, CreditCard, Info, Activity, ShieldCheck, Lock as LockIcon, Mail as MailIcon, ChevronLeft, ChevronRight, Copy, Check, Tag, Zap } from "lucide-react";
 import { createStudent, updateStudent, deleteStudent, getStudentEvaluations, deletePhysicalEvaluation, updateStudentAuth, updatePreRegistration } from "../../actions";
 import PhysicalEvaluationForm from "./PhysicalEvaluationForm";
+import RunningCoachManager from "./RunningCoachManager";
 import ConfirmModal from "@/components/ConfirmModal";
 import AlertModal from "@/components/AlertModal";
 import { getLevelInfo, LevelInfo } from "@/lib/constants/levels";
 import { MEMBERSHIP_TYPES, getMembershipLabel } from "@/lib/constants/membership";
 import AthleteIdentity from "@/components/Identity/AthleteIdentity";
 import AthleteAvatar from "@/components/Identity/AthleteAvatar";
+import { RUNNING_LEVELS } from "@/lib/constants/running";
+import { maskCPF, maskPhone, maskCEP } from "@/lib/utils/masks";
+
 
 /**
  * AlunosClient: Central de Inteligência e Gestão de Alunos (CRM).
@@ -55,6 +59,8 @@ interface Student {
   address_neighborhood: string | null;
   address_city: string | null;
   address_state: string | null;
+  running_level: string | null;
+  running_pace: string | null;
 }
 
 // We will define this inside the component to use dynamic levels
@@ -110,7 +116,7 @@ export default function AlunosClient({
   const [message, setMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);
   
   // Evaluation States
-  const [drawerView, setDrawerView] = useState<"profile" | "evaluations" | "eval-form" | "security">("profile");
+  const [drawerView, setDrawerView] = useState<"profile" | "evaluations" | "eval-form" | "security" | "running">("profile");
   const [evaluations, setEvaluations] = useState<any[]>([]);
   const [loadingEvals, setLoadingEvals] = useState(false);
   const [selectedEval, setSelectedEval] = useState<any | null>(null);
@@ -495,6 +501,18 @@ export default function AlunosClient({
                 <input type="text" name="full_name" required placeholder="Ex: João da Silva" />
               </div>
               <div>
+                <label style={{ display: "block", fontSize: 12, fontWeight: 500, color: "var(--admin-text-secondary)", marginBottom: 6 }}>WhatsApp / Telefone *</label>
+                <input 
+                  type="text" 
+                  name="phone" 
+                  required 
+                  placeholder="(00) 00000-0000" 
+                  onChange={(e) => { e.target.value = maskPhone(e.target.value); }}
+                />
+              </div>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
+              <div>
                 <label style={{ display: "block", fontSize: 12, fontWeight: 500, color: "var(--admin-text-secondary)", marginBottom: 6 }}>Nível</label>
                 <select name="level" defaultValue={levelsList[0]?.key || "iniciante"}>
                   {levelsList.map(l => (
@@ -511,6 +529,36 @@ export default function AlunosClient({
                     </option>
                   ))}
                 </select>
+              </div>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
+              <div>
+                <label style={{ display: "block", fontSize: 12, fontWeight: 500, color: "var(--admin-text-secondary)", marginBottom: 6 }}>Nível de Corrida</label>
+                <select name="running_level" defaultValue="iniciante">
+                  {Object.values(RUNNING_LEVELS).map(l => (
+                    <option key={l.key} value={l.key}>{l.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label style={{ display: "block", fontSize: 12, fontWeight: 500, color: "var(--admin-text-secondary)", marginBottom: 6 }}>Pace Atual (opcional)</label>
+                <input 
+                  type="text" 
+                  name="running_pace" 
+                  placeholder="00:00" 
+                  maxLength={5}
+                  onChange={(e) => {
+                    // LÓGICA DE MÁSCARA AUTOMÁTICA (MM:SS)
+                    // Para reduzir a fricção do coach, removemos caracteres não-numéricos
+                    // e injetamos o ":" automaticamente após o segundo dígito.
+                    let val = e.target.value.replace(/\D/g, "");
+                    if (val.length > 2) {
+                      val = val.substring(0, 2) + ":" + val.substring(2, 4);
+                    }
+                    e.target.value = val;
+                  }}
+                />
               </div>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
@@ -860,9 +908,25 @@ export default function AlunosClient({
                     </span>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
-                    <span style={{ fontSize: 10, fontWeight: 900, background: getLevelInfo(selectedStudent.level, dynamicLevels).color, color: getLevelInfo(selectedStudent.level, dynamicLevels).textColor, padding: "2px 8px", border: "1px solid #FFF", textTransform: "uppercase" }}>
+                    <span style={{ fontSize: 10, fontWeight: 900, background: getLevelInfo(selectedStudent.level, dynamicLevels).color, color: getLevelInfo(selectedStudent.level, dynamicLevels).textColor, padding: "2px 8px", border: "1px solid #FFF", textTransform: "uppercase" }} title="Nível Técnico Coliseu">
                       {getLevelInfo(selectedStudent.level, dynamicLevels).label}
                     </span>
+                    {selectedStudent.running_level && (
+                      <span style={{ 
+                        fontSize: 10, 
+                        fontWeight: 900, 
+                        background: RUNNING_LEVELS[selectedStudent.running_level as keyof typeof RUNNING_LEVELS]?.color || "#333", 
+                        color: "#FFF", 
+                        padding: "2px 8px", 
+                        border: "1px solid #FFF", 
+                        textTransform: "uppercase",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 4
+                      }} title="Nível de Corrida">
+                        <Zap size={10} fill="white" /> {RUNNING_LEVELS[selectedStudent.running_level as keyof typeof RUNNING_LEVELS]?.label || selectedStudent.running_level}
+                      </span>
+                    )}
                     {selectedStudent.display_name && selectedStudent.display_name !== selectedStudent.full_name && (
                       <span style={{ fontSize: 11, fontWeight: 700, color: "#AAA", fontStyle: "italic" }}>
                         "{selectedStudent.display_name}"
@@ -906,6 +970,18 @@ export default function AlunosClient({
                 AVALIAÇÕES
               </button>
               <button 
+                onClick={() => setDrawerView("running")} 
+                style={{ 
+                  flex: 1, padding: "20px", fontSize: 12, fontWeight: 900, textTransform: "uppercase",
+                  background: drawerView === "running" ? "#FFF" : "transparent",
+                  color: "#000", border: "none", cursor: "pointer", 
+                  borderRight: "4px solid #000",
+                  transition: "all 0.1s"
+                }}
+              >
+                CORRIDA
+              </button>
+              <button 
                 onClick={() => setDrawerView("security")} 
                 style={{ 
                   flex: 1, padding: "20px", fontSize: 12, fontWeight: 900, textTransform: "uppercase",
@@ -942,14 +1018,26 @@ export default function AlunosClient({
                         </div>
                         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                           <label style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", color: "#666" }}>WhatsApp</label>
-                          <input type="text" name="phone" defaultValue={selectedStudent.phone || ""} style={{ width: "100%", padding: 14, border: "3px solid #000", fontWeight: 800, outline: "none" }} />
+                          <input 
+                            type="text" 
+                            name="phone" 
+                            defaultValue={selectedStudent.phone || ""} 
+                            onChange={(e) => { e.target.value = maskPhone(e.target.value); }}
+                            style={{ width: "100%", padding: 14, border: "3px solid #000", fontWeight: 800, outline: "none" }} 
+                          />
                         </div>
                       </div>
                       
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
                         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                           <label style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", color: "#666" }}>CPF</label>
-                          <input type="text" name="cpf" defaultValue={selectedStudent.cpf || ""} style={{ width: "100%", padding: 14, border: "3px solid #000", fontWeight: 800, outline: "none" }} />
+                          <input 
+                            type="text" 
+                            name="cpf" 
+                            defaultValue={selectedStudent.cpf || ""} 
+                            onChange={(e) => { e.target.value = maskCPF(e.target.value); }}
+                            style={{ width: "100%", padding: 14, border: "3px solid #000", fontWeight: 800, outline: "none" }} 
+                          />
                         </div>
                         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                           <label style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", color: "#666" }}>Data de Nascimento</label>
@@ -957,12 +1045,40 @@ export default function AlunosClient({
                         </div>
                       </div>
 
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 20 }}>
                         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                           <label style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", color: "#666" }}>Nível Técnico</label>
                           <select name="level" defaultValue={selectedStudent.level} style={{ width: "100%", padding: 14, border: "3px solid #000", fontWeight: 800, outline: "none" }}>
                             {levelsList.map(l => <option key={l.key} value={l.key}>{l.label}</option>)}
                           </select>
+                        </div>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                          <label style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", color: "#666" }}>Nível Corrida</label>
+                          <select name="running_level" defaultValue={selectedStudent.running_level || "iniciante"} style={{ width: "100%", padding: 14, border: "3px solid #000", fontWeight: 800, outline: "none" }}>
+                            {Object.values(RUNNING_LEVELS).map(l => (
+                              <option key={l.key} value={l.key}>{l.label}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                          <label style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", color: "#666" }}>Pace Atual</label>
+                          <input 
+                            type="text" 
+                            name="running_pace" 
+                            defaultValue={selectedStudent.running_pace || ""}
+                            placeholder="00:00"
+                            maxLength={5}
+                            onChange={(e) => {
+                              // UX: Máscara manual MM:SS para evitar dependências externas pesadas
+                              // e garantir paridade visual rápida para o coach.
+                              let val = e.target.value.replace(/\D/g, "");
+                              if (val.length > 2) {
+                                val = val.substring(0, 2) + ":" + val.substring(2, 4);
+                              }
+                              e.target.value = val;
+                            }}
+                            style={{ width: "100%", padding: 14, border: "3px solid #000", fontWeight: 800, outline: "none" }} 
+                          />
                         </div>
                         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                           <label style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", color: "#666" }}>Gênero</label>
@@ -991,7 +1107,13 @@ export default function AlunosClient({
                         </div>
                         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                           <label style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", color: "#666" }}>Telefone do Contato</label>
-                          <input type="text" name="emergency_contact_phone" defaultValue={selectedStudent.emergency_contact_phone || ""} style={{ width: "100%", padding: 14, border: "3px solid #000", fontWeight: 800, outline: "none" }} />
+                          <input 
+                            type="text" 
+                            name="emergency_contact_phone" 
+                            defaultValue={selectedStudent.emergency_contact_phone || ""} 
+                            onChange={(e) => { e.target.value = maskPhone(e.target.value); }}
+                            style={{ width: "100%", padding: 14, border: "3px solid #000", fontWeight: 800, outline: "none" }} 
+                          />
                         </div>
                       </div>
 
@@ -1008,6 +1130,7 @@ export default function AlunosClient({
                             name="address_zip_code" 
                             defaultValue={selectedStudent.address_zip_code || ""} 
                             onBlur={handleCEPBlur}
+                            onChange={(e) => { e.target.value = maskCEP(e.target.value); }}
                             placeholder="00000-000"
                             style={{ width: "100%", padding: 14, border: "3px solid #000", fontWeight: 800, outline: "none" }} 
                           />
@@ -1046,7 +1169,7 @@ export default function AlunosClient({
 
                       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                         <label style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", color: "#666" }}>Bio / Notas Gerais</label>
-                        <textarea name="bio" defaultValue={selectedStudent.bio || ""} rows={4} style={{ width: "100%", padding: 14, border: "3px solid #000", fontWeight: 800, outline: "none", resize: "none" }} />
+                        <textarea name="bio" defaultValue={selectedStudent.bio || ""} rows={4} maxLength={500} style={{ width: "100%", padding: 14, border: "3px solid #000", fontWeight: 800, outline: "none", resize: "none" }} />
                       </div>
 
                       <div style={{ display: "flex", gap: 16, marginTop: 10 }}>
@@ -1106,6 +1229,15 @@ export default function AlunosClient({
                         <div>
                           <p style={{ fontSize: 11, fontWeight: 800, color: "#666", textTransform: "uppercase", marginBottom: 4 }}>Gênero</p>
                           <p style={{ fontSize: 14, fontWeight: 900, margin: 0 }}>{selectedStudent.gender || "---"}</p>
+                        </div>
+                        <div>
+                          <p style={{ fontSize: 11, fontWeight: 800, color: "#666", textTransform: "uppercase", marginBottom: 4 }}>Identidade Corrida</p>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 2 }}>
+                            <Zap size={14} style={{ color: RUNNING_LEVELS[selectedStudent.running_level as keyof typeof RUNNING_LEVELS]?.color || "#333" }} />
+                            <p style={{ fontSize: 14, fontWeight: 900, margin: 0 }}>
+                              {RUNNING_LEVELS[selectedStudent.running_level as keyof typeof RUNNING_LEVELS]?.label || "NÃO DEFINIDO"}
+                            </p>
+                          </div>
                         </div>
                         <div>
                           <p style={{ fontSize: 11, fontWeight: 800, color: "#666", textTransform: "uppercase", marginBottom: 4 }}>Status do Aluno</p>
@@ -1280,6 +1412,10 @@ export default function AlunosClient({
                   </form>
                 </div>
               )}
+
+              {drawerView === "running" && (
+                <RunningCoachManager studentId={selectedStudent.id} />
+              )}
             </div>
           </div>
         </div>
@@ -1413,6 +1549,7 @@ export default function AlunosClient({
                   name="phone" 
                   required 
                   defaultValue={selectedLead.phone} 
+                  onChange={(e) => { e.target.value = maskPhone(e.target.value); }}
                   style={{ width: "100%", padding: 12, border: "2px solid #000", fontWeight: 700 }} 
                 />
               </div>
@@ -1424,6 +1561,7 @@ export default function AlunosClient({
                     type="text" 
                     name="cpf" 
                     defaultValue={selectedLead.cpf} 
+                    onChange={(e) => { e.target.value = maskCPF(e.target.value); }}
                     style={{ width: "100%", padding: 12, border: "2px solid #000", fontWeight: 700 }} 
                   />
                 </div>

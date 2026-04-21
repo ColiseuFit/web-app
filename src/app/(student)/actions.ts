@@ -633,17 +633,36 @@ export async function getPaginatedHistory(page: number, limit: number = 10) {
     .eq("student_id", user.id)
     .neq("status", "missed")
     .order("created_at", { ascending: false })
-    .range(page * limit, (page + 1) * limit - 1);
+    .range(0, (page + 1) * limit - 1);
+
+  // Fetch running workouts
+  const { data: runningWorkouts } = await supabase
+    .from("running_workouts")
+    .select(`
+      *,
+      profiles:coach_id (
+        display_name,
+        full_name,
+        first_name
+      )
+    `)
+    .eq("student_id", user.id)
+    .not("completed_at", "is", null)
+    .order("completed_at", { ascending: false })
+    .range(0, (page + 1) * limit - 1);
 
   if (error) {
     console.error("Pagination fetch error:", error);
     return { success: false, history: [], hasMore: false };
   }
 
-  const realHistory = (checkins || []).map((checkin: any) => {
+  // 1. Process Check-ins (WOD)
+  const wodHistory = (checkins || []).map((checkin: any) => {
     const wod = Array.isArray(checkin.wods) ? checkin.wods[0] : checkin.wods;
     if (!wod) return null;
     
+    // Sort Date: Use created_at if possible, but for WOD cards we use wod.date
+    const activityDate = new Date(checkin.created_at);
     const wodDate = new Date(wod.date + "T00:00:00Z");
     const formattedDate = !isNaN(wodDate.getTime()) 
       ? wodDate.toLocaleDateString("pt-BR", { day: "2-digit", month: "short", timeZone: "UTC" }).toUpperCase()
@@ -659,7 +678,6 @@ export async function getPaginatedHistory(page: number, limit: number = 10) {
 
     const resolveName = (profile: any) => profile?.display_name || profile?.full_name || profile?.first_name || null;
 
-    // SSoT Precedence: Session (Finalized) > Substitution > Default
     const coachName = resolveName(sessionForDay?.profiles)
       || resolveName(subForDay?.profiles)
       || resolveName(checkin.class_slots?.profiles)
@@ -677,6 +695,7 @@ export async function getPaginatedHistory(page: number, limit: number = 10) {
 
     return {
       id: checkin.id,
+      activityTimestamp: activityDate.getTime(),
       date: formattedDate,
       isoDate: wod.date,
       title: wod.title || "Treino do Dia",
@@ -693,10 +712,61 @@ export async function getPaginatedHistory(page: number, limit: number = 10) {
       time: checkin.class_slots?.time_start ? String(checkin.class_slots.time_start).slice(0, 5) : null,
       tags: wod.tags || [],
       isExcellence: !!checkin.is_excellence,
-      metrics: metrics,
+      metrics,
       achievements: []
     };
-  }).filter((item): item is NonNullable<typeof item> => item !== null);
+  });
 
-  return { success: true, history: realHistory, hasMore: (checkins?.length || 0) === limit };
+  // 2. Process Running Workouts
+  const runHistory = (runningWorkouts || []).map((run: any) => {
+    const activityDate = new Date(run.completed_at);
+    const formattedDate = activityDate.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" }).toUpperCase();
+    
+    const min = Math.floor(run.actual_pace_seconds_per_km / 60);
+    const sec = run.actual_pace_seconds_per_km % 60;
+    const formattedPace = `${min}:${String(sec).padStart(2, "0")}`;
+
+    const resolveName = (profile: any) => profile?.display_name || profile?.full_name || profile?.first_name || null;
+
+    // Calcular pontos se não estiverem explícitos (5 XP / km)
+    const pointsRuleVal = 5; // Fallback se não quiser buscar de novo
+    const totalPoints = Math.round(run.actual_distance_km * pointsRuleVal);
+
+    return {
+      id: run.id,
+      activityTimestamp: activityDate.getTime(),
+      date: formattedDate,
+      isoDate: run.completed_at.split("T")[0],
+      title: run.title || "Treino de Corrida",
+      description: run.student_notes || run.target_description || "Sessão de corrida concluída.",
+      rawContent: run.student_notes || run.target_description || "",
+      typeTag: "CORRIDA",
+      resultType: "running",
+      coach: resolveName(run.profiles) || "Coach Coliseu",
+      points: totalPoints,
+      result: `${run.actual_distance_km} KM`,
+      status: "confirmed",
+      time: activityDate.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
+      tags: ["CORRIDA", "CARDIO", run.level_tag || "RUN"].filter(Boolean),
+      metrics: [
+        { label: "DISTÂNCIA", value: run.actual_distance_km, unit: "km" },
+        { label: "PACE MÉDIO", value: formattedPace, unit: "min/km" }
+      ],
+      performanceLevel: run.rpe ? `RPE ${run.rpe}` : null,
+      achievements: []
+    };
+  });
+
+  // 3. Unify, Sort and Paginate
+  const unifiedHistory = [...wodHistory, ...runHistory]
+    .filter((item): item is NonNullable<typeof item> => item !== null)
+    .sort((a, b) => b.activityTimestamp - a.activityTimestamp);
+
+  const paginatedResults = unifiedHistory.slice(page * limit, (page + 1) * limit);
+
+  return { 
+    success: true, 
+    history: paginatedResults, 
+    hasMore: unifiedHistory.length > (page + 1) * limit 
+  };
 }

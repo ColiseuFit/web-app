@@ -77,6 +77,8 @@ export const createStudentSchema = z.object({
     .min(3, "O nome completo deve ter pelo menos 3 caracteres")
     .refine((val) => isValidName(val), { message: "Nome inválido ou contém caracteres irreais" }),
   level: z.enum(ALL_LEVELS.map(l => l.key) as [string, ...string[]]).default("branco"),
+  running_level: z.string().optional().nullable(),
+  running_pace: z.string().optional().nullable(),
   membership_type: z.enum(["club", "club_pass"]).default("club"),
 });
 
@@ -292,6 +294,8 @@ export const profileSchema = z.object({
   address_city: z.string().max(100).optional().nullable(),
   address_state: z.string().length(2, "A UF deve ter 2 caracteres").optional().nullable().or(z.literal("")),
   level: z.string().optional().nullable(),
+  running_level: z.string().optional().nullable(),
+  running_pace: z.string().optional().nullable(),
   membership_type: z.string().optional().nullable(),
 });
 

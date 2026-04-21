@@ -30,6 +30,8 @@ export async function createStudent(formData: FormData) {
     password: formData.get("password"),
     full_name: formData.get("full_name"),
     level: formData.get("level") || "branco",
+    running_level: formData.get("running_level") || "iniciante",
+    running_pace: formData.get("running_pace"),
     membership_type: formData.get("membership_type") || "club", // Vínculo
   };
 
@@ -37,7 +39,7 @@ export async function createStudent(formData: FormData) {
   if (!validation.success) {
     return { error: "Dados inválidos: " + validation.error.issues[0].message };
   }
-  const { email, password, full_name: fullName, level, membership_type: membershipType } = validation.data;
+  const { email, password, full_name: fullName, level, running_level, running_pace, membership_type: membershipType } = validation.data;
 
   // 1. Verifica a sessão atual e se ele é admin/reception
   const supabase = await createClient();
@@ -98,6 +100,8 @@ export async function createStudent(formData: FormData) {
       full_name: fullName,
       email: email,
       level: level,
+      running_level: running_level,
+      running_pace: running_pace,
       membership_type: membershipType, // Vínculo
     });
 
@@ -190,6 +194,8 @@ export async function updateStudent(studentId: string, formData: FormData) {
   if (error) return { error: "Não foi possível atualizar as informações do perfil." };
 
   revalidatePath("/admin/alunos");
+  revalidatePath("/admin/running");
+  revalidatePath("/(student)/programas/running", "page");
   revalidatePath("/profile");
   revalidatePath("/dashboard");
   revalidatePath("/profile/evaluations");

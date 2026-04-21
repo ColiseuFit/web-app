@@ -10,7 +10,9 @@ import WeekWodCarousel from "@/components/WeekWodCarousel";
 import LevelBadge from "@/components/LevelBadge";
 import { getLevelInfo } from "@/lib/constants/levels";
 import { getCachedLevels } from "@/lib/constants/levels_actions";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Zap, Footprints } from "lucide-react";
+import { RUNNING_LEVELS } from "@/lib/constants/running";
+import { USER_ROLES } from "@/lib/constants/roles";
 import { getTodayDate, getWeekDates, getMinWeekOffset } from "@/lib/date-utils";
 import { getBoxSettings } from "@/lib/constants/settings_actions";
 import { DAY_SHORT, ACTIVE_DAYS, SYSTEM_START_DATE } from "@/lib/constants/calendar";
@@ -23,7 +25,7 @@ export const metadata: Metadata = {
 };
 
 interface PageProps {
-  searchParams: Promise<{ date?: string; weekOffset?: string }>;
+  searchParams: Promise<{ date?: string; weekOffset?: string; viewAsStudent?: string }>;
 }
 
 /**
@@ -52,6 +54,17 @@ export default async function AppDashboard({ searchParams }: PageProps) {
   if (!user) redirect("/login");
 
   const params = await searchParams;
+
+  // 1. Safety Guard: Redirect Admins/Coaches to their portals (Identity Separation)
+  const { data: roleData } = await supabase.from("user_roles").select("role").eq("user_id", user.id).maybeSingle();
+  const currentRole = roleData?.role;
+
+  if (currentRole === USER_ROLES.ADMIN || currentRole === USER_ROLES.RECEPTION) {
+    if (!params.viewAsStudent) redirect("/admin");
+  } else if (currentRole === USER_ROLES.COACH) {
+    if (!params.viewAsStudent) redirect("/coach");
+  }
+
   const rawWeekOffset = parseInt(params.weekOffset || "0", 10);
   const minOffset = getMinWeekOffset(SYSTEM_START_DATE);
   const weekOffset = Math.max(rawWeekOffset, minOffset);
@@ -227,30 +240,71 @@ export default async function AppDashboard({ searchParams }: PageProps) {
               </span>
               <div style={{ width: "20px", height: "2px", background: "#000" }} />
             </div>
-            {/* MEMBERSHIP TAG */}
-            <EvalGateLink
-              href="#"
-              isClubPass={isClubPass}
-              upgradeLink={upgradeLink}
-              style={{ 
-                marginTop: "16px",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "6px",
-                padding: "4px 12px",
-                background: isClubPass ? "#000" : "var(--nb-red)",
-                color: "#fff",
-                border: "2px solid #000",
-                boxShadow: "3px 3px 0px #000",
-                fontSize: "10px",
-                fontWeight: 900,
-                letterSpacing: "0.1em",
-                textTransform: "uppercase",
-                cursor: isClubPass ? "pointer" : "default"
-              }}
-            >
-               {isClubPass ? 'CLUBE PASS' : 'CLUBE PREMIUM'}
-            </EvalGateLink>
+
+            {/* ── IDENTITY BADGES ROW ── */}
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "8px",
+              marginTop: "16px",
+              flexWrap: "wrap",
+            }}>
+              {/* Running Hub Badge */}
+              {profile?.running_level && (
+                <Link href="/programas/running" style={{ textDecoration: "none" }}>
+                  <div style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    padding: "5px 10px",
+                    background: "#E8F4FD",
+                    border: "2px solid #000",
+                    boxShadow: "3px 3px 0 #000",
+                    height: "30px",
+                    boxSizing: "border-box",
+                  }}>
+                    <Zap size={12} fill="#2980BA" color="#2980BA" />
+                    <span className="font-headline" style={{
+                      fontSize: "10px",
+                      fontWeight: 900,
+                      color: "#000",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.08em",
+                      whiteSpace: "nowrap",
+                    }}>
+                      {RUNNING_LEVELS[profile.running_level as keyof typeof RUNNING_LEVELS]?.label || profile.running_level}
+                    </span>
+                  </div>
+                </Link>
+              )}
+
+              {/* Membership Badge */}
+              <EvalGateLink
+                href="#"
+                isClubPass={isClubPass}
+                upgradeLink={upgradeLink}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  padding: "5px 10px",
+                  background: isClubPass ? "#000" : "var(--nb-red)",
+                  color: "#fff",
+                  border: "2px solid #000",
+                  boxShadow: "3px 3px 0px #000",
+                  fontSize: "10px",
+                  fontWeight: 900,
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase",
+                  height: "30px",
+                  boxSizing: "border-box",
+                  cursor: isClubPass ? "pointer" : "default",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {isClubPass ? 'CLUBE PASS' : 'CLUBE PREMIUM'}
+              </EvalGateLink>
+            </div>
           </div>
         </section>
 

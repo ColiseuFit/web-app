@@ -46,11 +46,12 @@ graph TD
   - `docs/PLAYBOOKS/COACH_LITE_LEGACY.md`: Guia para suporte a iPad 2/iOS 9.
   - `docs/PLAYBOOKS/STUDENT_APP.md`: Guia mestre da experiência do aluno.
   - `docs/PLAYBOOKS/PWA_UPDATE_GUARD.md`: Procedimento de versionamento e atualização de cache.
+  - `docs/PLAYBOOKS/RUNNING_HUB.md`: Gestão estratégica de atletas, gerador de planilhas em massa e métricas de Pace.
   ... (outros playbooks)
 
 ---
 ---
-**Versão: 3.1.5 (Abril/2026) - PWA Update Guard & Safe Area Stabilization**  
+**Versão: 3.2.0 (Abril/2026) - Running Hub 2.0: Bulk Generator & Pace Metrics**  
 **Status da Auditoria:** 🏛️ LEGACY PROOF (Protocolo 1.0.3) - CONCLUÍDA  
 **Equipe:** Antigravity AI & Coliseu Engineering Team
 

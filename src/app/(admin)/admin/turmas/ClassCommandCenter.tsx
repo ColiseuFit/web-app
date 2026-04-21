@@ -88,6 +88,8 @@ interface Enrollment {
     full_name: string | null;
     level: string | null;
     avatar_url: string | null;
+    running_level?: string | null;
+    running_pace?: string | null;
   };
 }
 
@@ -101,6 +103,8 @@ interface Checkin {
     display_name: string | null;
     avatar_url: string | null;
     level: string | null;
+    running_level?: string | null;
+    running_pace?: string | null;
   } | null;
 }
 

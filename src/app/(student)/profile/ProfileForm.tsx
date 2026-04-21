@@ -8,6 +8,7 @@ import ConfirmModal from "@/components/ConfirmModal";
 import { Lock, ShieldCheck, User as UserIcon, Mail, Phone, Info, MapPin, HeartPulse, Share2, Sparkles, Pencil, Trash2 } from "lucide-react";
 import AthleteAvatar from "@/components/Identity/AthleteAvatar";
 import { getDisplayName } from "@/lib/identity-utils";
+import { maskCPF, maskPhone, maskCEP } from "@/lib/utils/masks";
 
 /**
  * ProfileForm Component
@@ -126,39 +127,7 @@ export default function ProfileForm({ user, profile, onDirtyChange }: ProfileFor
 
   const completeness = calculateCompleteness();
 
-  // Máscaras de Input
-  const maskCPF = (value: string) => {
-    return value
-      .replace(/\D/g, "")
-      .replace(/(\d{3})(\d)/, "$1.$2")
-      .replace(/(\d{3})(\d)/, "$1.$2")
-      .replace(/(\d{3})(\d{1,2})/, "$1-$2")
-      .replace(/(-\d{2})\d+?$/, "$1");
-  };
-
-  /**
-   * Formata telefone fixo (XX) XXXX-XXXX ou celular (XX) XXXXX-XXXX.
-   * Corrigido para evitar regex encadeado com resultados incorretos.
-   */
-  const maskPhone = (value: string): string => {
-    const numbers = value.replace(/\D/g, "").slice(0, 11);
-    if (numbers.length <= 10) {
-      // Fixo 8 dígitos: (XX) XXXX-XXXX
-      return numbers
-        .replace(/^(\d{0,2})/, "($1")
-        .replace(/^\((\d{2})(\d)/, "($1) $2")
-        .replace(/(\d{4})(\d{1,4})$/, "$1-$2");
-    }
-    // Celular 9 dígitos: (XX) XXXXX-XXXX
-    return numbers.replace(/^(\d{2})(\d{5})(\d{4})$/, "($1) $2-$3");
-  };
-
-  const maskCEP = (value: string) => {
-    return value
-      .replace(/\D/g, "")
-      .replace(/(\d{5})(\d)/, "$1-$2")
-      .replace(/(-\d{3})\d+?$/, "$1");
-  };
+  // Máscaras de Input removidas (usando utilitário central)
 
   const handleCepChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const rawValue = e.target.value;

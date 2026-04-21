@@ -2,6 +2,7 @@
 
 import { loginSchema, updatePasswordSchema, forgotPasswordSchema } from "@/lib/validations/security_schemas";
 import { createClient } from "@/lib/supabase/server";
+import { getRedirectPath } from "@/lib/auth-redirection";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
@@ -46,7 +47,8 @@ export async function login(formData: FormData) {
     return { error: "Não foi possível fazer login: " + error.message };
   }
 
-  redirect("/dashboard");
+  const redirectPath = await getRedirectPath(supabase);
+  redirect(redirectPath);
 }
 
 /**

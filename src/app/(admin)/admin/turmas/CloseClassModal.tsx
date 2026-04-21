@@ -41,6 +41,8 @@ interface Checkin {
     last_name?: string | null;
     avatar_url: string | null;
     level: string;
+    running_level?: string | null;
+    running_pace?: string | null;
   } | null;
 }
 

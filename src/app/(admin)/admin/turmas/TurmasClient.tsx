@@ -135,6 +135,8 @@ interface StudentProfile {
   level: string | null;
   avatar_url: string | null;
   phone: string | null;
+  running_level: string | null;
+  running_pace: string | null;
 }
 
 interface Enrollment {

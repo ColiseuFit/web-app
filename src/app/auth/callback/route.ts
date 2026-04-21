@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { getRedirectPath } from '@/lib/auth-redirection';
 
 /**
  * Rota de Callback de Autenticação (ponte).
@@ -12,16 +13,19 @@ import { createClient } from '@/lib/supabase/server';
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get('code');
-  // Se houver um parâmetro 'next', usamos ele, caso contrário vamos para o dashboard
-  const next = searchParams.get('next') ?? '/dashboard';
 
   if (code) {
     const supabase = await createClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     
     if (!error) {
-      // Redireciona para a URL de destino preservando o domínio original
-      return NextResponse.redirect(`${origin}${next}`);
+      // If there's a specific 'next' parameter, use it, otherwise determine by role
+      let targetPath = searchParams.get('next');
+      if (!targetPath) {
+        targetPath = await getRedirectPath(supabase);
+      }
+      
+      return NextResponse.redirect(`${origin}${targetPath}`);
     }
   }
 

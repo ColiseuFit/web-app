@@ -375,6 +375,7 @@ export default function PhysicalEvaluationForm({
                  value={formData.notes} 
                  onChange={e => handleInputChange("notes", e.target.value)} 
                  rows={4} 
+                 maxLength={500}
                  placeholder="Ex: Aluno em fase de cutting, focado em hipertrofia de membros inferiores..." 
                  style={{ width: "100%", padding: 16, border: "2px solid #000", fontSize: 14, fontWeight: 500, outline: "none", resize: "none" }}
                  onFocus={(e) => (e.currentTarget.style.borderColor = "#E31B23")}
@@ -638,6 +639,7 @@ export default function PhysicalEvaluationForm({
                   value={(formData.postural_analysis as any)[view.key] as string} 
                   onChange={e => handleNestedChange("postural_analysis", view.key, e.target.value)} 
                   rows={4} 
+                  maxLength={500}
                   style={{ width: "100%", padding: 12, border: "2px solid #000", fontSize: 13, fontWeight: 500, outline: "none", resize: "none" }} 
                   onFocus={(e) => (e.currentTarget.style.borderColor = "#E31B23")}
                   onBlur={(e) => (e.currentTarget.style.borderColor = "#000")}

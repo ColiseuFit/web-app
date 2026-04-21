@@ -458,7 +458,11 @@ export const ActivityFeedCard: React.FC<ActivityFeedCardProps> = ({
       padding: "24px",
       marginBottom: "24px",
       position: "relative",
-      boxShadow: isExcellence ? "8px 8px 0px var(--red)" : "6px 6px 0px #000",
+      boxShadow: isExcellence 
+        ? "8px 8px 0px var(--red)" 
+        : typeTag === "CORRIDA" 
+          ? "6px 6px 0px #3498DB" 
+          : "6px 6px 0px #000",
       transition: "all 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
     }}>
 
@@ -470,11 +474,11 @@ export const ActivityFeedCard: React.FC<ActivityFeedCardProps> = ({
               fontSize: "9px",
               fontWeight: 900,
               color: "#FFF",
-              background: "#000",
+              background: typeTag === "CORRIDA" ? "#3498DB" : "#000",
               padding: "4px 8px",
               letterSpacing: "0.1em",
               textTransform: "uppercase",
-              boxShadow: "2px 2px 0px var(--red)"
+              boxShadow: typeTag === "CORRIDA" ? "2px 2px 0px #000" : "2px 2px 0px var(--red)"
             }}>
               {typeTag}
             </span>
@@ -534,16 +538,19 @@ export const ActivityFeedCard: React.FC<ActivityFeedCardProps> = ({
             textTransform: "uppercase"
           }}>
             <Trophy size={16} color="var(--nb-yellow, #FFEF61)" strokeWidth={3} />
-            SCORE FINAL: <span style={{ color: "var(--nb-red, #E31B23)", marginLeft: "4px", marginRight: "8px" }}>{result}</span>
-            <span style={{
-               background: getLevelInfo(performanceLevel).color,
-               color: getLevelInfo(performanceLevel).textColor,
-               fontSize: "9px",
-               padding: "2px 6px",
-               boxShadow: "2px 2px 0px rgba(255,255,255,0.2)"
-            }}>
-              {getLevelInfo(performanceLevel).label}
-            </span>
+            SCORE FINAL: <span style={{ color: typeTag === "CORRIDA" ? "#3498DB" : "var(--nb-red, #E31B23)", marginLeft: "4px", marginRight: "8px" }}>{result}</span>
+            {performanceLevel && (
+              <span style={{
+                 background: performanceLevel.startsWith("RPE") ? "#000" : getLevelInfo(performanceLevel).color,
+                 color: performanceLevel.startsWith("RPE") ? "#FFF" : getLevelInfo(performanceLevel).textColor,
+                 fontSize: "9px",
+                 padding: "2px 6px",
+                 border: performanceLevel.startsWith("RPE") ? "1px solid #3498DB" : "none",
+                 boxShadow: "2px 2px 0px rgba(255,255,255,0.2)"
+              }}>
+                {performanceLevel.startsWith("RPE") ? performanceLevel : getLevelInfo(performanceLevel).label}
+              </span>
+            )}
           </div>
         )}
 
@@ -625,7 +632,7 @@ export const ActivityFeedCard: React.FC<ActivityFeedCardProps> = ({
             )}
             {points !== undefined && points > 0 && (
               <div style={{
-                background: "var(--red)",
+                background: typeTag === "CORRIDA" ? "#3498DB" : "var(--red)",
                 padding: "2px 10px",
                 border: "2px solid #000",
                 display: "flex",

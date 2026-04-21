@@ -58,7 +58,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="pt-BR">
+    <html lang="pt-BR" suppressHydrationWarning>
       <head>
         <meta name="mobile-web-app-capable" content="yes" />
         {/*
@@ -71,7 +71,7 @@ export default function RootLayout({
           href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1125' height='2436'%3E%3Crect width='1125' height='2436' fill='%23131313'/%3E%3Ctext x='50%25' y='48%25' text-anchor='middle' font-family='sans-serif' font-size='72' font-weight='bold' fill='%23E31B23'%3ECOLISEU%3C/text%3E%3Ctext x='50%25' y='53%25' text-anchor='middle' font-family='sans-serif' font-size='36' fill='%23666'%3ECLUB%3C/text%3E%3C/svg%3E"
         />
       </head>
-      <body className="antialiased">
+      <body className="antialiased" suppressHydrationWarning>
         <VersionGuard />
         {children}
       </body>
