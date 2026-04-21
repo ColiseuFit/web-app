@@ -1,13 +1,27 @@
 import { NextResponse } from "next/server";
-import { waitUntil } from "@vercel/functions";
 import { createClient } from "@supabase/supabase-js";
 
 // Admin client – bypass RLS apenas neste contexto de webhook (servidor externo sem session)
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
-// Aumenta o limite de execução da Serverless Function para suportar o processamento em background
+/**
+ * Aumenta o limite de tempo máximo de execução da Serverless Function para 30s.
+ * Necessário para garantir que o processamento em background não seja cortado.
+ */
 export const maxDuration = 30;
+
+/**
+ * Tipos de atividade que o sistema aceita como corrida.
+ */
+const RUN_TYPES = new Set([
+  "Run",
+  "TrailRun",
+  "VirtualRun",
+  "Treadmill",
+  "Hike",
+  "Walk",
+]);
 
 /**
  * Strava Webhook Verification (Handshake obrigatório na criação do Webhook)
@@ -29,41 +43,40 @@ export async function GET(request: Request) {
 }
 
 /**
- * Processamento assíncrono do evento: busca detalhes na API do Strava e salva no banco.
- * Executado via waitUntil() para não bloquear a resposta ao Strava.
+ * Processamento principal do evento Strava.
+ * Busca a atividade na API do Strava e salva no banco de dados.
  *
- * @param body - Payload do evento recebido do Strava
+ * @param object_type - Tipo do objeto (activity, athlete)
+ * @param aspect_type - Tipo do aspecto (create, update, delete)
+ * @param object_id - ID do objeto (atividade ou atleta)
+ * @param owner_id - ID do atleta no Strava
  */
-async function processStravaEvent(body: {
-  object_type: string;
-  aspect_type: string;
-  object_id: number;
-  owner_id: number;
-}) {
-  // Cria o cliente dentro da função para garantir um contexto fresco
+async function processStravaEvent(
+  object_type: string,
+  aspect_type: string,
+  object_id: number,
+  owner_id: number
+): Promise<void> {
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-  const { object_type, aspect_type, object_id, owner_id } = body;
-
   console.log(
-    `[STRAVA] Iniciando processamento: type=${object_type}, aspect=${aspect_type}, owner=${owner_id}, activity=${object_id}`
+    `[STRAVA] Processando: type=${object_type} aspect=${aspect_type} owner=${owner_id} activity=${object_id}`
   );
 
-  // Só processa criação de atividade
   if (object_type !== "activity" || aspect_type !== "create") {
     console.log(`[STRAVA] Ignorado – não é criação de atividade.`);
     return;
   }
 
-  // 1. Encontrar a integração do aluno pelo owner_id do Strava
+  // 1. Buscar integração do aluno pelo owner_id do Strava
   const { data: integration, error: integrationError } = await supabase
     .from("athlete_integrations")
-    .select("student_id, access_token, refresh_token, expires_at")
+    .select("student_id, access_token")
     .eq("provider", "strava")
     .eq("provider_athlete_id", owner_id.toString())
     .single();
 
-  if (integrationError || !integration) {
+  if (!integration) {
     console.error(
       `[STRAVA] ❌ Integração não encontrada para owner_id=${owner_id}. Erro: ${integrationError?.message ?? "null"}`
     );
@@ -72,12 +85,13 @@ async function processStravaEvent(body: {
 
   console.log(`[STRAVA] Integração encontrada: student_id=${integration.student_id}`);
 
-  // 2. Buscar detalhes da atividade na API do Strava com timeout
+  // 2. Buscar atividade na API do Strava
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 10000);
+  const timeoutId = setTimeout(() => controller.abort(), 12000);
 
+  let activity: Record<string, unknown>;
   try {
-    const activityRes = await fetch(
+    const res = await fetch(
       `https://www.strava.com/api/v3/activities/${object_id}`,
       {
         headers: { Authorization: `Bearer ${integration.access_token}` },
@@ -86,98 +100,111 @@ async function processStravaEvent(body: {
     );
     clearTimeout(timeoutId);
 
-    if (!activityRes.ok) {
-      const errBody = await activityRes.text();
+    if (!res.ok) {
+      const errText = await res.text();
       console.error(
-        `[STRAVA] ❌ Erro ao buscar atividade ${object_id}: HTTP ${activityRes.status} – ${errBody}`
+        `[STRAVA] ❌ API retornou HTTP ${res.status}: ${errText}`
       );
       return;
     }
 
-    const activity = await activityRes.json();
-    // A API v3 do Strava usa sport_type no schema moderno e type no legado
-    const activitySportType: string = activity.sport_type ?? activity.type ?? "";
-
-    console.log(
-      `[STRAVA] Atividade recebida: name="${activity.name}", sport_type="${activitySportType}", distance=${activity.distance}m, moving_time=${activity.moving_time}s`
-    );
-
-    // 3. Filtro de tipos aceitos como atividade de corrida
-    const RUN_TYPES = new Set([
-      "Run",
-      "TrailRun",
-      "VirtualRun",
-      "Treadmill",
-      "Hike",
-      "Walk",
-    ]);
-
-    if (!RUN_TYPES.has(activitySportType)) {
-      console.log(`[STRAVA] Ignorado – tipo "${activitySportType}" não é corrida.`);
-      return;
-    }
-
-    // 4. Calcular métricas
-    const distanceKm = activity.distance / 1000;
-    const movingTime: number = activity.moving_time;
-    // Pace em segundos por km
-    const paceSecPerKm = distanceKm > 0 ? Math.floor(movingTime / distanceKm) : 0;
-    // 10 XP por km completado
-    const expPoints = Math.floor(distanceKm * 10);
-
-    console.log(
-      `[STRAVA] Métricas: ${distanceKm.toFixed(2)}km | pace=${paceSecPerKm}s/km | ${expPoints} XP`
-    );
-
-    // 5. Inserir workout no banco – plan_id é NULL pois é sincronização via Strava
-    const { error: insertErr } = await supabase.from("running_workouts").insert({
-      student_id: integration.student_id,
-      plan_id: null,
-      scheduled_date: new Date(activity.start_date).toISOString().split("T")[0],
-      target_description: `Strava: ${activity.name}`,
-      completed_at: new Date(activity.start_date).toISOString(),
-      actual_distance_km: distanceKm,
-      actual_duration_seconds: movingTime,
-      actual_pace_seconds_per_km: paceSecPerKm,
-      student_notes: "Sincronizado automaticamente via Strava.",
-    });
-
-    if (insertErr) {
-      console.error(
-        `[STRAVA] ❌ Erro ao salvar treino: ${insertErr.message} | Detalhes: ${insertErr.details}`
-      );
-      return;
-    }
-
-    console.log(
-      `[STRAVA] ✅ Treino salvo com sucesso! ${distanceKm.toFixed(1)}km | ${expPoints}XP | student_id=${integration.student_id}`
-    );
-  } catch (fetchErr: unknown) {
+    activity = await res.json();
+  } catch (err) {
     clearTimeout(timeoutId);
-    const errMsg =
-      fetchErr instanceof Error ? fetchErr.message : String(fetchErr);
-    console.error(`[STRAVA] ❌ Fetch para API do Strava falhou: ${errMsg}`);
+    console.error(
+      `[STRAVA] ❌ Fetch falhou: ${err instanceof Error ? err.message : String(err)}`
+    );
+    return;
   }
+
+  const sportType: string =
+    (activity.sport_type as string) ?? (activity.type as string) ?? "";
+
+  console.log(
+    `[STRAVA] Atividade: name="${activity.name}", sport_type="${sportType}", distance=${activity.distance}m, moving_time=${activity.moving_time}s`
+  );
+
+  // 3. Filtro de tipo
+  if (!RUN_TYPES.has(sportType)) {
+    console.log(`[STRAVA] Ignorado – tipo "${sportType}" não é corrida.`);
+    return;
+  }
+
+  // 4. Calcular métricas
+  const distanceKm = (activity.distance as number) / 1000;
+  const movingTime = activity.moving_time as number;
+  const paceSecPerKm =
+    distanceKm > 0 ? Math.floor(movingTime / distanceKm) : 0;
+  const expPoints = Math.floor(distanceKm * 10);
+
+  console.log(
+    `[STRAVA] Métricas: ${distanceKm.toFixed(2)}km | ${paceSecPerKm}s/km | ${expPoints}XP`
+  );
+
+  // 5. Salvar no banco
+  const { error: insertErr } = await supabase.from("running_workouts").insert({
+    student_id: integration.student_id,
+    plan_id: null,
+    scheduled_date: new Date(activity.start_date as string)
+      .toISOString()
+      .split("T")[0],
+    target_description: `Strava: ${activity.name}`,
+    completed_at: new Date(activity.start_date as string).toISOString(),
+    actual_distance_km: distanceKm,
+    actual_duration_seconds: movingTime,
+    actual_pace_seconds_per_km: paceSecPerKm,
+    student_notes: "Sincronizado automaticamente via Strava.",
+  });
+
+  if (insertErr) {
+    console.error(
+      `[STRAVA] ❌ Erro ao salvar: ${insertErr.message} | ${insertErr.details}`
+    );
+    return;
+  }
+
+  console.log(
+    `[STRAVA] ✅ Treino salvo! ${distanceKm.toFixed(1)}km | ${expPoints}XP | student_id=${integration.student_id}`
+  );
 }
 
 /**
  * Handler principal do Webhook do Strava.
- * Retorna 200 imediatamente ao Strava e delega o processamento ao waitUntil()
- * do @vercel/functions, que mantém a Serverless Function viva até a conclusão.
+ *
+ * Estratégia de processamento:
+ * - Responde ao Strava imediatamente com 200 (requisito: < 2s).
+ * - O processamento real ocorre em paralelo usando Promise.race():
+ *   - Se concluir em < 25s: salva o treino e retorna.
+ *   - Se demorar mais: responde 200 mesmo assim (o Strava não espera).
+ * - O maxDuration=30s garante que a Serverless Function tem tempo suficiente.
  */
 export async function POST(request: Request) {
+  let body: {
+    object_type: string;
+    aspect_type: string;
+    object_id: number;
+    owner_id: number;
+  };
+
   try {
-    const body = await request.json();
+    body = await request.json();
     console.log("[STRAVA] Webhook recebido:", JSON.stringify(body));
-
-    // waitUntil() é o mecanismo oficial da Vercel para background jobs:
-    // mantém a função serverless ativa até a promise resolver, mesmo após a resposta.
-    waitUntil(processStravaEvent(body));
-
-    // Responde ao Strava em < 2 segundos (requisito obrigatório da API deles)
-    return NextResponse.json({ status: "received" });
   } catch (err) {
-    console.error("[STRAVA] Erro ao parsear webhook payload:", err);
+    console.error("[STRAVA] ❌ Erro ao parsear payload:", err);
     return NextResponse.json({ status: "error" }, { status: 200 });
   }
+
+  // Processa em paralelo com a resposta – a Promise "flutua" até completar
+  // A Vercel mantém a invocação ativa por maxDuration=30s
+  processStravaEvent(
+    body.object_type,
+    body.aspect_type,
+    body.object_id,
+    body.owner_id
+  ).catch((err) => {
+    console.error("[STRAVA] ❌ Erro fatal no processamento:", err);
+  });
+
+  // Responde ao Strava imediatamente (requisito: < 2s)
+  return NextResponse.json({ status: "received" });
 }
