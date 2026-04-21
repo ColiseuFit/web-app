@@ -1,11 +1,16 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
+const SITE_URL = process.env.NODE_ENV === "development"
+  ? "http://localhost:3000"
+  : (process.env.NEXT_PUBLIC_SITE_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : ""));
+
+// Token de verificação (deve coincidir com o configurado no Strava)
+const VERIFY_TOKEN = "coliseu_strava_webhook_token_2026";
+
 const INTERNAL_SECRET = process.env.INTERNAL_WEBHOOK_SECRET ?? "coliseu_internal_2026";
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://clube.coliseufit.com";
 
 // maxDuration permite que a função fique viva por até 30s
-// O Promise.race garante que respondemos ao Strava em < 2s
 export const maxDuration = 30;
 
 const supabase = createClient(
@@ -22,11 +27,14 @@ export async function GET(request: Request) {
   const token = searchParams.get("hub.verify_token");
   const challenge = searchParams.get("hub.challenge");
 
-  if (mode === "subscribe" && token === "coliseu_strava_webhook_token_2026") {
-    console.log("[STRAVA] Webhook verificado.");
+  console.log(`[STRAVA] Verificação recebida: mode=${mode}, token=${token}`);
+
+  if (mode === "subscribe" && token === VERIFY_TOKEN) {
+    console.log("[STRAVA] ✅ Webhook verificado com sucesso.");
     return NextResponse.json({ "hub.challenge": challenge });
   }
 
+  console.error("[STRAVA] ❌ Falha na verificação do webhook. Token não coincide.");
   return new NextResponse("Forbidden", { status: 403 });
 }
 

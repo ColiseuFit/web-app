@@ -105,9 +105,13 @@ export default function RunningWorkoutsList({ workouts }: RunningWorkoutsListPro
                   onClick={() => toggleWeek(weekNum)}
                   style={{ 
                     display: "flex", alignItems: "center", justifyContent: "space-between",
-                    padding: "16px", background: weekDone ? "#000" : "#FFF", color: weekDone ? "#FFF" : "#000", 
-                    cursor: "pointer", border: "4px solid #000",
-                    boxShadow: "4px 4px 0px #000", transition: "all 0.1s"
+                    padding: "20px 16px", 
+                    background: weekDone ? "#000" : "var(--nb-surface)", 
+                    color: weekDone ? "#FFF" : "#000", 
+                    cursor: "pointer", 
+                    border: "3px solid #000",
+                    boxShadow: weekDone ? "0px 0px 0px #000" : "4px 4px 0px #000", 
+                    transition: "all 0.1s"
                   }}
                 >
                   <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
@@ -136,7 +140,8 @@ export default function RunningWorkoutsList({ workouts }: RunningWorkoutsListPro
                         style={{ 
                           padding: "16px", 
                           background: workout.completed_at ? "#F0FDF4" : "#fff",
-                          border: `3px solid ${workout.completed_at ? "#059669" : "#000"}`,
+                          border: "3px solid #000",
+                          boxShadow: "4px 4px 0px #000",
                           opacity: workout.completed_at ? 0.9 : 1,
                           animation: `slideInUp ${0.2 + idx * 0.05}s ease-out forwards` 
                         }}
@@ -145,9 +150,14 @@ export default function RunningWorkoutsList({ workouts }: RunningWorkoutsListPro
                           <span style={{ fontSize: "11px", fontWeight: 900, textTransform: "uppercase", color: "var(--nb-red)" }}>
                             {new Date(workout.scheduled_date + "T12:00:00Z").toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'short' })}
                           </span>
-                          {workout.completed_at && (
-                            <span style={{ fontSize: "9px", fontWeight: 900, background: "#10B981", color: "#FFF", padding: "3px 6px", border: "1px solid #047857" }}>CONCLUÍDO</span>
-                          )}
+                          <div style={{ display: "flex", gap: "6px" }}>
+                            {workout.target_description.includes("Strava") && (
+                              <span style={{ fontSize: "9px", fontWeight: 950, background: "#FC4C02", color: "#FFF", padding: "3px 6px", border: "1px solid #000" }}>STRAVA</span>
+                            )}
+                            {workout.completed_at && (
+                              <span style={{ fontSize: "9px", fontWeight: 900, background: "#10B981", color: "#FFF", padding: "3px 6px", border: "1px solid #000" }}>CONCLUÍDO</span>
+                            )}
+                          </div>
                         </div>
                         <h4 className="font-headline" style={{ fontSize: "17px", fontWeight: 900, marginBottom: "4px" }}>
                           {workout.target_description}

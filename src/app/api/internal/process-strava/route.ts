@@ -76,7 +76,7 @@ export async function POST(request: Request) {
   // 3. Buscar integração do atleta (owner_id = Strava athlete ID)
   const { data: integration, error: integrationErr } = await supabase
     .from("athlete_integrations")
-    .select("student_id, access_token")
+    .select("student_id")
     .eq("provider", "strava")
     .eq("provider_athlete_id", owner_id.toString())
     .single();
@@ -93,7 +93,21 @@ export async function POST(request: Request) {
 
   console.log(`[PROCESS-STRAVA] Integração encontrada: student_id=${integration.student_id}`);
 
-  // 4. Buscar detalhes da atividade na API do Strava
+  // 4. Garantir token válido e buscar detalhes da atividade na API do Strava
+  let accessToken: string;
+  try {
+    const { getValidStravaToken } = await import("@/lib/strava");
+    accessToken = await getValidStravaToken(integration.student_id);
+  } catch (err) {
+    const msg = `Erro ao obter token Strava: ${err instanceof Error ? err.message : String(err)}`;
+    console.error(`[PROCESS-STRAVA] ❌ ${msg}`);
+    await supabase
+      .from("strava_webhook_events")
+      .update({ status: "error", error_message: msg, processed_at: new Date().toISOString() })
+      .eq("id", eventId);
+    return NextResponse.json({ status: "error", message: msg });
+  }
+
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 12000);
 
@@ -102,7 +116,7 @@ export async function POST(request: Request) {
     const res = await fetch(
       `https://www.strava.com/api/v3/activities/${object_id}`,
       {
-        headers: { Authorization: `Bearer ${integration.access_token}` },
+        headers: { Authorization: `Bearer ${accessToken}` },
         signal: controller.signal,
       }
     );
@@ -181,7 +195,23 @@ export async function POST(request: Request) {
     return NextResponse.json({ status: "error", message: msg });
   }
 
-  // 8. Marcar evento como concluído
+  // 8. Gamificação: Atribuir XP
+  if (expPoints > 0) {
+    console.log(`[PROCESS-STRAVA] Atribuindo ${expPoints}XP para student_id=${integration.student_id}`);
+    const { error: pointsError } = await supabase.rpc("increment_points", {
+      user_id: integration.student_id,
+      amount: expPoints
+    });
+
+    if (pointsError) {
+      console.error("[PROCESS-STRAVA] ⚠️ Falha ao atribuir pontos:", pointsError.message);
+      // Não falhamos o processo inteiro se apenas os pontos falharem, mas logamos.
+    } else {
+      console.log(`[PROCESS-STRAVA] ✅ Pontos atribuídos com sucesso.`);
+    }
+  }
+
+  // 9. Marcar evento como concluído
   await supabase
     .from("strava_webhook_events")
     .update({ status: "done", processed_at: new Date().toISOString() })

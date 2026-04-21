@@ -54,13 +54,13 @@ export default async function RunningDashboardPage() {
       .gte("completed_at", firstDayOfMonth),
       supabase
         .from("profiles")
-        .select("level, running_level, running_pace, full_name")
+        .select("level, running_level, running_pace, full_name, points_total")
         .eq("id", user.id)
         .single(),
       getStudentRunningHistory(user.id),
       supabase
         .from("athlete_integrations")
-        .select("id, provider")
+        .select("id, provider, updated_at")
         .eq("student_id", user.id)
         .eq("provider", "strava")
         .maybeSingle()
@@ -96,101 +96,116 @@ export default async function RunningDashboardPage() {
 
         {/* ── HERO BANNER ── */}
         <div style={{
-          background: "#000",
+          background: "var(--nb-bg)",
           color: "#FFF",
-          padding: "28px 20px 24px",
-          borderBottom: "4px solid #000",
+          padding: "32px 20px 28px",
+          borderBottom: "6px solid #000",
           position: "relative",
           overflow: "hidden",
-        }}>
-          {/* Detalhe gráfico de fundo */}
+        }} className="animate-in">
+          {/* Grafismo Neon Brutalist */}
           <div style={{
             position: "absolute",
-            right: -20,
-            top: -20,
-            width: 180,
-            height: 180,
-            borderRadius: "50%",
-            border: "40px solid rgba(255,255,255,0.04)",
+            right: -10,
+            top: -10,
+            fontSize: "120px",
+            fontWeight: 950,
+            opacity: 0.1,
+            color: "#FFF",
+            lineHeight: 0.8,
             pointerEvents: "none",
-          }} />
-          <div style={{
-            position: "absolute",
-            right: 30,
-            bottom: -40,
-            width: 120,
-            height: 120,
-            borderRadius: "50%",
-            border: "30px solid rgba(255,255,255,0.04)",
-            pointerEvents: "none",
-          }} />
+            userSelect: "none"
+          }}>RUN</div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 6, position: "relative" }}>
-            <div style={{
-              background: "#E74C3C",
-              padding: "8px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}>
-              <Footprints size={20} color="#FFF" />
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", position: "relative" }}>
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
+                <div style={{
+                  background: "var(--nb-red)",
+                  padding: "8px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  border: "2px solid #000",
+                  boxShadow: "3px 3px 0px #000"
+                }}>
+                  <Footprints size={20} color="#FFF" />
+                </div>
+                <span style={{ fontSize: 10, fontWeight: 900, letterSpacing: "0.2em", textTransform: "uppercase" }}>
+                  Coliseu Running Hub
+                </span>
+              </div>
+
+              <h1 style={{ fontSize: 32, fontWeight: 950, margin: 0, letterSpacing: "-0.04em", lineHeight: 1.1 }}>
+                PORTAL DO<br /><span style={{ color: "var(--nb-yellow)" }}>ATLETA</span>
+              </h1>
             </div>
-            <span style={{ fontSize: 10, fontWeight: 900, letterSpacing: "0.15em", opacity: 0.6, textTransform: "uppercase" }}>
-              Coliseu Running
-            </span>
+
+            {/* XP Badge */}
+            <div style={{
+              background: "var(--nb-blue)",
+              padding: "12px",
+              border: "3px solid #000",
+              boxShadow: "4px 4px 0px #000",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center"
+            }}>
+              <span style={{ fontSize: 9, fontWeight: 900, opacity: 0.8 }}>TOTAL XP</span>
+              <span style={{ fontSize: 20, fontWeight: 950 }}>{profile?.points_total || 0}</span>
+            </div>
           </div>
 
-          <h1 style={{ fontSize: 28, fontWeight: 950, margin: 0, letterSpacing: "-0.02em", position: "relative" }}>
-            PROGRAMA DE<br />CORRIDA
-          </h1>
-
           <div style={{
-            marginTop: 18,
-            paddingTop: 18,
-            borderTop: "1px solid rgba(255,255,255,0.15)",
+            marginTop: 24,
+            paddingTop: 20,
+            borderTop: "2px solid rgba(255,255,255,0.1)",
             display: "flex",
             flexDirection: "column",
-            gap: 8,
+            gap: 12,
             position: "relative",
           }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10 }}>
               <span style={{
                 fontSize: 10,
                 fontWeight: 900,
-                background: "#FFF",
+                background: "var(--nb-yellow)",
                 color: "#000",
-                padding: "4px 10px",
+                padding: "6px 12px",
                 textTransform: "uppercase",
                 letterSpacing: "0.1em",
                 border: "2px solid #000",
+                boxShadow: "3px 3px 0px #000"
               }}>
                 {profile?.running_level || activePlan?.level_tag || profile?.level || "INICIANTE"}
               </span>
+              
               {profile?.running_pace && (
                 <span style={{
                   fontSize: 10,
                   fontWeight: 900,
                   background: "#000",
                   color: "#FFF",
-                  padding: "4px 10px",
+                  padding: "6px 12px",
                   textTransform: "uppercase",
                   letterSpacing: "0.1em",
                   border: "2px solid #FFF",
                   display: "inline-flex",
                   alignItems: "center",
-                  gap: "4px"
+                  gap: "6px"
                 }}>
-                  <Timer size={10} /> PACE {profile.running_pace}
+                  <Timer size={12} /> PACE {profile.running_pace}
                 </span>
               )}
-              <span style={{ fontSize: 14, fontWeight: 700, opacity: 0.9 }}>
-                Olá, {firstName}
+
+              <span style={{ fontSize: 15, fontWeight: 800, marginLeft: "auto" }}>
+                FALA, {firstName}! ⚡
               </span>
             </div>
             
             {activePlan?.title && (
-              <div style={{ fontSize: 9, fontWeight: 900, color: "#888", letterSpacing: "0.1em", textTransform: "uppercase" }}>
-                Planilha Atual: {activePlan.title}
+              <div style={{ fontSize: 10, fontWeight: 900, color: "rgba(255,255,255,0.5)", letterSpacing: "0.1em", textTransform: "uppercase", display: "flex", alignItems: "center", gap: 6 }}>
+                <TrendingUp size={12} /> FOCO ATUAL: {activePlan.title}
               </div>
             )}
           </div>
@@ -256,30 +271,33 @@ export default async function RunningDashboardPage() {
           <div style={{
             background: stravaIntegration ? "#FC4C02" : "#FFF",
             border: "3px solid #000",
-            boxShadow: "4px 4px 0px #000",
-            padding: "16px",
-            marginBottom: "20px",
+            boxShadow: stravaIntegration ? "4px 4px 0px #000" : "4px 4px 0px #FC4C02",
+            padding: "20px",
+            marginBottom: "24px",
             display: "flex",
             alignItems: "center",
-            justifyContent: "space-between"
-          }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            justifyContent: "space-between",
+            transition: "all 0.2s"
+          }} className="animate-in">
+            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
               <div style={{
-                width: 40, height: 40,
+                width: 48, height: 48,
                 background: stravaIntegration ? "#FFF" : "#FC4C02",
                 color: stravaIntegration ? "#FC4C02" : "#FFF",
                 display: "flex", alignItems: "center", justifyContent: "center",
-                borderRadius: "50%",
-                fontWeight: 900, fontSize: 18
+                border: "3px solid #000",
+                boxShadow: "2px 2px 0px #000",
+                fontWeight: 950, fontSize: 24,
+                fontStyle: "italic"
               }}>
                 S
               </div>
               <div>
-                <p style={{ margin: 0, fontSize: 14, fontWeight: 900, color: stravaIntegration ? "#FFF" : "#000", letterSpacing: "0.05em", textTransform: "uppercase" }}>
-                  {stravaIntegration ? "Strava Conectado" : "Conectar ao Strava"}
+                <p style={{ margin: 0, fontSize: 16, fontWeight: 950, color: stravaIntegration ? "#FFF" : "#000", letterSpacing: "-0.02em", textTransform: "uppercase" }}>
+                  {stravaIntegration ? "STRAVA SYNC ON" : "CONNECT STRAVA"}
                 </p>
-                <p style={{ margin: 0, fontSize: 10, fontWeight: 700, color: stravaIntegration ? "rgba(255,255,255,0.8)" : "#666", textTransform: "uppercase" }}>
-                  {stravaIntegration ? "Treinos sincronizados automaticamente" : "Sincronize seus treinos de corrida"}
+                <p style={{ margin: "2px 0 0 0", fontSize: 10, fontWeight: 800, color: stravaIntegration ? "rgba(255,255,255,0.7)" : "#666", textTransform: "uppercase" }}>
+                  {stravaIntegration ? `Último sinal: ${new Date(stravaIntegration.updated_at).toLocaleDateString('pt-BR')}` : "Sincronize treinos automaticamente"}
                 </p>
               </div>
             </div>
@@ -287,33 +305,28 @@ export default async function RunningDashboardPage() {
             {!stravaIntegration ? (
               <a 
                 href="/api/auth/strava"
+                className="nb-button-main"
                 style={{
-                  padding: "10px 16px",
-                  background: "#000",
-                  color: "#FFF",
+                  padding: "12px 20px",
+                  fontSize: 11,
                   textDecoration: "none",
-                  fontSize: 10,
-                  fontWeight: 900,
-                  letterSpacing: "0.1em",
-                  textTransform: "uppercase",
-                  border: "2px solid #000",
-                  boxShadow: "2px 2px 0px #FC4C02"
+                  boxShadow: "3px 3px 0px #000"
                 }}
               >
-                Conectar
+                Ativar
               </a>
             ) : (
                <div style={{
-                padding: "8px 12px",
-                background: "rgba(0,0,0,0.1)",
+                padding: "10px 14px",
+                background: "rgba(0,0,0,0.2)",
                 color: "#FFF",
                 fontSize: 10,
-                fontWeight: 900,
+                fontWeight: 950,
                 letterSpacing: "0.1em",
                 textTransform: "uppercase",
-                border: "2px solid #FFF",
+                border: "2px solid rgba(255,255,255,0.4)",
               }}>
-                Ativo
+                OK
               </div>
             )}
           </div>
