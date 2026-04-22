@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { markAsAbsentAction, unmarkAsAbsentAction, manualCheckinAction, closeClassAction } from "@/app/(admin)/admin/turmas/actions";
+import { markAsAbsentAction, unmarkAsAbsentAction, manualCheckinAction, closeClassAction } from "@/app/(admin)/admin/(authenticated)/turmas/actions";
 import { redirect } from "next/navigation";
 
 /**

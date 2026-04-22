@@ -10,7 +10,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { SYSTEM_START_DATE } from "@/lib/constants/calendar";
 import { getMinWeekOffset } from "@/lib/date-utils";
-import { upsertWod, deleteWod } from "../../actions";
+import { upsertWod, deleteWod } from "../../../actions";
 import BenchmarkLibraryModal from "@/components/admin/BenchmarkLibraryModal";
 import ConfirmModal from "@/components/ConfirmModal";
 import AlertModal from "@/components/AlertModal";

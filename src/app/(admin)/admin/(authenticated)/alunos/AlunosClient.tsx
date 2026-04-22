@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Search, Plus, Phone, X, UserPlus, ChevronDown, Pencil, Trash2, User, Mail, Calendar, CreditCard, Info, Activity, ShieldCheck, Lock as LockIcon, Mail as MailIcon, ChevronLeft, ChevronRight, Copy, Check, Tag, Zap } from "lucide-react";
-import { createStudent, updateStudent, deleteStudent, getStudentEvaluations, deletePhysicalEvaluation, updateStudentAuth, updatePreRegistration } from "../../actions";
+import { createStudent, updateStudent, deleteStudent, getStudentEvaluations, deletePhysicalEvaluation, updateStudentAuth, updatePreRegistration } from "../../../actions";
 import PhysicalEvaluationForm from "./PhysicalEvaluationForm";
 import RunningCoachManager from "./RunningCoachManager";
 import ConfirmModal from "@/components/ConfirmModal";
@@ -293,7 +293,7 @@ export default function AlunosClient({
   // --- Lead Management Handlers ---
 
   async function handleApproveLead(id: string) {
-    const { approvePreRegistration } = await import("../../actions");
+    const { approvePreRegistration } = await import("../../../actions");
     setLoadingLeadId(id);
     const currentLevel = leadLevels[id] || "branco";
     const currentType = leadMembershipTypes[id] || "club";
@@ -328,7 +328,7 @@ export default function AlunosClient({
   }
 
   async function executeRejectLead(id: string) {
-    const { rejectPreRegistration } = await import("../../actions");
+    const { rejectPreRegistration } = await import("../../../actions");
     setLoadingLeadId(id);
     setPendingAction(null);
     const result = await rejectPreRegistration(id);
@@ -402,7 +402,7 @@ export default function AlunosClient({
     if (!selectedStudent) return;
     setShowResendConfirm(false);
     setLoading(true);
-    const { resendInviteEmail } = await import("../../actions");
+    const { resendInviteEmail } = await import("../../../actions");
     const result = await resendInviteEmail(selectedStudent.id);
     if (result.success) {
       setMessage({ type: "success", text: "Convite de acesso reenviado com sucesso!" });

@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { getTodayDate, checkIsSlotBlocked, resolveSlotCoach } from "@/lib/date-utils";
 import { getCachedLevels } from "@/lib/constants/levels_actions";
-import { getSlotCheckins, searchStudentsCoachAction } from "@/app/(admin)/admin/turmas/actions";
+import { getSlotCheckins, searchStudentsCoachAction } from "@/app/(admin)/admin/(authenticated)/turmas/actions";
 import DateNavigator from "@/components/coach/DateNavigator";
 import { Search, Plus, UserPlus, CheckCircle, Users, Activity, Expand, Eye, UserX, Info, AlertTriangle } from "lucide-react";
 import Link from "next/link";

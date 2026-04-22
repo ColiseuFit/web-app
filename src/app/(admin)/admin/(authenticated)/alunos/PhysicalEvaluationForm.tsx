@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import { X, Save, Activity, Ruler, Target, Camera, FileText, Upload, Trash2, CheckCircle2, User, ImageIcon, Info, HeartPulse } from "lucide-react";
-import { upsertPhysicalEvaluation, uploadEvaluationPhoto, getStudentBiometricsInfo } from "../../actions";
+import { upsertPhysicalEvaluation, uploadEvaluationPhoto, getStudentBiometricsInfo } from "../../../actions";
 import { 
   calculateBMI, 
   calculateBodyComposition, 
@@ -12,7 +12,7 @@ import {
   type Measurements,
   type BoneDiameters,
   type PosturalAnalysis
-} from "../../../../lib/physique-utils";
+} from "@/lib/physique-utils";
 import AlertModal from "@/components/AlertModal";
 
 interface PhysicalEvaluationFormProps {

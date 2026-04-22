@@ -15,7 +15,7 @@
  */
 
 import { useState, useRef } from "react";
-import { getSlotCheckins, closeClassAction, markAsAbsentAction, unmarkAsAbsentAction, manualCheckinAction, reopenClassAction, searchStudentsCoachAction } from "@/app/(admin)/admin/turmas/actions";
+import { getSlotCheckins, closeClassAction, markAsAbsentAction, unmarkAsAbsentAction, manualCheckinAction, reopenClassAction, searchStudentsCoachAction } from "@/app/(admin)/admin/(authenticated)/turmas/actions";
 import { useRouter } from "next/navigation";
 import { Search, Plus, UserPlus, CheckCircle, Users, Activity, Loader2, Maximize, AlertTriangle, UserX, RotateCcw } from "lucide-react";
 import { getLevelInfo, LevelInfo } from "@/lib/constants/levels";

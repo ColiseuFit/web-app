@@ -1,5 +1,5 @@
 import { getCoaches } from "./actions";
-import ProfessoresClient from "@/app/(admin)/admin/professores/ProfessoresClient";
+import ProfessoresClient from "./ProfessoresClient";
 
 /**
  * Server Component: Professores Page
