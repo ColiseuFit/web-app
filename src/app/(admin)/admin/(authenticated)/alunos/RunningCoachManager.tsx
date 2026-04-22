@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import {
-  Zap, Plus, Calendar, Trash2, Archive,
+  Zap, Plus, Calendar, Trash2, Archive, Edit2,
   CheckCircle2, Clock, TrendingUp, Target, Activity, Wind,
   LayoutGrid, ChevronDown, ChevronUp
 } from "lucide-react";
@@ -14,6 +14,7 @@ import {
   archiveRunningPlan,
   getStudentRunningHistory,
   bulkCreateRunningWorkouts,
+  updateRunningWorkout,
   type WeekDaySession,
 } from "@/lib/actions/running_actions";
 import { RUNNING_LEVELS, formatPace, type RunningLevelKey } from "@/lib/constants/running";
@@ -57,6 +58,39 @@ function calcKPIs(workouts: any[]) {
   const adhesion = total > 0 ? Math.round((done / total) * 100) : 0;
 
   return { volumeKm: volumeKm.toFixed(1), avgPace, adhesion, avgRpe, done, total };
+}
+
+/**
+ * Máscara para Pace (MM:SS/km)
+ */
+function maskPace(value: string): string {
+  let val = value.replace(/\D/g, ""); // Apenas números
+  
+  if (val.length > 4) val = val.slice(0, 4);
+
+  if (val.length >= 3) {
+    let mins = val.slice(0, -2);
+    let secs = parseInt(val.slice(-2));
+    if (secs > 59) secs = 59;
+    return `${mins}:${secs.toString().padStart(2, "0")}/km`;
+  }
+  return val;
+}
+
+/**
+ * Máscara para Tempo (MM:SS) - Usado para Descanso
+ */
+function maskTime(value: string): string {
+  let val = value.replace(/\D/g, "");
+  if (val.length > 4) val = val.slice(0, 4);
+
+  if (val.length >= 3) {
+    let mins = val.slice(0, -2);
+    let secs = parseInt(val.slice(-2));
+    if (secs > 59) secs = 59;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
+  }
+  return val;
 }
 
 // ── Skeleton Screen (Iron Monolith — sem tela branca) ────────────────────────
@@ -154,18 +188,25 @@ interface GeneratorProps {
   onCancel: () => void;
 }
 
-/**
- * WeeklyPlanGenerator — Cria múltiplas sessões a partir de um modelo semanal.
- *
- * @flow
- * 1. Coach seleciona os dias da semana
- * 2. Configura descrição/distância/pace para cada dia
- * 3. Define data de início + nº de semanas
- * 4. Gera tudo em 1 clique via bulkCreateRunningWorkouts
- */
 function WeeklyPlanGenerator({ planId, studentId, onSuccess, onCancel }: GeneratorProps) {
   const [selectedDays, setSelectedDays] = useState<number[]>([1, 3, 5]); // Seg, Qua, Sex
-  const [dayConfigs, setDayConfigs] = useState<Record<number, { description: string; distance: string; pace: string }>>({});
+  
+  // Cada dia pode ter múltiplas sessões (ex: uma de corrida, outra só de descanso/texto)
+  interface DaySessionItem {
+    id: string;
+    description: string;
+    distance: string;
+    unit: "km" | "m";
+    pace: string;
+    rest: string;
+    showMetrics: boolean;
+  }
+
+  const [activeWeek, setActiveWeek] = useState(1);
+  const [allWeeksConfigs, setAllWeeksConfigs] = useState<Record<number, Record<number, DaySessionItem[]>>>({
+    1: {}, 2: {}, 3: {}, 4: {}
+  });
+
   const [startDate, setStartDate] = useState(() => {
     // Próxima segunda-feira em UTC
     const d = new Date();
@@ -179,41 +220,144 @@ function WeeklyPlanGenerator({ planId, studentId, onSuccess, onCancel }: Generat
   const [genError, setGenError] = useState<string | null>(null);
   const [successCount, setSuccessCount] = useState<number | null>(null);
 
+  // Alias para a semana ativa
+  const dayConfigs = allWeeksConfigs[activeWeek] || {};
+
+  const setDayConfigs = (newConfigs: Record<number, DaySessionItem[]>) => {
+    setAllWeeksConfigs(prev => ({
+      ...prev,
+      [activeWeek]: newConfigs
+    }));
+  };
+
+  // Inicializa configs para os dias selecionados
+  useEffect(() => {
+    const next = { ...dayConfigs };
+    let changed = false;
+    selectedDays.forEach(d => {
+      if (!next[d] || next[d].length === 0) {
+        next[d] = [{
+          id: Math.random().toString(36).substr(2, 9),
+          description: "",
+          distance: "",
+          unit: "km",
+          pace: "",
+          rest: "",
+          showMetrics: false
+        }];
+        changed = true;
+      }
+    });
+    if (changed) setDayConfigs(next);
+  }, [selectedDays, activeWeek]);
+
   function toggleDay(idx: number) {
     setSelectedDays(prev =>
       prev.includes(idx) ? prev.filter(d => d !== idx) : [...prev, idx]
     );
   }
 
-  function updateConfig(dayIdx: number, field: "description" | "distance" | "pace", value: string) {
-    setDayConfigs(prev => ({
-      ...prev,
-      [dayIdx]: { ...prev[dayIdx], description: prev[dayIdx]?.description || "", distance: prev[dayIdx]?.distance || "", pace: prev[dayIdx]?.pace || "", [field]: value },
-    }));
-  }
+  const addSession = (dayIdx: number) => {
+    const newSession: DaySessionItem = {
+      id: Math.random().toString(36).substr(2, 9),
+      description: "",
+      distance: "",
+      unit: "km",
+      pace: "",
+      rest: "",
+      showMetrics: false
+    };
+    setDayConfigs({
+      ...dayConfigs,
+      [dayIdx]: [...(dayConfigs[dayIdx] || []), newSession]
+    });
+  };
+
+  const removeSession = (dayIdx: number, sessionId: string) => {
+    setDayConfigs({
+      ...dayConfigs,
+      [dayIdx]: (dayConfigs[dayIdx] || []).filter(s => s.id !== sessionId)
+    });
+  };
+
+  const updateSession = (dayIdx: number, sessionId: string, updates: Partial<DaySessionItem>) => {
+    const items = [...(dayConfigs[dayIdx] || [])];
+    const idx = items.findIndex(s => s.id === sessionId);
+    if (idx === -1) return;
+
+    let finalUpdates = { ...updates };
+    if (updates.pace) finalUpdates.pace = maskPace(updates.pace);
+    if (updates.rest) finalUpdates.rest = maskTime(updates.rest);
+
+    items[idx] = { ...items[idx], ...finalUpdates };
+    setDayConfigs({ ...dayConfigs, [dayIdx]: items });
+  };
+
+  const copyToAllDays = (sourceDayIdx: number) => {
+    const sourceConfig = dayConfigs[sourceDayIdx];
+    if (!sourceConfig) return;
+    
+    const newConfigs = { ...dayConfigs };
+    selectedDays.forEach(dayIdx => {
+      newConfigs[dayIdx] = sourceConfig.map(s => ({
+        ...s,
+        id: Math.random().toString(36).substr(2, 9)
+      }));
+    });
+    setDayConfigs(newConfigs);
+  };
+
+  const copyWeekOneToAll = () => {
+    const week1 = JSON.parse(JSON.stringify(allWeeksConfigs[1]));
+    setAllWeeksConfigs({
+      1: week1,
+      2: JSON.parse(JSON.stringify(week1)),
+      3: JSON.parse(JSON.stringify(week1)),
+      4: JSON.parse(JSON.stringify(week1)),
+    });
+  };
 
   async function handleGenerate() {
-    // Validação
-    for (const dayIdx of selectedDays) {
-      if (!dayConfigs[dayIdx]?.description?.trim()) {
-        setGenError(`Adicione uma descrição para ${DAYS_OF_WEEK.find(d => d.idx === dayIdx)?.full}.`);
-        return;
-      }
-    }
-
-    const sessions: WeekDaySession[] = selectedDays.map(dayIdx => ({
-      dayOfWeek: dayIdx,
-      description: dayConfigs[dayIdx]?.description || "",
-      targetDistanceKm: dayConfigs[dayIdx]?.distance ? parseFloat(dayConfigs[dayIdx].distance) : null,
-      targetPace: dayConfigs[dayIdx]?.pace || null,
-    }));
-
     setIsGenerating(true);
     setGenError(null);
+    
     try {
-      const result = await bulkCreateRunningWorkouts(planId, studentId, startDate, weeks, sessions);
-      setSuccessCount(result.count);
-      // Aguarda 1.2s para o coach ver o feedback antes de fechar
+      let currentTotal = 0;
+      for (let w = 1; w <= weeks; w++) {
+        const weekConfigs = allWeeksConfigs[w] || allWeeksConfigs[1];
+        const sessions: any[] = [];
+        
+        for (const dayIdx of selectedDays) {
+          const items = weekConfigs[dayIdx] || [];
+          for (const item of items) {
+            if (!item.description?.trim()) continue;
+
+            let dist = item.distance ? parseFloat(item.distance) : null;
+            if (dist !== null && item.unit === "m") {
+              dist = dist / 1000;
+            }
+
+            sessions.push({
+              dayOfWeek: dayIdx,
+              description: item.description,
+              targetDistanceKm: dist,
+              targetPace: item.pace || null,
+              targetRestTime: item.rest || null,
+            });
+          }
+        }
+
+        if (sessions.length > 0) {
+          const weekStartDate = new Date(startDate + "T12:00:00Z");
+          weekStartDate.setUTCDate(weekStartDate.getUTCDate() + (w - 1) * 7);
+          const dateStr = weekStartDate.toISOString().split("T")[0];
+
+          const result = await bulkCreateRunningWorkouts(planId, studentId, dateStr, 1, sessions);
+          currentTotal += result.count;
+        }
+      }
+
+      setSuccessCount(currentTotal);
       setTimeout(() => onSuccess(), 1200);
     } catch (err: any) {
       setGenError(err.message || "Erro ao gerar sessões.");
@@ -222,7 +366,8 @@ function WeeklyPlanGenerator({ planId, studentId, onSuccess, onCancel }: Generat
     }
   }
 
-  const totalSessions = selectedDays.length * weeks;
+  // Cálculo total considerando todas as semanas se configuradas, ou repetindo a 1
+  const totalSessions = weeks * selectedDays.reduce((acc, day) => acc + (dayConfigs[day]?.length || 1), 0);
 
   const inputSt: React.CSSProperties = {
     width: "100%", padding: "10px 12px", border: "2px solid #000",
@@ -234,7 +379,7 @@ function WeeklyPlanGenerator({ planId, studentId, onSuccess, onCancel }: Generat
       {/* Header */}
       <div style={{ background: "#000", color: "#FFF", padding: "14px 20px", display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
         <LayoutGrid size={18} />
-        <span style={{ fontSize: 14, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+        <span className="font-display" style={{ fontSize: 16, fontWeight: 900, textTransform: "uppercase", letterSpacing: "-0.02em" }}>
           Gerador de Semana Padrão
         </span>
         <span style={{ marginLeft: "auto", fontSize: 11, fontWeight: 700, background: "rgba(255,255,255,0.15)", padding: "3px 10px" }}>
@@ -283,51 +428,184 @@ function WeeklyPlanGenerator({ planId, studentId, onSuccess, onCancel }: Generat
           </div>
         </div>
 
+        {/* Tabs de Semanas (Periodização) */}
+        <div style={{ marginBottom: 24 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+            <label style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+              2. Periodização (Configuração por Semana)
+            </label>
+            {activeWeek > 1 && (
+              <button
+                type="button"
+                onClick={copyWeekOneToAll}
+                style={{ background: "#F3F4F6", border: "2px solid #000", padding: "4px 10px", fontSize: 10, fontWeight: 900, cursor: "pointer" }}
+              >
+                👯 COPIAR SEMANA 1 PARA TODAS
+              </button>
+            )}
+          </div>
+          <div style={{ display: "flex", gap: 4 }}>
+            {[1, 2, 3, 4].map(w => (
+              <button
+                key={w}
+                type="button"
+                onClick={() => setActiveWeek(w)}
+                style={{
+                  flex: 1, padding: "12px 10px", fontWeight: 950, fontSize: 12,
+                  border: "3px solid #000",
+                  background: activeWeek === w ? "#FFE24D" : "#FFF",
+                  color: "#000",
+                  cursor: "pointer",
+                  boxShadow: activeWeek === w ? "none" : "4px 4px 0px #000",
+                  transform: activeWeek === w ? "translate(2px, 2px)" : "none",
+                  transition: "all 0.1s"
+                }}
+              >
+                SEMANA {w} {w === 1 && <span style={{ fontSize: 9, opacity: 0.5 }}>(BASE)</span>}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* Config por dia */}
         {selectedDays.length > 0 && (
           <div style={{ marginBottom: 20 }}>
-            <label style={{ display: "block", fontSize: 11, fontWeight: 900, textTransform: "uppercase", marginBottom: 10, letterSpacing: "0.06em" }}>
-              2. Configure cada dia
-            </label>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <div style={{ 
+              display: "flex", 
+              flexDirection: "column", 
+              gap: 20 
+            }}>
               {[...selectedDays]
                 .sort((a, b) => {
-                  // Dom vai por último
                   const ai = a === 0 ? 7 : a;
                   const bi = b === 0 ? 7 : b;
                   return ai - bi;
                 })
                 .map(dayIdx => {
                   const day = DAYS_OF_WEEK.find(d => d.idx === dayIdx)!;
+                  const items = dayConfigs[dayIdx] || [];
+                  
                   return (
-                    <div key={dayIdx} style={{ border: "2px solid #E5E5E5", padding: "12px 14px", background: "#FAFAFA" }}>
-                      <div style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", marginBottom: 10, color: "#555", letterSpacing: "0.06em" }}>
-                        📅 {day.full}
+                    <div key={dayIdx} style={{ border: "3px solid #000", padding: "16px", background: "#FDFDFD", boxShadow: "8px 8px 0px rgba(0,0,0,0.05)" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, borderBottom: "2px solid #000", paddingBottom: 8 }}>
+                        <div style={{ fontSize: 14, fontWeight: 950, textTransform: "uppercase", color: "#000", display: "flex", alignItems: "center", gap: 8 }}>
+                          <span style={{ background: "#000", color: "#FFF", padding: "2px 6px", borderRadius: 2 }}>{day.short}</span>
+                          {day.full}
+                        </div>
+                        <div style={{ display: "flex", gap: 6 }}>
+                          <button
+                            type="button"
+                            onClick={() => copyToAllDays(dayIdx)}
+                            title="Copiar este treino para todos os outros dias selecionados"
+                            style={{ background: "#FFF", border: "2px solid #000", padding: "4px 8px", fontSize: 9, fontWeight: 900, cursor: "pointer" }}
+                          >
+                            REPLICAR DIA
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => addSession(dayIdx)}
+                            style={{ background: "#000", color: "#FFF", border: "none", padding: "4px 10px", fontSize: 9, fontWeight: 900, cursor: "pointer" }}
+                          >
+                            + BLOCO
+                          </button>
+                        </div>
                       </div>
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 90px 100px", gap: 8 }}>
-                        <input
-                          placeholder={`Descrição* — ex: 5km Leve`}
-                          value={dayConfigs[dayIdx]?.description || ""}
-                          onChange={e => updateConfig(dayIdx, "description", e.target.value)}
-                          style={inputSt}
-                        />
-                        <input
-                          type="number" step="0.01" min="0" max="999"
-                          placeholder="km"
-                          value={dayConfigs[dayIdx]?.distance || ""}
-                          onChange={e => {
-                            if (e.target.value.length > 6) return;
-                            updateConfig(dayIdx, "distance", e.target.value);
-                          }}
-                          style={inputSt}
-                        />
-                        <input
-                          placeholder="Ex: 5:45"
-                          value={dayConfigs[dayIdx]?.pace || ""}
-                          onChange={e => updateConfig(dayIdx, "pace", e.target.value)}
-                          style={inputSt}
-                          title="Digite apenas números para formar o Pace"
-                        />
+
+                      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                        {items.map((item, itemIdx) => (
+                          <div key={item.id} style={{ background: "#FFF", border: "2px solid #000", padding: 12, position: "relative" }}>
+                            {items.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => removeSession(dayIdx, item.id)}
+                                style={{ position: "absolute", top: 8, right: 8, background: "none", border: "none", color: "#F00", cursor: "pointer" }}
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            )}
+                            
+                            <div style={{ marginBottom: 10 }}>
+                              <label style={{ display: "block", fontSize: 9, fontWeight: 900, color: "#888", marginBottom: 4, textTransform: "uppercase" }}>DESCRIÇÃO DO BLOCO</label>
+                              <input
+                                placeholder={`ex: 5km Rodagem ou Descanso Ativo`}
+                                value={item.description}
+                                onChange={e => updateSession(dayIdx, item.id, { description: e.target.value })}
+                                maxLength={60}
+                                style={{ ...inputSt, border: "2px solid #000" }}
+                              />
+                            </div>
+
+                            {!item.showMetrics ? (
+                              <div style={{ display: "flex", gap: 8 }}>
+                                <button
+                                  type="button"
+                                  onClick={() => updateSession(dayIdx, item.id, { showMetrics: true })}
+                                  style={{ background: "#EEE", border: "1px solid #000", padding: "4px 8px", fontSize: 9, fontWeight: 900, cursor: "pointer", textTransform: "uppercase" }}
+                                >
+                                  + Metas (Km/Pace/Desc)
+                                </button>
+                              </div>
+                            ) : (
+                              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+                                <div>
+                                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", height: 24, marginBottom: 4 }}>
+                                    <label style={{ fontSize: 10, fontWeight: 900, color: "#888", textTransform: "uppercase", margin: 0 }}>DIST.</label>
+                                    <div style={{ display: "flex", border: "2px solid #000", borderRadius: 4, overflow: "hidden" }}>
+                                      <button 
+                                        type="button" 
+                                        onClick={() => updateSession(dayIdx, item.id, { unit: "km" })}
+                                        style={{ fontSize: 10, fontWeight: 900, padding: "2px 8px", border: "none", background: item.unit === "km" ? "#000" : "#FFF", color: item.unit === "km" ? "#FFF" : "#000", cursor: "pointer" }}
+                                      >KM</button>
+                                      <div style={{ width: 2, background: "#000" }} />
+                                      <button 
+                                        type="button" 
+                                        onClick={() => updateSession(dayIdx, item.id, { unit: "m" })}
+                                        style={{ fontSize: 10, fontWeight: 900, padding: "2px 8px", border: "none", background: item.unit === "m" ? "#000" : "#FFF", color: item.unit === "m" ? "#FFF" : "#000", cursor: "pointer" }}
+                                      >M</button>
+                                    </div>
+                                  </div>
+                                  <input
+                                    type="number" step="0.1" min="0" max="99999"
+                                    value={item.distance}
+                                    onKeyDown={(e) => {
+                                      if (["e", "E", "+", "-"].includes(e.key)) {
+                                        e.preventDefault();
+                                      }
+                                    }}
+                                    onChange={e => {
+                                      if (e.target.value.length <= 6) {
+                                        updateSession(dayIdx, item.id, { distance: e.target.value });
+                                      }
+                                    }}
+                                    style={{ ...inputSt, border: "2px solid #000" }}
+                                  />
+                                </div>
+                                <div>
+                                  <div style={{ display: "flex", alignItems: "center", height: 24, marginBottom: 4 }}>
+                                    <label style={{ fontSize: 10, fontWeight: 900, color: "#888", textTransform: "uppercase", margin: 0 }}>PACE</label>
+                                  </div>
+                                  <input
+                                    placeholder="6:00"
+                                    value={item.pace}
+                                    onChange={e => updateSession(dayIdx, item.id, { pace: e.target.value })}
+                                    style={{ ...inputSt, border: "2px solid #000" }}
+                                  />
+                                </div>
+                                <div>
+                                  <div style={{ display: "flex", alignItems: "center", height: 24, marginBottom: 4 }}>
+                                    <label style={{ fontSize: 10, fontWeight: 900, color: "#888", textTransform: "uppercase", margin: 0 }}>DESC.</label>
+                                  </div>
+                                  <input
+                                    placeholder="1:00"
+                                    value={item.rest}
+                                    onChange={e => updateSession(dayIdx, item.id, { rest: e.target.value })}
+                                    style={{ ...inputSt, border: "2px solid #000" }}
+                                  />
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ))}
                       </div>
                     </div>
                   );
@@ -377,6 +655,8 @@ function WeeklyPlanGenerator({ planId, studentId, onSuccess, onCancel }: Generat
           </div>
         )}
 
+        <div style={{ height: 40 }} /> {/* Spacer para o footer sticky */}
+
         {/* Resumo + Ações — sticky no fundo do painel */}
         <div style={{
           position: "sticky", bottom: 0,
@@ -414,7 +694,7 @@ function WeeklyPlanGenerator({ planId, studentId, onSuccess, onCancel }: Generat
 }
 
 export default function RunningCoachManager({ studentId }: Props) {
-  const [data, setData] = useState<{ plan: any; workouts: any[] } | null>(null);
+  const [data, setData] = useState<{ plan: any; workouts: any[]; profile?: any } | null>(null);
   const [history, setHistory] = useState<{ workouts: any[]; stats: any } | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAssigning, setIsAssigning] = useState(false);
@@ -424,27 +704,26 @@ export default function RunningCoachManager({ studentId }: Props) {
   const [isArchiving, setIsArchiving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Edit Workout State
+  const [editingWorkoutId, setEditingWorkoutId] = useState<string | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [editForm, setEditForm] = useState({
+    description: "",
+    date: "",
+    target_distance_km: "",
+    target_pace: "",
+    target_rest_time: ""
+  });
+
   // Helper para formatar o pace enquanto digita (robusto)
   const [targetPaceValue, setTargetPaceValue] = useState("");
   const handlePaceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let val = e.target.value.replace(/\D/g, ""); // Apenas números
-    
-    // Limita a 4 dígitos (ex: 9959 -> 99:59)
-    if (val.length > 4) val = val.slice(0, 4);
+    setTargetPaceValue(maskPace(e.target.value));
+  };
 
-    if (val.length >= 3) {
-      let mins = val.slice(0, -2);
-      let secs = parseInt(val.slice(-2));
-      
-      // Ajuste se segundos > 59
-      if (secs > 59) {
-        secs = 59;
-        val = mins + "59";
-      }
-      
-      val = `${mins}:${secs.toString().padStart(2, "0")}/km`;
-    }
-    setTargetPaceValue(val);
+  const [targetRestValue, setTargetRestValue] = useState("");
+  const handleRestChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setTargetRestValue(maskTime(e.target.value));
   };
 
   /**
@@ -488,7 +767,8 @@ export default function RunningCoachManager({ studentId }: Props) {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     try {
-      await assignRunningPlan(studentId, formData.get("title") as string, formData.get("level") as string);
+      const studentLevel = data?.profile?.running_level || "iniciante";
+      await assignRunningPlan(studentId, formData.get("title") as string, studentLevel);
       setIsAssigning(false);
       loadData();
     } catch (err) {
@@ -505,11 +785,42 @@ export default function RunningCoachManager({ studentId }: Props) {
       await createRunningWorkout(formData);
       (e.target as HTMLFormElement).reset();
       setTargetPaceValue(""); // Reseta a máscara
+      setTargetRestValue("");
       setShowWorkoutForm(false);
       loadData();
     } catch (err) {
       setError("Erro ao adicionar sessão.");
     }
+  }
+
+  async function handleUpdateWorkout(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!editingWorkoutId) return;
+    
+    setIsUpdating(true);
+    const formData = new FormData(e.currentTarget);
+    formData.append("workoutId", editingWorkoutId);
+    
+    try {
+      await updateRunningWorkout(formData);
+      setEditingWorkoutId(null);
+      loadData();
+    } catch (err: any) {
+      setError(err.message || "Erro ao atualizar sessão.");
+    } finally {
+      setIsUpdating(false);
+    }
+  }
+
+  function startEditing(w: any) {
+    setEditingWorkoutId(w.id);
+    setEditForm({
+      description: w.target_description || "",
+      date: w.scheduled_date ? w.scheduled_date.split("T")[0] : "",
+      target_distance_km: w.target_distance_km ? String(w.target_distance_km) : "",
+      target_pace: w.target_pace_description ? w.target_pace_description.replace("/km", "") : "",
+      target_rest_time: w.target_rest_time_description || ""
+    });
   }
 
   /**
@@ -595,16 +906,6 @@ export default function RunningCoachManager({ studentId }: Props) {
               required
               style={{ width: "100%", padding: 12, border: "3px solid #000", fontWeight: 700, boxSizing: "border-box" }}
             />
-          </div>
-          <div>
-            <label style={{ display: "block", fontSize: 11, fontWeight: 900, textTransform: "uppercase", marginBottom: 8 }}>
-              Nível Alvo
-            </label>
-            <select name="level" required style={{ width: "100%", padding: 12, border: "3px solid #000", fontWeight: 800 }}>
-              {Object.entries(RUNNING_LEVELS).map(([key, info]) => (
-                <option key={key} value={key}>{info.label}</option>
-              ))}
-            </select>
           </div>
           {error && <p style={{ color: "#DC2626", fontSize: 12, fontWeight: 700 }}>{error}</p>}
           <div style={{ display: "flex", gap: 12 }}>
@@ -772,6 +1073,7 @@ export default function RunningCoachManager({ studentId }: Props) {
                   placeholder="Ex: 5km Rodagem Leve"
                   required
                   autoFocus
+                  maxLength={50}
                   style={{ width: "100%", padding: "14px 16px", border: "3px solid #000", fontWeight: 800, boxSizing: "border-box", fontSize: 14 }}
                 />
               </div>
@@ -789,22 +1091,18 @@ export default function RunningCoachManager({ studentId }: Props) {
               </div>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 20 }}>
               <div>
                 <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 900, marginBottom: 6, textTransform: "uppercase" }}>
-                  <Target size={14} /> DISTÂNCIA ALVO (km)
+                  <Target size={14} /> DISTÂNCIA
                 </label>
                 <input
                   name="target_distance_km"
                   type="number"
                   step="0.01"
                   min="0"
-                  max="999"
-                  placeholder="Ex: 5.0"
-                  onInput={(e) => {
-                    const val = e.currentTarget.value;
-                    if (val.length > 6) e.currentTarget.value = val.slice(0, 6);
-                  }}
+                  max="9999"
+                  placeholder="Km ou Metros"
                   style={{ width: "100%", padding: "14px 16px", border: "3px solid #000", fontWeight: 800, boxSizing: "border-box" }}
                 />
               </div>
@@ -815,10 +1113,24 @@ export default function RunningCoachManager({ studentId }: Props) {
                 <input
                   name="target_pace"
                   type="text"
-                  placeholder="Ex: 6:00"
+                  placeholder="6:00"
                   value={targetPaceValue}
                   onChange={handlePaceChange}
                   maxLength={10}
+                  style={{ width: "100%", padding: "14px 16px", border: "3px solid #000", fontWeight: 800, boxSizing: "border-box" }}
+                />
+              </div>
+              <div>
+                <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 900, marginBottom: 6, textTransform: "uppercase" }}>
+                  <Clock size={14} /> DESCANSO
+                </label>
+                <input
+                  name="target_rest_time"
+                  type="text"
+                  placeholder="1:00"
+                  value={targetRestValue}
+                  onChange={handleRestChange}
+                  maxLength={5}
                   style={{ width: "100%", padding: "14px 16px", border: "3px solid #000", fontWeight: 800, boxSizing: "border-box" }}
                 />
               </div>
@@ -853,6 +1165,122 @@ export default function RunningCoachManager({ studentId }: Props) {
         ) : (
           data.workouts.map((w) => {
             const isCompleted = !!w.completed_at;
+
+            // Inline Edit Form
+            if (editingWorkoutId === w.id) {
+              return (
+                <div
+                  key={w.id}
+                  style={{
+                    padding: 24,
+                    border: "4px solid #000",
+                    background: "#FFF",
+                    marginBottom: 10,
+                    boxShadow: "6px 6px 0px #000",
+                    position: "relative"
+                  }}
+                >
+                  <form onSubmit={handleUpdateWorkout}>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 140px", gap: 16, marginBottom: 16 }}>
+                      <div>
+                        <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 900, marginBottom: 6, textTransform: "uppercase" }}>
+                          <Activity size={14} /> DESCRIÇÃO DO TREINO *
+                        </label>
+                        <input
+                          name="description"
+                          value={editForm.description}
+                          onChange={e => setEditForm({ ...editForm, description: e.target.value })}
+                          required
+                          autoFocus
+                          maxLength={50}
+                          style={{ width: "100%", padding: "14px 16px", border: "3px solid #000", fontWeight: 800, boxSizing: "border-box", fontSize: 14 }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 900, marginBottom: 6, textTransform: "uppercase" }}>
+                          <Calendar size={14} /> DATA *
+                        </label>
+                        <input
+                          name="date"
+                          type="date"
+                          value={editForm.date}
+                          onChange={e => setEditForm({ ...editForm, date: e.target.value })}
+                          required
+                          style={{ width: "100%", padding: "14px 16px", border: "3px solid #000", fontWeight: 800, boxSizing: "border-box" }}
+                        />
+                      </div>
+                    </div>
+
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 20 }}>
+                      <div>
+                        <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 900, marginBottom: 6, textTransform: "uppercase" }}>
+                          <Target size={14} /> DISTÂNCIA
+                        </label>
+                        <input
+                          name="target_distance_km"
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          max="99999"
+                          value={editForm.target_distance_km}
+                          onChange={e => setEditForm({ ...editForm, target_distance_km: e.target.value })}
+                          onKeyDown={(e) => {
+                            if (["e", "E", "+", "-"].includes(e.key)) {
+                              e.preventDefault();
+                            }
+                          }}
+                          onInput={(e) => {
+                            if (e.currentTarget.value.length > 6) {
+                              e.currentTarget.value = e.currentTarget.value.slice(0, 6);
+                            }
+                          }}
+                          placeholder="Km ou Metros"
+                          style={{ width: "100%", padding: "14px 16px", border: "3px solid #000", fontWeight: 800, boxSizing: "border-box" }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 900, marginBottom: 6, textTransform: "uppercase" }}>
+                          <Wind size={14} /> PACE ALVO
+                        </label>
+                        <input
+                          name="target_pace"
+                          type="text"
+                          placeholder="6:00"
+                          value={editForm.target_pace}
+                          onChange={e => setEditForm({ ...editForm, target_pace: maskPace(e.target.value) })}
+                          maxLength={10}
+                          style={{ width: "100%", padding: "14px 16px", border: "3px solid #000", fontWeight: 800, boxSizing: "border-box" }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 900, marginBottom: 6, textTransform: "uppercase" }}>
+                          <Clock size={14} /> DESCANSO
+                        </label>
+                        <input
+                          name="target_rest_time"
+                          type="text"
+                          placeholder="1:00"
+                          value={editForm.target_rest_time}
+                          onChange={e => setEditForm({ ...editForm, target_rest_time: maskTime(e.target.value) })}
+                          maxLength={5}
+                          style={{ width: "100%", padding: "14px 16px", border: "3px solid #000", fontWeight: 800, boxSizing: "border-box" }}
+                        />
+                      </div>
+                    </div>
+
+                    <div style={{ display: "flex", gap: 12 }}>
+                      <button type="submit" disabled={isUpdating} className="admin-btn admin-btn-primary" style={{ flex: 1, height: 50, fontSize: 12, fontWeight: 950 }}>
+                        {isUpdating ? "SALVANDO..." : "SALVAR ALTERAÇÕES"}
+                      </button>
+                      <button type="button" onClick={() => setEditingWorkoutId(null)} className="admin-btn admin-btn-ghost" style={{ width: 120, height: 50, fontSize: 12, fontWeight: 950 }}>
+                        CANCELAR
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              );
+            }
+
             return (
               <div
                 key={w.id}
@@ -888,16 +1316,21 @@ export default function RunningCoachManager({ studentId }: Props) {
                   </div>
 
                   {/* Metas Prescritas */}
-                  {!isCompleted && (w.target_distance_km || w.target_pace_description) && (
-                    <div style={{ display: "flex", gap: 12, marginBottom: 8 }}>
+                  {!isCompleted && (w.target_distance_km || w.target_pace_description || w.target_rest_time_description) && (
+                    <div style={{ display: "flex", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
                       {w.target_distance_km && (
-                        <div style={{ fontSize: 10, fontWeight: 900, color: "#E67E22", background: "#FFF3E0", padding: "2px 6px", border: "1px solid #FFE0B2" }}>
-                          META: {w.target_distance_km} KM
+                        <div style={{ fontSize: 9, fontWeight: 900, color: "#E67E22", background: "#FFF3E0", padding: "2px 6px", border: "1px solid #FFE0B2", textTransform: "uppercase" }}>
+                          META: {w.target_distance_km}KM
                         </div>
                       )}
                       {w.target_pace_description && (
-                        <div style={{ fontSize: 10, fontWeight: 900, color: "#8E44AD", background: "#F3E5F5", padding: "2px 6px", border: "1px solid #E1BEE7" }}>
+                        <div style={{ fontSize: 9, fontWeight: 900, color: "#8E44AD", background: "#F3E5F5", padding: "2px 6px", border: "1px solid #E1BEE7", textTransform: "uppercase" }}>
                           PACE: {w.target_pace_description}
+                        </div>
+                      )}
+                      {w.target_rest_time_description && (
+                        <div style={{ fontSize: 9, fontWeight: 900, color: "#2980B9", background: "#EBF5FB", padding: "2px 6px", border: "1px solid #AED6F1", textTransform: "uppercase" }}>
+                          DESC: {w.target_rest_time_description}
                         </div>
                       )}
                     </div>
@@ -948,17 +1381,27 @@ export default function RunningCoachManager({ studentId }: Props) {
                   )}
                 </div>
 
-                {/* Ação: deletar sessão pendente */}
+                {/* Ações (Editar e Deletar) */}
                 {!isCompleted && !isArchived && (
-                  <button
-                    onClick={() => handleDelete(w.id)}
-                    disabled={deletingId === w.id}
-                    className="admin-btn admin-btn-ghost"
-                    style={{ padding: "6px 8px", color: "#EF4444", flexShrink: 0, marginTop: 2 }}
-                    title="Remover sessão pendente"
-                  >
-                    <Trash2 size={16} />
-                  </button>
+                  <div style={{ display: "flex", gap: 8, flexShrink: 0, marginTop: 2 }}>
+                    <button
+                      onClick={() => startEditing(w)}
+                      className="admin-btn admin-btn-ghost"
+                      style={{ padding: "6px 8px", color: "#3498DB" }}
+                      title="Editar sessão prescrita"
+                    >
+                      <Edit2 size={16} />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(w.id)}
+                      disabled={deletingId === w.id}
+                      className="admin-btn admin-btn-ghost"
+                      style={{ padding: "6px 8px", color: "#EF4444" }}
+                      title="Remover sessão pendente"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
                 )}
               </div>
             );

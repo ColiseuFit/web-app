@@ -191,7 +191,10 @@ export async function updateStudent(studentId: string, formData: FormData) {
     .update(updates)
     .eq("id", studentId);
 
-  if (error) return { error: "Não foi possível atualizar as informações do perfil." };
+  if (error) {
+    console.error("[updateStudent] Supabase Error:", error);
+    return { error: "Não foi possível atualizar as informações do perfil." };
+  }
 
   revalidatePath("/admin/alunos");
   revalidatePath("/admin/running");

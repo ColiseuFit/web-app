@@ -144,6 +144,18 @@ export async function proxy(request: NextRequest) {
     const role = roleData?.role || 'student';
     const isStaff = role === 'admin' || role === 'coach' || role === 'reception';
 
+    // Allow students to access the admin login page to switch accounts
+    if (!isStaff && targetPath.startsWith("/admin/login")) {
+      if (isRewritten) {
+        const finalResponse = NextResponse.rewrite(url);
+        supabaseResponse.cookies.getAll().forEach((cookie) => {
+          finalResponse.cookies.set(cookie);
+        });
+        return finalResponse;
+      }
+      return supabaseResponse;
+    }
+
     if (isStaff) {
       // If logging in through admin/coach portal or being staff on any portal, send to staff area
       // unless they are specifically on a student subdomain (clube.)

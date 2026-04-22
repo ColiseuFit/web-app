@@ -184,6 +184,13 @@ export async function getStudentRunningData(studentId: string) {
 
   if (!user) throw new Error("Não autorizado");
 
+  // Buscar perfil do aluno para obter o nível
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("id", studentId)
+    .single();
+
   // Buscar plano ativo
   const { data: plan } = await supabase
     .from("running_plans")
@@ -194,7 +201,7 @@ export async function getStudentRunningData(studentId: string) {
     .limit(1)
     .single();
 
-  if (!plan) return { plan: null, workouts: [] };
+  if (!plan) return { plan: null, workouts: [], profile };
 
   // Buscar treinos do plano
   const { data: workouts } = await supabase
@@ -203,7 +210,7 @@ export async function getStudentRunningData(studentId: string) {
     .eq("plan_id", plan.id)
     .order("scheduled_date", { ascending: true });
 
-  return { plan, workouts: workouts || [] };
+  return { plan, workouts: workouts || [], profile };
 }
 
 /**
@@ -225,6 +232,12 @@ export async function createRunningWorkout(formData: FormData) {
   const scheduledDate = formData.get("date") as string;
   let targetDistanceKm = formData.get("target_distance_km") ? parseFloat(formData.get("target_distance_km") as string) : null;
   let targetPace = formData.get("target_pace") as string | null;
+  const targetRestTime = formData.get("target_rest_time") as string | null;
+
+  // Lógica de distância inteligente: se > 100, assume metros e converte para km
+  if (targetDistanceKm !== null && targetDistanceKm >= 100) {
+    targetDistanceKm = targetDistanceKm / 1000;
+  }
 
   // Hardening: Cap de distância (evitar problemas de precisão/espaço)
   if (targetDistanceKm !== null && targetDistanceKm > 999.9) {
@@ -246,8 +259,62 @@ export async function createRunningWorkout(formData: FormData) {
     scheduled_date: scheduledDate,
     target_description: targetDescription,
     target_distance_km: targetDistanceKm,
-    target_pace_description: targetPace
+    target_pace_description: targetPace,
+    target_rest_time_description: targetRestTime
   });
+
+  if (error) throw new Error(error.message);
+  revalidatePath("/admin/alunos");
+  revalidatePath("/admin/running");
+  revalidatePath("/programas/running");
+}
+
+/**
+ * Atualiza um treino prescrito pelo Coach.
+ * 
+ * @param formData - Dados do formulário contendo: workoutId, description, date, target_distance_km, target_pace, target_rest_time
+ * @returns void (throws on error)
+ * @throws {Error} Se ocorrer um erro no banco de dados
+ */
+export async function updateRunningWorkout(formData: FormData) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) throw new Error("Não autorizado");
+
+  const workoutId = formData.get("workoutId") as string;
+  const targetDescription = formData.get("description") as string;
+  const scheduledDate = formData.get("date") as string;
+  let targetDistanceKm = formData.get("target_distance_km") ? parseFloat(formData.get("target_distance_km") as string) : null;
+  let targetPace = formData.get("target_pace") as string | null;
+  const targetRestTime = formData.get("target_rest_time") as string | null;
+
+  // Lógica de distância inteligente: se > 100, assume metros e converte para km
+  if (targetDistanceKm !== null && targetDistanceKm >= 100) {
+    targetDistanceKm = targetDistanceKm / 1000;
+  }
+
+  // Hardening: Cap de distância
+  if (targetDistanceKm !== null && targetDistanceKm > 999.9) {
+    targetDistanceKm = 999.9;
+  }
+
+  // Se o pace for apenas números (ex: "600"), transformar em "6:00/km"
+  if (targetPace && /^\d+$/.test(targetPace)) {
+    if (targetPace.length >= 3) {
+      const mins = targetPace.slice(0, -2);
+      const secs = targetPace.slice(-2);
+      targetPace = `${mins}:${secs}/km`;
+    }
+  }
+
+  const { error } = await supabase.from("running_workouts").update({
+    scheduled_date: scheduledDate,
+    target_description: targetDescription,
+    target_distance_km: targetDistanceKm,
+    target_pace_description: targetPace,
+    target_rest_time_description: targetRestTime
+  }).eq("id", workoutId);
 
   if (error) throw new Error(error.message);
   revalidatePath("/admin/alunos");
@@ -263,6 +330,7 @@ export interface WeekDaySession {
   description: string;
   targetDistanceKm?: number | null;
   targetPace?: string | null;
+  targetRestTime?: string | null;
 }
 
 /**
@@ -297,7 +365,10 @@ export async function bulkCreateRunningWorkouts(
     startDate,
     workouts: sessions.map(s => ({
       scheduled_date: startDate, // placeholder for structural check
-      target_description: s.description
+      target_description: s.description,
+      target_distance_km: s.targetDistanceKm,
+      target_pace_description: s.targetPace,
+      target_rest_time_description: s.targetRestTime
     }))
   });
 
@@ -334,13 +405,20 @@ export async function bulkCreateRunningWorkouts(
         pace = `${mins}:${secs}/km`;
       }
 
+      // Lógica de distância inteligente
+      let distance = session.targetDistanceKm || null;
+      if (distance !== null && distance >= 100) {
+        distance = distance / 1000;
+      }
+
       rows.push({
         plan_id: planId,
         student_id: studentId,
         scheduled_date: sessionDate.toISOString().split("T")[0],
         target_description: session.description,
-        target_distance_km: session.targetDistanceKm || null,
+        target_distance_km: distance,
         target_pace_description: pace,
+        target_rest_time_description: session.targetRestTime || null,
       });
     }
   }

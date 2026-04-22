@@ -1,16 +1,20 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Search, Zap, Footprints, Clock, ArrowRight, User, AlertCircle, TrendingUp, X, Timer } from "lucide-react";
 import AthleteIdentity from "@/components/Identity/AthleteIdentity";
 import { RUNNING_LEVELS, RunningLevelKey } from "@/lib/constants/running";
 import RunningCoachManager from "../alunos/RunningCoachManager";
+import RunningIdentityEditor from "../alunos/RunningIdentityEditor";
+import { updateStudent } from "../../../actions";
 
 interface RunningHubClientProps {
   runners: any[];
 }
 
 export default function RunningHubClient({ runners }: RunningHubClientProps) {
+  const router = useRouter();
   const [search, setSearch] = useState("");
   const [selectedRunner, setSelectedRunner] = useState<any | null>(null);
 
@@ -226,7 +230,19 @@ export default function RunningHubClient({ runners }: RunningHubClientProps) {
                               whiteSpace: "nowrap",
                               width: "fit-content"
                             }}>
-                              <Timer size={10} /> {runner.profiles.running_pace}
+                              <Timer size={10} /> {(() => {
+                                try {
+                                  const parsed = JSON.parse(runner.profiles.running_pace);
+                                  if (Array.isArray(parsed)) {
+                                    if (parsed.length === 0) return "S/ PACE";
+                                    if (parsed.length === 1) return parsed[0].pace;
+                                    return `${parsed.length} MARCOS`;
+                                  }
+                                  return runner.profiles.running_pace;
+                                } catch {
+                                  return runner.profiles.running_pace;
+                                }
+                              })()}
                             </span>
                           )}
                           {isDefault && (
@@ -296,7 +312,7 @@ export default function RunningHubClient({ runners }: RunningHubClientProps) {
           <div style={{
             position: "relative",
             width: "100%",
-            maxWidth: 760,
+            maxWidth: 1100,
             background: "#FFF",
             border: "4px solid #000",
             display: "flex",
@@ -332,7 +348,20 @@ export default function RunningHubClient({ runners }: RunningHubClientProps) {
 
             {/* Conteúdo com scroll */}
             <div className="runner-modal-content" style={{ overflowY: "auto", flex: 1, padding: 28, background: "#FDFDFD" }}>
-              <RunningCoachManager studentId={selectedRunner.profiles.id} />
+              <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
+                <RunningIdentityEditor 
+                  student={selectedRunner.profiles} 
+                  onUpdate={() => {
+                    router.refresh();
+                    // Opcional: fechar modal ou mostrar toast
+                  }}
+                  updateStudentAction={updateStudent}
+                />
+                
+                <div style={{ borderTop: "2px dashed #EEE", paddingTop: 8 }}>
+                  <RunningCoachManager studentId={selectedRunner.profiles.id} />
+                </div>
+              </div>
             </div>
           </div>
         </div>

@@ -25,6 +25,7 @@ interface Workout {
   target_description: string;
   target_distance_km: number | null;
   target_pace_description: string | null;
+  target_rest_time_description: string | null;
   completed_at: string | null;
   actual_distance_km: number | null;
   actual_pace_seconds_per_km: number | null;
@@ -220,18 +221,24 @@ export default function RunningWorkoutsList({ workouts }: RunningWorkoutsListPro
                           </div>
                         ) : (
                           <>
-                            {(workout.target_distance_km || workout.target_pace_description) && (
-                              <div style={{ display: "flex", gap: "16px", marginTop: "12px", padding: "10px", background: "var(--nb-yellow)", border: "2px solid #000" }}>
+                            {(workout.target_distance_km || workout.target_pace_description || workout.target_rest_time_description) && (
+                              <div style={{ display: "flex", gap: "12px", marginTop: "12px", padding: "10px", background: "var(--nb-yellow)", border: "2px solid #000", flexWrap: "wrap" }}>
                                 {workout.target_distance_km && (
-                                  <div style={{ flex: 1 }}>
-                                    <span style={{ fontSize: "9px", fontWeight: 900, opacity: 0.6, display: "block" }}>META DISTÂNCIA</span>
-                                    <span style={{ fontWeight: 900 }}>{workout.target_distance_km} KM</span>
+                                  <div style={{ minWidth: "60px" }}>
+                                    <span style={{ fontSize: "8px", fontWeight: 900, opacity: 0.6, display: "block", textTransform: "uppercase" }}>Meta Dist</span>
+                                    <span style={{ fontWeight: 900, fontSize: "12px" }}>{workout.target_distance_km} KM</span>
                                   </div>
                                 )}
                                 {workout.target_pace_description && (
-                                  <div style={{ flex: 1 }}>
-                                    <span style={{ fontSize: "9px", fontWeight: 900, opacity: 0.6, display: "block" }}>META PACE</span>
-                                    <span style={{ fontWeight: 900 }}>{workout.target_pace_description}</span>
+                                  <div style={{ minWidth: "60px" }}>
+                                    <span style={{ fontSize: "8px", fontWeight: 900, opacity: 0.6, display: "block", textTransform: "uppercase" }}>Meta Pace</span>
+                                    <span style={{ fontWeight: 900, fontSize: "12px" }}>{workout.target_pace_description}</span>
+                                  </div>
+                                )}
+                                {workout.target_rest_time_description && (
+                                  <div style={{ minWidth: "60px" }}>
+                                    <span style={{ fontSize: "8px", fontWeight: 900, opacity: 0.6, display: "block", textTransform: "uppercase" }}>Descanso</span>
+                                    <span style={{ fontWeight: 900, fontSize: "12px" }}>{workout.target_rest_time_description}</span>
                                   </div>
                                 )}
                               </div>

@@ -6,16 +6,18 @@ import RunningWorkoutsList from "./RunningWorkoutsList";
 import RunningAnalytics from "./RunningAnalytics";
 import { formatPace } from "@/lib/constants/running";
 import Link from "next/link";
+import AlertModal from "@/components/AlertModal";
 
 /**
  * Componente de botão oficial "Connect with Strava".
  * Usa o asset SVG oficial do kit de marca Strava (1.1).
  * PROIBIDO modificar tamanho, cores ou distorcer a imagem (Brand Guidelines §2).
  */
-const StravaConnectButton = ({ href }: { href: string }) => (
-  <a
-    href={href}
-    style={{ display: "inline-block", lineHeight: 0 }}
+const StravaConnectButton = ({ onClick }: { onClick: () => void }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    style={{ display: "inline-block", lineHeight: 0, background: "none", border: "none", padding: 0, cursor: "pointer" }}
     aria-label="Connect with Strava"
   >
     {/* Botão oficial PNG/SVG — não modificar cores nem proporções */}
@@ -24,7 +26,7 @@ const StravaConnectButton = ({ href }: { href: string }) => (
       alt="Connect with Strava"
       style={{ height: 48, width: "auto", display: "block" }}
     />
-  </a>
+  </button>
 );
 
 /**
@@ -59,6 +61,7 @@ export default function RunningHubTabs({
   metrics
 }: RunningHubTabsProps) {
   const [activeTab, setActiveTab] = useState<"inicio" | "planilha" | "evolucao">("inicio");
+  const [showAlert, setShowAlert] = useState(false);
 
   const workouts = activePlan?.running_workouts ?? [];
 
@@ -232,7 +235,7 @@ export default function RunningHubTabs({
               </div>
             ) : (
               /* Botão oficial "Connect with Strava" — Brand Guidelines §1.1 */
-              <StravaConnectButton href="/api/auth/strava" />
+              <StravaConnectButton onClick={() => setShowAlert(true)} />
             )}
           </div>
 
@@ -372,6 +375,15 @@ export default function RunningHubTabs({
             </div>
           </div>
         </div>
+      )}
+
+      {showAlert && (
+        <AlertModal
+          title="Em Breve!"
+          message="Aguarde! Em breve você poderá conectar sua conta do Strava com o aplicativo Coliseu Running para sincronizar seus treinos automaticamente."
+          type="info"
+          onClose={() => setShowAlert(false)}
+        />
       )}
     </div>
   );

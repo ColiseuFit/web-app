@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { ShieldCheck, Mail, Lock, Eye, EyeOff, ArrowRight, Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import AdminStyles from "@/components/admin/AdminStyles";
 
 /**
@@ -15,7 +15,7 @@ import AdminStyles from "@/components/admin/AdminStyles";
  * - Evita onMouseEnter/Leave que não disparam em touch (iOS).
  * - WebkitAppearance: none para remover estilos nativos do Safari em inputs/buttons.
  */
-export default function AdminLoginPage() {
+function AdminLoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -24,6 +24,13 @@ export default function AdminLoginPage() {
 
   const supabase = createClient();
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    if (searchParams?.get("error") === "unauthorized") {
+      setError("Acesso negado: Você precisa fazer login com uma conta administrativa.");
+    }
+  }, [searchParams]);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -348,5 +355,13 @@ export default function AdminLoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function AdminLoginPage() {
+  return (
+    <Suspense fallback={<div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#000" }}>Carregando...</div>}>
+      <AdminLoginForm />
+    </Suspense>
   );
 }

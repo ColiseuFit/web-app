@@ -84,6 +84,24 @@ export default async function RunningDashboardPage() {
   const workouts: any[] = (activePlan as any)?.running_workouts ?? [];
   const completedInPlan = workouts.filter((w) => w.completed_at).length;
 
+  // ── Parse Perfil de Performance (Marcos de Pace) ──────────────────────────
+  let paceMarks: { distance: number | string; pace: string }[] = [];
+  try {
+    const rawPace = (profile as any)?.running_pace;
+    const parsed = JSON.parse(rawPace || "[]");
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      paceMarks = parsed;
+    } else if (rawPace) {
+      // Fallback legado se for apenas uma string tipo "05:00"
+      paceMarks = [{ distance: 1, pace: rawPace }];
+    }
+  } catch (e) {
+    const rawPace = (profile as any)?.running_pace;
+    if (rawPace) {
+      paceMarks = [{ distance: 1, pace: rawPace }];
+    }
+  }
+
   const firstName = profile?.full_name ? profile.full_name.split(" ")[0] : "Atleta";
 
   return (
@@ -204,8 +222,8 @@ export default async function RunningDashboardPage() {
                 </span>
               </div>
               
-              {profile?.running_pace && (
-                <div style={{
+              {paceMarks.map((mark, idx) => (
+                <div key={idx} style={{
                   background: "#000",
                   color: "#FFF",
                   padding: "8px 16px",
@@ -213,12 +231,15 @@ export default async function RunningDashboardPage() {
                   display: "inline-flex",
                   alignItems: "center",
                   gap: "8px",
-                  transform: "rotate(1deg)"
+                  transform: `rotate(${idx % 2 === 0 ? 1 : -1}deg)`,
+                  boxShadow: "4px 4px 0px #000"
                 }}>
-                  <Timer size={14} /> 
-                  <span style={{ fontSize: 12, fontWeight: 900 }}>PACE {profile.running_pace}</span>
+                  <Timer size={14} className="text-yellow-400" /> 
+                  <span style={{ fontSize: 12, fontWeight: 900 }}>
+                    {mark.distance}KM: {mark.pace}
+                  </span>
                 </div>
-              )}
+              ))}
             </div>
             
             {activePlan?.title && (

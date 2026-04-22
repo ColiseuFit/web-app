@@ -5,7 +5,6 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Search, Plus, Phone, X, UserPlus, ChevronDown, Pencil, Trash2, User, Mail, Calendar, CreditCard, Info, Activity, ShieldCheck, Lock as LockIcon, Mail as MailIcon, ChevronLeft, ChevronRight, Copy, Check, Tag, Zap } from "lucide-react";
 import { createStudent, updateStudent, deleteStudent, getStudentEvaluations, deletePhysicalEvaluation, updateStudentAuth, updatePreRegistration } from "../../../actions";
 import PhysicalEvaluationForm from "./PhysicalEvaluationForm";
-import RunningCoachManager from "./RunningCoachManager";
 import ConfirmModal from "@/components/ConfirmModal";
 import AlertModal from "@/components/AlertModal";
 import { getLevelInfo, LevelInfo } from "@/lib/constants/levels";
@@ -73,6 +72,7 @@ function formatDate(dateStr: string): string {
     timeZone: "America/Sao_Paulo"
   });
 }
+
 
 export default function AlunosClient({ 
   students, 
@@ -168,6 +168,9 @@ export default function AlunosClient({
 
   // URL Update Logic (Debounced Search)
   useEffect(() => {
+    const currentUrlSearch = searchParams.get("search") || "";
+    if (search === currentUrlSearch) return;
+
     const timer = setTimeout(() => {
       const params = new URLSearchParams(searchParams.toString());
       if (search) params.set("search", search);
@@ -970,18 +973,6 @@ export default function AlunosClient({
                 AVALIAÇÕES
               </button>
               <button 
-                onClick={() => setDrawerView("running")} 
-                style={{ 
-                  flex: 1, padding: "20px", fontSize: 12, fontWeight: 900, textTransform: "uppercase",
-                  background: drawerView === "running" ? "#FFF" : "transparent",
-                  color: "#000", border: "none", cursor: "pointer", 
-                  borderRight: "4px solid #000",
-                  transition: "all 0.1s"
-                }}
-              >
-                CORRIDA
-              </button>
-              <button 
                 onClick={() => setDrawerView("security")} 
                 style={{ 
                   flex: 1, padding: "20px", fontSize: 12, fontWeight: 900, textTransform: "uppercase",
@@ -1045,40 +1036,12 @@ export default function AlunosClient({
                         </div>
                       </div>
 
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 20 }}>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
                         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                           <label style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", color: "#666" }}>Nível Técnico</label>
                           <select name="level" defaultValue={selectedStudent.level} style={{ width: "100%", padding: 14, border: "3px solid #000", fontWeight: 800, outline: "none" }}>
                             {levelsList.map(l => <option key={l.key} value={l.key}>{l.label}</option>)}
                           </select>
-                        </div>
-                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                          <label style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", color: "#666" }}>Nível Corrida</label>
-                          <select name="running_level" defaultValue={selectedStudent.running_level || "iniciante"} style={{ width: "100%", padding: 14, border: "3px solid #000", fontWeight: 800, outline: "none" }}>
-                            {Object.values(RUNNING_LEVELS).map(l => (
-                              <option key={l.key} value={l.key}>{l.label}</option>
-                            ))}
-                          </select>
-                        </div>
-                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                          <label style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", color: "#666" }}>Pace Atual</label>
-                          <input 
-                            type="text" 
-                            name="running_pace" 
-                            defaultValue={selectedStudent.running_pace || ""}
-                            placeholder="00:00"
-                            maxLength={5}
-                            onChange={(e) => {
-                              // UX: Máscara manual MM:SS para evitar dependências externas pesadas
-                              // e garantir paridade visual rápida para o coach.
-                              let val = e.target.value.replace(/\D/g, "");
-                              if (val.length > 2) {
-                                val = val.substring(0, 2) + ":" + val.substring(2, 4);
-                              }
-                              e.target.value = val;
-                            }}
-                            style={{ width: "100%", padding: 14, border: "3px solid #000", fontWeight: 800, outline: "none" }} 
-                          />
                         </div>
                         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                           <label style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", color: "#666" }}>Gênero</label>
@@ -1413,9 +1376,6 @@ export default function AlunosClient({
                 </div>
               )}
 
-              {drawerView === "running" && (
-                <RunningCoachManager studentId={selectedStudent.id} />
-              )}
             </div>
           </div>
         </div>

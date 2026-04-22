@@ -11,6 +11,7 @@ interface RunningWorkoutFormProps {
     target_description: string;
     target_distance_km: number | null;
     target_pace_description: string | null;
+    target_rest_time_description: string | null;
   };
   onClose: () => void;
   onSuccess: () => void;
@@ -180,10 +181,11 @@ export default function RunningWorkoutForm({ workout, onClose, onSuccess }: Runn
             }}>
               <div style={{ opacity: 0.6, fontSize: "10px", textTransform: "uppercase", marginBottom: "4px" }}>Meta Prescrita:</div>
               <div>{workout.target_description}</div>
-              {(workout.target_distance_km || workout.target_pace_description) && (
-                <div style={{ display: "flex", gap: "10px", marginTop: "4px", color: "var(--nb-red)" }}>
+              {(workout.target_distance_km || workout.target_pace_description || workout.target_rest_time_description) && (
+                <div style={{ display: "flex", gap: "12px", marginTop: "4px", color: "var(--nb-red)", flexWrap: "wrap" }}>
                   {workout.target_distance_km && <span>{workout.target_distance_km} KM</span>}
                   {workout.target_pace_description && <span>PACE {workout.target_pace_description}</span>}
+                  {workout.target_rest_time_description && <span>DESC. {workout.target_rest_time_description}</span>}
                 </div>
               )}
             </div>

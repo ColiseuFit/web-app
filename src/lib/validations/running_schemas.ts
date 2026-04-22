@@ -30,6 +30,9 @@ export const bulkCreateRunningWorkoutsSchema = z.object({
   workouts: z.array(z.object({
     scheduled_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data agendada inválida"),
     target_description: z.string().min(2, "A descrição do treino é obrigatória"),
+    target_distance_km: z.number().nullable().optional(),
+    target_pace_description: z.string().nullable().optional(),
+    target_rest_time_description: z.string().nullable().optional(),
   })).min(1, "É necessário pelo menos um treino para geração"),
 });
 
