@@ -1,15 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { Settings as SettingsIcon, Zap, ShieldCheck, Trophy, Star, Dumbbell, CheckSquare } from "lucide-react";
+import { Settings as SettingsIcon, Zap, ShieldCheck, Trophy, Star, Dumbbell, CheckSquare, Video } from "lucide-react";
 import GeneralSettingsManager from "./GeneralSettingsManager";
 import WodSettingsManager from "./WodSettingsManager";
 import CheckinSettingsManager from "./CheckinSettingsManager";
+import VideoSettingsManager from "./VideoSettingsManager";
 
 interface SettingsTabsProps {
   initialSettings: Record<string, string>;
   initialRules: any[];
   initialLevels: any[];
+  videoViewCount: number;
+  totalStudents: number;
 }
 
 /**
@@ -22,13 +25,14 @@ interface SettingsTabsProps {
  * 
  * @param {SettingsTabsProps} props - Dados hidratados do servidor (Settings, Rules, Levels).
  */
-export default function SettingsTabs({ initialSettings, initialRules, initialLevels }: SettingsTabsProps) {
-  const [activeTab, setActiveTab] = useState<"geral" | "checkin" | "wod" | "metodologia" | "pontuacao" | "seguranca">("geral");
+export default function SettingsTabs({ initialSettings, initialRules, initialLevels, videoViewCount, totalStudents }: SettingsTabsProps) {
+  const [activeTab, setActiveTab] = useState<"geral" | "checkin" | "wod" | "video" | "seguranca">("geral");
 
   const TABS = [
     { id: "geral", label: "Geral", icon: SettingsIcon },
     { id: "checkin", label: "Check-in", icon: CheckSquare },
     { id: "wod", label: "WOD", icon: Dumbbell },
+    { id: "video", label: "Vídeo", icon: Video },
     { id: "seguranca", label: "Segurança", icon: ShieldCheck }
   ];
 
@@ -96,6 +100,14 @@ export default function SettingsTabs({ initialSettings, initialRules, initialLev
 
         {activeTab === "wod" && (
           <WodSettingsManager initialSettings={initialSettings} />
+        )}
+
+        {activeTab === "video" && (
+          <VideoSettingsManager 
+            initialSettings={initialSettings} 
+            viewCount={videoViewCount}
+            totalStudents={totalStudents}
+          />
         )}
 
         {activeTab === "seguranca" && (

@@ -65,7 +65,7 @@ export async function proxy(request: NextRequest) {
   // 1. DOMAIN ROUTING: Admin
   if (hostname.startsWith('admin.coliseufit.com') || hostname.startsWith('admin.localhost')) {
     if (path === '/login') {
-      url.pathname = '/admin-portal';
+      url.pathname = '/admin/login';
       isRewritten = true;
     } else if (path === '/') {
       url.pathname = '/admin';
@@ -99,13 +99,18 @@ export async function proxy(request: NextRequest) {
   // PATH de intenção: avalia o que o usuário quer acessar de fato
   const targetPath = isRewritten ? url.pathname : path;
   
+  // Auth pages: Redirect authenticated users AWAY (already logged in, go to your portal)
   const isAuthPage = 
     targetPath.startsWith("/login") || 
-    targetPath.startsWith("/admin-portal") || 
+    targetPath.startsWith("/admin/login") || 
     targetPath.startsWith("/coach-portal");
-  // O index real do app student (apontado na base domain clude/) é publico por enquanto, 
-  // mas o index do admin (/) é reescrito pra /admin (que é restrito).
-  const isPublicPath = isAuthPage || (targetPath === "/" && !hostname.startsWith('admin'));
+
+  // Public pages: Don't require authentication, but DON'T redirect if already logged in.
+  // /admin/login is here because staff may need to switch accounts while a student session is active.
+  const isPublicPath = 
+    isAuthPage || 
+    targetPath.startsWith("/admin/login") ||
+    (targetPath === "/" && !hostname.startsWith('admin'));
 
   // Redirect to login if user is not authenticated
   if (!user && !isPublicPath) {
@@ -115,7 +120,7 @@ export async function proxy(request: NextRequest) {
     const isCoachRoute = targetPath.startsWith("/coach") || targetPath.startsWith("/coach-portal");
 
     if (isAdminRoute) {
-      redirectUrl.pathname = "/admin-portal";
+      redirectUrl.pathname = "/admin/login";
     } else if (isCoachRoute) {
       redirectUrl.pathname = "/coach-portal";
     } else {

@@ -1,6 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import { headers } from "next/headers";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import { USER_ROLES } from "@/lib/constants/roles";
 
@@ -8,7 +7,7 @@ import { USER_ROLES } from "@/lib/constants/roles";
  * Nested Admin Layout: Handles RBAC protection and layout for all AUTHENTICATED admin routes.
  *
  * @logic
- * - Skips auth and sidebar for /admin/login.
+ * - Skips auth and sidebar for /admin/login (public auth page).
  * - Protects everything else under /admin/*.
  */
 export default async function AuthenticatedAdminLayout({ children }: { children: React.ReactNode }) {
@@ -16,7 +15,7 @@ export default async function AuthenticatedAdminLayout({ children }: { children:
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect("/admin-portal");
+    redirect("/admin/login");
   }
 
   let roleData = null;
@@ -35,7 +34,7 @@ export default async function AuthenticatedAdminLayout({ children }: { children:
   }
 
   if (!roleData || (roleData.role !== USER_ROLES.ADMIN && roleData.role !== USER_ROLES.RECEPTION)) {
-    redirect("/admin-portal?error=unauthorized");
+    redirect("/admin/login?error=unauthorized");
   }
 
   return (
@@ -79,3 +78,4 @@ export default async function AuthenticatedAdminLayout({ children }: { children:
     </div>
   );
 }
+

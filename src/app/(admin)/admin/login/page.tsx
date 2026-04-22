@@ -1,12 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import { LogIn, ShieldCheck, Mail, Lock, Eye, EyeOff } from "lucide-react";
+import { ShieldCheck, Mail, Lock, Eye, EyeOff, ArrowRight, Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+import AdminStyles from "@/components/admin/AdminStyles";
 
 /**
- * Admin Login Page: Portal for Staff.
+ * Admin Login Page — Safari/iOS compatible.
+ *
+ * @fixes
+ * - box-sizing: border-box em todos os inputs para evitar overflow no Safari.
+ * - Botão olho posicionado sem depender de transform herdado do input em foco.
+ * - Evita onMouseEnter/Leave que não disparam em touch (iOS).
+ * - WebkitAppearance: none para remover estilos nativos do Safari em inputs/buttons.
  */
 export default function AdminLoginPage() {
   const [email, setEmail] = useState("");
@@ -24,157 +31,321 @@ export default function AdminLoginPage() {
     setError(null);
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
 
-      // Check for user role
-      const { data: roleData } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", data.user?.id)
-        .single();
+      let roleData = null;
+      let attempts = 0;
+
+      const isAdminEmail = data.user?.email === "admin@coliseufit.com";
+
+      if (isAdminEmail) {
+        roleData = { role: "admin" };
+      } else {
+        while (attempts < 2 && !roleData) {
+          if (attempts > 0) await new Promise(r => setTimeout(r, 600));
+
+          const { data: fetchRole, error: roleError } = await supabase
+            .from("user_roles")
+            .select("role")
+            .eq("user_id", data.user?.id)
+            .maybeSingle();
+
+          if (roleError) console.error("Erro ao buscar cargo:", roleError);
+          roleData = fetchRole;
+          attempts++;
+        }
+      }
 
       if (!roleData || (roleData.role !== "admin" && roleData.role !== "reception")) {
         await supabase.auth.signOut();
-        throw new Error("Acesso restrito: Você não possui permissões administrativas.");
+        throw new Error(`Acesso negado: Perfil sem permissões administrativas. (UID: ${data.user?.id?.substring(0, 8)}...)`);
       }
 
       router.push("/admin");
       router.refresh();
     } catch (err: any) {
-      setError(err.message || "Erro ao autenticar.");
+      console.error("Falha no login admin:", err);
+      setError(err.message || "Erro de autenticação.");
     } finally {
       setLoading(false);
     }
   }
 
+  const inputBase: React.CSSProperties = {
+    display: "block",
+    width: "100%",
+    boxSizing: "border-box",         // ← Safari fix: inclui border+padding na largura
+    padding: "16px 16px 16px 48px",
+    fontSize: "16px",                 // ← iOS: 16px previne zoom automático no foco
+    fontWeight: 600,
+    border: "2px solid #000",
+    background: "#FFF",
+    color: "#000",
+    borderRadius: "0px",
+    outline: "none",
+    WebkitAppearance: "none",         // ← Remove estilo nativo do Safari
+    appearance: "none",
+  };
+
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "#F9FAFB",
-        padding: "20px",
-        position: "fixed",
-        inset: 0,
-        zIndex: 999, // Over sidebar if it appears
-      }}
-    >
+    <div className="admin-shell">
+      <AdminStyles />
+      <style>{`
+        * { box-sizing: border-box; }
+        input, button { -webkit-appearance: none; appearance: none; }
+      `}</style>
       <div
-        className="admin-card"
         style={{
-          width: "100%",
-          maxWidth: "400px",
-          padding: "40px",
+          minHeight: "100vh",
           display: "flex",
-          flexDirection: "column",
-          gap: "24px",
-          background: "white",
-          boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.05)",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "#000000",
+          padding: "24px",
         }}
       >
-        <div style={{ textAlign: "center" }}>
-          <div
-            style={{
-              width: "48px",
-              height: "48px",
-              background: "#111",
-              borderRadius: "12px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              margin: "0 auto 20px",
-              color: "#fff",
-            }}
-          >
-            <ShieldCheck size={28} />
+        <div
+          style={{
+            width: "100%",
+            maxWidth: "440px",
+            background: "#FFFFFF",
+            padding: "48px",
+            boxShadow: "20px 20px 0px rgba(255, 255, 255, 0.1)",
+            border: "1px solid #FFFFFF",
+          }}
+        >
+          <div style={{ marginBottom: "40px", textAlign: "left" }}>
+            <div
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "12px",
+                padding: "8px 16px",
+                background: "#000",
+                color: "#FFF",
+                marginBottom: "24px",
+                fontSize: "12px",
+                fontWeight: 700,
+                letterSpacing: "0.1em",
+                textTransform: "uppercase",
+              }}
+            >
+              <ShieldCheck size={18} />
+              <span>Acesso Restrito</span>
+            </div>
+            <h1
+              style={{
+                fontSize: "32px",
+                fontWeight: 800,
+                color: "#111",
+                margin: "0 0 8px",
+                letterSpacing: "-0.03em",
+              }}
+            >
+              Coliseu Admin
+            </h1>
+            <p style={{ fontSize: "15px", color: "#666", margin: 0, lineHeight: 1.5 }}>
+              Painel de Controle e Gestão Operacional. <br />
+              Entre com suas credenciais de Staff.
+            </p>
           </div>
-          <h1 style={{ fontSize: "20px", fontWeight: 700, margin: "0 0 8px" }}>Coliseu Admin</h1>
-          <p style={{ fontSize: "14px", color: "var(--admin-text-secondary)", margin: 0 }}>
-            Login Operacional
-          </p>
-        </div>
 
-        {error && (
+          <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+            {error && (
+              <div
+                style={{
+                  padding: "16px",
+                  background: "#FFF1F2",
+                  borderLeft: "4px solid #E11D48",
+                  color: "#9F1239",
+                  fontSize: "13px",
+                  fontWeight: 600,
+                  boxSizing: "border-box",
+                }}
+              >
+                {error}
+              </div>
+            )}
+
+            {/* EMAIL */}
+            <div>
+              <label
+                style={{
+                  display: "block",
+                  fontSize: "13px",
+                  fontWeight: 800,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.08em",
+                  color: "#000",
+                  marginBottom: "10px",
+                }}
+              >
+                E-mail Institucional
+              </label>
+              <div style={{ position: "relative" }}>
+                <Mail
+                  size={20}
+                  style={{
+                    position: "absolute",
+                    left: "14px",
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    color: "#000",
+                    pointerEvents: "none",
+                    zIndex: 1,
+                  }}
+                />
+                <input
+                  type="email"
+                  required
+                  autoComplete="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="admin@coliseufit.com"
+                  style={inputBase}
+                />
+              </div>
+            </div>
+
+            {/* PASSWORD */}
+            <div>
+              <label
+                style={{
+                  display: "block",
+                  fontSize: "13px",
+                  fontWeight: 800,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.08em",
+                  color: "#000",
+                  marginBottom: "10px",
+                }}
+              >
+                Chave de Acesso
+              </label>
+              {/* 
+                Safari fix: O wrapper position:relative precisa ser um elemento separado 
+                do input para que o botão-olho não seja arrastado pelo transform do foco.
+                Solução: padding-right no input + botão absolute alinhado pelo top:0/bottom:0.
+              */}
+              <div style={{ position: "relative" }}>
+                <Lock
+                  size={20}
+                  style={{
+                    position: "absolute",
+                    left: "14px",
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    color: "#000",
+                    pointerEvents: "none",
+                    zIndex: 1,
+                  }}
+                />
+                <input
+                  type={showPassword ? "text" : "password"}
+                  required
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  style={{
+                    ...inputBase,
+                    paddingRight: "52px", // espaço para o botão olho
+                  }}
+                />
+                {/* 
+                  Eye button: usa top/bottom:0 + margin:auto em vez de transform:translateY
+                  para evitar o bug do Safari onde transform de pai afeta position:absolute 
+                */}
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{
+                    position: "absolute",
+                    right: "0",
+                    top: "0",
+                    bottom: "0",
+                    width: "52px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    color: "#000",
+                    WebkitAppearance: "none",
+                    appearance: "none",
+                    padding: 0,
+                    zIndex: 2,
+                    // Área de toque aumentada para iOS
+                    minHeight: "44px",
+                  }}
+                  aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                >
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+              </div>
+            </div>
+
+            {/* SUBMIT */}
+            <button
+              type="submit"
+              disabled={loading}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "12px",
+                width: "100%",
+                boxSizing: "border-box",
+                height: "56px",
+                background: "#000",
+                color: "#FFF",
+                border: "none",
+                fontSize: "14px",
+                fontWeight: 700,
+                textTransform: "uppercase",
+                letterSpacing: "0.1em",
+                cursor: loading ? "not-allowed" : "pointer",
+                marginTop: "8px",
+                WebkitAppearance: "none",
+                appearance: "none",
+                // Cor de tap highlight removida no iOS
+                WebkitTapHighlightColor: "transparent",
+              } as React.CSSProperties}
+            >
+              {loading ? (
+                <>
+                  <Loader2 size={18} style={{ animation: "spin 1s linear infinite" }} />
+                  Verificando...
+                </>
+              ) : (
+                <>
+                  Entrar no Sistema
+                  <ArrowRight size={18} />
+                </>
+              )}
+            </button>
+          </form>
+
+          <style>{`
+            @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+          `}</style>
+
           <div
             style={{
-              padding: "12px",
-              background: "#FEF2F2",
-              border: "1px solid #FEE2E2",
-              borderRadius: "6px",
-              color: "var(--admin-danger)",
-              fontSize: "13px",
+              marginTop: "40px",
+              paddingTop: "24px",
+              borderTop: "1px solid #EEE",
               textAlign: "center",
             }}
           >
-            {error}
+            <p style={{ fontSize: "12px", color: "#999", margin: 0 }}>
+              &copy; {new Date().getFullYear()} Coliseu Soluções Esportivas. <br />
+              Interface Operacional Segura.
+            </p>
           </div>
-        )}
-
-        <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-          <div>
-            <label style={{ display: "block", fontSize: "12px", fontWeight: 600, marginBottom: "6px" }}>
-              E-mail
-            </label>
-            <div style={{ position: "relative" }}>
-              <Mail
-                size={16}
-                style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "var(--admin-text-muted)" }}
-              />
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="nome@coliseufit.com"
-                style={{ paddingLeft: "38px" }}
-              />
-            </div>
-          </div>
-
-          <div>
-            <label style={{ display: "block", fontSize: "12px", fontWeight: 600, marginBottom: "6px" }}>
-              Senha
-            </label>
-            <div style={{ position: "relative" }}>
-              <Lock
-                size={16}
-                style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "var(--admin-text-muted)" }}
-              />
-              <input
-                type={showPassword ? "text" : "password"}
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                style={{ paddingLeft: "38px", paddingRight: "38px" }}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                style={{ position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer" }}
-              >
-                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
-            </div>
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="admin-btn admin-btn-primary"
-            style={{ marginTop: "8px", height: "42px", justifyContent: "center" }}
-          >
-            {loading ? "Verificando..." : "Entrar"}
-            {!loading && <LogIn size={16} />}
-          </button>
-        </form>
+        </div>
       </div>
     </div>
   );

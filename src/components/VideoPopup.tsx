@@ -1,20 +1,31 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { X, PlayCircle } from "lucide-react";
+import { X } from "lucide-react";
+import { trackVideoView } from "@/app/(student)/video-actions";
 
 /**
  * VIDEO POPUP COMPONENT (Neo-Brutalist)
  * 
  * @architecture
  * - Iron Monolith Style: 4px black borders, solid shadows, bold typography.
- * - Responsive: Adapts to mobile screens with auto-height video.
- * - State Management: Uses localStorage to track if a specific video has been seen.
+ * - Formato Vertical (9:16): Otimizado para vídeos gravados em celular (Reels/Stories).
+ * - State Management: localStorage para UX imediata + Supabase para analytics persistentes.
+ * 
+ * @analytics
+ * - Ao fechar o popup, registra a visualização na tabela `video_views` via Server Action.
+ * - Idempotente: UPSERT garante 1 registro por aluno/vídeo (sem duplicatas).
+ * 
+ * @param {string} videoId - Identificador único para tracking (localStorage + DB).
+ * @param {string} videoUrl - URL do vídeo (YouTube embed, Vimeo ou MP4 direto).
+ * @param {string} [title] - Título opcional (não exibido no layout atual, usado para acessibilidade).
+ * @param {boolean} [autoPlay] - Se o vídeo deve iniciar automaticamente.
+ * @param {() => void} [onClose] - Callback opcional ao fechar.
  */
 
 interface VideoPopupProps {
-  videoId: string; // Used for localStorage key tracking
-  videoUrl: string; // Supports YouTube/Vimeo embed or direct MP4
+  videoId: string;
+  videoUrl: string;
   title?: string;
   autoPlay?: boolean;
   onClose?: () => void;
@@ -30,7 +41,7 @@ export default function VideoPopup({
   const [isOpen, setIsOpen] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Check if video was already seen
+  // Check if video was already seen (localStorage = instant, before DB roundtrip)
   useEffect(() => {
     const hasSeen = localStorage.getItem(`video_seen_${videoId}`);
     if (!hasSeen) {
@@ -52,9 +63,23 @@ export default function VideoPopup({
     };
   }, [isOpen]);
 
-  const handleClose = () => {
+  /**
+   * handleClose: Fecha o popup e persiste a visualização em duas camadas.
+   * 1. localStorage: Feedback instantâneo (não mostra novamente no mesmo browser).
+   * 2. Supabase (video_views): Analytics persistente para o admin.
+   */
+  const handleClose = async () => {
     setIsOpen(false);
     localStorage.setItem(`video_seen_${videoId}`, "true");
+
+    // Fire-and-forget: Registra view no banco para analytics
+    try {
+      await trackVideoView(videoId);
+    } catch (err) {
+      // Silencioso: Não bloqueia UX se o tracking falhar
+      console.warn("[VideoPopup] Analytics tracking failed:", err);
+    }
+
     if (onClose) onClose();
   };
 
@@ -72,40 +97,49 @@ export default function VideoPopup({
   }
 
   return (
-    <div style={{
-      position: "fixed",
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: "rgba(0,0,0,0.7)",
-      backdropFilter: "blur(10px)",
-      zIndex: 4000,
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      padding: "20px",
-      animation: "fadeIn 0.3s ease-out forwards"
-    }}>
+    <div 
+      style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: "rgba(0,0,0,0.7)",
+        backdropFilter: "blur(10px)",
+        zIndex: 4000,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "20px",
+        animation: "fadeIn 0.3s ease-out forwards"
+      }}
+      onClick={handleClose} // Fechar ao clicar fora
+      role="dialog"
+      aria-label={title}
+    >
       <style dangerouslySetInnerHTML={{ __html: `
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes scaleIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
       `}} />
 
-      <div style={{
-        backgroundColor: "#FFFFFF",
-        border: "4px solid #000000",
-        width: "100%",
-        maxWidth: "400px", // Otimizado para vertical
-        position: "relative",
-        boxShadow: "16px 16px 0px 0px rgba(0,0,0,1)",
-        animation: "scaleIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards",
-        display: "flex",
-        flexDirection: "column",
-        maxHeight: "90vh"
-      }}>
+      <div 
+        style={{
+          backgroundColor: "#FFFFFF",
+          border: "4px solid #000000",
+          width: "100%",
+          maxWidth: "400px",
+          position: "relative",
+          boxShadow: "16px 16px 0px 0px rgba(0,0,0,1)",
+          animation: "scaleIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards",
+          display: "flex",
+          flexDirection: "column",
+          maxHeight: "90vh"
+        }}
+        onClick={e => e.stopPropagation()} // Prevenir fechar ao clicar no card
+      >
         
-        {/* Close Button Flutuante (Minimalista) */}
+        {/* Close Button Flutuante (Neo-Brutalist) */}
         <button 
           onClick={handleClose}
           style={{
@@ -127,6 +161,7 @@ export default function VideoPopup({
           }}
           onMouseEnter={e => e.currentTarget.style.transform = "scale(1.1) rotate(90deg)"}
           onMouseLeave={e => e.currentTarget.style.transform = "scale(1) rotate(0deg)"}
+          aria-label="Fechar vídeo"
         >
           <X size={24} strokeWidth={3} />
         </button>
@@ -161,10 +196,6 @@ export default function VideoPopup({
               <span style={{ fontSize: "10px", fontWeight: 900, letterSpacing: "0.1em" }}>CARREGANDO VÍDEO...</span>
             </div>
           )}
-          
-          <style dangerouslySetInnerHTML={{ __html: `
-            @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-          `}} />
 
           {isEmbed ? (
             <iframe
@@ -173,19 +204,21 @@ export default function VideoPopup({
               allow="autoplay; fullscreen; picture-in-picture"
               allowFullScreen
               onLoad={() => setIsLoaded(true)}
+              title={title}
             />
           ) : (
             <video
               src={videoUrl}
               autoPlay={autoPlay}
               controls
-              style={{ width: "100%", height: "100%" }}
+              playsInline
+              style={{ width: "100%", height: "100%", objectFit: "cover" }}
               onLoadedData={() => setIsLoaded(true)}
             />
           )}
         </div>
 
-        {/* Footer / Action */}
+        {/* Footer / CTA */}
         <div style={{ padding: "24px", background: "#F9F9F9" }}>
           <button
             onClick={handleClose}
