@@ -8,6 +8,7 @@ import BottomNav from "@/components/BottomNav";
 import WodView from "@/components/WodView";
 import WeekWodCarousel from "@/components/WeekWodCarousel";
 import LevelBadge from "@/components/LevelBadge";
+import VideoPopup from "@/components/VideoPopup";
 import { getLevelInfo } from "@/lib/constants/levels";
 import { getCachedLevels } from "@/lib/constants/levels_actions";
 import { AlertTriangle, Zap, Footprints } from "lucide-react";
@@ -356,6 +357,16 @@ export default async function AppDashboard({ searchParams }: PageProps) {
       </main>
 
       <BottomNav />
+
+      {/* Popup de Vídeo (Sincronizado via Supabase) */}
+      {boxSettings.featured_video_active === "true" && boxSettings.featured_video_url && (
+        <VideoPopup 
+          videoId={boxSettings.featured_video_id || "default-video"}
+          videoUrl={boxSettings.featured_video_url}
+          title={boxSettings.featured_video_title || "NOVIDADE NA ARENA"}
+          autoPlay={false}
+        />
+      )}
     </div>
   );
 }
