@@ -47,11 +47,13 @@ graph TD
   - `docs/PLAYBOOKS/STUDENT_APP.md`: Guia mestre da experiência do aluno.
   - `docs/PLAYBOOKS/PWA_UPDATE_GUARD.md`: Procedimento de versionamento e atualização de cache.
   - `docs/PLAYBOOKS/RUNNING_HUB.md`: Gestão estratégica de atletas, gerador de planilhas em massa e métricas de Pace.
+  - `docs/PLAYBOOKS/STRAVA_INTEGRATION.md`: Webhooks, homologação e conformidade com o Strava API Program.
+  - `docs/PLAYBOOKS/RUNNING_SUPORTE.md`: Playbook operacional da página obrigatória de suporte (Compliance Strava).
   ... (outros playbooks)
 
 ---
 ---
-**Versão: 3.2.0 (Abril/2026) - Running Hub 2.0: Bulk Generator & Pace Metrics**  
+**Versão: 3.3.0 (Abril/2026) - Strava API Production Ready**  
 **Status da Auditoria:** 🏛️ LEGACY PROOF (Protocolo 1.0.3) - CONCLUÍDA  
 **Equipe:** Antigravity AI & Coliseu Engineering Team
 
