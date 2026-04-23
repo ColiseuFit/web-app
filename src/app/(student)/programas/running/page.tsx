@@ -7,6 +7,7 @@ import DashboardStyles from "@/components/DashboardStyles";
 import { Footprints, Timer, Zap, TrendingUp } from "lucide-react";
 import { getStudentRunningHistory } from "@/lib/actions/running_actions";
 import RunningHubTabs from "@/components/RunningHubTabs";
+import { RUNNING_LEVELS, type RunningLevelKey } from "@/lib/constants/running";
 
 
 export const metadata: Metadata = {
@@ -218,7 +219,10 @@ export default async function RunningDashboardPage() {
               }}>
                 <Zap size={14} fill="#000" />
                 <span style={{ fontSize: 12, fontWeight: 950, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                  {profile?.running_level || activePlan?.level_tag || "INICIANTE"}
+                  {(() => {
+                    const rawLevel = (profile?.running_level || activePlan?.level_tag || "iniciante").toLowerCase() as RunningLevelKey;
+                    return RUNNING_LEVELS[rawLevel]?.label || rawLevel;
+                  })()}
                 </span>
               </div>
               
