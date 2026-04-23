@@ -13,6 +13,7 @@ import AthleteIdentity from "@/components/Identity/AthleteIdentity";
 import AthleteAvatar from "@/components/Identity/AthleteAvatar";
 import { RUNNING_LEVELS } from "@/lib/constants/running";
 import { maskCPF, maskPhone, maskCEP } from "@/lib/utils/masks";
+import RunningIdentityEditor from "./RunningIdentityEditor";
 
 
 /**
@@ -978,10 +979,22 @@ export default function AlunosClient({
                   flex: 1, padding: "20px", fontSize: 12, fontWeight: 900, textTransform: "uppercase",
                   background: drawerView === "security" ? "#FFF" : "transparent",
                   color: "#000", border: "none", cursor: "pointer",
+                  borderRight: "4px solid #000",
                   transition: "all 0.1s"
                 }}
               >
                 SEGURANÇA
+              </button>
+              <button 
+                onClick={() => setDrawerView("running")} 
+                style={{ 
+                  flex: 1, padding: "20px", fontSize: 12, fontWeight: 900, textTransform: "uppercase",
+                  background: drawerView === "running" ? "#FFF" : "transparent",
+                  color: "#000", border: "none", cursor: "pointer",
+                  transition: "all 0.1s"
+                }}
+              >
+                CORRIDA
               </button>
             </div>
 
@@ -1373,6 +1386,16 @@ export default function AlunosClient({
                       </div>
                     </div>
                   </form>
+                </div>
+              )}
+
+              {drawerView === "running" && (
+                <div style={{ maxWidth: 800, margin: "0 auto", width: "100%" }}>
+                  <RunningIdentityEditor 
+                    student={selectedStudent} 
+                    onUpdate={() => setDrawerView("profile")} 
+                    updateStudentAction={updateStudent} 
+                  />
                 </div>
               )}
 
