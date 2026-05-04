@@ -7,8 +7,8 @@ import { RUNNING_LEVELS } from "@/lib/constants/running";
 interface RunningIdentityEditorProps {
   student: {
     id: string;
-    running_level?: string;
-    running_pace?: string;
+    running_level?: string | null;
+    running_pace?: string | null;
   };
   onUpdate: () => void;
   updateStudentAction: (id: string, formData: FormData) => Promise<{ error?: string } | any>;
