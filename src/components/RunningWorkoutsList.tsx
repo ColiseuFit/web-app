@@ -31,6 +31,9 @@ interface Workout {
   actual_pace_seconds_per_km: number | null;
   /** ID da atividade no Strava — presente quando o treino foi sincronizado via API */
   strava_activity_id?: number | null;
+  // Novos campos do Template
+  week_number?: number | null;
+  session_order?: number | null;
 }
 
 interface RunningWorkoutsListProps {
@@ -41,43 +44,35 @@ export default function RunningWorkoutsList({ workouts }: RunningWorkoutsListPro
   const [selectedWorkoutId, setSelectedWorkoutId] = useState<string | null>(null);
 
   // ──────────────────────────────────────────────────────────────────────────
-  // LÓGICA DE AGRUPAMENTO SEMANAL (THE ANCHOR)
+  // LÓGICA DE AGRUPAMENTO SEMANAL (MODELO DE MOLDES)
   // ──────────────────────────────────────────────────────────────────────────
-  // Para exibir os treinos em Accordions (Semana 1, Semana 2...), precisamos
-  // de uma "âncora": a Segunda-Feira da semana do primeiro treino da planilha.
+  // Agrupa diretamente pelo campo 'week_number'.
   // ──────────────────────────────────────────────────────────────────────────
-  const baseMonday = useMemo(() => {
-    if (workouts.length === 0) return new Date();
-    const sorted = [...workouts].sort((a, b) => a.scheduled_date.localeCompare(b.scheduled_date));
-    const firstDate = new Date(sorted[0].scheduled_date + "T12:00:00Z");
-    const day = firstDate.getUTCDay();
-    const diff = firstDate.getUTCDate() - day + (day === 0 ? -6 : 1);
-    const monday = new Date(firstDate);
-    monday.setUTCDate(diff);
-    monday.setUTCHours(12, 0, 0, 0); // Mantem meio dia para evitar shift
-    return monday;
-  }, [workouts]);
-
   const grouped = useMemo(() => {
     const map: Record<number, Workout[]> = {};
-    const sorted = [...workouts].sort((a, b) => a.scheduled_date.localeCompare(b.scheduled_date));
+    
+    // Sort primeiro por week_number e depois por session_order
+    const sorted = [...workouts].sort((a, b) => {
+      const weekA = a.week_number || 99;
+      const weekB = b.week_number || 99;
+      if (weekA !== weekB) return weekA - weekB;
+      
+      const orderA = a.session_order || 99;
+      const orderB = b.session_order || 99;
+      if (orderA !== orderB) return orderA - orderB;
+
+      return (a.scheduled_date || "").localeCompare(b.scheduled_date || "");
+    });
 
     sorted.forEach(w => {
-      // Usamos "T12:00:00Z" para garantir que o cálculo de dias não seja 
-      // afetado por shifts de fuso horário local que poderiam mover o treino 
-      // para o dia anterior ou posterior.
-      const d = new Date(w.scheduled_date + "T12:00:00Z");
-      // Consider fallback for extreme timezone shifts + safety math
-      const diffMs = d.getTime() - baseMonday.getTime();
-      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-      // Se diffDays negativo por alguma inconsistencia (não deve acontecer pois baseDate é no passado de baseMonday), cap em 0
-      const weekNum = Math.max(1, Math.floor(diffDays / 7) + 1);
+      // Se não tiver week_number, agrupa na "Semana 1" como fallback (treinos antigos)
+      const weekNum = w.week_number || 1;
       
       if (!map[weekNum]) map[weekNum] = [];
       map[weekNum].push(w);
     });
     return map;
-  }, [workouts, baseMonday]);
+  }, [workouts]);
 
   // ──────────────────────────────────────────────────────────────────────────
   // ESTRATÉGIA UX: Foco Adaptativo
@@ -192,7 +187,8 @@ export default function RunningWorkoutsList({ workouts }: RunningWorkoutsListPro
                       >
                         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
                           <span style={{ fontSize: "11px", fontWeight: 900, textTransform: "uppercase", color: "var(--nb-red)" }}>
-                            {new Date(workout.scheduled_date + "T12:00:00Z").toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'short' })}
+                            {workout.session_order ? `Sessão ${workout.session_order}` : 
+                              (workout.scheduled_date ? new Date(workout.scheduled_date + "T12:00:00Z").toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'short' }) : 'Sem Data')}
                           </span>
                           <div style={{ display: "flex", gap: "6px" }}>
                           {/* Badge Strava — Brand Guidelines §1.2: identifica atividade sincronizada */}

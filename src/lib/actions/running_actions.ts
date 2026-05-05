@@ -6,7 +6,9 @@ import {
   updateRunningPlanSchema, 
   logRunningWorkoutSchema, 
   bulkCreateRunningWorkoutsSchema,
-  deleteRunningEntitySchema 
+  deleteRunningEntitySchema,
+  createRunningTemplateSchema,
+  createTemplateWorkoutSchema
 } from "../validations/running_schemas";
 
 /**
@@ -203,14 +205,216 @@ export async function getStudentRunningData(studentId: string) {
 
   if (!plan) return { plan: null, workouts: [], profile };
 
-  // Buscar treinos do plano
+  // Buscar treinos do plano ordenados por semana e sessão
   const { data: workouts } = await supabase
     .from("running_workouts")
     .select("*")
     .eq("plan_id", plan.id)
-    .order("scheduled_date", { ascending: true });
+    .order("week_number", { ascending: true, nullsFirst: false })
+    .order("session_order", { ascending: true, nullsFirst: false })
+    .order("scheduled_date", { ascending: true, nullsFirst: false });
 
   return { plan, workouts: workouts || [], profile };
+}
+
+// ── Funções de Templates (Moldes Dinâmicos) ───────────────────────────────────
+
+/**
+ * Busca todas as Planilhas Padrão (Templates) disponíveis para prescrição.
+ * Inclui os treinos estruturais associados a cada planilha.
+ * 
+ * @returns {Promise<any[]>} Lista de templates com treinos aninhados.
+ */
+export async function getRunningTemplates() {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("running_templates")
+    .select("*, running_template_workouts(*)")
+    .order("created_at", { ascending: false });
+  return data || [];
+}
+
+/**
+ * Cria uma nova Planilha Padrão (Template) de Corrida.
+ * Estas planilhas servem como moldes estruturais (snapshots) para novos alunos.
+ * 
+ * @param formData - Dados: title, description, levelTag, frequencyPerWeek, durationWeeks.
+ * @throws {Error} Se o usuário não for coach/admin ou dados forem inválidos.
+ */
+export async function createRunningTemplate(formData: FormData) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Não autorizado");
+
+  const validatedFields = createRunningTemplateSchema.safeParse({
+    title: formData.get("title"),
+    description: formData.get("description"),
+    levelTag: formData.get("levelTag"),
+    frequencyPerWeek: parseInt(formData.get("frequencyPerWeek") as string),
+    durationWeeks: parseInt(formData.get("durationWeeks") as string),
+  });
+
+  if (!validatedFields.success) throw new Error("Dados inválidos para template");
+
+  const { error } = await supabase.from("running_templates").insert({
+    coach_id: user.id,
+    title: validatedFields.data.title,
+    description: validatedFields.data.description,
+    level_tag: validatedFields.data.levelTag,
+    frequency_per_week: validatedFields.data.frequencyPerWeek,
+    duration_weeks: validatedFields.data.durationWeeks,
+  });
+
+  if (error) throw new Error(error.message);
+  revalidatePath("/admin/running/templates");
+  return { success: true };
+}
+
+/**
+ * Remove permanentemente uma Planilha Padrão e todos os seus treinos associados.
+ * 
+ * @param templateId - ID da planilha.
+ */
+export async function deleteRunningTemplate(templateId: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Não autorizado");
+
+  const { error } = await supabase
+    .from("running_templates")
+    .delete()
+    .eq("id", templateId);
+
+  if (error) throw new Error(error.message);
+  revalidatePath("/admin/running/templates");
+  return { success: true };
+}
+
+/**
+ * Adiciona uma sessão de treino a uma Planilha Padrão.
+ * 
+ * @param formData - Dados da sessão (templateId, weekNumber, sessionOrder, targetDescription, etc).
+ */
+export async function createTemplateWorkout(formData: FormData) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Não autorizado");
+
+  const validatedFields = createTemplateWorkoutSchema.safeParse({
+    templateId: formData.get("templateId"),
+    weekNumber: parseInt(formData.get("weekNumber") as string),
+    sessionOrder: parseInt(formData.get("sessionOrder") as string),
+    targetDescription: formData.get("targetDescription"),
+    targetDistanceKm: formData.get("targetDistanceKm") ? parseFloat(formData.get("targetDistanceKm") as string) : null,
+    targetPaceDescription: formData.get("targetPaceDescription"),
+    targetRestTimeDescription: formData.get("targetRestTimeDescription"),
+  });
+
+  if (!validatedFields.success) throw new Error("Dados inválidos para treino da planilha");
+
+  const { error } = await supabase.from("running_template_workouts").insert({
+    template_id: validatedFields.data.templateId,
+    week_number: validatedFields.data.weekNumber,
+    session_order: validatedFields.data.sessionOrder,
+    target_description: validatedFields.data.targetDescription,
+    target_distance_km: validatedFields.data.targetDistanceKm,
+    target_pace_description: validatedFields.data.targetPaceDescription,
+    target_rest_time_description: validatedFields.data.targetRestTimeDescription,
+  });
+
+  if (error) throw new Error(error.message);
+  revalidatePath("/admin/running/templates");
+  return { success: true };
+}
+
+/**
+ * Remove permanentemente uma sessão de treino de uma Planilha Padrão.
+ * 
+ * @param workoutId - ID da sessão estrutural.
+ */
+export async function deleteTemplateWorkout(workoutId: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Não autorizado");
+
+  const { error } = await supabase
+    .from("running_template_workouts")
+    .delete()
+    .eq("id", workoutId);
+
+  if (error) throw new Error(error.message);
+  revalidatePath("/admin/running/templates");
+  return { success: true };
+}
+
+/**
+ * Atribui uma Planilha Padrão (Template) a um Aluno. 
+ * 
+ * @architecture Snapshoting
+ * Esta função clona toda a estrutura do template para o plano individual do aluno.
+ * Após a atribuição, o vínculo com o template original é quebrado, permitindo que o coach
+ * personalize o treino do aluno sem alterar o modelo base (e vice-versa).
+ * 
+ * @param templateId - ID da planilha padrão.
+ * @param studentId - ID do aluno.
+ */
+export async function assignTemplateToStudent(templateId: string, studentId: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Não autorizado");
+
+  // 1. Busca o template
+  const { data: template, error: tmplError } = await supabase
+    .from("running_templates")
+    .select("*")
+    .eq("id", templateId)
+    .single();
+
+  if (tmplError || !template) throw new Error("Planilha não encontrada");
+
+  // 2. Busca os treinos estruturais do template
+  const { data: templateWorkouts } = await supabase
+    .from("running_template_workouts")
+    .select("*")
+    .eq("template_id", templateId);
+
+  // 3. Cria um novo plano real para o aluno baseado nos metadados do template
+  const { data: newPlan, error: planError } = await supabase
+    .from("running_plans")
+    .insert({
+      student_id: studentId,
+      coach_id: user.id,
+      title: template.title,
+      description: template.description,
+      level_tag: template.level_tag,
+      status: "active",
+    })
+    .select()
+    .single();
+
+  if (planError) throw planError;
+
+  // 4. Copia os treinos (Deep Clone)
+  if (templateWorkouts && templateWorkouts.length > 0) {
+    const workoutsToInsert = templateWorkouts.map(tw => ({
+      plan_id: newPlan.id,
+      student_id: studentId,
+      week_number: tw.week_number,
+      session_order: tw.session_order,
+      target_description: tw.target_description,
+      target_distance_km: tw.target_distance_km,
+      target_pace_description: tw.target_pace_description,
+      target_rest_time_description: tw.target_rest_time_description,
+    }));
+
+    await supabase.from("running_workouts").insert(workoutsToInsert);
+  }
+
+  revalidatePath(`/admin/alunos/${studentId}`);
+  revalidatePath("/admin/running");
+  revalidatePath("/programas/running");
+  
+  return { success: true, plan: newPlan };
 }
 
 /**
@@ -322,11 +526,11 @@ export async function updateRunningWorkout(formData: FormData) {
   revalidatePath("/programas/running");
 }
 
-// ── Tipos para o Gerador de Semana Padrão ────────────────────────────────────
+// ── Tipos para o Gerador de Sessões ──────────────────────────────────────────
 
-export interface WeekDaySession {
-  /** 0=Dom, 1=Seg, 2=Ter, 3=Qua, 4=Qui, 5=Sex, 6=Sáb */
-  dayOfWeek: number;
+export interface SessionConfig {
+  /** Ordem da sessão dentro da semana (1, 2, 3...) */
+  sessionOrder: number;
   description: string;
   targetDistanceKm?: number | null;
   targetPace?: string | null;
@@ -334,15 +538,27 @@ export interface WeekDaySession {
 }
 
 /**
- * Cria sessões em lote a partir de um modelo de semana padrão.
+ * @deprecated Use `SessionConfig` em vez de `WeekDaySession`.
+ * Mantido temporariamente para compatibilidade reversa.
+ */
+export type WeekDaySession = SessionConfig & { dayOfWeek?: number };
+
+/**
+ * Cria sessões em lote a partir de um modelo baseado em sessões por semana.
  *
  * @param planId - ID do plano de corrida ativo
  * @param studentId - ID do aluno
- * @param startDate - Data ISO da primeira segunda-feira (ou qualquer dia inicial)
+ * @param startDate - Data ISO do primeiro dia do ciclo
  * @param weeks - Número de semanas a gerar
- * @param sessions - Modelo semanal (array de dias com configuração por dia)
+ * @param sessions - Array de sessões com ordem e configuração
+ * @param weekOffset - Offset para o número da semana (ex: se já existem 4 semanas, passar 4 para que novas comecem na 5). Default: 0.
  *
  * @architecture
+ * - **Session-based:** Cada treino recebe `week_number` e `session_order` explícitos,
+ *   permitindo agrupamento visual sem depender de dias da semana fixos.
+ * - **Datas sequenciais:** Gera `scheduled_date` distribuídas sequencialmente
+ *   dentro de cada semana (1 dia de intervalo entre sessões) para manter
+ *   compatibilidade com lógicas de ordenação legadas e integrações externas.
  * - Gera datas UTC-safe usando noon (T12:00:00) para evitar shifts de fuso.
  * - Faz insert em lote (uma única query) para performance.
  * - Revalida as rotas admin e student após a criação.
@@ -352,7 +568,8 @@ export async function bulkCreateRunningWorkouts(
   studentId: string,
   startDate: string,
   weeks: number,
-  sessions: WeekDaySession[]
+  sessions: SessionConfig[],
+  weekOffset: number = 0
 ) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -364,7 +581,7 @@ export async function bulkCreateRunningWorkouts(
     studentId,
     startDate,
     workouts: sessions.map(s => ({
-      scheduled_date: startDate, // placeholder for structural check
+      scheduled_date: startDate, // placeholder para validação estrutural
       target_description: s.description,
       target_distance_km: s.targetDistanceKm,
       target_pace_description: s.targetPace,
@@ -375,7 +592,7 @@ export async function bulkCreateRunningWorkouts(
   if (!validatedFields.success) throw new Error("Dados de geração em lote inválidos");
 
   if (!planId || !studentId) throw new Error("Plano ou aluno inválido.");
-  if (sessions.length === 0) throw new Error("Selecione ao menos um dia.");
+  if (sessions.length === 0) throw new Error("Adicione ao menos uma sessão.");
   if (weeks < 1 || weeks > 16) throw new Error("Número de semanas deve ser entre 1 e 16.");
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -385,17 +602,26 @@ export async function bulkCreateRunningWorkouts(
   // 00h de segunda vira 21h de domingo em Brasília), forçamos o meio-dia (12h) 
   // UTC. Isso garante que, independente do fuso do navegador do aluno, a 
   // data resultante de `toISOString().split("T")[0]` seja a correta.
+  //
+  // As datas são distribuídas sequencialmente dentro de cada semana
+  // (Sessão 1 = dia 0 da semana, Sessão 2 = dia 1, etc.), servindo
+  // apenas como referência temporal. A ordenação real é feita por
+  // `week_number` e `session_order`.
   // ──────────────────────────────────────────────────────────────────────────
   const base = new Date(startDate + "T12:00:00Z");
 
   const rows: object[] = [];
 
   for (let week = 0; week < weeks; week++) {
-    for (const session of sessions) {
-      // Calcula a data do dia na semana week
-      const dayOffset = session.dayOfWeek - base.getUTCDay();
+    // Ordena as sessões pela ordem declarada antes de distribuir datas
+    const sortedSessions = [...sessions].sort((a, b) => a.sessionOrder - b.sessionOrder);
+
+    for (let i = 0; i < sortedSessions.length; i++) {
+      const session = sortedSessions[i];
+
+      // Data sequencial: base + (semana * 7 dias) + índice da sessão dentro da semana
       const sessionDate = new Date(base);
-      sessionDate.setUTCDate(base.getUTCDate() + week * 7 + dayOffset);
+      sessionDate.setUTCDate(base.getUTCDate() + week * 7 + i);
 
       // Normalizar pace se vier como dígitos puros (ex: "600" → "6:00/km")
       let pace = session.targetPace || null;
@@ -414,6 +640,8 @@ export async function bulkCreateRunningWorkouts(
       rows.push({
         plan_id: planId,
         student_id: studentId,
+        week_number: week + 1 + weekOffset,
+        session_order: session.sessionOrder,
         scheduled_date: sessionDate.toISOString().split("T")[0],
         target_description: session.description,
         target_distance_km: distance,
@@ -423,10 +651,11 @@ export async function bulkCreateRunningWorkouts(
     }
   }
 
-  // Ordenar por data antes de inserir (melhor legibilidade na timeline)
-  rows.sort((a: any, b: any) =>
-    a.scheduled_date.localeCompare(b.scheduled_date)
-  );
+  // Ordenar por semana e sessão antes de inserir
+  rows.sort((a: any, b: any) => {
+    if (a.week_number !== b.week_number) return a.week_number - b.week_number;
+    return a.session_order - b.session_order;
+  });
 
   const { error } = await supabase.from("running_workouts").insert(rows);
   if (error) throw new Error(error.message);

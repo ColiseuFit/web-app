@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Search, Zap, Footprints, Clock, ArrowRight, User, AlertCircle, TrendingUp, X, Timer } from "lucide-react";
+import Link from "next/link";
+import { Search, Zap, Footprints, Clock, ArrowRight, User, AlertCircle, TrendingUp, X, Timer, LayoutTemplate } from "lucide-react";
 import AthleteIdentity from "@/components/Identity/AthleteIdentity";
 import { RUNNING_LEVELS, RunningLevelKey } from "@/lib/constants/running";
 import RunningCoachManager from "../alunos/RunningCoachManager";
@@ -93,7 +94,7 @@ export default function RunningHubClient({ runners }: RunningHubClientProps) {
       <style dangerouslySetInnerHTML={{ __html: css }} />
       
       {/* ── HEADER ── */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "40px" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "40px", flexWrap: "wrap", gap: "20px" }}>
         <div>
           <h1 className="font-display" style={{ fontSize: "32px", fontWeight: 900, textTransform: "uppercase", letterSpacing: "-0.02em", margin: 0 }}>
             Running <span style={{ color: "var(--nb-red)" }}>Hub</span>
@@ -102,6 +103,41 @@ export default function RunningHubClient({ runners }: RunningHubClientProps) {
             Visão estratégica e gestão de atletas do programa de corrida.
           </p>
         </div>
+        
+        <Link 
+          href="/admin/running/templates" 
+          style={{ 
+            display: "flex", 
+            alignItems: "center", 
+            gap: "8px", 
+            background: "#FFF", 
+            color: "#000", 
+            padding: "12px 24px",
+            border: "3px solid #000",
+            boxShadow: "4px 4px 0px #000",
+            fontWeight: 900,
+            textTransform: "uppercase",
+            fontSize: "12px",
+            letterSpacing: "0.05em",
+            textDecoration: "none",
+            transition: "transform 0.1s, box-shadow 0.1s"
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = "translate(-2px, -2px)";
+            e.currentTarget.style.boxShadow = "6px 6px 0px var(--nb-red)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = "translate(0px, 0px)";
+            e.currentTarget.style.boxShadow = "4px 4px 0px #000";
+          }}
+          onMouseDown={(e) => {
+            e.currentTarget.style.transform = "translate(2px, 2px)";
+            e.currentTarget.style.boxShadow = "2px 2px 0px #000";
+          }}
+        >
+          <LayoutTemplate size={18} />
+          PLANILHAS PADRÃO
+        </Link>
       </div>
 
       {/* ── STATS CARDS ── */}

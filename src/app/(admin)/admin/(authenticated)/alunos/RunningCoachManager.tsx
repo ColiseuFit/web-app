@@ -8,14 +8,15 @@ import {
 } from "lucide-react";
 import {
   getStudentRunningData,
-  assignRunningPlan,
   createRunningWorkout,
   deleteRunningWorkout,
   archiveRunningPlan,
   getStudentRunningHistory,
   bulkCreateRunningWorkouts,
   updateRunningWorkout,
-  type WeekDaySession,
+  getRunningTemplates,
+  assignTemplateToStudent,
+  type SessionConfig,
 } from "@/lib/actions/running_actions";
 import { RUNNING_LEVELS, formatPace, type RunningLevelKey } from "@/lib/constants/running";
 import RunningAnalytics from "@/components/RunningAnalytics";
@@ -168,16 +169,8 @@ function KpiPanel({ workouts }: { workouts: any[] }) {
  * - O arquivamento do plano recarrega o estado para refletir o novo status.
  * - Todas as actions de escrita verificam role (admin/coach) via RLS + verificação manual.
  */
-// ── Dias da semana (SSoT) ─────────────────────────────────────────────────────
-const DAYS_OF_WEEK = [
-  { idx: 1, short: "SEG", full: "Segunda" },
-  { idx: 2, short: "TER", full: "Terça" },
-  { idx: 3, short: "QUA", full: "Quarta" },
-  { idx: 4, short: "QUI", full: "Quinta" },
-  { idx: 5, short: "SEX", full: "Sexta" },
-  { idx: 6, short: "SÁB", full: "Sábado" },
-  { idx: 0, short: "DOM", full: "Domingo" },
-];
+// ── Constantes do Gerador de Sessões ──────────────────────────────────────────
+const MAX_SESSIONS_PER_WEEK = 7;
 
 // ── Gerador de Semana Padrão ──────────────────────────────────────────────────
 
@@ -189,10 +182,10 @@ interface GeneratorProps {
 }
 
 function WeeklyPlanGenerator({ planId, studentId, onSuccess, onCancel }: GeneratorProps) {
-  const [selectedDays, setSelectedDays] = useState<number[]>([1, 3, 5]); // Seg, Qua, Sex
+  const [numSessionsPerWeek, setNumSessionsPerWeek] = useState<number>(3);
   
-  // Cada dia pode ter múltiplas sessões (ex: uma de corrida, outra só de descanso/texto)
-  interface DaySessionItem {
+  // Cada sessão pode ter múltiplos blocos (ex: um bloco de corrida, outro só de fortalecimento/texto)
+  interface SessionBlock {
     id: string;
     description: string;
     distance: string;
@@ -203,12 +196,12 @@ function WeeklyPlanGenerator({ planId, studentId, onSuccess, onCancel }: Generat
   }
 
   const [activeWeek, setActiveWeek] = useState(1);
-  const [allWeeksConfigs, setAllWeeksConfigs] = useState<Record<number, Record<number, DaySessionItem[]>>>({
+  const [allWeeksConfigs, setAllWeeksConfigs] = useState<Record<number, Record<number, SessionBlock[]>>>({
     1: {}, 2: {}, 3: {}, 4: {}
   });
 
   const [startDate, setStartDate] = useState(() => {
-    // Próxima segunda-feira em UTC
+    // Próxima segunda-feira em UTC (usado apenas como referência temporal para o banco)
     const d = new Date();
     const day = d.getUTCDay();
     const toMonday = day === 0 ? 1 : (8 - day) % 7 || 7;
@@ -220,23 +213,25 @@ function WeeklyPlanGenerator({ planId, studentId, onSuccess, onCancel }: Generat
   const [genError, setGenError] = useState<string | null>(null);
   const [successCount, setSuccessCount] = useState<number | null>(null);
 
-  // Alias para a semana ativa
-  const dayConfigs = allWeeksConfigs[activeWeek] || {};
+  const sessionKeys = Array.from({ length: numSessionsPerWeek }, (_, i) => i + 1);
 
-  const setDayConfigs = (newConfigs: Record<number, DaySessionItem[]>) => {
+  // Alias para a semana ativa
+  const sessionConfigs = allWeeksConfigs[activeWeek] || {};
+
+  const setSessionConfigs = (newConfigs: Record<number, SessionBlock[]>) => {
     setAllWeeksConfigs(prev => ({
       ...prev,
       [activeWeek]: newConfigs
     }));
   };
 
-  // Inicializa configs para os dias selecionados
+  // Inicializa configs para as sessões
   useEffect(() => {
-    const next = { ...dayConfigs };
+    const next = { ...sessionConfigs };
     let changed = false;
-    selectedDays.forEach(d => {
-      if (!next[d] || next[d].length === 0) {
-        next[d] = [{
+    sessionKeys.forEach(sOrder => {
+      if (!next[sOrder] || next[sOrder].length === 0) {
+        next[sOrder] = [{
           id: Math.random().toString(36).substr(2, 9),
           description: "",
           distance: "",
@@ -248,17 +243,11 @@ function WeeklyPlanGenerator({ planId, studentId, onSuccess, onCancel }: Generat
         changed = true;
       }
     });
-    if (changed) setDayConfigs(next);
-  }, [selectedDays, activeWeek]);
+    if (changed) setSessionConfigs(next);
+  }, [numSessionsPerWeek, activeWeek]);
 
-  function toggleDay(idx: number) {
-    setSelectedDays(prev =>
-      prev.includes(idx) ? prev.filter(d => d !== idx) : [...prev, idx]
-    );
-  }
-
-  const addSession = (dayIdx: number) => {
-    const newSession: DaySessionItem = {
+  const addBlock = (sessionOrder: number) => {
+    const newBlock: SessionBlock = {
       id: Math.random().toString(36).substr(2, 9),
       description: "",
       distance: "",
@@ -267,22 +256,22 @@ function WeeklyPlanGenerator({ planId, studentId, onSuccess, onCancel }: Generat
       rest: "",
       showMetrics: false
     };
-    setDayConfigs({
-      ...dayConfigs,
-      [dayIdx]: [...(dayConfigs[dayIdx] || []), newSession]
+    setSessionConfigs({
+      ...sessionConfigs,
+      [sessionOrder]: [...(sessionConfigs[sessionOrder] || []), newBlock]
     });
   };
 
-  const removeSession = (dayIdx: number, sessionId: string) => {
-    setDayConfigs({
-      ...dayConfigs,
-      [dayIdx]: (dayConfigs[dayIdx] || []).filter(s => s.id !== sessionId)
+  const removeBlock = (sessionOrder: number, blockId: string) => {
+    setSessionConfigs({
+      ...sessionConfigs,
+      [sessionOrder]: (sessionConfigs[sessionOrder] || []).filter(s => s.id !== blockId)
     });
   };
 
-  const updateSession = (dayIdx: number, sessionId: string, updates: Partial<DaySessionItem>) => {
-    const items = [...(dayConfigs[dayIdx] || [])];
-    const idx = items.findIndex(s => s.id === sessionId);
+  const updateBlock = (sessionOrder: number, blockId: string, updates: Partial<SessionBlock>) => {
+    const items = [...(sessionConfigs[sessionOrder] || [])];
+    const idx = items.findIndex(s => s.id === blockId);
     if (idx === -1) return;
 
     let finalUpdates = { ...updates };
@@ -290,21 +279,21 @@ function WeeklyPlanGenerator({ planId, studentId, onSuccess, onCancel }: Generat
     if (updates.rest) finalUpdates.rest = maskTime(updates.rest);
 
     items[idx] = { ...items[idx], ...finalUpdates };
-    setDayConfigs({ ...dayConfigs, [dayIdx]: items });
+    setSessionConfigs({ ...sessionConfigs, [sessionOrder]: items });
   };
 
-  const copyToAllDays = (sourceDayIdx: number) => {
-    const sourceConfig = dayConfigs[sourceDayIdx];
+  const copyToAllSessions = (sourceSessionOrder: number) => {
+    const sourceConfig = sessionConfigs[sourceSessionOrder];
     if (!sourceConfig) return;
     
-    const newConfigs = { ...dayConfigs };
-    selectedDays.forEach(dayIdx => {
-      newConfigs[dayIdx] = sourceConfig.map(s => ({
+    const newConfigs = { ...sessionConfigs };
+    sessionKeys.forEach(sOrder => {
+      newConfigs[sOrder] = sourceConfig.map(s => ({
         ...s,
         id: Math.random().toString(36).substr(2, 9)
       }));
     });
-    setDayConfigs(newConfigs);
+    setSessionConfigs(newConfigs);
   };
 
   const copyWeekOneToAll = () => {
@@ -327,8 +316,8 @@ function WeeklyPlanGenerator({ planId, studentId, onSuccess, onCancel }: Generat
         const weekConfigs = allWeeksConfigs[w] || allWeeksConfigs[1];
         const sessions: any[] = [];
         
-        for (const dayIdx of selectedDays) {
-          const items = weekConfigs[dayIdx] || [];
+        for (const sOrder of sessionKeys) {
+          const items = weekConfigs[sOrder] || [];
           for (const item of items) {
             if (!item.description?.trim()) continue;
 
@@ -338,7 +327,7 @@ function WeeklyPlanGenerator({ planId, studentId, onSuccess, onCancel }: Generat
             }
 
             sessions.push({
-              dayOfWeek: dayIdx,
+              sessionOrder: sOrder,
               description: item.description,
               targetDistanceKm: dist,
               targetPace: item.pace || null,
@@ -352,7 +341,8 @@ function WeeklyPlanGenerator({ planId, studentId, onSuccess, onCancel }: Generat
           weekStartDate.setUTCDate(weekStartDate.getUTCDate() + (w - 1) * 7);
           const dateStr = weekStartDate.toISOString().split("T")[0];
 
-          const result = await bulkCreateRunningWorkouts(planId, studentId, dateStr, 1, sessions);
+          // weekOffset é w - 1 (para o bulkCreate começar com a semana certa)
+          const result = await bulkCreateRunningWorkouts(planId, studentId, dateStr, 1, sessions, w - 1);
           currentTotal += result.count;
         }
       }
@@ -367,7 +357,7 @@ function WeeklyPlanGenerator({ planId, studentId, onSuccess, onCancel }: Generat
   }
 
   // Cálculo total considerando todas as semanas se configuradas, ou repetindo a 1
-  const totalSessions = weeks * selectedDays.reduce((acc, day) => acc + (dayConfigs[day]?.length || 1), 0);
+  const totalBlocks = weeks * sessionKeys.reduce((acc, sOrder) => acc + (sessionConfigs[sOrder]?.length || 1), 0);
 
   const inputSt: React.CSSProperties = {
     width: "100%", padding: "10px 12px", border: "2px solid #000",
@@ -380,10 +370,10 @@ function WeeklyPlanGenerator({ planId, studentId, onSuccess, onCancel }: Generat
       <div style={{ background: "#000", color: "#FFF", padding: "14px 20px", display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
         <LayoutGrid size={18} />
         <span className="font-display" style={{ fontSize: 16, fontWeight: 900, textTransform: "uppercase", letterSpacing: "-0.02em" }}>
-          Gerador de Semana Padrão
+          Gerador de Ciclo Customizado
         </span>
         <span style={{ marginLeft: "auto", fontSize: 11, fontWeight: 700, background: "rgba(255,255,255,0.15)", padding: "3px 10px" }}>
-          {totalSessions} sessão{totalSessions !== 1 ? "ões" : ""} serão criadas
+          {totalBlocks} bloco{totalBlocks !== 1 ? "s" : ""} serão criados
         </span>
       </div>
 
@@ -400,31 +390,21 @@ function WeeklyPlanGenerator({ planId, studentId, onSuccess, onCancel }: Generat
       )}
 
       <div style={{ padding: 20 }}>
-        {/* Seletor de dias */}
+        {/* Seletor de Sessões */}
         <div style={{ marginBottom: 20 }}>
           <label style={{ display: "block", fontSize: 11, fontWeight: 900, textTransform: "uppercase", marginBottom: 10, letterSpacing: "0.06em" }}>
-            1. Selecione os dias da semana
+            1. Sessões por semana
           </label>
-          <div style={{ display: "flex", gap: 6 }}>
-            {DAYS_OF_WEEK.map(d => {
-              const active = selectedDays.includes(d.idx);
-              return (
-                <button
-                  key={d.idx}
-                  type="button"
-                  onClick={() => toggleDay(d.idx)}
-                  style={{
-                    flex: 1, padding: "10px 4px", fontWeight: 900, fontSize: 11,
-                    border: active ? "3px solid #000" : "2px solid #DDD",
-                    background: active ? "#000" : "#F9F9F9",
-                    color: active ? "#FFF" : "#AAA",
-                    cursor: "pointer", transition: "all 0.1s",
-                  }}
-                >
-                  {d.short}
-                </button>
-              );
-            })}
+          <div style={{ display: "flex", border: "2px solid #000", width: "fit-content" }}>
+            <button type="button" onClick={() => setNumSessionsPerWeek(s => Math.max(1, s - 1))}
+              style={{ padding: "10px 14px", border: "none", background: "#F3F3F3", fontWeight: 900, cursor: "pointer", fontSize: 16 }}
+            >−</button>
+            <div style={{ width: 60, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, fontSize: 18, background: "#FFF" }}>
+              {numSessionsPerWeek}x
+            </div>
+            <button type="button" onClick={() => setNumSessionsPerWeek(s => Math.min(MAX_SESSIONS_PER_WEEK, s + 1))}
+              style={{ padding: "10px 14px", border: "none", background: "#F3F3F3", fontWeight: 900, cursor: "pointer", fontSize: 16 }}
+            >+</button>
           </div>
         </div>
 
@@ -467,152 +447,143 @@ function WeeklyPlanGenerator({ planId, studentId, onSuccess, onCancel }: Generat
           </div>
         </div>
 
-        {/* Config por dia */}
-        {selectedDays.length > 0 && (
-          <div style={{ marginBottom: 20 }}>
-            <div style={{ 
-              display: "flex", 
-              flexDirection: "column", 
-              gap: 20 
-            }}>
-              {[...selectedDays]
-                .sort((a, b) => {
-                  const ai = a === 0 ? 7 : a;
-                  const bi = b === 0 ? 7 : b;
-                  return ai - bi;
-                })
-                .map(dayIdx => {
-                  const day = DAYS_OF_WEEK.find(d => d.idx === dayIdx)!;
-                  const items = dayConfigs[dayIdx] || [];
-                  
-                  return (
-                    <div key={dayIdx} style={{ border: "3px solid #000", padding: "16px", background: "#FDFDFD", boxShadow: "8px 8px 0px rgba(0,0,0,0.05)" }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, borderBottom: "2px solid #000", paddingBottom: 8 }}>
-                        <div style={{ fontSize: 14, fontWeight: 950, textTransform: "uppercase", color: "#000", display: "flex", alignItems: "center", gap: 8 }}>
-                          <span style={{ background: "#000", color: "#FFF", padding: "2px 6px", borderRadius: 2 }}>{day.short}</span>
-                          {day.full}
-                        </div>
-                        <div style={{ display: "flex", gap: 6 }}>
-                          <button
-                            type="button"
-                            onClick={() => copyToAllDays(dayIdx)}
-                            title="Copiar este treino para todos os outros dias selecionados"
-                            style={{ background: "#FFF", border: "2px solid #000", padding: "4px 8px", fontSize: 9, fontWeight: 900, cursor: "pointer" }}
-                          >
-                            REPLICAR DIA
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => addSession(dayIdx)}
-                            style={{ background: "#000", color: "#FFF", border: "none", padding: "4px 10px", fontSize: 9, fontWeight: 900, cursor: "pointer" }}
-                          >
-                            + BLOCO
-                          </button>
-                        </div>
+        {/* Config por Sessão */}
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ 
+            display: "flex", 
+            flexDirection: "column", 
+            gap: 20 
+          }}>
+            {sessionKeys.map(sOrder => {
+                const items = sessionConfigs[sOrder] || [];
+                
+                return (
+                  <div key={sOrder} style={{ border: "3px solid #000", padding: "16px", background: "#FDFDFD", boxShadow: "8px 8px 0px rgba(0,0,0,0.05)" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, borderBottom: "2px solid #000", paddingBottom: 8 }}>
+                      <div style={{ fontSize: 14, fontWeight: 950, textTransform: "uppercase", color: "#000", display: "flex", alignItems: "center", gap: 8 }}>
+                        <span style={{ background: "#000", color: "#FFF", padding: "2px 6px", borderRadius: 2 }}>{sOrder}</span>
+                        SESSÃO {sOrder}
                       </div>
-
-                      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                        {items.map((item, itemIdx) => (
-                          <div key={item.id} style={{ background: "#FFF", border: "2px solid #000", padding: 12, position: "relative" }}>
-                            {items.length > 1 && (
-                              <button
-                                type="button"
-                                onClick={() => removeSession(dayIdx, item.id)}
-                                style={{ position: "absolute", top: 8, right: 8, background: "none", border: "none", color: "#F00", cursor: "pointer" }}
-                              >
-                                <Trash2 size={14} />
-                              </button>
-                            )}
-                            
-                            <div style={{ marginBottom: 10 }}>
-                              <label style={{ display: "block", fontSize: 9, fontWeight: 900, color: "#888", marginBottom: 4, textTransform: "uppercase" }}>DESCRIÇÃO DO BLOCO</label>
-                              <input
-                                placeholder={`ex: 5km Rodagem ou Descanso Ativo`}
-                                value={item.description}
-                                onChange={e => updateSession(dayIdx, item.id, { description: e.target.value })}
-                                maxLength={60}
-                                style={{ ...inputSt, border: "2px solid #000" }}
-                              />
-                            </div>
-
-                            {!item.showMetrics ? (
-                              <div style={{ display: "flex", gap: 8 }}>
-                                <button
-                                  type="button"
-                                  onClick={() => updateSession(dayIdx, item.id, { showMetrics: true })}
-                                  style={{ background: "#EEE", border: "1px solid #000", padding: "4px 8px", fontSize: 9, fontWeight: 900, cursor: "pointer", textTransform: "uppercase" }}
-                                >
-                                  + Metas (Km/Pace/Desc)
-                                </button>
-                              </div>
-                            ) : (
-                              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
-                                <div>
-                                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", height: 24, marginBottom: 4 }}>
-                                    <label style={{ fontSize: 10, fontWeight: 900, color: "#888", textTransform: "uppercase", margin: 0 }}>DIST.</label>
-                                    <div style={{ display: "flex", border: "2px solid #000", borderRadius: 4, overflow: "hidden" }}>
-                                      <button 
-                                        type="button" 
-                                        onClick={() => updateSession(dayIdx, item.id, { unit: "km" })}
-                                        style={{ fontSize: 10, fontWeight: 900, padding: "2px 8px", border: "none", background: item.unit === "km" ? "#000" : "#FFF", color: item.unit === "km" ? "#FFF" : "#000", cursor: "pointer" }}
-                                      >KM</button>
-                                      <div style={{ width: 2, background: "#000" }} />
-                                      <button 
-                                        type="button" 
-                                        onClick={() => updateSession(dayIdx, item.id, { unit: "m" })}
-                                        style={{ fontSize: 10, fontWeight: 900, padding: "2px 8px", border: "none", background: item.unit === "m" ? "#000" : "#FFF", color: item.unit === "m" ? "#FFF" : "#000", cursor: "pointer" }}
-                                      >M</button>
-                                    </div>
-                                  </div>
-                                  <input
-                                    type="number" step="0.1" min="0" max="99999"
-                                    value={item.distance}
-                                    onKeyDown={(e) => {
-                                      if (["e", "E", "+", "-"].includes(e.key)) {
-                                        e.preventDefault();
-                                      }
-                                    }}
-                                    onChange={e => {
-                                      if (e.target.value.length <= 6) {
-                                        updateSession(dayIdx, item.id, { distance: e.target.value });
-                                      }
-                                    }}
-                                    style={{ ...inputSt, border: "2px solid #000" }}
-                                  />
-                                </div>
-                                <div>
-                                  <div style={{ display: "flex", alignItems: "center", height: 24, marginBottom: 4 }}>
-                                    <label style={{ fontSize: 10, fontWeight: 900, color: "#888", textTransform: "uppercase", margin: 0 }}>PACE</label>
-                                  </div>
-                                  <input
-                                    placeholder="6:00"
-                                    value={item.pace}
-                                    onChange={e => updateSession(dayIdx, item.id, { pace: e.target.value })}
-                                    style={{ ...inputSt, border: "2px solid #000" }}
-                                  />
-                                </div>
-                                <div>
-                                  <div style={{ display: "flex", alignItems: "center", height: 24, marginBottom: 4 }}>
-                                    <label style={{ fontSize: 10, fontWeight: 900, color: "#888", textTransform: "uppercase", margin: 0 }}>DESC.</label>
-                                  </div>
-                                  <input
-                                    placeholder="1:00"
-                                    value={item.rest}
-                                    onChange={e => updateSession(dayIdx, item.id, { rest: e.target.value })}
-                                    style={{ ...inputSt, border: "2px solid #000" }}
-                                  />
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        ))}
+                      <div style={{ display: "flex", gap: 6 }}>
+                        <button
+                          type="button"
+                          onClick={() => copyToAllSessions(sOrder)}
+                          title="Copiar este treino para todas as outras sessões da semana"
+                          style={{ background: "#FFF", border: "2px solid #000", padding: "4px 8px", fontSize: 9, fontWeight: 900, cursor: "pointer" }}
+                        >
+                          REPLICAR SESSÃO
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => addBlock(sOrder)}
+                          style={{ background: "#000", color: "#FFF", border: "none", padding: "4px 10px", fontSize: 9, fontWeight: 900, cursor: "pointer" }}
+                        >
+                          + BLOCO
+                        </button>
                       </div>
                     </div>
-                  );
-                })}
-            </div>
+
+                    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                      {items.map((item, itemIdx) => (
+                        <div key={item.id} style={{ background: "#FFF", border: "2px solid #000", padding: 12, position: "relative" }}>
+                          {items.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => removeBlock(sOrder, item.id)}
+                              style={{ position: "absolute", top: 8, right: 8, background: "none", border: "none", color: "#F00", cursor: "pointer" }}
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          )}
+                          
+                          <div style={{ marginBottom: 10 }}>
+                            <label style={{ display: "block", fontSize: 9, fontWeight: 900, color: "#888", marginBottom: 4, textTransform: "uppercase" }}>DESCRIÇÃO DO BLOCO</label>
+                            <input
+                              placeholder={`ex: 5km Rodagem ou Descanso Ativo`}
+                              value={item.description}
+                              onChange={e => updateBlock(sOrder, item.id, { description: e.target.value })}
+                              maxLength={60}
+                              style={{ ...inputSt, border: "2px solid #000" }}
+                            />
+                          </div>
+
+                          {!item.showMetrics ? (
+                            <div style={{ display: "flex", gap: 8 }}>
+                              <button
+                                type="button"
+                                onClick={() => updateBlock(sOrder, item.id, { showMetrics: true })}
+                                style={{ background: "#EEE", border: "1px solid #000", padding: "4px 8px", fontSize: 9, fontWeight: 900, cursor: "pointer", textTransform: "uppercase" }}
+                              >
+                                + Metas (Km/Pace/Desc)
+                              </button>
+                            </div>
+                          ) : (
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+                              <div>
+                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", height: 24, marginBottom: 4 }}>
+                                  <label style={{ fontSize: 10, fontWeight: 900, color: "#888", textTransform: "uppercase", margin: 0 }}>DIST.</label>
+                                  <div style={{ display: "flex", border: "2px solid #000", borderRadius: 4, overflow: "hidden" }}>
+                                    <button 
+                                      type="button" 
+                                      onClick={() => updateBlock(sOrder, item.id, { unit: "km" })}
+                                      style={{ fontSize: 10, fontWeight: 900, padding: "2px 8px", border: "none", background: item.unit === "km" ? "#000" : "#FFF", color: item.unit === "km" ? "#FFF" : "#000", cursor: "pointer" }}
+                                    >KM</button>
+                                    <div style={{ width: 2, background: "#000" }} />
+                                    <button 
+                                      type="button" 
+                                      onClick={() => updateBlock(sOrder, item.id, { unit: "m" })}
+                                      style={{ fontSize: 10, fontWeight: 900, padding: "2px 8px", border: "none", background: item.unit === "m" ? "#000" : "#FFF", color: item.unit === "m" ? "#FFF" : "#000", cursor: "pointer" }}
+                                    >M</button>
+                                  </div>
+                                </div>
+                                <input
+                                  type="number" step="0.1" min="0" max="99999"
+                                  value={item.distance}
+                                  onKeyDown={(e) => {
+                                    if (["e", "E", "+", "-"].includes(e.key)) {
+                                      e.preventDefault();
+                                    }
+                                  }}
+                                  onChange={e => {
+                                    if (e.target.value.length <= 6) {
+                                      updateBlock(sOrder, item.id, { distance: e.target.value });
+                                    }
+                                  }}
+                                  style={{ ...inputSt, border: "2px solid #000" }}
+                                />
+                              </div>
+                              <div>
+                                <div style={{ display: "flex", alignItems: "center", height: 24, marginBottom: 4 }}>
+                                  <label style={{ fontSize: 10, fontWeight: 900, color: "#888", textTransform: "uppercase", margin: 0 }}>PACE</label>
+                                </div>
+                                <input
+                                  placeholder="6:00"
+                                  value={item.pace}
+                                  onChange={e => updateBlock(sOrder, item.id, { pace: e.target.value })}
+                                  style={{ ...inputSt, border: "2px solid #000" }}
+                                />
+                              </div>
+                              <div>
+                                <div style={{ display: "flex", alignItems: "center", height: 24, marginBottom: 4 }}>
+                                  <label style={{ fontSize: 10, fontWeight: 900, color: "#888", textTransform: "uppercase", margin: 0 }}>DESC.</label>
+                                </div>
+                                <input
+                                  placeholder="1:00"
+                                  value={item.rest}
+                                  onChange={e => updateBlock(sOrder, item.id, { rest: e.target.value })}
+                                  style={{ ...inputSt, border: "2px solid #000" }}
+                                />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
           </div>
-        )}
+        </div>
 
         {/* Data + Semanas */}
         <div style={{ marginBottom: 20 }}>
@@ -621,7 +592,7 @@ function WeeklyPlanGenerator({ planId, studentId, onSuccess, onCancel }: Generat
           </label>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <div>
-              <label style={{ display: "block", fontSize: 10, fontWeight: 800, color: "#666", marginBottom: 4 }}>DATA DE INÍCIO</label>
+              <label style={{ display: "block", fontSize: 10, fontWeight: 800, color: "#666", marginBottom: 4 }}>DATA DE INÍCIO DA SEMANA 1</label>
               <input
                 type="date"
                 value={startDate}
@@ -635,7 +606,7 @@ function WeeklyPlanGenerator({ planId, studentId, onSuccess, onCancel }: Generat
                 <button type="button" onClick={() => setWeeks(w => Math.max(1, w - 1))}
                   style={{ padding: "10px 14px", border: "none", background: "#F3F3F3", fontWeight: 900, cursor: "pointer", fontSize: 16 }}
                 >−</button>
-                <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, fontSize: 18 }}>
+                <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, fontSize: 18, background: "#FFF" }}>
                   {weeks}
                 </div>
                 <button type="button" onClick={() => setWeeks(w => Math.min(16, w + 1))}
@@ -666,17 +637,17 @@ function WeeklyPlanGenerator({ planId, studentId, onSuccess, onCancel }: Generat
           marginTop: 4,
         }}>
           <div style={{ background: "#F3F4F6", border: "2px solid #E5E5E5", padding: "10px 14px", marginBottom: 12, fontSize: 12, fontWeight: 700, color: "#444" }}>
-            ✅ Serão criadas <strong>{totalSessions} sessões</strong> — {selectedDays.length}x/semana × {weeks} semanas · Até {(() => { const d = new Date(startDate + "T12:00:00Z"); d.setUTCDate(d.getUTCDate() + weeks * 7); return d.toLocaleDateString("pt-BR"); })()}
+            ✅ Serão criados <strong>{totalBlocks} blocos</strong> — {numSessionsPerWeek}x/semana × {weeks} semanas · Até {(() => { const d = new Date(startDate + "T12:00:00Z"); d.setUTCDate(d.getUTCDate() + weeks * 7); return d.toLocaleDateString("pt-BR"); })()}
           </div>
           <div style={{ display: "flex", gap: 10 }}>
             <button
               type="button"
               onClick={handleGenerate}
-              disabled={isGenerating || selectedDays.length === 0 || successCount !== null}
+              disabled={isGenerating || sessionKeys.length === 0 || successCount !== null}
               className="admin-btn admin-btn-primary"
               style={{ flex: 1, height: 48, fontSize: 13, fontWeight: 950 }}
             >
-              {isGenerating ? `GERANDO ${totalSessions} SESSÕES...` : `⚡ GERAR ${totalSessions} SESSÕES`}
+              {isGenerating ? `GERANDO ${totalBlocks} BLOCOS...` : `⚡ GERAR ${totalBlocks} BLOCOS`}
             </button>
             <button
               type="button"
@@ -696,6 +667,7 @@ function WeeklyPlanGenerator({ planId, studentId, onSuccess, onCancel }: Generat
 export default function RunningCoachManager({ studentId }: Props) {
   const [data, setData] = useState<{ plan: any; workouts: any[]; profile?: any } | null>(null);
   const [history, setHistory] = useState<{ workouts: any[]; stats: any } | null>(null);
+  const [templates, setTemplates] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAssigning, setIsAssigning] = useState(false);
   const [showWorkoutForm, setShowWorkoutForm] = useState(false);
@@ -735,14 +707,16 @@ export default function RunningCoachManager({ studentId }: Props) {
     setLoading(true);
     setError(null);
     try {
-      const [res, hist] = await Promise.all([
+      const [res, hist, tmpls] = await Promise.all([
         getStudentRunningData(studentId),
-        getStudentRunningHistory(studentId)
+        getStudentRunningHistory(studentId),
+        getRunningTemplates()
       ]);
       // Aborta setState se o componente foi desmontado enquanto aguardávamos
       if (signal?.ignore) return;
       setData(res);
       setHistory(hist);
+      setTemplates(tmpls);
     } catch (err) {
       if (signal?.ignore) return;
       setError("Erro ao carregar dados de corrida.");
@@ -766,13 +740,19 @@ export default function RunningCoachManager({ studentId }: Props) {
   async function handleAssign(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
+    const templateId = formData.get("templateId") as string;
+    
+    if (!templateId) {
+      setError("Selecione uma planilha padrão.");
+      return;
+    }
+
     try {
-      const studentLevel = data?.profile?.running_level || "iniciante";
-      await assignRunningPlan(studentId, formData.get("title") as string, studentLevel);
+      await assignTemplateToStudent(templateId, studentId);
       setIsAssigning(false);
       loadData();
     } catch (err) {
-      setError("Erro ao criar plano.");
+      setError("Erro ao atribuir planilha.");
     }
   }
 
@@ -893,30 +873,42 @@ export default function RunningCoachManager({ studentId }: Props) {
     return (
       <div style={{ border: "4px solid #000", padding: 32 }}>
         <h3 style={{ fontSize: 16, fontWeight: 900, marginBottom: 24, textTransform: "uppercase" }}>
-          Novo Plano de Corrida
+          Atribuir Planilha Padrão
         </h3>
-        <form onSubmit={handleAssign} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-          <div>
-            <label style={{ display: "block", fontSize: 11, fontWeight: 900, textTransform: "uppercase", marginBottom: 8 }}>
-              Título do Plano *
-            </label>
-            <input
-              name="title"
-              placeholder="Ex: Preparação 5km — Iniciante"
-              required
-              style={{ width: "100%", padding: 12, border: "3px solid #000", fontWeight: 700, boxSizing: "border-box" }}
-            />
-          </div>
-          {error && <p style={{ color: "#DC2626", fontSize: 12, fontWeight: 700 }}>{error}</p>}
-          <div style={{ display: "flex", gap: 12 }}>
-            <button type="submit" className="admin-btn admin-btn-primary" style={{ flex: 1, height: 48 }}>
-              CRIAR PLANO
-            </button>
-            <button type="button" onClick={() => setIsAssigning(false)} className="admin-btn admin-btn-ghost" style={{ flex: 1, height: 48 }}>
-              CANCELAR
-            </button>
-          </div>
-        </form>
+        {templates.length === 0 ? (
+           <div style={{ padding: 20, background: "#FFF3E0", border: "2px solid #FF9800", color: "#E65100", fontSize: 13, fontWeight: 700 }}>
+              Você ainda não criou nenhuma Planilha Padrão. Vá para a aba <strong>Planilhas Padrão</strong> para criar bases (Iniciante, Intermediário) antes de atribuir a um aluno.
+           </div>
+        ) : (
+          <form onSubmit={handleAssign} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+            <div>
+              <label style={{ display: "block", fontSize: 11, fontWeight: 900, textTransform: "uppercase", marginBottom: 8 }}>
+                Selecione a Planilha Padrão *
+              </label>
+              <select
+                name="templateId"
+                required
+                style={{ width: "100%", padding: 12, border: "3px solid #000", fontWeight: 700, boxSizing: "border-box", appearance: "none", backgroundColor: "#FFF" }}
+              >
+                <option value="">-- ESCOLHA UMA PLANILHA --</option>
+                {templates.map(t => (
+                  <option key={t.id} value={t.id}>
+                    {t.title} ({t.frequency_per_week}x/semana - {t.duration_weeks} semanas)
+                  </option>
+                ))}
+              </select>
+            </div>
+            {error && <p style={{ color: "#DC2626", fontSize: 12, fontWeight: 700 }}>{error}</p>}
+            <div style={{ display: "flex", gap: 12 }}>
+              <button type="submit" className="admin-btn admin-btn-primary" style={{ flex: 1, height: 48 }}>
+                ATRIBUIR AO ALUNO
+              </button>
+              <button type="button" onClick={() => setIsAssigning(false)} className="admin-btn admin-btn-ghost" style={{ flex: 1, height: 48 }}>
+                CANCELAR
+              </button>
+            </div>
+          </form>
+        )}
       </div>
     );
   }
@@ -1036,7 +1028,7 @@ export default function RunningCoachManager({ studentId }: Props) {
               style={{ padding: "8px 14px", fontSize: 11 }}
               title="Gerar semanas completas de treino de uma vez"
             >
-              <LayoutGrid size={14} /> SEMANA PADRÃO
+              <LayoutGrid size={14} /> GERADOR MANUAL
             </button>
           </div>
         )}
