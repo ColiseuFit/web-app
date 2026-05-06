@@ -34,6 +34,7 @@ interface Workout {
   // Novos campos do Template
   week_number?: number | null;
   session_order?: number | null;
+  block_order?: number | null;
 }
 
 interface RunningWorkoutsListProps {
