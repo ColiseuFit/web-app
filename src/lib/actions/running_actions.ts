@@ -923,6 +923,15 @@ export async function bulkCreateRunningWorkouts(
  *   um plano antes de ver o atleta, e alinha com o modelo mental do coach.
  * - Stats são buscadas separadamente via LEFT JOIN lógico em JS.
  */
+/**
+ * getRunnersOverview — Dashboard Administrativo (Running Hub).
+ * 
+ * @data-fetching Agrega dados de perfis, planos ativos e estatísticas de log (Último log, % de conclusão).
+ * @security Exclusivo para perfis com 'running_level' (SSoT de participação no programa).
+ * @performance Utiliza Promise.all para buscar estatísticas de múltiplos atletas em paralelo.
+ * 
+ * @returns {Promise<Array>} Lista de objetos 'runner' com perfil e estatísticas consolidadas.
+ */
 export async function getRunnersOverview() {
   const supabase = await createClient();
 
@@ -1201,6 +1210,16 @@ export async function getStudentRunningHistory(studentId: string) {
  * 
  * @param formData - Dados do formulário contendo: pace (ex: "05:30")
  * @returns { success: boolean, error?: string }
+ */
+/**
+ * updateRunningPace — Atualiza o Pace Alvo definido pelo Aluno (Meu Pace Alvo).
+ * 
+ * @logic Este pace é a meta subjetiva do aluno, diferente dos 'Pace Marks' (marcos fixos do coach).
+ * @validation Enforça o formato MM:SS via Regex.
+ * @path-revalidation Limpa caches do dashboard do aluno e perfil global.
+ * 
+ * @param {FormData} formData - Contém o campo 'pace' (ex: "05:15").
+ * @returns {Promise<{ success: boolean; error?: string }>}
  */
 export async function updateRunningPace(formData: FormData) {
   const supabase = await createClient();

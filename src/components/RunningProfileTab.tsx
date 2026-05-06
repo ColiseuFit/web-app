@@ -21,6 +21,16 @@ interface RunningProfileTabProps {
   setShowAlert: (v: boolean) => void;
 }
 
+/**
+ * RunningProfileTab — Painel de Identidade e Performance do Corredor.
+ * 
+ * @logic
+ * - Marcos de Performance: Dados de "referência" definidos pelo Coach (ex: pace de 5k, 10k). Somente leitura para o aluno.
+ * - Meu Pace Alvo: Meta pessoal definida pelo aluno para seus treinos atuais. Editável via 'Blue Mode'.
+ * - Design: Neo-Brutalismo com cards de borda sólida e sombras rígidas.
+ * 
+ * @param runnerProfile Dados consolidados do perfil vindos do servidor.
+ */
 export default function RunningProfileTab({
   runnerProfile,
   stravaIntegration,

@@ -9,6 +9,14 @@ interface RunningAccessGateProps {
   isInactive?: boolean;
 }
 
+/**
+ * RunningAccessGate — Componente de Controle de Acesso (Paywall/Status).
+ * 
+ * @logic
+ * - isInactive = true: Aluno tem nível mas o status é 'inactive' ou 'suspended'. Exibe "ACESSO PAUSADO".
+ * - isInactive = false: Aluno não tem nível (não inscrito ou removido). Exibe "CONVITE EXCLUSIVO".
+ * - Integração: Botão de WhatsApp dinâmico com mensagem pré-formatada para a recepção.
+ */
 export default function RunningAccessGate({ studentName, isInactive = false }: RunningAccessGateProps) {
   return (
     <div style={{

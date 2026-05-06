@@ -62,6 +62,7 @@ interface Student {
   running_level: string | null;
   running_pace: string | null;
   running_status: string | null;
+  running_target_pace: string | null;
 }
 
 // We will define this inside the component to use dynamic levels

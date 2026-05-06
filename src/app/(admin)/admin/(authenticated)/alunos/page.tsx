@@ -111,6 +111,8 @@ export default async function AlunosPage({
     gender: p.gender,
     running_level: p.running_level,
     running_pace: p.running_pace,
+    running_status: p.running_status ?? "active",
+    running_target_pace: p.running_target_pace,
     membership_type: p.membership_type ?? "club",
     email: p.email,
     member_number: p.member_number,
