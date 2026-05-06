@@ -8,7 +8,8 @@ import {
   bulkCreateRunningWorkoutsSchema,
   deleteRunningEntitySchema,
   createRunningTemplateSchema,
-  createTemplateWorkoutSchema
+  createTemplateWorkoutSchema,
+  updateTemplateWorkoutSchema
 } from "../validations/running_schemas";
 
 /**
@@ -55,7 +56,7 @@ export async function logRunningWorkout(formData: FormData) {
   // 1. Buscar o treino para verificar se já foi completado (evitar duplicidade de pontos)
   const { data: existingWorkout } = await supabase
     .from("running_workouts")
-    .select("completed_at")
+    .select("completed_at, plan_id, week_number, session_order")
     .eq("id", workoutId)
     .single();
 
@@ -79,6 +80,21 @@ export async function logRunningWorkout(formData: FormData) {
     .eq("student_id", user.id);
 
   if (error) throw error;
+  
+  // 2.1 Encerrar automaticamente outros blocos da mesma sessão (Batch Close)
+  if (existingWorkout?.plan_id && existingWorkout?.week_number && existingWorkout?.session_order) {
+    await supabase
+      .from("running_workouts")
+      .update({
+        completed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("plan_id", existingWorkout.plan_id)
+      .eq("week_number", existingWorkout.week_number)
+      .eq("session_order", existingWorkout.session_order)
+      .eq("student_id", user.id)
+      .is("completed_at", null);
+  }
 
   // 3. Gamificação: Atribuir XP
   // Buscar regra de pontuação
@@ -212,6 +228,7 @@ export async function getStudentRunningData(studentId: string) {
     .eq("plan_id", plan.id)
     .order("week_number", { ascending: true, nullsFirst: false })
     .order("session_order", { ascending: true, nullsFirst: false })
+    .order("block_order", { ascending: true, nullsFirst: false })
     .order("scheduled_date", { ascending: true, nullsFirst: false });
 
   return { plan, workouts: workouts || [], profile };
@@ -231,6 +248,20 @@ export async function getRunningTemplates() {
     .from("running_templates")
     .select("*, running_template_workouts(*)")
     .order("created_at", { ascending: false });
+  
+  // Ordenar blocos internos por week, session e block_order
+  if (data) {
+    data.forEach(t => {
+      if (t.running_template_workouts) {
+        t.running_template_workouts.sort((a: any, b: any) => {
+          if (a.week_number !== b.week_number) return a.week_number - b.week_number;
+          if (a.session_order !== b.session_order) return a.session_order - b.session_order;
+          return (a.block_order || 0) - (b.block_order || 0);
+        });
+      }
+    });
+  }
+
   return data || [];
 }
 
@@ -328,6 +359,49 @@ export async function createTemplateWorkout(formData: FormData) {
 }
 
 /**
+ * Adiciona múltiplos blocos de treino (uma sessão completa) a uma Planilha Padrão.
+ * 
+ * @param templateId - ID da planilha.
+ * @param weekNumber - Número da semana.
+ * @param sessionOrder - Ordem da sessão na semana.
+ * @param blocks - Array de objetos com a descrição e metas de cada bloco.
+ */
+export async function createTemplateWorkoutsBatch(
+  templateId: string,
+  weekNumber: number,
+  sessionOrder: number,
+  blocks: {
+    targetDescription: string;
+    targetDistanceKm?: number | null;
+    targetPaceDescription?: string | null;
+    targetRestTimeDescription?: string | null;
+  }[]
+) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Não autorizado");
+
+  if (!blocks || blocks.length === 0) throw new Error("Nenhum bloco para adicionar");
+
+  const workoutsToInsert = blocks.map((b, idx) => ({
+    template_id: templateId,
+    week_number: weekNumber,
+    session_order: sessionOrder,
+    block_order: idx + 1,
+    target_description: b.targetDescription,
+    target_distance_km: b.targetDistanceKm || null,
+    target_pace_description: b.targetPaceDescription || null,
+    target_rest_time_description: b.targetRestTimeDescription || null,
+  }));
+
+  const { error } = await supabase.from("running_template_workouts").insert(workoutsToInsert);
+
+  if (error) throw new Error(error.message);
+  revalidatePath("/admin/running/templates");
+  return { success: true };
+}
+
+/**
  * Remove permanentemente uma sessão de treino de uma Planilha Padrão.
  * 
  * @param workoutId - ID da sessão estrutural.
@@ -345,6 +419,176 @@ export async function deleteTemplateWorkout(workoutId: string) {
   if (error) throw new Error(error.message);
   revalidatePath("/admin/running/templates");
   return { success: true };
+}
+
+/**
+ * Atualiza uma sessão de treino de uma Planilha Padrão.
+ * 
+ * @param formData - Dados da sessão (workoutId, weekNumber, sessionOrder, targetDescription, etc).
+ */
+export async function updateTemplateWorkout(formData: FormData) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Não autorizado");
+
+  const validatedFields = updateTemplateWorkoutSchema.safeParse({
+    workoutId: formData.get("workoutId"),
+    weekNumber: formData.get("weekNumber") ? parseInt(formData.get("weekNumber") as string) : undefined,
+    sessionOrder: formData.get("sessionOrder") ? parseInt(formData.get("sessionOrder") as string) : undefined,
+    targetDescription: formData.get("targetDescription") || undefined,
+    targetDistanceKm: formData.get("targetDistanceKm") ? parseFloat(formData.get("targetDistanceKm") as string) : null,
+    targetPaceDescription: formData.get("targetPaceDescription") || null,
+    targetRestTimeDescription: formData.get("targetRestTimeDescription") || null,
+  });
+
+  if (!validatedFields.success) throw new Error("Dados inválidos para atualizar treino da planilha");
+
+  const { error } = await supabase
+    .from("running_template_workouts")
+    .update({
+      week_number: validatedFields.data.weekNumber,
+      session_order: validatedFields.data.sessionOrder,
+      target_description: validatedFields.data.targetDescription,
+      target_distance_km: validatedFields.data.targetDistanceKm,
+      target_pace_description: validatedFields.data.targetPaceDescription,
+      target_rest_time_description: validatedFields.data.targetRestTimeDescription,
+    })
+    .eq("id", validatedFields.data.workoutId);
+
+  if (error) throw new Error(error.message);
+  revalidatePath("/admin/running/templates");
+  return { success: true };
+}
+
+/**
+ * Duplica todos os blocos de uma sessão para uma nova ordem de sessão, opcionalmente em outra semana.
+ */
+export async function duplicateTemplateSession(
+  templateId: string, 
+  weekNumber: number, 
+  sessionOrder: number,
+  targetWeekNumber?: number
+) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Não autorizado");
+
+  const destinationWeek = targetWeekNumber || weekNumber;
+
+  // 1. Buscar blocos da sessão original
+  const { data: blocks } = await supabase
+    .from("running_template_workouts")
+    .select("*")
+    .eq("template_id", templateId)
+    .eq("week_number", weekNumber)
+    .eq("session_order", sessionOrder)
+    .order("block_order", { ascending: true });
+
+  if (!blocks || blocks.length === 0) throw new Error("Sessão não encontrada");
+
+  // 2. Determinar próxima ordem disponível na semana de destino
+  const { data: existing } = await supabase
+    .from("running_template_workouts")
+    .select("session_order")
+    .eq("template_id", templateId)
+    .eq("week_number", destinationWeek);
+  
+  const maxOrder = existing?.reduce((max, curr) => Math.max(max, curr.session_order), 0) || 0;
+  const newOrder = maxOrder + 1;
+
+  // 3. Inserir cópias
+  const workoutsToInsert = blocks.map(b => ({
+    template_id: templateId,
+    week_number: destinationWeek,
+    session_order: newOrder,
+    block_order: b.block_order,
+    target_description: b.target_description,
+    target_distance_km: b.target_distance_km,
+    target_pace_description: b.target_pace_description,
+    target_rest_time_description: b.target_rest_time_description,
+  }));
+
+  const { error } = await supabase.from("running_template_workouts").insert(workoutsToInsert);
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/admin/running/templates");
+  return { success: true };
+}
+
+/**
+ * Remove todos os blocos de uma sessão específica.
+ */
+export async function deleteTemplateSession(templateId: string, weekNumber: number, sessionOrder: number) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Não autorizado");
+
+  const { error } = await supabase
+    .from("running_template_workouts")
+    .delete()
+    .eq("template_id", templateId)
+    .eq("week_number", weekNumber)
+    .eq("session_order", sessionOrder);
+
+  if (error) throw new Error(error.message);
+  revalidatePath("/admin/running/templates");
+  return { success: true };
+}
+
+/**
+ * Clona uma Planilha Padrão existente com todos os seus treinos.
+ * 
+ * @param templateId - ID da planilha original.
+ */
+export async function duplicateRunningTemplate(templateId: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Não autorizado");
+
+  // 1. Busca o template original
+  const { data: original, error: fetchErr } = await supabase
+    .from("running_templates")
+    .select("*, running_template_workouts(*)")
+    .eq("id", templateId)
+    .single();
+
+  if (fetchErr || !original) throw new Error("Planilha original não encontrada");
+
+  // 2. Cria o novo template (Cópia)
+  const { data: copy, error: copyErr } = await supabase
+    .from("running_templates")
+    .insert({
+      coach_id: user.id,
+      title: `${original.title} (Cópia)`,
+      description: original.description,
+      level_tag: original.level_tag,
+      frequency_per_week: original.frequency_per_week,
+      duration_weeks: original.duration_weeks,
+    })
+    .select()
+    .single();
+
+  if (copyErr) throw new Error(copyErr.message);
+
+  // 3. Clona os treinos
+  if (original.running_template_workouts && original.running_template_workouts.length > 0) {
+    const workoutsToInsert = original.running_template_workouts.map((tw: any) => ({
+      template_id: copy.id,
+      week_number: tw.week_number,
+      session_order: tw.session_order,
+      block_order: tw.block_order,
+      target_description: tw.target_description,
+      target_distance_km: tw.target_distance_km,
+      target_pace_description: tw.target_pace_description,
+      target_rest_time_description: tw.target_rest_time_description,
+    }));
+
+    const { error: batchErr } = await supabase.from("running_template_workouts").insert(workoutsToInsert);
+    if (batchErr) throw new Error(batchErr.message);
+  }
+
+  revalidatePath("/admin/running/templates");
+  return { success: true, copy };
 }
 
 /**
@@ -401,6 +645,7 @@ export async function assignTemplateToStudent(templateId: string, studentId: str
       student_id: studentId,
       week_number: tw.week_number,
       session_order: tw.session_order,
+      block_order: tw.block_order,
       target_description: tw.target_description,
       target_distance_km: tw.target_distance_km,
       target_pace_description: tw.target_pace_description,
@@ -695,42 +940,60 @@ export async function getRunnersOverview() {
 
   if (!profiles || profiles.length === 0) return [];
 
-  // 2. Para cada atleta, buscar planos e estatísticas de treinos
+  const now = new Date();
+
+  // 2. Para cada atleta, buscar plano ativo e estatísticas
   const runnersWithStats = await Promise.all(profiles.map(async (profile) => {
-    // Pega todos os planos do atleta
-    const { data: plans } = await supabase
+    // Buscar plano ativo
+    const { data: activePlan } = await supabase
       .from("running_plans")
-      .select("id")
-      .eq("student_id", profile.id);
+      .select("id, title")
+      .eq("student_id", profile.id)
+      .eq("status", "active")
+      .maybeSingle();
 
-    const planIds = plans?.map(p => p.id) || [];
+    // Buscar workouts de TODOS os planos para pegar o latest_log global
+    const { data: allWorkouts } = await supabase
+      .from("running_workouts")
+      .select("completed_at")
+      .eq("student_id", profile.id)
+      .not("completed_at", "is", null);
 
-    // Buscar workouts de todos os planos
-    let workouts: { completed_at: string | null; scheduled_date: string }[] = [];
-    if (planIds.length > 0) {
-      const { data: wkData } = await supabase
-        .from("running_workouts")
-        .select("completed_at, scheduled_date")
-        .in("plan_id", planIds);
-      workouts = wkData || [];
-    }
-
-    const loggedWorkouts = workouts.filter(w => w.completed_at);
-    const latestLog = loggedWorkouts.length > 0
-      ? loggedWorkouts.sort((a, b) =>
+    const latestLog = allWorkouts && allWorkouts.length > 0
+      ? allWorkouts.sort((a, b) =>
           new Date(b.completed_at!).getTime() - new Date(a.completed_at!).getTime()
         )[0].completed_at
       : null;
 
+    const lastLogDays = latestLog 
+      ? Math.floor((now.getTime() - new Date(latestLog).getTime()) / (1000 * 3600 * 24))
+      : 999;
+
+    // Estatísticas específicas do plano ativo (se existir)
+    let totalPrescribed = 0;
+    let totalLogged = 0;
+
+    if (activePlan) {
+      const { data: activeWorkouts } = await supabase
+        .from("running_workouts")
+        .select("completed_at")
+        .eq("plan_id", activePlan.id);
+      
+      totalPrescribed = activeWorkouts?.length || 0;
+      totalLogged = activeWorkouts?.filter(w => w.completed_at).length || 0;
+    }
+
     return {
-      // Mantém a shape esperada pelo RunningHubClient
       id: profile.id,
       student_id: profile.id,
       profiles: profile,
+      active_plan_title: activePlan?.title || null,
       stats: {
-        total_prescribed: workouts.length,
-        total_logged: loggedWorkouts.length,
+        total_prescribed: totalPrescribed,
+        total_logged: totalLogged,
         latest_log: latestLog,
+        last_log_days: lastLogDays,
+        has_active_plan: !!activePlan
       },
     };
   }));

@@ -62,8 +62,20 @@ export const createTemplateWorkoutSchema = z.object({
   targetRestTimeDescription: z.string().nullable().optional(),
 });
 
+// 7. Schema para atualizar treino de um Template
+export const updateTemplateWorkoutSchema = z.object({
+  workoutId: z.string().uuid("ID do treino inválido"),
+  weekNumber: z.number().int().min(1).optional(),
+  sessionOrder: z.number().int().min(1).max(7).optional(),
+  targetDescription: z.string().min(2, "A descrição do treino é obrigatória").optional(),
+  targetDistanceKm: z.number().nullable().optional(),
+  targetPaceDescription: z.string().nullable().optional(),
+  targetRestTimeDescription: z.string().nullable().optional(),
+});
+
 export type UpdateRunningPlanInput = z.infer<typeof updateRunningPlanSchema>;
 export type LogRunningWorkoutInput = z.infer<typeof logRunningWorkoutSchema>;
 export type BulkCreateRunningWorkoutsInput = z.infer<typeof bulkCreateRunningWorkoutsSchema>;
 export type CreateRunningTemplateInput = z.infer<typeof createRunningTemplateSchema>;
 export type CreateTemplateWorkoutInput = z.infer<typeof createTemplateWorkoutSchema>;
+export type UpdateTemplateWorkoutInput = z.infer<typeof updateTemplateWorkoutSchema>;

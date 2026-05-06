@@ -81,9 +81,15 @@ export default async function RunningDashboardPage() {
     ? `${String(totalHours).padStart(2, "0")}:${String(totalMinutes).padStart(2, "0")}h`
     : "00:00h";
 
-  const completedThisMonth = (monthlyWorkouts || []).length;
   const workouts: any[] = (activePlan as any)?.running_workouts ?? [];
-  const completedInPlan = workouts.filter((w) => w.completed_at).length;
+  
+  // Agrupar por sessões únicas para métricas reais de progresso
+  const uniqueSessions = new Set(workouts.map(w => `${w.week_number}-${w.session_order}`));
+  const completedSessions = new Set(workouts.filter(w => w.completed_at).map(w => `${w.week_number}-${w.session_order}`));
+  
+  const totalWorkoutsInPlan = uniqueSessions.size;
+  const completedInPlan = completedSessions.size;
+  const completedThisMonth = (monthlyWorkouts || []).length; // Aqui mantemos a contagem de registros no mês
 
   // ── Parse Perfil de Performance (Marcos de Pace) ──────────────────────────
   let paceMarks: { distance: number | string; pace: string }[] = [];
@@ -277,7 +283,7 @@ export default async function RunningDashboardPage() {
             timeDisplay,
             completedThisMonth,
             completedInPlan,
-            totalWorkoutsInPlan: (activePlan as any)?.running_workouts?.length || 0
+            totalWorkoutsInPlan
           }}
         />
 

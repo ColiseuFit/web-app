@@ -31,25 +31,7 @@ export default async function RunningTemplatesPage() {
     .order("created_at", { ascending: false });
 
   return (
-    <div style={{ maxWidth: 1000, margin: "0 auto", padding: "24px" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 32 }}>
-        <Link href="/admin/running" style={{ 
-          padding: "8px", 
-          background: "#000", 
-          color: "#FFF", 
-          borderRadius: 4,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center"
-        }}>
-          <ArrowLeft size={20} />
-        </Link>
-        <div>
-          <h1 style={{ fontSize: 28, fontWeight: 950, margin: 0, textTransform: "uppercase" }}>Planilhas Padrão</h1>
-          <p style={{ margin: 0, fontSize: 14, color: "#666" }}>Crie e gerencie as planilhas base de corrida que podem ser atribuídas aos alunos.</p>
-        </div>
-      </div>
-
+    <div className="admin-page-fill" style={{ padding: "40px", background: "#F9F9F9", minHeight: "100vh" }}>
       <TemplatesClient initialTemplates={templates || []} />
     </div>
   );

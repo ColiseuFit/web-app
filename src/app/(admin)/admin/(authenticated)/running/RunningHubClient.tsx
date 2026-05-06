@@ -84,10 +84,14 @@ export default function RunningHubClient({ runners }: RunningHubClientProps) {
   const totalRunners = runners.length;
   const recentLogs = runners.filter(r => {
     if (!r.stats.latest_log) return false;
-    const diffDays = Math.floor((new Date().getTime() - new Date(r.stats.latest_log).getTime()) / (1000 * 3600 * 24));
-    return diffDays <= 7;
+    return r.stats.last_log_days <= 7;
   }).length;
-  const missingPrescription = runners.filter(r => r.stats.total_prescribed === r.stats.total_logged).length;
+  const missingPrescription = runners.filter(r => {
+    const noPlan = !r.stats.has_active_plan;
+    const planFinished = r.stats.has_active_plan && r.stats.total_prescribed > 0 && r.stats.total_prescribed === r.stats.total_logged;
+    const abandoned = r.stats.last_log_days > 14 && r.stats.last_log_days < 999;
+    return noPlan || planFinished || abandoned;
+  }).length;
 
   return (
     <div className="admin-page-content" style={{ animation: "fadeIn 0.4s ease", position: "relative" }}>
@@ -196,7 +200,7 @@ export default function RunningHubClient({ runners }: RunningHubClientProps) {
               <th style={{ textAlign: "right", padding: "16px 24px" }}>Ação</th>
             </tr>
           </thead>
-          <tbody>
+           <tbody>
             {filteredRunners.length === 0 ? (
               <tr>
                 <td colSpan={5} style={{ padding: "80px 24px", textAlign: "center" }}>
@@ -209,19 +213,26 @@ export default function RunningHubClient({ runners }: RunningHubClientProps) {
                 </td>
               </tr>
             ) : filteredRunners.map((runner) => {
-              const latestLogDate = runner.stats.latest_log 
-                ? new Date(runner.stats.latest_log).toLocaleDateString("pt-BR")
-                : "Nenhum";
+              const isAbandoned = runner.stats.last_log_days > 14 && runner.stats.last_log_days < 999;
+              const isFinished = runner.stats.has_active_plan && runner.stats.total_prescribed > 0 && runner.stats.total_prescribed === runner.stats.total_logged;
+              const noPlan = !runner.stats.has_active_plan;
               
-              const isAlert = runner.stats.total_prescribed === runner.stats.total_logged;
+              const isAlert = isAbandoned || isFinished || noPlan;
 
               return (
                 <tr key={runner.id} style={{ borderBottom: "1px solid #EEE" }}>
                   <td style={{ padding: "16px 24px" }}>
-                    <AthleteIdentity 
-                      profile={runner.profiles} 
-                      avatarSize={40}
-                    />
+                    <div style={{ display: "flex", flexDirection: "column" }}>
+                      <AthleteIdentity 
+                        profile={runner.profiles} 
+                        avatarSize={40}
+                      />
+                      {runner.active_plan_title && (
+                        <span style={{ fontSize: 9, fontWeight: 800, color: "var(--nb-blue)", marginTop: 4, textTransform: "uppercase" }}>
+                          Plano: {runner.active_plan_title}
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td style={{ padding: "16px" }}>
                     {(() => {
@@ -291,13 +302,24 @@ export default function RunningHubClient({ runners }: RunningHubClientProps) {
                     })()}
                   </td>
                   <td style={{ padding: "16px", textAlign: "center" }}>
-                    <span style={{ fontWeight: 900, fontSize: "14px" }}>
-                      {runner.stats.total_prescribed} / {runner.stats.total_logged}
-                    </span>
+                        {noPlan ? (
+                          <span style={{ fontSize: 9, fontWeight: 900, color: "var(--nb-red)" }}>SEM PLANO</span>
+                        ) : (
+                          <span style={{ fontSize: 10, fontWeight: 800, color: "#666" }}>
+                            {runner.stats.total_logged} de {runner.stats.total_prescribed}
+                          </span>
+                        )}
                   </td>
                   <td style={{ padding: "16px" }}>
-                    <div style={{ fontSize: "12px", fontWeight: 700, color: "#666" }}>
-                      {latestLogDate}
+                    <div style={{ display: "flex", flexDirection: "column" }}>
+                      <span style={{ fontSize: "11px", fontWeight: 800, color: isAbandoned ? "var(--nb-red)" : "#000" }}>
+                        {runner.stats.latest_log ? new Date(runner.stats.latest_log).toLocaleDateString("pt-BR") : "Nunca"}
+                      </span>
+                      {isAbandoned && (
+                        <span style={{ fontSize: 8, fontWeight: 950, color: "var(--nb-red)", textTransform: "uppercase" }}>
+                          {runner.stats.last_log_days} dias inativo
+                        </span>
+                      )}
                     </div>
                   </td>
                   <td style={{ padding: "16px 24px", textAlign: "right" }}>
