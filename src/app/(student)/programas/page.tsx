@@ -17,6 +17,28 @@ export default async function ProgramasPage() {
 
   if (!user) redirect("/login");
 
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("running_level, running_status")
+    .eq("id", user.id)
+    .single();
+
+  const isRunningInactive = profile?.running_status && profile.running_status !== "active";
+  const hasRunningLevel = !!profile?.running_level;
+  
+  let runningTag = "NÃO INSCRITO";
+  let runningTagBg = "#666";
+  
+  if (hasRunningLevel) {
+    if (isRunningInactive) {
+      runningTag = "PAUSADO";
+      runningTagBg = "var(--nb-red)";
+    } else {
+      runningTag = "ATIVO";
+      runningTagBg = "#000";
+    }
+  }
+
   // Programas disponíveis (por enquanto apenas Corrida)
   const programs = [
     {
@@ -25,7 +47,8 @@ export default async function ProgramasPage() {
       description: "Planos de corrida personalizados para todos os níveis, do iniciante ao avançado.",
       icon: Activity,
       href: "/programas/running",
-      tag: "ATIVO",
+      tag: runningTag,
+      tagBg: runningTagBg,
       color: "var(--nb-red)",
       gradient: "linear-gradient(45deg, var(--nb-red), #ff5f5f)"
     },
@@ -107,7 +130,7 @@ export default async function ProgramasPage() {
                   <span style={{
                     fontSize: "10px",
                     fontWeight: 900,
-                    background: "#000",
+                    background: program.tagBg,
                     color: "#fff",
                     padding: "2px 8px",
                     letterSpacing: "0.1em",

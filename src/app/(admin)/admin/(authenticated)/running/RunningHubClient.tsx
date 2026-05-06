@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Search, Zap, Footprints, Clock, ArrowRight, User, AlertCircle, TrendingUp, X, Timer, LayoutTemplate } from "lucide-react";
 import AthleteIdentity from "@/components/Identity/AthleteIdentity";
-import { RUNNING_LEVELS, RunningLevelKey } from "@/lib/constants/running";
+import { RUNNING_LEVELS, RUNNING_STATUSES, RunningLevelKey, RunningStatusKey } from "@/lib/constants/running";
 import RunningCoachManager from "../alunos/RunningCoachManager";
 import RunningIdentityEditor from "../alunos/RunningIdentityEditor";
 import { updateStudent } from "../../../actions";
@@ -17,12 +17,16 @@ interface RunningHubClientProps {
 export default function RunningHubClient({ runners }: RunningHubClientProps) {
   const router = useRouter();
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | RunningStatusKey>("all");
   const [selectedRunner, setSelectedRunner] = useState<any | null>(null);
 
-  const filteredRunners = runners.filter(r => 
-    r.profiles?.full_name?.toLowerCase().includes(search.toLowerCase()) ||
-    r.profiles?.display_name?.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredRunners = runners.filter(r => {
+    const matchSearch = r.profiles?.full_name?.toLowerCase().includes(search.toLowerCase()) ||
+                        r.profiles?.display_name?.toLowerCase().includes(search.toLowerCase());
+    const runnerStatus = r.profiles?.running_status || "active";
+    const matchStatus = statusFilter === "all" || runnerStatus === statusFilter;
+    return matchSearch && matchStatus;
+  });
 
   const css = `
     .admin-table th {
@@ -187,6 +191,17 @@ export default function RunningHubClient({ runners }: RunningHubClientProps) {
             style={{ width: "100%", paddingLeft: "44px", height: "48px" }} 
           />
         </div>
+        <select 
+          className="nb-input"
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value as any)}
+          style={{ width: "200px", height: "48px", fontWeight: 900, cursor: "pointer", textTransform: "uppercase" }}
+        >
+          <option value="all">TODOS OS STATUS</option>
+          <option value="active">ATIVOS</option>
+          <option value="inactive">INATIVOS</option>
+          <option value="suspended">SUSPENSOS</option>
+        </select>
       </div>
 
       <div className="nb-card-blue" style={{ padding: 0, overflow: "hidden" }}>
@@ -195,7 +210,8 @@ export default function RunningHubClient({ runners }: RunningHubClientProps) {
             <tr>
               <th style={{ textAlign: "left", padding: "16px 24px" }}>Atleta</th>
               <th style={{ textAlign: "left", padding: "16px" }}>Nível</th>
-              <th style={{ textAlign: "center", padding: "16px" }}>Sessões (P/R)</th>
+              <th style={{ textAlign: "center", padding: "16px" }}>Status</th>
+              <th style={{ textAlign: "center", padding: "16px" }}>Progresso</th>
               <th style={{ textAlign: "left", padding: "16px" }}>Último Log</th>
               <th style={{ textAlign: "right", padding: "16px 24px" }}>Ação</th>
             </tr>
@@ -203,7 +219,7 @@ export default function RunningHubClient({ runners }: RunningHubClientProps) {
            <tbody>
             {filteredRunners.length === 0 ? (
               <tr>
-                <td colSpan={5} style={{ padding: "80px 24px", textAlign: "center" }}>
+                <td colSpan={6} style={{ padding: "80px 24px", textAlign: "center" }}>
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "12px", opacity: 0.5 }}>
                     <Footprints size={48} />
                     <span style={{ fontWeight: 800, fontSize: "14px", textTransform: "uppercase" }}>
@@ -238,29 +254,30 @@ export default function RunningHubClient({ runners }: RunningHubClientProps) {
                     {(() => {
                       const runningLevelKey = (runner.profiles?.running_level as RunningLevelKey) || "iniciante";
                       const lvl = RUNNING_LEVELS[runningLevelKey] ?? RUNNING_LEVELS.iniciante;
-                      // Cores escuras precisam de texto branco; cinza do iniciante também
                       const textColor = "#FFF";
                       const isDefault = !runner.profiles?.running_level;
 
                       return (
                         <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                          <span style={{
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: "6px",
-                            padding: "4px 10px",
-                            border: "2px solid #000",
-                            background: lvl.color,
-                            color: textColor,
-                            fontSize: "10px",
-                            fontWeight: 900,
-                            textTransform: "uppercase",
-                            letterSpacing: "0.08em",
-                            whiteSpace: "nowrap",
-                          }}>
-                            <Zap size={10} />
-                            {lvl.label}
-                          </span>
+                          <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
+                            <span style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "6px",
+                              padding: "4px 10px",
+                              border: "2px solid #000",
+                              background: lvl.color,
+                              color: textColor,
+                              fontSize: "10px",
+                              fontWeight: 900,
+                              textTransform: "uppercase",
+                              letterSpacing: "0.08em",
+                              whiteSpace: "nowrap",
+                            }}>
+                              <Zap size={10} />
+                              {lvl.label}
+                            </span>
+                          </div>
                           {runner.profiles?.running_pace && (
                             <span style={{
                               display: "inline-flex",
@@ -298,6 +315,28 @@ export default function RunningHubClient({ runners }: RunningHubClientProps) {
                             </span>
                           )}
                         </div>
+                      );
+                    })()}
+                  </td>
+                  <td style={{ padding: "16px", textAlign: "center" }}>
+                    {(() => {
+                      const statusKey = (runner.profiles?.running_status as RunningStatusKey) || "active";
+                      const status = RUNNING_STATUSES[statusKey] || RUNNING_STATUSES.active;
+                      const isYellow = statusKey === "suspended";
+                      return (
+                        <span style={{
+                          padding: "4px 10px",
+                          border: "2px solid #000",
+                          background: status.color,
+                          color: isYellow ? "#000" : "#FFF",
+                          fontSize: "10px",
+                          fontWeight: 900,
+                          textTransform: "uppercase",
+                          whiteSpace: "nowrap",
+                          boxShadow: "2px 2px 0px #000"
+                        }}>
+                          {status.label}
+                        </span>
                       );
                     })()}
                   </td>

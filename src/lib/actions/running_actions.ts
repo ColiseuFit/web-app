@@ -929,7 +929,7 @@ export async function getRunnersOverview() {
   // 1. Buscar todos os perfis com running_level definido (SSoT de inclusão)
   const { data: profiles, error } = await supabase
     .from("profiles")
-    .select("id, full_name, display_name, avatar_url, level, running_level, running_pace")
+    .select("id, full_name, display_name, avatar_url, level, running_level, running_pace, running_status, running_target_pace")
     .not("running_level", "is", null)
     .order("full_name", { ascending: true });
 
@@ -1209,14 +1209,11 @@ export async function updateRunningPace(formData: FormData) {
   if (!user) return { error: "Não autorizado" };
 
   const rawPace = formData.get("pace") as string;
-  if (!rawPace || rawPace.length < 3) return { error: "Pace inválido." };
-
-  // Formata o pace armazenando como array JSON para compatibilidade
-  const paceArray = JSON.stringify([{ distance: 1, pace: rawPace }]);
+  if (!rawPace || !/^\d{2}:\d{2}$/.test(rawPace)) return { error: "Pace inválido. Use o formato MM:SS (ex: 05:30)." };
 
   const { error } = await supabase
     .from("profiles")
-    .update({ running_pace: paceArray })
+    .update({ running_target_pace: rawPace })
     .eq("id", user.id);
 
   if (error) return { error: error.message };

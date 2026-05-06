@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { User, Activity, Edit2, Check, Timer } from "lucide-react";
+import { User, Activity, Edit2, Check, Timer, Zap } from "lucide-react";
 import { updateRunningPace } from "@/lib/actions/running_actions";
 import { RUNNING_LEVELS, type RunningLevelKey } from "@/lib/constants/running";
 
@@ -13,6 +13,7 @@ interface RunningProfileTabProps {
     weight?: number;
     running_level?: string;
     running_pace?: { distance: number | string; pace: string }[];
+    running_target_pace?: string;
   };
   stravaIntegration: any;
   StravaPoweredByLogo: React.ElementType;
@@ -29,7 +30,7 @@ export default function RunningProfileTab({
 }: RunningProfileTabProps) {
   // Estado para edição do pace
   const [isEditingPace, setIsEditingPace] = useState(false);
-  const defaultPace = runnerProfile?.running_pace?.[0]?.pace || "";
+  const defaultPace = runnerProfile?.running_target_pace || "";
   const [paceInput, setPaceInput] = useState(defaultPace);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -50,7 +51,6 @@ export default function RunningProfileTab({
   const handleSavePace = async () => {
     setIsSaving(true);
     try {
-      // Formata pace (espera-se MM:SS)
       const data = new FormData();
       data.append("pace", paceInput);
       
@@ -139,9 +139,65 @@ export default function RunningProfileTab({
         </div>
       </div>
 
-      {/* ── PACE SETTINGS ── */}
+      {/* ── MARCOS DE PERFORMANCE (COACH) ── */}
       <div style={{
         background: "#FFF",
+        border: "4px solid #000",
+        boxShadow: "6px 6px 0px #000",
+        padding: "24px",
+        marginBottom: "24px"
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+          <Activity size={20} />
+          <h2 style={{ fontSize: 14, fontWeight: 950, textTransform: "uppercase", margin: 0 }}>Marcos de Performance</h2>
+        </div>
+        
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+           {(runnerProfile?.running_pace || []).length > 0 ? (
+             runnerProfile!.running_pace!.map((mark: any, i: number) => {
+               let dateFormatted = "";
+               if (mark.date) {
+                 const d = new Date(mark.date + "T12:00:00Z");
+                 if (!isNaN(d.getTime())) {
+                   dateFormatted = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' }).format(d);
+                 }
+               }
+               return (
+                 <div key={i} style={{ 
+                   background: "#000", 
+                   color: "#FFF", 
+                   padding: "12px 16px", 
+                   border: "2px solid var(--nb-yellow)",
+                   boxShadow: "4px 4px 0px #000",
+                   display: "flex", 
+                   flexDirection: "column", 
+                   gap: 2,
+                   position: "relative",
+                   overflow: "hidden"
+                 }}>
+                   {/* Decorador de fundo */}
+                   <div style={{ position: "absolute", right: -5, top: -5, opacity: 0.1, color: "#FFF" }}>
+                     <Zap size={32} fill="currentColor" />
+                   </div>
+
+                   <div style={{ fontSize: 10, fontWeight: 900, color: "var(--nb-yellow)", textTransform: "uppercase", letterSpacing: "0.1em" }}>{mark.distance} KM</div>
+                   <div style={{ fontSize: 22, fontWeight: 950, letterSpacing: "-0.02em" }}>{mark.pace}</div>
+                   {dateFormatted && (
+                     <div style={{ fontSize: 8, color: "rgba(255,255,255,0.5)", fontWeight: 800, marginTop: 4 }}>RECORDADO EM {dateFormatted}</div>
+                   )}
+                 </div>
+               );
+             })
+           ) : (
+             <div style={{ color: "#999", fontWeight: 700, fontSize: 12, gridColumn: "span 2" }}>Nenhum Marco registrado pelo Coach.</div>
+           )}
+        </div>
+      </div>
+
+      {/* ── PACE ALVO (ALUNO) ── */}
+      <div style={{
+        background: "var(--nb-blue)",
+        color: "#FFF",
         border: "4px solid #000",
         boxShadow: "6px 6px 0px #000",
         padding: "24px",
@@ -149,13 +205,13 @@ export default function RunningProfileTab({
       }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <Timer size={20} />
-            <h2 style={{ fontSize: 16, fontWeight: 950, textTransform: "uppercase", margin: 0 }}>Meu Pace Alvo</h2>
+            <Timer size={20} color="#FFF" />
+            <h2 style={{ fontSize: 14, fontWeight: 950, textTransform: "uppercase", margin: 0 }}>Meu Pace Alvo</h2>
           </div>
           {!isEditingPace && (
             <button 
               onClick={() => setIsEditingPace(true)}
-              style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, color: "var(--nb-blue)", fontWeight: 900, fontSize: 10, textTransform: "uppercase" }}
+              style={{ background: "#FFF", color: "#000", border: "2px solid #000", padding: "4px 8px", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, fontWeight: 900, fontSize: 10, textTransform: "uppercase" }}
             >
               <Edit2 size={12} strokeWidth={3} /> Editar
             </button>
@@ -163,33 +219,59 @@ export default function RunningProfileTab({
         </div>
 
         {isEditingPace ? (
-          <div style={{ display: "flex", gap: 8 }}>
-            <input 
-              type="text" 
-              value={paceInput}
-              onChange={e => setPaceInput(e.target.value)}
-              placeholder="Ex: 05:30"
-              style={{ flex: 1, padding: "12px", border: "3px solid #000", fontSize: 16, fontWeight: 900 }}
-            />
+          <div style={{ display: "flex", gap: 10, alignItems: "stretch" }}>
+            <div style={{ flex: 1, position: "relative" }}>
+              <input 
+                type="text" 
+                value={paceInput}
+                onChange={e => {
+                  let val = e.target.value.replace(/\D/g, "");
+                  if (val.length > 4) val = val.substring(0, 4);
+                  if (val.length > 2) {
+                    val = val.substring(0, 2) + ":" + val.substring(2, 4);
+                  }
+                  setPaceInput(val);
+                }}
+                placeholder="00:00"
+                style={{ 
+                  width: "100%", 
+                  padding: "16px", 
+                  paddingRight: "60px",
+                  border: "3px solid #000", 
+                  fontSize: 20, 
+                  fontWeight: 950, 
+                  color: "#000",
+                  background: "#FFF",
+                  outline: "none"
+                }}
+              />
+              <span style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", fontSize: 10, fontWeight: 900, color: "#999", textTransform: "uppercase" }}>min/km</span>
+            </div>
             <button 
               onClick={handleSavePace}
               disabled={isSaving}
-              style={{ background: "var(--nb-blue)", color: "#FFF", border: "3px solid #000", padding: "0 16px", fontWeight: 950, cursor: "pointer" }}
+              style={{ 
+                background: "var(--nb-yellow)", 
+                color: "#000", 
+                border: "3px solid #000", 
+                width: "60px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: "pointer",
+                boxShadow: "4px 4px 0px #000",
+                active: { transform: "translate(2px, 2px)", boxShadow: "2px 2px 0px #000" }
+              } as any}
             >
-              {isSaving ? "..." : <Check size={20} />}
+              {isSaving ? "..." : <Check size={28} strokeWidth={3} />}
             </button>
           </div>
         ) : (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-             {(runnerProfile?.running_pace || []).length > 0 ? (
-               runnerProfile!.running_pace!.map((mark, i) => (
-                 <div key={i} style={{ background: "#000", color: "#FFF", padding: "8px 16px", fontWeight: 900, fontSize: 14 }}>
-                   {mark.distance}KM: {mark.pace}
-                 </div>
-               ))
-             ) : (
-               <div style={{ color: "#999", fontWeight: 700, fontSize: 12 }}>Nenhum Pace definido.</div>
-             )}
+          <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+            <span style={{ fontSize: 32, fontWeight: 950, letterSpacing: "-0.02em" }}>
+              {runnerProfile?.running_target_pace || "--:--"}
+            </span>
+            <span style={{ fontSize: 14, fontWeight: 800, opacity: 0.8, textTransform: "uppercase" }}>min/km</span>
           </div>
         )}
       </div>

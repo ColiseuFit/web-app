@@ -39,6 +39,20 @@ export const RUNNING_LEVELS: Record<RunningLevelKey, RunningLevelInfo> = {
   }
 };
 
+export type RunningStatusKey = 'active' | 'inactive' | 'suspended';
+
+export interface RunningStatusInfo {
+  key: RunningStatusKey;
+  label: string;
+  color: string;
+}
+
+export const RUNNING_STATUSES: Record<RunningStatusKey, RunningStatusInfo> = {
+  active: { key: 'active', label: 'Ativo', color: '#15803D' },    // Verde
+  inactive: { key: 'inactive', label: 'Inativo', color: '#DC2626' }, // Vermelho
+  suspended: { key: 'suspended', label: 'Suspenso', color: '#EAB308' } // Amarelo
+};
+
 /**
  * Retorna o nível de corrida com base no pace (segundos por km)
  */

@@ -61,6 +61,7 @@ interface Student {
   address_state: string | null;
   running_level: string | null;
   running_pace: string | null;
+  running_status: string | null;
 }
 
 // We will define this inside the component to use dynamic levels
@@ -536,35 +537,7 @@ export default function AlunosClient({
               </div>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
-              <div>
-                <label style={{ display: "block", fontSize: 12, fontWeight: 500, color: "var(--admin-text-secondary)", marginBottom: 6 }}>Nível de Corrida</label>
-                <select name="running_level" defaultValue="iniciante">
-                  {Object.values(RUNNING_LEVELS).map(l => (
-                    <option key={l.key} value={l.key}>{l.label}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label style={{ display: "block", fontSize: 12, fontWeight: 500, color: "var(--admin-text-secondary)", marginBottom: 6 }}>Pace Atual (opcional)</label>
-                <input 
-                  type="text" 
-                  name="running_pace" 
-                  placeholder="00:00" 
-                  maxLength={5}
-                  onChange={(e) => {
-                    // LÓGICA DE MÁSCARA AUTOMÁTICA (MM:SS)
-                    // Para reduzir a fricção do coach, removemos caracteres não-numéricos
-                    // e injetamos o ":" automaticamente após o segundo dígito.
-                    let val = e.target.value.replace(/\D/g, "");
-                    if (val.length > 2) {
-                      val = val.substring(0, 2) + ":" + val.substring(2, 4);
-                    }
-                    e.target.value = val;
-                  }}
-                />
-              </div>
-            </div>
+
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
               <div>
                 <label style={{ display: "block", fontSize: 12, fontWeight: 500, color: "var(--admin-text-secondary)", marginBottom: 6 }}>E-mail de Login *</label>
@@ -1393,7 +1366,9 @@ export default function AlunosClient({
                 <div style={{ maxWidth: 800, margin: "0 auto", width: "100%" }}>
                   <RunningIdentityEditor 
                     student={selectedStudent} 
-                    onUpdate={() => setDrawerView("profile")} 
+                    onUpdate={() => {
+                      setMessage({ type: "success", text: "Perfil de corrida atualizado!" });
+                    }} 
                     updateStudentAction={updateStudent} 
                   />
                 </div>

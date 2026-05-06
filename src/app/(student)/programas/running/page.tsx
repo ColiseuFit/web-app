@@ -7,6 +7,7 @@ import DashboardStyles from "@/components/DashboardStyles";
 import { Footprints, Timer, Zap, TrendingUp } from "lucide-react";
 import { getStudentRunningHistory } from "@/lib/actions/running_actions";
 import RunningHubTabs from "@/components/RunningHubTabs";
+import RunningAccessGate from "@/components/RunningAccessGate";
 import { RUNNING_LEVELS, type RunningLevelKey } from "@/lib/constants/running";
 
 
@@ -55,7 +56,7 @@ export default async function RunningDashboardPage() {
       .gte("completed_at", firstDayOfMonth),
     supabase
       .from("profiles")
-      .select("level, running_level, running_pace, full_name, points_total, avatar_url, birth_date, gender")
+      .select("level, running_level, running_pace, running_target_pace, running_status, full_name, points_total, avatar_url, birth_date, gender")
       .eq("id", user.id)
       .single(),
     getStudentRunningHistory(user.id),
@@ -105,19 +106,41 @@ export default async function RunningDashboardPage() {
     const rawPace = (profile as any)?.running_pace;
     const parsed = JSON.parse(rawPace || "[]");
     if (Array.isArray(parsed) && parsed.length > 0) {
-      paceMarks = parsed;
-    } else if (rawPace) {
+      // Sanitização: remove marcos sem tempo válido (evita badges "5KM: []")
+      paceMarks = parsed.filter((p: any) => p.pace && p.pace !== "00:00" && p.pace.length >= 4);
+    } else if (rawPace && rawPace.length >= 4 && rawPace !== "00:00") {
       // Fallback legado se for apenas uma string tipo "05:00"
       paceMarks = [{ distance: 1, pace: rawPace }];
     }
   } catch (e) {
     const rawPace = (profile as any)?.running_pace;
-    if (rawPace) {
+    if (rawPace && rawPace.length >= 4 && rawPace !== "00:00") {
       paceMarks = [{ distance: 1, pace: rawPace }];
     }
   }
 
   const firstName = profile?.full_name ? profile.full_name.split(" ")[0] : "Atleta";
+
+  // ── SE O ALUNO NÃO TIVER NÍVEL OU NÃO ESTIVER ATIVO, MOSTRA O BLOQUEIO (GATE) ──
+  const isSuspended = profile?.running_status === "inactive" || profile?.running_status === "suspended";
+  const hasNoLevel = !profile?.running_level;
+
+  if (hasNoLevel || isSuspended) {
+    return (
+      <div style={{ minHeight: "100vh", backgroundColor: "#F2F2F0", paddingBottom: "100px" }}>
+        <DashboardStyles />
+        <StudentHeader />
+        <main style={{ maxWidth: "480px", margin: "0 auto", padding: "24px 20px" }}>
+          {/* Se não tem nível, isInactive é falso (mostra convite). Se tem nível mas está inativo, isInactive é true (mostra pausa) */}
+          <RunningAccessGate 
+            studentName={profile?.full_name || "Atleta"} 
+            isInactive={!!(profile?.running_level && isSuspended)} 
+          />
+        </main>
+        <BottomNav />
+      </div>
+    );
+  }
 
   return (
     <div style={{ minHeight: "100vh", background: "#F2F2F0" }}>
@@ -292,7 +315,8 @@ export default async function RunningDashboardPage() {
             gender: profile?.gender,
             weight: latestEval?.weight,
             running_level: profile?.running_level,
-            running_pace: paceMarks
+            running_pace: paceMarks,
+            running_target_pace: profile?.running_target_pace
           }}
           metrics={{
             totalKmMonth,
