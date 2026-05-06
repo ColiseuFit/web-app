@@ -249,7 +249,6 @@ export default function RunningWorkoutsList({ workouts }: RunningWorkoutsListPro
                                               </div>
                                             )}
                                           </div>
-                                          </div>
                                         </>
                                       ) : (
                                         <div style={{ 

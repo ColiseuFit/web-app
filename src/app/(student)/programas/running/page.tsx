@@ -37,7 +37,8 @@ export default async function RunningDashboardPage() {
     { data: monthlyWorkouts }, 
     { data: profile },
     historyData,
-    { data: stravaIntegration }
+    { data: stravaIntegration },
+    { data: latestEval }
   ] = await Promise.all([
     supabase
       .from("running_plans")
@@ -54,7 +55,7 @@ export default async function RunningDashboardPage() {
       .gte("completed_at", firstDayOfMonth),
     supabase
       .from("profiles")
-      .select("level, running_level, running_pace, full_name, points_total")
+      .select("level, running_level, running_pace, full_name, points_total, avatar_url, birth_date, gender")
       .eq("id", user.id)
       .single(),
     getStudentRunningHistory(user.id),
@@ -63,6 +64,13 @@ export default async function RunningDashboardPage() {
       .select("id, provider, updated_at")
       .eq("student_id", user.id)
       .eq("provider", "strava")
+      .maybeSingle(),
+    supabase
+      .from("physical_evaluations")
+      .select("weight")
+      .eq("student_id", user.id)
+      .order("evaluation_date", { ascending: false })
+      .limit(1)
       .maybeSingle()
   ]);
 
@@ -278,6 +286,14 @@ export default async function RunningDashboardPage() {
           activePlan={activePlan}
           historyData={historyData}
           stravaIntegration={stravaIntegration}
+          runnerProfile={{
+            avatar_url: profile?.avatar_url,
+            birth_date: profile?.birth_date,
+            gender: profile?.gender,
+            weight: latestEval?.weight,
+            running_level: profile?.running_level,
+            running_pace: paceMarks
+          }}
           metrics={{
             totalKmMonth,
             timeDisplay,

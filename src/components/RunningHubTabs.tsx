@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useState } from "react";
-import { Footprints, TrendingUp, History, LayoutGrid, Zap, Timer } from "lucide-react";
+import { Footprints, TrendingUp, History, LayoutGrid, Zap, Timer, User } from "lucide-react";
 import RunningWorkoutsList from "./RunningWorkoutsList";
 import RunningAnalytics from "./RunningAnalytics";
+import RunningProfileTab from "./RunningProfileTab";
 import { formatPace } from "@/lib/constants/running";
 import Link from "next/link";
 import AlertModal from "@/components/AlertModal";
@@ -52,15 +53,17 @@ interface RunningHubTabsProps {
     completedInPlan: number;
     totalWorkoutsInPlan: number;
   };
+  runnerProfile?: any;
 }
 
 export default function RunningHubTabs({
   activePlan,
   historyData,
   stravaIntegration,
-  metrics
+  metrics,
+  runnerProfile
 }: RunningHubTabsProps) {
-  const [activeTab, setActiveTab] = useState<"inicio" | "planilha" | "evolucao">("inicio");
+  const [activeTab, setActiveTab] = useState<"inicio" | "planilha" | "evolucao" | "perfil">("inicio");
   const [showAlert, setShowAlert] = useState(false);
 
   const workouts = activePlan?.running_workouts ?? [];
@@ -70,7 +73,7 @@ export default function RunningHubTabs({
       {/* TABS SELECTOR */}
       <div style={{ 
         display: "grid", 
-        gridTemplateColumns: "1fr 1fr 1fr", 
+        gridTemplateColumns: "1fr 1fr 1fr 1fr", 
         gap: 8, 
         marginBottom: 24,
         background: "#FFF",
@@ -141,6 +144,27 @@ export default function RunningHubTabs({
         >
           <TrendingUp size={14} /> EVOLUÇÃO
         </button>
+        <button 
+          onClick={() => setActiveTab("perfil")}
+          style={{
+            padding: "10px 4px",
+            background: activeTab === "perfil" ? "var(--nb-blue)" : "transparent",
+            color: activeTab === "perfil" ? "#FFF" : "#000",
+            border: activeTab === "perfil" ? "2px solid #000" : "none",
+            fontSize: 10,
+            fontWeight: 900,
+            textTransform: "uppercase",
+            letterSpacing: "0.1em",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 6,
+            transition: "all 0.2s"
+          }}
+        >
+          <User size={14} /> PERFIL
+        </button>
       </div>
 
       {/* TAB CONTENT: INÍCIO */}
@@ -163,80 +187,6 @@ export default function RunningHubTabs({
                <div style={{ fontSize: 20, fontWeight: 950 }}>{metrics.completedThisMonth}</div>
                <div style={{ fontSize: 8, fontWeight: 900, color: "#888", textTransform: "uppercase" }}>SESSÕES</div>
              </div>
-          </div>
-
-          {/* Integração Strava */}
-          <div style={{
-            background: stravaIntegration ? "#FC4C02" : "#FFF",
-            border: "4px solid #000",
-            boxShadow: "6px 6px 0px #000",
-            padding: "20px",
-            marginBottom: "32px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            position: "relative",
-            overflow: "hidden"
-          }} className="nb-card-hover">
-            {/* Watermark de fundo — asset oficial, sem alteração de cor (grayscale via CSS) */}
-            <div style={{
-              position: "absolute",
-              right: "-20px",
-              bottom: "5px",
-              opacity: 0.12,
-              pointerEvents: "none",
-              transform: "rotate(-10deg)"
-            }}>
-              <StravaPoweredByLogo color={stravaIntegration ? "white" : "black"} height={40} />
-            </div>
-
-            <div style={{ display: "flex", alignItems: "center", gap: 12, position: "relative", zIndex: 2 }}>
-              {/* Ícone Strava: logo oficial em fundo laranja */}
-              <div style={{
-                border: "3px solid #000",
-                boxShadow: "2px 2px 0px #000",
-                lineHeight: 0,
-                background: "#FC5200",
-                padding: "8px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center"
-              }}>
-                <img 
-                  src="/strava/pwrdBy_strava_stack_white.svg" 
-                  alt="Strava" 
-                  style={{ height: 32, width: "auto" }} 
-                />
-              </div>
-              <div>
-                <p style={{ margin: 0, fontSize: 13, fontWeight: 950, color: stravaIntegration ? "#FFF" : "#000", textTransform: "uppercase", letterSpacing: "0.02em" }}>
-                  {stravaIntegration ? "SINCRONIZADO COM STRAVA" : "CONECTAR AO STRAVA"}
-                </p>
-                <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 2 }}>
-                  <div style={{ width: 6, height: 6, borderRadius: "50%", background: stravaIntegration ? "#4ade80" : "#9ca3af" }} />
-                  <span style={{ fontSize: 9, fontWeight: 800, color: stravaIntegration ? "rgba(255,255,255,0.8)" : "#666", textTransform: "uppercase" }}>
-                    {stravaIntegration ? "Status: Ativo" : "Status: Pendente"}
-                  </span>
-                </div>
-              </div>
-            </div>
-            
-            {stravaIntegration ? (
-              <div style={{ 
-                background: "rgba(255,255,255,0.2)", 
-                padding: "6px 10px", 
-                border: "1px solid rgba(255,255,255,0.4)",
-                fontSize: 9,
-                fontWeight: 900,
-                color: "#FFF",
-                textTransform: "uppercase"
-              }}>
-                CONECTADO
-              </div>
-            ) : (
-              /* Botão oficial "Connect with Strava" — Brand Guidelines §1.1 */
-              <StravaConnectButton onClick={() => setShowAlert(true)} />
-            )}
           </div>
 
           {/* Selo obrigatório — Brand Guidelines §1.2: "Powered by Strava" */}
@@ -375,6 +325,17 @@ export default function RunningHubTabs({
             </div>
           </div>
         </div>
+      )}
+
+      {/* TAB CONTENT: PERFIL */}
+      {activeTab === "perfil" && (
+        <RunningProfileTab 
+          runnerProfile={runnerProfile}
+          stravaIntegration={stravaIntegration}
+          StravaPoweredByLogo={StravaPoweredByLogo}
+          StravaConnectButton={StravaConnectButton}
+          setShowAlert={setShowAlert}
+        />
       )}
 
       {showAlert && (

@@ -1195,3 +1195,34 @@ export async function getStudentRunningHistory(studentId: string) {
     }
   };
 }
+
+/**
+ * Atualiza o Pace Alvo do Aluno no Perfil Global (Blue Mode Context).
+ * 
+ * @param formData - Dados do formulário contendo: pace (ex: "05:30")
+ * @returns { success: boolean, error?: string }
+ */
+export async function updateRunningPace(formData: FormData) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) return { error: "Não autorizado" };
+
+  const rawPace = formData.get("pace") as string;
+  if (!rawPace || rawPace.length < 3) return { error: "Pace inválido." };
+
+  // Formata o pace armazenando como array JSON para compatibilidade
+  const paceArray = JSON.stringify([{ distance: 1, pace: rawPace }]);
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({ running_pace: paceArray })
+    .eq("id", user.id);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/programas/running");
+  revalidatePath("/profile");
+  
+  return { success: true };
+}
