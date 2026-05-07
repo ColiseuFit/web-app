@@ -46,14 +46,13 @@ graph TD
   - `docs/PLAYBOOKS/COACH_LITE_LEGACY.md`: Guia para suporte a iPad 2/iOS 9.
   - `docs/PLAYBOOKS/STUDENT_APP.md`: Guia mestre da experiência do aluno.
   - `docs/PLAYBOOKS/PWA_UPDATE_GUARD.md`: Procedimento de versionamento e atualização de cache.
-  - `docs/PLAYBOOKS/RUNNING_HUB.md`: Gestão estratégica de atletas, gerador de planilhas em massa e métricas de Pace.
-  - `docs/PLAYBOOKS/STRAVA_INTEGRATION.md`: Webhooks, homologação e conformidade com o Strava API Program.
-  - `docs/PLAYBOOKS/RUNNING_SUPORTE.md`: Playbook operacional da página obrigatória de suporte (Compliance Strava).
-  ... (outros playbooks)
+    - `docs/PLAYBOOKS/RUNNING_HUB.md`: Gestão estratégica de atletas, gerador de planilhas em massa, Engenharia de Treino V1 (Multi-blocos/Zonas) e métricas de Pace.
+    - `docs/PLAYBOOKS/STRAVA_INTEGRATION.md`: Webhooks, homologação e conformidade com o Strava API Program.
+    - `docs/PLAYBOOKS/RUNNING_SUPORTE.md`: Playbook operacional da página obrigatória de suporte (Compliance Strava).
+    ... (outros playbooks)
 
 ---
 ---
-**Versão: 3.3.0 (Abril/2026) - Strava API Production Ready**  
+**Versão: 4.1.0 (Maio/2026) - Engenharia de Treino V1 Ready**  
 **Status da Auditoria:** 🏛️ LEGACY PROOF (Protocolo 1.0.3) - CONCLUÍDA  
 **Equipe:** Antigravity AI & Coliseu Engineering Team
-

@@ -11,10 +11,10 @@ import { ChevronDown, ChevronRight, Calendar } from "lucide-react";
  */
 const StravaOfficialBadge = () => (
   <div style={{ display: "flex", alignItems: "center", lineHeight: 0 }}>
-    <img 
-      src="/strava/pwrdBy_strava_stack_orange.svg" 
-      alt="Powered by Strava" 
-      style={{ height: 24, width: "auto" }} 
+    <img
+      src="/strava/pwrdBy_strava_stack_orange.svg"
+      alt="Powered by Strava"
+      style={{ height: 24, width: "auto" }}
     />
   </div>
 );
@@ -35,14 +35,30 @@ interface Workout {
   week_number?: number | null;
   session_order?: number | null;
   block_order?: number | null;
+  reps?: number | null;
+  category?: string | null;
+  target_zone?: string | null;
+  target_unit?: string | null;
 }
 
 interface RunningWorkoutsListProps {
   workouts: Workout[];
 }
 
+/**
+ * Componente de visualização do dashboard de corrida do aluno.
+ * 
+ * @description
+ * Agrupa os treinos por semana e sessão, permitindo expandir/recolher semanas.
+ * Exibe tanto a prescrição do coach (Yellow Box) quanto o resultado do aluno (Blue Box) 
+ * para garantir transparência no progresso.
+ * 
+ * @protocolo_performance
+ * - Agrupamento via useMemo para evitar re-calculos em cada render
+ * - Expansão automática na semana atual (Smart Focus)
+ */
 export default function RunningWorkoutsList({ workouts }: RunningWorkoutsListProps) {
-  const [selectedWorkoutId, setSelectedWorkoutId] = useState<string | null>(null);
+  const [selectedSessionWorkouts, setSelectedSessionWorkouts] = useState<Workout[] | null>(null);
 
   // ──────────────────────────────────────────────────────────────────────────
   // LÓGICA DE AGRUPAMENTO SEMANAL (MODELO DE MOLDES)
@@ -51,11 +67,11 @@ export default function RunningWorkoutsList({ workouts }: RunningWorkoutsListPro
   // ──────────────────────────────────────────────────────────────────────────
   const grouped = useMemo(() => {
     const map: Record<number, Record<number, Workout[]>> = {};
-    
+
     workouts.forEach(w => {
       const weekNum = w.week_number || 1;
       const order = w.session_order || 999;
-      
+
       if (!map[weekNum]) map[weekNum] = {};
       if (!map[weekNum][order]) map[weekNum][order] = [];
       map[weekNum][order].push(w);
@@ -105,24 +121,24 @@ export default function RunningWorkoutsList({ workouts }: RunningWorkoutsListPro
             return (
               <div key={weekNum} style={{ marginBottom: "16px" }}>
                 {/* Cabeçalho da Semana */}
-                <div 
+                <div
                   onClick={() => toggleWeek(weekNum)}
-                  style={{ 
+                  style={{
                     display: "flex", alignItems: "center", justifyContent: "space-between",
-                    padding: "20px 16px", 
-                    background: weekDone ? "#000" : "var(--nb-surface)", 
-                    color: weekDone ? "#FFF" : "#000", 
-                    cursor: "pointer", 
+                    padding: "20px 16px",
+                    background: weekDone ? "#000" : "var(--nb-surface)",
+                    color: weekDone ? "#FFF" : "#000",
+                    cursor: "pointer",
                     border: "4px solid #000",
-                    boxShadow: weekDone ? "0px 0px 0px #000" : "6px 6px 0px #000", 
+                    boxShadow: weekDone ? "0px 0px 0px #000" : "6px 6px 0px #000",
                     transition: "all 0.1s",
                     position: "relative"
                   }}
                   className="nb-card-hover"
                 >
                   <div style={{ display: "flex", alignItems: "center", gap: "12px", zIndex: 2 }}>
-                    <div style={{ 
-                      background: weekDone ? "var(--nb-yellow)" : "#000", 
+                    <div style={{
+                      background: weekDone ? "var(--nb-yellow)" : "#000",
                       color: weekDone ? "#000" : "#FFF",
                       padding: "4px",
                       borderRadius: "2px",
@@ -137,11 +153,11 @@ export default function RunningWorkoutsList({ workouts }: RunningWorkoutsListPro
 
                   {/* Barra de progresso sutil no fundo */}
                   {!weekDone && (
-                    <div style={{ 
-                      position: "absolute", 
-                      bottom: 0, 
-                      left: 0, 
-                      height: "4px", 
+                    <div style={{
+                      position: "absolute",
+                      bottom: 0,
+                      left: 0,
+                      height: "4px",
                       width: `${(completedCount / allWorkouts.length) * 100}%`,
                       background: "var(--nb-red)",
                       transition: "width 0.3s ease"
@@ -149,9 +165,9 @@ export default function RunningWorkoutsList({ workouts }: RunningWorkoutsListPro
                   )}
 
                   <div style={{ display: "flex", alignItems: "center", gap: 10, zIndex: 2 }}>
-                    <span style={{ 
-                      fontSize: "10px", fontWeight: 900, 
-                      background: weekDone ? "rgba(255,255,255,0.2)" : "#F3F4F6", 
+                    <span style={{
+                      fontSize: "10px", fontWeight: 900,
+                      background: weekDone ? "rgba(255,255,255,0.2)" : "#F3F4F6",
                       color: weekDone ? "#FFF" : "#6B7280",
                       padding: "4px 10px", border: weekDone ? "none" : "2px solid #000",
                       textTransform: "uppercase"
@@ -169,22 +185,22 @@ export default function RunningWorkoutsList({ workouts }: RunningWorkoutsListPro
                       .map(([orderStr, sessionWorkouts], sIdx) => {
                         const sOrder = Number(orderStr);
                         const isSessionDone = sessionWorkouts.every(w => w.completed_at);
-                        
+
                         return (
-                          <div 
+                          <div
                             key={orderStr}
                             className="nb-card"
-                            style={{ 
-                              padding: "0px", 
+                            style={{
+                              padding: "0px",
                               background: isSessionDone ? "var(--nb-surface)" : "#fff",
                               border: "3px solid #000",
                               boxShadow: "4px 4px 0px #000",
                               overflow: "hidden",
-                              animation: `slideInUp ${0.2 + sIdx * 0.05}s ease-out forwards` 
+                              animation: `slideInUp ${0.2 + sIdx * 0.05}s ease-out forwards`
                             }}
                           >
-                            <div style={{ 
-                              background: isSessionDone ? "#000" : "#F3F4F6", 
+                            <div style={{
+                              background: isSessionDone ? "#000" : "#F3F4F6",
                               color: isSessionDone ? "#FFF" : "#000",
                               padding: "8px 16px",
                               borderBottom: "2px solid #000",
@@ -204,80 +220,153 @@ export default function RunningWorkoutsList({ workouts }: RunningWorkoutsListPro
                               {sessionWorkouts
                                 .sort((a, b) => (a.block_order || 0) - (b.block_order || 0))
                                 .map((workout, bIdx) => (
-                                <div key={workout.id} style={{ 
-                                  paddingBottom: bIdx === sessionWorkouts.length - 1 ? 0 : 12,
-                                  borderBottom: bIdx === sessionWorkouts.length - 1 ? "none" : "1px dashed #DDD"
-                                }}>
-                                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
-                                    <h4 className="font-headline" style={{ fontSize: "16px", fontWeight: 900, margin: 0 }}>
-                                      {workout.target_description}
-                                    </h4>
-                                    {workout.target_description.includes("Strava") && <StravaOfficialBadge />}
-                                  </div>
-                                  
-                                  {workout.completed_at ? (
-                                    <div style={{ display: "flex", gap: "16px", marginTop: "8px", padding: "8px", background: "var(--nb-blue)", color: "#FFF", border: "1px solid #000" }}>
-                                      <div style={{ flex: 1 }}>
-                                        <span style={{ fontSize: "8px", fontWeight: 950, color: "rgba(255,255,255,0.7)", display: "block", textTransform: "uppercase" }}>Resultado</span>
-                                        <span style={{ fontWeight: 950, fontSize: "12px" }}>{workout.actual_distance_km} KM</span>
-                                      </div>
-                                      <div style={{ flex: 1 }}>
-                                        <span style={{ fontSize: "8px", fontWeight: 950, color: "rgba(255,255,255,0.7)", display: "block", textTransform: "uppercase" }}>Pace</span>
-                                        <span style={{ fontWeight: 950, fontSize: "12px" }}>{workout.actual_pace_seconds_per_km ? formatPace(workout.actual_pace_seconds_per_km) : '--:--'}/km</span>
-                                      </div>
+                                  <div key={workout.id} style={{
+                                    paddingBottom: bIdx === sessionWorkouts.length - 1 ? 0 : 12,
+                                    borderBottom: bIdx === sessionWorkouts.length - 1 ? "none" : "1px dashed #DDD"
+                                  }}>
+                                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
+                                      <h4 className="font-headline" style={{ fontSize: "16px", fontWeight: 900, margin: 0 }}>
+                                        {workout.target_description}
+                                      </h4>
+                                      {workout.target_description.includes("Strava") && <StravaOfficialBadge />}
                                     </div>
-                                  ) : (
-                                    <>
-                                      {(workout.target_distance_km || workout.target_pace_description || workout.target_rest_time_description) ? (
-                                        <>
+
+                                    {workout.completed_at ? (
+                                      <>
+                                        {(workout.target_distance_km || workout.target_pace_description || workout.target_rest_time_description || workout.reps) ? (
                                           <div style={{ display: "flex", gap: "12px", marginTop: "8px", padding: "8px", background: "var(--nb-yellow)", border: "1px solid #000", flexWrap: "wrap" }}>
-                                            {workout.target_distance_km && (
+                                            {workout.category && (
                                               <div style={{ minWidth: "50px" }}>
-                                                <span style={{ fontSize: "7px", fontWeight: 900, opacity: 0.6, display: "block", textTransform: "uppercase" }}>Dist</span>
-                                                <span style={{ fontWeight: 900, fontSize: "11px" }}>{workout.target_distance_km}KM</span>
+                                                <span style={{ fontSize: "7px", fontWeight: 900, opacity: 0.6, display: "block", textTransform: "uppercase" }}>Tipo</span>
+                                                <span style={{ fontWeight: 900, fontSize: "11px", textTransform: "uppercase" }}>{workout.category}</span>
                                               </div>
                                             )}
-                                            {workout.target_pace_description && (
+                                            {(workout.target_distance_km || workout.reps) && (
                                               <div style={{ minWidth: "50px" }}>
-                                                <span style={{ fontSize: "7px", fontWeight: 900, opacity: 0.6, display: "block", textTransform: "uppercase" }}>Pace</span>
-                                                <span style={{ fontWeight: 900, fontSize: "11px" }}>{workout.target_pace_description}</span>
+                                                <span style={{ fontSize: "7px", fontWeight: 900, opacity: 0.6, display: "block", textTransform: "uppercase" }}>Volume</span>
+                                                <span style={{ fontWeight: 900, fontSize: "11px", textTransform: "uppercase" }}>
+                                                  {workout.reps && workout.reps > 1 ? `${workout.reps}x ` : ""}
+                                                  {workout.target_distance_km ? (
+                                                    workout.target_unit === "m"
+                                                      ? `${((Number(workout.target_distance_km) || 0) >= 1 ? Number(workout.target_distance_km) : Number(workout.target_distance_km) * 1000).toFixed(0)} M`
+                                                      : workout.target_unit === "min"
+                                                        ? `${workout.target_distance_km} MIN`
+                                                        : `${workout.target_distance_km} KM`
+                                                  ) : ""}
+                                                </span>
+                                              </div>
+                                            )}
+                                            {(workout.target_pace_description || workout.target_zone) && (
+                                              <div style={{ minWidth: "50px" }}>
+                                                <span style={{ fontSize: "7px", fontWeight: 900, opacity: 0.6, display: "block", textTransform: "uppercase" }}>Intensidade</span>
+                                                <span style={{ fontWeight: 900, fontSize: "11px", textTransform: "uppercase" }}>
+                                                  {workout.target_zone && workout.target_zone !== "livre"
+                                                    ? workout.target_zone
+                                                    : workout.target_pace_description || "LIVRE"}
+                                                </span>
                                               </div>
                                             )}
                                             {workout.target_rest_time_description && (
                                               <div style={{ minWidth: "50px" }}>
                                                 <span style={{ fontSize: "7px", fontWeight: 900, opacity: 0.6, display: "block", textTransform: "uppercase" }}>Desc</span>
-                                                <span style={{ fontWeight: 900, fontSize: "11px" }}>{workout.target_rest_time_description}</span>
+                                                <span style={{ fontWeight: 900, fontSize: "11px", textTransform: "uppercase" }}>{workout.target_rest_time_description}</span>
                                               </div>
                                             )}
                                           </div>
-                                        </>
-                                      ) : (
-                                        <div style={{ 
-                                          marginTop: "4px", 
-                                          fontSize: "11px", 
-                                          color: "#666", 
-                                          fontStyle: "italic",
-                                          padding: "4px 0"
-                                        }}>
-                                          💡 Orientação do Coach
+                                        ) : (
+                                          <div style={{ marginTop: "4px", fontSize: "11px", color: "#666", fontStyle: "italic", padding: "4px 0" }}>
+                                            💡 Orientação do Coach
+                                          </div>
+                                        )}
+
+                                        <div style={{ display: "flex", gap: "16px", marginTop: "8px", padding: "8px", background: "var(--nb-blue)", color: "#FFF", border: "1px solid #000" }}>
+                                          <div style={{ flex: 1 }}>
+                                            <span style={{ fontSize: "8px", fontWeight: 950, color: "rgba(255,255,255,0.7)", display: "block", textTransform: "uppercase" }}>Resultado</span>
+                                            <span style={{ fontWeight: 950, fontSize: "12px" }}>
+                                              {workout.reps && workout.reps > 1 ? `${workout.reps}x ` : ""}
+                                              {workout.actual_distance_km 
+                                                ? (workout.actual_distance_km < 1 
+                                                    ? `${(workout.actual_distance_km * 1000).toFixed(0)} M` 
+                                                    : `${workout.actual_distance_km} KM`) 
+                                                : "CONCLUÍDO"}
+                                            </span>
+                                          </div>
+                                          <div style={{ flex: 1 }}>
+                                            <span style={{ fontSize: "8px", fontWeight: 950, color: "rgba(255,255,255,0.7)", display: "block", textTransform: "uppercase" }}>Pace</span>
+                                            <span style={{ fontWeight: 950, fontSize: "12px" }}>{workout.actual_pace_seconds_per_km ? formatPace(workout.actual_pace_seconds_per_km) : '--:--'}/km</span>
+                                          </div>
                                         </div>
-                                      )}
-                                    </>
-                                  )}
-                                </div>
-                              ))}
+                                      </>
+                                    ) : (
+                                      <>
+                                        {(workout.target_distance_km || workout.target_pace_description || workout.target_rest_time_description || workout.reps) ? (
+                                          <>
+                                            <div style={{ display: "flex", gap: "12px", marginTop: "8px", padding: "8px", background: "var(--nb-yellow)", border: "1px solid #000", flexWrap: "wrap" }}>
+                                              {workout.category && (
+                                                <div style={{ minWidth: "50px" }}>
+                                                  <span style={{ fontSize: "7px", fontWeight: 900, opacity: 0.6, display: "block", textTransform: "uppercase" }}>Tipo</span>
+                                                  <span style={{ fontWeight: 900, fontSize: "11px", textTransform: "uppercase" }}>{workout.category}</span>
+                                                </div>
+                                              )}
+                                              {(workout.target_distance_km || workout.reps) && (
+                                                <div style={{ minWidth: "50px" }}>
+                                                  <span style={{ fontSize: "7px", fontWeight: 900, opacity: 0.6, display: "block", textTransform: "uppercase" }}>Volume</span>
+                                                  <span style={{ fontWeight: 900, fontSize: "11px", textTransform: "uppercase" }}>
+                                                    {workout.reps && workout.reps > 1 ? `${workout.reps}x ` : ""}
+                                                    {workout.target_distance_km ? (
+                                                      workout.target_unit === "m"
+                                                        ? `${((Number(workout.target_distance_km) || 0) >= 1 ? Number(workout.target_distance_km) : Number(workout.target_distance_km) * 1000).toFixed(0)} M`
+                                                        : workout.target_unit === "min"
+                                                          ? `${workout.target_distance_km} MIN`
+                                                          : `${workout.target_distance_km} KM`
+                                                    ) : ""}
+                                                  </span>
+                                                </div>
+                                              )}
+                                              {(workout.target_pace_description || workout.target_zone) && (
+                                                <div style={{ minWidth: "50px" }}>
+                                                  <span style={{ fontSize: "7px", fontWeight: 900, opacity: 0.6, display: "block", textTransform: "uppercase" }}>Intensidade</span>
+                                                  <span style={{ fontWeight: 900, fontSize: "11px", textTransform: "uppercase" }}>
+                                                    {workout.target_zone && workout.target_zone !== "livre"
+                                                      ? workout.target_zone
+                                                      : workout.target_pace_description || "LIVRE"}
+                                                  </span>
+                                                </div>
+                                              )}
+                                              {workout.target_rest_time_description && (
+                                                <div style={{ minWidth: "50px" }}>
+                                                  <span style={{ fontSize: "7px", fontWeight: 900, opacity: 0.6, display: "block", textTransform: "uppercase" }}>Desc</span>
+                                                  <span style={{ fontWeight: 900, fontSize: "11px", textTransform: "uppercase" }}>{workout.target_rest_time_description}</span>
+                                                </div>
+                                              )}
+                                            </div>
+                                          </>
+                                        ) : (
+                                          <div style={{
+                                            marginTop: "4px",
+                                            fontSize: "11px",
+                                            color: "#666",
+                                            fontStyle: "italic",
+                                            padding: "4px 0"
+                                          }}>
+                                            💡 Orientação do Coach
+                                          </div>
+                                        )}
+                                      </>
+                                    )}
+                                  </div>
+                                ))}
 
                               {/* Botão Único de Registro por Sessão */}
                               {!isSessionDone && (
-                                <button 
+                                <button
                                   onClick={() => {
-                                    const primary = sessionWorkouts.find(w => w.target_distance_km || w.target_pace_description) || sessionWorkouts[0];
-                                    setSelectedWorkoutId(primary.id);
+                                    setSelectedSessionWorkouts(sessionWorkouts);
                                   }}
                                   className="nb-button"
-                                  style={{ 
-                                    width: "100%", 
-                                    fontSize: "11px", 
+                                  style={{
+                                    width: "100%",
+                                    fontSize: "11px",
                                     padding: "12px",
                                     background: "#000",
                                     color: "#fff",
@@ -305,12 +394,12 @@ export default function RunningWorkoutsList({ workouts }: RunningWorkoutsListPro
         </div>
       )}
 
-      {selectedWorkoutId && (
-        <RunningWorkoutForm 
-          workout={workouts.find(w => w.id === selectedWorkoutId)!} 
-          onClose={() => setSelectedWorkoutId(null)}
+      {selectedSessionWorkouts && (
+        <RunningWorkoutForm
+          sessionWorkouts={selectedSessionWorkouts}
+          onClose={() => setSelectedSessionWorkouts(null)}
           onSuccess={() => {
-            setSelectedWorkoutId(null);
+            setSelectedSessionWorkouts(null);
           }}
         />
       )}

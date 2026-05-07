@@ -209,6 +209,7 @@ export default function RunningHubClient({ runners }: RunningHubClientProps) {
           <thead>
             <tr>
               <th style={{ textAlign: "left", padding: "16px 24px" }}>Atleta</th>
+              <th style={{ textAlign: "left", padding: "16px" }}>Vínculo</th>
               <th style={{ textAlign: "left", padding: "16px" }}>Nível</th>
               <th style={{ textAlign: "center", padding: "16px" }}>Status</th>
               <th style={{ textAlign: "center", padding: "16px" }}>Progresso</th>
@@ -219,7 +220,7 @@ export default function RunningHubClient({ runners }: RunningHubClientProps) {
            <tbody>
             {filteredRunners.length === 0 ? (
               <tr>
-                <td colSpan={6} style={{ padding: "80px 24px", textAlign: "center" }}>
+                <td colSpan={7} style={{ padding: "80px 24px", textAlign: "center" }}>
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "12px", opacity: 0.5 }}>
                     <Footprints size={48} />
                     <span style={{ fontWeight: 800, fontSize: "14px", textTransform: "uppercase" }}>
@@ -249,6 +250,25 @@ export default function RunningHubClient({ runners }: RunningHubClientProps) {
                         </span>
                       )}
                     </div>
+                  </td>
+                  <td style={{ padding: "16px" }}>
+                    {(() => {
+                      const isPass = runner.profiles?.membership_type === "club_pass";
+                      return (
+                        <span style={{
+                          padding: "4px 8px",
+                          border: "2px solid #000",
+                          background: isPass ? "#6B7280" : "var(--nb-blue)",
+                          color: "#FFF",
+                          fontSize: "10px",
+                          fontWeight: 900,
+                          textTransform: "uppercase",
+                          letterSpacing: "0.05em"
+                        }}>
+                          {isPass ? "PASS" : "PREMIUM"}
+                        </span>
+                      );
+                    })()}
                   </td>
                   <td style={{ padding: "16px" }}>
                     {(() => {

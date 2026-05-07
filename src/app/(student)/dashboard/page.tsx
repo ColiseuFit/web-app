@@ -11,9 +11,11 @@ import LevelBadge from "@/components/LevelBadge";
 import VideoPopup from "@/components/VideoPopup";
 import { getLevelInfo } from "@/lib/constants/levels";
 import { getCachedLevels } from "@/lib/constants/levels_actions";
-import { AlertTriangle, Zap, Footprints } from "lucide-react";
+import { Zap, Footprints } from "lucide-react";
 import { RUNNING_LEVELS } from "@/lib/constants/running";
 import { USER_ROLES } from "@/lib/constants/roles";
+import { getNextRunningWorkout } from "@/lib/actions/running_actions";
+import RunningHomeCard from "@/components/RunningHomeCard";
 import { getTodayDate, getWeekDates, getMinWeekOffset } from "@/lib/date-utils";
 import { getBoxSettings } from "@/lib/constants/settings_actions";
 import { DAY_SHORT, ACTIVE_DAYS, SYSTEM_START_DATE } from "@/lib/constants/calendar";
@@ -80,14 +82,16 @@ export default async function AppDashboard({ searchParams }: PageProps) {
     { data: weekWods },
     { data: holiday },
     dynamicLevels,
-    boxSettings
+    boxSettings,
+    runningWorkouts
   ] = await Promise.all([
     supabase.from("profiles").select("*").eq("id", user.id).single(),
     supabase.from("wods").select("*").eq("date", selectedDate).order("created_at", { ascending: false }).limit(1).maybeSingle(),
     supabase.from("wods").select("id, date, title, tags").in("date", getWeekDates(weekOffset)),
     supabase.from("box_holidays").select("*").eq("date", selectedDate).maybeSingle(),
     getCachedLevels(),
-    getBoxSettings()
+    getBoxSettings(),
+    getNextRunningWorkout(user.id)
   ]);
 
   // ── Visibility Logic ──
@@ -351,6 +355,11 @@ export default async function AppDashboard({ searchParams }: PageProps) {
             upgradeLink={upgradeLink}
           />
         </section>
+
+        {/* ── RUNNING SESSION (Hybrid Timeline) ── */}
+        <RunningHomeCard 
+          workout={runningWorkouts}
+        />
 
         {/* Recent PRs moved to Progress page as requested */}
 

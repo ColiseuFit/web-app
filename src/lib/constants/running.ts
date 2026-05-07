@@ -80,3 +80,22 @@ export function timeToSeconds(timeStr: string): number {
   if (parts.length === 2) return parts[0] * 60 + parts[1];
   return 0;
 }
+
+export const RUNNING_CATEGORIES = [
+  { id: "aquecimento", label: "Aquecimento", color: "#64748B" },
+  { id: "caminhada", label: "Caminhada", color: "#94A3B8" },
+  { id: "corrida", label: "Corrida", color: "#22C55E" },
+  { id: "tiro", label: "Tiro", color: "#EF4444" },
+  { id: "longo", label: "Longo", color: "#F59E0B" },
+  { id: "tempo", label: "Tempo Run", color: "#8B5CF6" },
+  { id: "desaquecimento", label: "Desaquecimento", color: "#475569" },
+];
+
+export const RUNNING_ZONES = [
+  { id: "LIVRE", label: "LIVRE", color: "#94A3B8", desc: "Sem zona específica" },
+  { id: "Z1", label: "Z1", color: "#64748B", desc: "Muito Leve" },
+  { id: "Z2", label: "Z2", color: "#22C55E", desc: "Leve" },
+  { id: "Z3", label: "Z3", color: "#F59E0B", desc: "Moderado" },
+  { id: "Z4", label: "Z4", color: "#F97316", desc: "Intenso" },
+  { id: "Z5", label: "Z5", color: "#EF4444", desc: "Máximo" },
+];

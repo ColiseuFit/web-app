@@ -158,7 +158,7 @@ export async function getLevels() {
   const { data, error } = await supabase
     .from("levels")
     .select("*")
-    .order("order_index", { ascending: true });
+    .order("position", { ascending: true });
 
   if (error) {
     console.error("Error fetching levels:", error);

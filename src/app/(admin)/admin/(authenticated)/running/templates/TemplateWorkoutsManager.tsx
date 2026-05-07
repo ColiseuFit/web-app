@@ -5,11 +5,13 @@ import { Plus, Trash2, ChevronDown, ChevronRight, Zap, Timer, Edit2, X, Check, C
 import { 
   createTemplateWorkout, 
   deleteTemplateWorkout, 
-  updateTemplateWorkout, 
   createTemplateWorkoutsBatch,
+  updateTemplateWorkoutsBatch,
+  updateTemplateWorkout,
   duplicateTemplateSession,
   deleteTemplateSession
 } from "@/lib/actions/running_actions";
+import { RUNNING_LEVELS, formatPace, RUNNING_CATEGORIES, RUNNING_ZONES, type RunningLevelKey } from "@/lib/constants/running";
 
 interface TemplateWorkout {
   id: string;
@@ -19,6 +21,10 @@ interface TemplateWorkout {
   target_distance_km: number | null;
   target_pace_description: string | null;
   target_rest_time_description: string | null;
+  reps: number;
+  category: string | null;
+  target_zone: string | null;
+  target_unit: string;
 }
 
 interface Props {
@@ -65,7 +71,7 @@ export default function TemplateWorkoutsManager({ template, onUpdate }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [expandedWeeks, setExpandedWeeks] = useState<number[]>([1]);
-  const [showAddForm, setShowAddForm] = useState<{ week: number } | null>(null);
+  const [showAddForm, setShowAddForm] = useState<{ week: number, sessionOrder?: number, isEdit?: boolean, originalSessionOrder?: number } | null>(null);
   const [copyingSession, setCopyingSession] = useState<{ week: number, session: number } | null>(null);
   const [targetWeek, setTargetWeek] = useState<number>(1);
   const [editingWorkoutId, setEditingWorkoutId] = useState<string | null>(null);
@@ -80,7 +86,14 @@ export default function TemplateWorkoutsManager({ template, onUpdate }: Props) {
     distance: string;
     pace: string;
     rest: string;
-  }>>([{ description: "", distance: "", pace: "", rest: "" }]);
+    reps: number;
+    category: string;
+    zone: string;
+    unit: string;
+  }>>([{ 
+    description: "", distance: "", pace: "", rest: "", 
+    reps: 1, category: "corrida", zone: "Z2", unit: "km" 
+  }]);
 
   // Agrupar treinos por semana e por ordem de sessão
   const groupedWorkouts = (template.running_template_workouts || []).reduce((acc, w) => {
@@ -114,31 +127,61 @@ export default function TemplateWorkoutsManager({ template, onUpdate }: Props) {
     const sessionOrder = parseInt(formData.get("sessionOrder") as string);
 
     try {
-      // Usar a nova action de batch
-      await createTemplateWorkoutsBatch(
-        template.id,
-        showAddForm.week,
-        sessionOrder,
-        addBlocks.map(b => ({
-          targetDescription: b.description,
-          targetDistanceKm: b.distance ? parseFloat(b.distance) : null,
-          targetPaceDescription: b.pace || null,
-          targetRestTimeDescription: b.rest || null,
-        }))
-      );
+      if (showAddForm.isEdit && showAddForm.originalSessionOrder) {
+        // Editando sessão inteira
+        await updateTemplateWorkoutsBatch(
+          template.id,
+          showAddForm.week,
+          sessionOrder,
+          showAddForm.originalSessionOrder,
+          addBlocks.map(b => ({
+            targetDescription: b.description,
+            targetDistanceKm: b.distance ? parseFloat(b.distance) : null,
+            targetPaceDescription: b.pace || null,
+            targetRestTimeDescription: b.rest || null,
+            reps: b.reps,
+            category: b.category,
+            targetZone: b.zone,
+            targetUnit: b.unit
+          }))
+        );
+      } else {
+        // Criando nova sessão
+        await createTemplateWorkoutsBatch(
+          template.id,
+          showAddForm.week,
+          sessionOrder,
+          addBlocks.map(b => ({
+            targetDescription: b.description,
+            targetDistanceKm: b.distance ? parseFloat(b.distance) : null,
+            targetPaceDescription: b.pace || null,
+            targetRestTimeDescription: b.rest || null,
+            reps: b.reps,
+            category: b.category,
+            targetZone: b.zone,
+            targetUnit: b.unit
+          }))
+        );
+      }
 
       setShowAddForm(null);
-      setAddBlocks([{ description: "", distance: "", pace: "", rest: "" }]);
+      setAddBlocks([{ 
+        description: "", distance: "", pace: "", rest: "", 
+        reps: 1, category: "corrida", zone: "Z2", unit: "km" 
+      }]);
       if (onUpdate) onUpdate();
     } catch (err: any) {
-      setError(err.message || "Erro ao adicionar treino");
+      setError(err.message || "Erro ao processar sessão");
     } finally {
       setLoading(false);
     }
   };
 
   const addBlockToForm = () => {
-    setAddBlocks(prev => [...prev, { description: "", distance: "", pace: "", rest: "" }]);
+    setAddBlocks(prev => [...prev, { 
+      description: "", distance: "", pace: "", rest: "", 
+      reps: 1, category: "corrida", zone: "Z2", unit: "km" 
+    }]);
   };
 
   const removeBlockFromForm = (idx: number) => {
@@ -153,7 +196,21 @@ export default function TemplateWorkoutsManager({ template, onUpdate }: Props) {
       if (field === "pace") finalValue = maskPace(value);
       if (field === "rest") finalValue = maskTime(value);
       
-      next[idx] = { ...next[idx], [field]: finalValue };
+      const newBlock = { ...next[idx], [field]: finalValue };
+
+      // Smart Defaults: Se mudar categoria, sugere a zona ideal
+      if (field === "category") {
+        if (value === "aquecimento" || value === "desaquecimento") {
+          newBlock.zone = "LIVRE";
+          newBlock.unit = "min";
+        }
+        if (value === "caminhada") newBlock.zone = "Z1";
+        if (value === "tiro") newBlock.zone = "Z5";
+        if (value === "tempo_run") newBlock.zone = "Z4";
+        if (value === "longo") newBlock.zone = "Z2";
+      }
+
+      next[idx] = newBlock;
       return next;
     });
   };
@@ -222,8 +279,25 @@ export default function TemplateWorkoutsManager({ template, onUpdate }: Props) {
                   Semana {weekNum}
                 </span>
               </div>
-              <span style={{ fontSize: 11, fontWeight: 800, opacity: 0.7 }}>
-                {sessionCount} Sessões
+              <span style={{ fontSize: 11, fontWeight: 800, opacity: 0.7, display: "flex", alignItems: "center", gap: 12 }}>
+                <span>{sessionCount} Sessões</span>
+                <span style={{ height: 12, width: 1, background: "rgba(255,255,255,0.3)" }}></span>
+                <span style={{ color: "var(--nb-yellow)" }}>
+                  {Object.values(weekSessions).reduce((acc, sess) => 
+                    acc + sess.reduce((vol, b) => {
+                      const dist = b.target_distance_km || 0;
+                      const reps = b.reps || 1;
+                      const unit = b.target_unit?.toLowerCase() || 'km';
+                      if (unit === 'min') return vol;
+                      if (unit === 'm') {
+                        // Defesa: se dist >= 1, assumimos que está em metros e dividimos por 1000.
+                        // Se dist < 1, já está em km.
+                        return vol + ((dist >= 1 ? dist / 1000 : dist) * reps);
+                      }
+                      return vol + (dist * reps);
+                    }, 0)
+                  , 0).toFixed(1)} km Total
+                </span>
               </span>
             </div>
 
@@ -253,6 +327,27 @@ export default function TemplateWorkoutsManager({ template, onUpdate }: Props) {
                         </div>
 
                         <div style={{ display: "flex", gap: 8 }}>
+                          {/* EDITAR SESSÃO COMPLETA */}
+                          <button 
+                            onClick={() => {
+                              setShowAddForm({ week: weekNum, sessionOrder: sOrder, isEdit: true, originalSessionOrder: sOrder });
+                              setAddBlocks(sessionBlocks.map(b => ({
+                                description: b.target_description || "",
+                                distance: b.target_distance_km ? b.target_distance_km.toString() : "",
+                                pace: b.target_pace_description || "",
+                                rest: b.target_rest_time_description || "",
+                                reps: b.reps || 1,
+                                category: b.category || "corrida",
+                                zone: b.target_zone || "Z2",
+                                unit: b.target_unit || "km"
+                              })));
+                            }}
+                            title="Editar Sessão Completa"
+                            style={{ background: "none", border: "none", cursor: "pointer", color: "#666", padding: 4 }}
+                          >
+                            <Edit2 size={14} />
+                          </button>
+
                           {/* DUPLICAR: Mesma Semana */}
                           <button 
                             onClick={async () => {
@@ -330,8 +425,34 @@ export default function TemplateWorkoutsManager({ template, onUpdate }: Props) {
                                   </div>
                                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
                                     <div>
-                                      <label style={{ display: "block", fontSize: 9, fontWeight: 900, marginBottom: 4 }}>DISTÂNCIA (KM)</label>
-                                      <input name="targetDistanceKm" type="number" step="0.1" defaultValue={w.target_distance_km || ""} className="nb-input" style={{ width: "100%", padding: 8 }} />
+                                      <label style={{ display: "block", fontSize: 9, fontWeight: 900, marginBottom: 4 }}>REPS</label>
+                                      <input name="reps" type="number" min="1" defaultValue={w.reps} className="nb-input" style={{ width: "100%", padding: 8 }} />
+                                    </div>
+                                    <div>
+                                      <label style={{ display: "block", fontSize: 9, fontWeight: 900, marginBottom: 4 }}>CATEGORIA</label>
+                                      <select name="category" defaultValue={w.category || "corrida"} className="nb-input" style={{ width: "100%", padding: 8 }}>
+                                        {RUNNING_CATEGORIES.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
+                                      </select>
+                                    </div>
+                                    <div>
+                                      <label style={{ display: "block", fontSize: 9, fontWeight: 900, marginBottom: 4 }}>ZONA</label>
+                                      <select name="targetZone" defaultValue={w.target_zone || "Z2"} className="nb-input" style={{ width: "100%", padding: 8 }}>
+                                        {RUNNING_ZONES.map(z => <option key={z.id} value={z.id}>{z.label}</option>)}
+                                      </select>
+                                    </div>
+                                  </div>
+
+                                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+                                    <div>
+                                      <label style={{ display: "block", fontSize: 9, fontWeight: 900, marginBottom: 4 }}>DISTÂNCIA</label>
+                                      <div style={{ display: "flex", gap: 4 }}>
+                                        <input name="targetDistanceKm" type="number" step="0.1" defaultValue={w.target_distance_km || ""} className="nb-input" style={{ flex: 1, padding: 8 }} />
+                                        <select name="targetUnit" defaultValue={w.target_unit || "km"} className="nb-input" style={{ width: 60, padding: 4, fontSize: 9 }}>
+                                          <option value="km">KM</option>
+                                          <option value="m">M</option>
+                                          <option value="min">MIN</option>
+                                        </select>
+                                      </div>
                                     </div>
                                     <div>
                                       <label style={{ display: "block", fontSize: 9, fontWeight: 900, marginBottom: 4 }}>PACE</label>
@@ -367,11 +488,56 @@ export default function TemplateWorkoutsManager({ template, onUpdate }: Props) {
                             ) : (
                               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                                 <div style={{ flex: 1 }}>
-                                  <div style={{ fontWeight: 800, fontSize: 13, marginBottom: 4 }}>{w.target_description}</div>
+                                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                                    {w.category && (
+                                      <span style={{ 
+                                        fontSize: 8, 
+                                        fontWeight: 900, 
+                                        padding: "2px 6px", 
+                                        background: RUNNING_CATEGORIES.find(c => c.id === w.category)?.color || "#000",
+                                        color: "#FFF",
+                                        textTransform: "uppercase"
+                                      }}>
+                                        {RUNNING_CATEGORIES.find(c => c.id === w.category)?.label || w.category}
+                                      </span>
+                                    )}
+                                    {w.target_zone && (
+                                      <span style={{ 
+                                        fontSize: 8, 
+                                        fontWeight: 950, 
+                                        padding: "2px 6px", 
+                                        background: RUNNING_ZONES.find(z => z.id === w.target_zone)?.color || "#000",
+                                        color: "#FFF",
+                                      }}>
+                                        {w.target_zone}
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  <div style={{ fontWeight: 800, fontSize: 13, marginBottom: 4 }}>
+                                    {(w.reps || 1) > 1 && <span style={{ color: "var(--nb-blue)", marginRight: 4 }}>{w.reps}x</span>}
+                                    {w.target_description}
+                                  </div>
+
                                   <div style={{ display: "flex", gap: 12 }}>
                                     {w.target_distance_km && (
                                       <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10, fontWeight: 700, color: "#666" }}>
-                                        <Zap size={10} /> {w.target_distance_km}km
+                                        <Zap size={10} /> 
+                                        {w.target_unit === "m" 
+                                          ? `${w.target_distance_km}m` 
+                                          : w.target_unit === "min"
+                                          ? `${w.target_distance_km}min`
+                                          : `${w.target_distance_km}km`}
+                                        
+                                        {(w.reps || 1) > 1 && (
+                                          <span style={{ opacity: 0.6, marginLeft: 2 }}>
+                                            (Tot: {w.target_unit === "m" 
+                                              ? `${((w.target_distance_km || 0) * w.reps / 1000).toFixed(2)}km` 
+                                              : w.target_unit === "min"
+                                              ? `${(w.target_distance_km || 0) * w.reps}min`
+                                              : `${((w.target_distance_km || 0) * w.reps).toFixed(2)}km`})
+                                          </span>
+                                        )}
                                       </div>
                                     )}
                                     {w.target_pace_description && (
@@ -414,10 +580,12 @@ export default function TemplateWorkoutsManager({ template, onUpdate }: Props) {
                 {showAddForm?.week === weekNum ? (
                   <form onSubmit={handleAddWorkout} className="nb-card" style={{ padding: 24, background: "#FFF", border: "4px solid #000", boxShadow: "8px 8px 0px rgba(0,0,0,0.1)" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-                      <h3 style={{ fontSize: 14, fontWeight: 950, textTransform: "uppercase", margin: 0 }}>Nova Sessão de Treino</h3>
+                      <h3 style={{ fontSize: 14, fontWeight: 950, textTransform: "uppercase", margin: 0 }}>
+                        {showAddForm.isEdit ? "Editar Sessão Completa" : "Nova Sessão de Treino"}
+                      </h3>
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         <label style={{ fontSize: 10, fontWeight: 900 }}>ORDEM:</label>
-                        <input name="sessionOrder" type="number" required defaultValue={sortedWeekOrders(weekNum).length + 1} className="nb-input" style={{ width: 60, padding: "4px 8px" }} />
+                        <input name="sessionOrder" type="number" required defaultValue={showAddForm.isEdit ? showAddForm.sessionOrder : sortedWeekOrders(weekNum).length + 1} className="nb-input" style={{ width: 60, padding: "4px 8px" }} />
                       </div>
                     </div>
 
@@ -433,30 +601,162 @@ export default function TemplateWorkoutsManager({ template, onUpdate }: Props) {
                               <X size={14} />
                             </button>
                           )}
+                          <div style={{ marginBottom: 16 }}>
+                            <label style={{ display: "block", fontSize: 9, fontWeight: 900, marginBottom: 8, textTransform: "uppercase", color: "#666" }}>Categoria</label>
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                              {RUNNING_CATEGORIES.map(cat => (
+                                <button
+                                  key={cat.id}
+                                  type="button"
+                                  onClick={() => updateBlockInForm(idx, "category", cat.id)}
+                                  style={{
+                                    padding: "6px 12px",
+                                    fontSize: 9,
+                                    fontWeight: 900,
+                                    textTransform: "uppercase",
+                                    border: "2px solid #000",
+                                    background: block.category === cat.id ? cat.color : "#FFF",
+                                    color: block.category === cat.id ? "#FFF" : "#000",
+                                    cursor: "pointer",
+                                    boxShadow: block.category === cat.id ? "none" : "2px 2px 0px #000",
+                                    transform: block.category === cat.id ? "translate(1px, 1px)" : "none",
+                                    transition: "all 0.1s ease"
+                                  }}
+                                >
+                                  {cat.label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div style={{ display: "grid", gridTemplateColumns: block.category === "tiro" ? "1fr 2fr" : "1fr", gap: 12, marginBottom: 16 }}>
+                            {block.category === "tiro" && (
+                            <div>
+                              <label style={{ display: "block", fontSize: 9, fontWeight: 900, marginBottom: 4, textTransform: "uppercase", color: "#666" }}>Repetições</label>
+                              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                <input 
+                                  type="number" min="1"
+                                  value={block.reps}
+                                  onChange={(e) => updateBlockInForm(idx, "reps", e.target.value)}
+                                  className="nb-input" 
+                                  style={{ width: "100%", padding: 10, textAlign: "center", fontWeight: 900 }} 
+                                />
+                                <span style={{ fontWeight: 900, fontSize: 12 }}>x</span>
+                              </div>
+                            </div>
+                            )}
+                            <div>
+                              <label style={{ display: "block", fontSize: 9, fontWeight: 900, marginBottom: 4, textTransform: "uppercase", color: "#666" }}>Intensidade (Zona)</label>
+                              <div style={{ display: "flex", gap: 4 }}>
+                                {RUNNING_ZONES.map(z => (
+                                  <button
+                                    key={z.id}
+                                    type="button"
+                                    onClick={() => updateBlockInForm(idx, "zone", z.id)}
+                                    title={z.desc}
+                                    style={{
+                                      flex: 1,
+                                      padding: "10px 0",
+                                      fontSize: 10,
+                                      fontWeight: 950,
+                                      border: "2px solid #000",
+                                      background: block.zone === z.id ? z.color : "#FFF",
+                                      color: block.zone === z.id ? "#FFF" : "#000",
+                                      cursor: "pointer",
+                                      transition: "all 0.1s ease"
+                                    }}
+                                  >
+                                    {z.label}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+
                           <div style={{ marginBottom: 12 }}>
-                            <label style={{ display: "block", fontSize: 9, fontWeight: 900, marginBottom: 4, textTransform: "uppercase", color: "#666" }}>Bloco {idx + 1}: Descrição</label>
+                            <label style={{ display: "block", fontSize: 9, fontWeight: 900, marginBottom: 4, textTransform: "uppercase", color: "#666" }}>Descrição do Bloco</label>
                             <input 
                               required 
-                              placeholder="Ex: 10min Aquecimento ou 5km Leve" 
+                              placeholder="Ex: Tiro de 400m ou Corrida Leve" 
                               value={block.description}
                               onChange={(e) => updateBlockInForm(idx, "description", e.target.value)}
                               className="nb-input" 
                               style={{ width: "100%", padding: 10 }} 
                             />
-                            <div style={{ fontSize: 8, color: "#999", marginTop: 4 }}>
-                              * Deixe os campos abaixo vazios se for apenas um bloco de orientação/texto.
-                            </div>
                           </div>
-                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+
+                          <div style={{ display: "grid", gridTemplateColumns: block.category === "tiro" ? "1fr 1fr 1fr" : "1fr 1fr", gap: 12 }}>
                             <div>
-                              <label style={{ display: "block", fontSize: 9, fontWeight: 900, marginBottom: 4, textTransform: "uppercase", color: "#666" }}>Dist (KM)</label>
-                              <input 
-                                type="number" step="0.1" 
-                                value={block.distance}
-                                onChange={(e) => updateBlockInForm(idx, "distance", e.target.value)}
-                                className="nb-input" 
-                                style={{ width: "100%", padding: 8 }} 
-                              />
+                              <label style={{ display: "block", fontSize: 9, fontWeight: 900, marginBottom: 4, textTransform: "uppercase", color: "#666" }}>Distância</label>
+                              <div style={{ display: "flex", gap: 4 }}>
+                                <input 
+                                  type="number" step="0.1" 
+                                  value={block.distance}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    if (parseFloat(val) > 999.9) return;
+                                    updateBlockInForm(idx, "distance", val);
+                                  }}
+                                  onKeyDown={(e) => ["e", "E", "+", "-"].includes(e.key) && e.preventDefault()}
+                                  className="nb-input" 
+                                  style={{ flex: 1, padding: 8 }} 
+                                />
+                                <div style={{ display: "flex", border: "2px solid #000", borderRadius: 2, overflow: "hidden", width: 120 }}>
+                                  <button 
+                                    type="button"
+                                    onClick={() => updateBlockInForm(idx, "unit", "km")}
+                                    style={{ 
+                                      flex: 1,
+                                      background: (block.unit || "km") === "km" ? "#000" : "#FFF", 
+                                      color: (block.unit || "km") === "km" ? "#FFF" : "#000", 
+                                      border: "none",
+                                      fontSize: 9, 
+                                      padding: "8px 0",
+                                      cursor: "pointer", 
+                                      fontWeight: 950,
+                                      transition: "all 0.2s"
+                                    }}
+                                  >
+                                    KM
+                                  </button>
+                                  <button 
+                                    type="button"
+                                    onClick={() => updateBlockInForm(idx, "unit", "m")}
+                                    style={{ 
+                                      flex: 1,
+                                      background: (block.unit || "km") === "m" ? "#000" : "#FFF", 
+                                      color: (block.unit || "km") === "m" ? "#FFF" : "#000", 
+                                      border: "none",
+                                      borderLeft: "2px solid #000",
+                                      fontSize: 9, 
+                                      padding: "8px 0",
+                                      cursor: "pointer", 
+                                      fontWeight: 950,
+                                      transition: "all 0.2s"
+                                    }}
+                                  >
+                                    M
+                                  </button>
+                                  <button 
+                                    type="button"
+                                    onClick={() => updateBlockInForm(idx, "unit", "min")}
+                                    style={{ 
+                                      flex: 1,
+                                      background: (block.unit || "km") === "min" ? "#000" : "#FFF", 
+                                      color: (block.unit || "km") === "min" ? "#FFF" : "#000", 
+                                      border: "none",
+                                      borderLeft: "2px solid #000",
+                                      fontSize: 9, 
+                                      padding: "8px 0",
+                                      cursor: "pointer", 
+                                      fontWeight: 950,
+                                      transition: "all 0.2s"
+                                    }}
+                                  >
+                                    MIN
+                                  </button>
+                                </div>
+                              </div>
                             </div>
                             <div>
                               <label style={{ display: "block", fontSize: 9, fontWeight: 900, marginBottom: 4, textTransform: "uppercase", color: "#666" }}>Pace</label>
@@ -468,6 +768,7 @@ export default function TemplateWorkoutsManager({ template, onUpdate }: Props) {
                                 style={{ width: "100%", padding: 8 }} 
                               />
                             </div>
+                            {block.category === "tiro" && (
                             <div>
                               <label style={{ display: "block", fontSize: 9, fontWeight: 900, marginBottom: 4, textTransform: "uppercase", color: "#666" }}>Descanso</label>
                               <input 
@@ -478,7 +779,25 @@ export default function TemplateWorkoutsManager({ template, onUpdate }: Props) {
                                 style={{ width: "100%", padding: 8 }} 
                               />
                             </div>
+                            )}
                           </div>
+                          
+                          {/* Volume do Bloco */}
+                          {block.distance && (
+                            <div style={{ marginTop: 12, textAlign: "right", fontSize: 10, fontWeight: 900, color: "#666" }}>
+                              Volume do Bloco: <span style={{ color: "#000" }}>
+                                {block.reps > 1 ? `${block.reps}x ` : ""}
+                                {block.distance}{block.unit}
+                                {block.unit !== "min" && (
+                                  <>{" "}= {
+                                    block.unit === "km" 
+                                      ? (parseFloat(block.distance) * block.reps).toFixed(2) + "km"
+                                      : (parseFloat(block.distance) * block.reps / 1000).toFixed(2) + "km"
+                                  }</>
+                                )}
+                              </span>
+                            </div>
+                          )}
                         </div>
                       ))}
 
@@ -494,7 +813,7 @@ export default function TemplateWorkoutsManager({ template, onUpdate }: Props) {
                         <button type="submit" disabled={loading} className="nb-button" style={{ flex: 1, padding: 12, background: "#000", color: "#FFF", fontSize: 11, fontWeight: 950 }}>
                           {loading ? "SALVANDO..." : "⚡ SALVAR SESSÃO COMPLETA"}
                         </button>
-                        <button type="button" onClick={() => { setShowAddForm(null); setAddBlocks([{ description: "", distance: "", pace: "", rest: "" }]); }} className="nb-button" style={{ padding: 12, background: "#EEE", color: "#000", fontSize: 11, fontWeight: 900 }}>
+                        <button type="button" onClick={() => { setShowAddForm(null); setAddBlocks([{ description: "", distance: "", pace: "", rest: "", reps: 1, category: "corrida", zone: "Z2", unit: "km" }]); }} className="nb-button" style={{ padding: 12, background: "#EEE", color: "#000", fontSize: 11, fontWeight: 900 }}>
                           CANCELAR
                         </button>
                       </div>
@@ -503,7 +822,7 @@ export default function TemplateWorkoutsManager({ template, onUpdate }: Props) {
                   </form>
                 ) : (
                   <button 
-                    onClick={() => { setShowAddForm({ week: weekNum }); setAddBlocks([{ description: "", distance: "", pace: "", rest: "" }]); }}
+                    onClick={() => { setShowAddForm({ week: weekNum }); setAddBlocks([{ description: "", distance: "", pace: "", rest: "", reps: 1, category: "corrida", zone: "Z2", unit: "km" }]); }}
                     style={{ 
                       padding: 12, 
                       border: "2px dashed #CCC", 

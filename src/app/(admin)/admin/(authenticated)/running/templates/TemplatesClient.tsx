@@ -168,7 +168,15 @@ export default function TemplatesClient({ initialTemplates }: { initialTemplates
           };
           
           const levelInfo = levelLabels[t.level_tag] || { label: t.level_tag, color: '#EEE' };
-          const totalKm = (t.running_template_workouts || []).reduce((acc: number, w: any) => acc + (w.target_distance_km || 0), 0);
+          const totalKm = (t.running_template_workouts || []).reduce((acc: number, w: any) => {
+            const dist = parseFloat(String(w.target_distance_km)) || 0;
+            const reps = w.reps || 1;
+            const unit = w.target_unit?.toLowerCase() || 'km';
+            
+            if (unit === 'min') return acc;
+            if (unit === 'm') return acc + ((dist * reps) / 1000);
+            return acc + (dist * reps);
+          }, 0);
 
           return (
             <div key={t.id} className="nb-card" style={{ 
@@ -253,7 +261,7 @@ export default function TemplatesClient({ initialTemplates }: { initialTemplates
                       <span style={{ fontSize: 8, fontWeight: 900, color: "#94A3B8", textTransform: "uppercase", display: "block", marginBottom: 6 }}>Duração</span>
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
                         <Timer size={16} color="var(--nb-blue)" /> 
-                        <span style={{ fontSize: 18, fontWeight: 950 }}>{t.duration_weeks}w</span>
+                        <span style={{ fontSize: 18, fontWeight: 950 }}>{t.duration_weeks} Sem</span>
                       </div>
                     </div>
                     <div style={{ background: "#F8FAFC", padding: "20px 12px", textAlign: "center" }}>

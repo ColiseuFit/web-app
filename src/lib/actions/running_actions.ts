@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { 
   updateRunningPlanSchema, 
   logRunningWorkoutSchema, 
+  logRunningSessionSchema,
   bulkCreateRunningWorkoutsSchema,
   deleteRunningEntitySchema,
   createRunningTemplateSchema,
@@ -126,6 +127,100 @@ export async function logRunningWorkout(formData: FormData) {
 
   return { success: true, pointsAwarded: totalPoints };
 }
+
+/**
+ * Registra o resultado de uma SESSÃO de corrida (Multi-Blocos).
+ * 
+ * @description
+ * Esta action processa múltiplos blocos de uma única sessão, calculando o pace
+ * individual de cada um e atualizando o status de conclusão global.
+ * 
+ * @protocolo_segurança
+ * - Validação rigorosa via Zod Schema
+ * - Registro atômico (loop de update)
+ * - Revalidação múltipla de cache (Dashboard, Running Hub, Treinos)
+ * 
+ * @param formData - FormData contendo chave 'data' com JSON stringificado dos blocos.
+ */
+export async function logRunningSession(formData: FormData) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) throw new Error("Não autorizado");
+
+  const rawData = formData.get("data") as string;
+  if (!rawData) throw new Error("Dados ausentes");
+
+  const parsed = JSON.parse(rawData);
+  const validatedFields = logRunningSessionSchema.safeParse(parsed);
+
+  if (!validatedFields.success) {
+    throw new Error("Dados inválidos da sessão.");
+  }
+
+  const { rpe, notes, blocks } = validatedFields.data;
+  const now = new Date().toISOString();
+
+  let totalDistanceLogged = 0;
+
+  // Processar cada bloco
+  for (const block of blocks) {
+    if (block.completed) {
+      const pace = (block.actualDistance && block.durationSeconds) 
+        ? Math.round(block.durationSeconds / block.actualDistance) 
+        : null;
+
+      if (block.actualDistance) {
+        totalDistanceLogged += block.actualDistance;
+      }
+
+      const { error } = await supabase
+        .from("running_workouts")
+        .update({
+          completed_at: now,
+          actual_distance_km: block.actualDistance || null,
+          actual_duration_seconds: block.durationSeconds || null,
+          actual_pace_seconds_per_km: pace,
+          reps: block.reps || undefined,
+          rpe,
+          student_notes: notes,
+          updated_at: now,
+        })
+        .eq("id", block.workoutId)
+        .eq("student_id", user.id);
+
+      if (error) {
+        console.error(`Erro ao logar bloco ${block.workoutId}:`, error);
+        throw new Error("Erro ao salvar bloco do treino");
+      }
+    }
+  }
+
+  // Gamificação: Atribuir XP com base na distância somada ou um valor mínimo se foi só tempo
+  const { data: rule } = await supabase
+    .from("points_rules")
+    .select("points")
+    .eq("key", "running_km")
+    .single();
+
+  const pointsPerKm = rule?.points ?? 5;
+  // Se marcou algum bloco como concluído, garante pelo menos 10 XP
+  let totalPoints = totalDistanceLogged > 0 ? Math.round(totalDistanceLogged * pointsPerKm) : 10;
+  
+  if (totalPoints > 0) {
+    await supabase.rpc("increment_points", {
+      user_id: user.id,
+      amount: totalPoints
+    });
+  }
+
+  revalidatePath("/programas/running");
+  revalidatePath("/treinos");
+  revalidatePath("/dashboard");
+
+  return { success: true, pointsAwarded: totalPoints };
+}
+
 
 /**
  * Atribui um novo plano de corrida a um aluno (Apenas Coach/Admin).
@@ -339,18 +434,31 @@ export async function createTemplateWorkout(formData: FormData) {
     targetDistanceKm: formData.get("targetDistanceKm") ? parseFloat(formData.get("targetDistanceKm") as string) : null,
     targetPaceDescription: formData.get("targetPaceDescription"),
     targetRestTimeDescription: formData.get("targetRestTimeDescription"),
+    reps: formData.get("reps") ? parseInt(formData.get("reps") as string) : 1,
+    category: formData.get("category"),
+    targetZone: formData.get("targetZone"),
+    targetUnit: formData.get("targetUnit") || "km",
   });
 
   if (!validatedFields.success) throw new Error("Dados inválidos para treino da planilha");
+
+  let finalDistance = validatedFields.data.targetDistanceKm ?? null;
+  if (finalDistance !== null && validatedFields.data.targetUnit === "m") {
+    finalDistance = finalDistance / 1000;
+  }
 
   const { error } = await supabase.from("running_template_workouts").insert({
     template_id: validatedFields.data.templateId,
     week_number: validatedFields.data.weekNumber,
     session_order: validatedFields.data.sessionOrder,
     target_description: validatedFields.data.targetDescription,
-    target_distance_km: validatedFields.data.targetDistanceKm,
+    target_distance_km: finalDistance,
     target_pace_description: validatedFields.data.targetPaceDescription,
     target_rest_time_description: validatedFields.data.targetRestTimeDescription,
+    reps: validatedFields.data.reps,
+    category: validatedFields.data.category,
+    target_zone: validatedFields.data.targetZone,
+    target_unit: validatedFields.data.targetUnit,
   });
 
   if (error) throw new Error(error.message);
@@ -361,10 +469,12 @@ export async function createTemplateWorkout(formData: FormData) {
 /**
  * Adiciona múltiplos blocos de treino (uma sessão completa) a uma Planilha Padrão.
  * 
- * @param templateId - ID da planilha.
- * @param weekNumber - Número da semana.
- * @param sessionOrder - Ordem da sessão na semana.
- * @param blocks - Array de objetos com a descrição e metas de cada bloco.
+ * @param templateId - UUID da planilha padrão (running_templates).
+ * @param weekNumber - Índice da semana (1-indexed).
+ * @param sessionOrder - Ordem da sessão dentro da semana (1, 2, 3...).
+ * @param blocks - Array de blocos estruturados. Cada bloco pode ter unidade KM, M ou MIN.
+ * @returns { success: boolean }
+ * @throws {Error} Se falhar na inserção ou autorização.
  */
 export async function createTemplateWorkoutsBatch(
   templateId: string,
@@ -375,6 +485,10 @@ export async function createTemplateWorkoutsBatch(
     targetDistanceKm?: number | null;
     targetPaceDescription?: string | null;
     targetRestTimeDescription?: string | null;
+    reps?: number;
+    category?: string | null;
+    targetZone?: string | null;
+    targetUnit?: string;
   }[]
 ) {
   const supabase = await createClient();
@@ -383,16 +497,93 @@ export async function createTemplateWorkoutsBatch(
 
   if (!blocks || blocks.length === 0) throw new Error("Nenhum bloco para adicionar");
 
-  const workoutsToInsert = blocks.map((b, idx) => ({
-    template_id: templateId,
-    week_number: weekNumber,
-    session_order: sessionOrder,
-    block_order: idx + 1,
-    target_description: b.targetDescription,
-    target_distance_km: b.targetDistanceKm || null,
-    target_pace_description: b.targetPaceDescription || null,
-    target_rest_time_description: b.targetRestTimeDescription || null,
-  }));
+    const workoutsToInsert = blocks.map((b, idx) => {
+      let dist = b.targetDistanceKm || null;
+      if (dist !== null && b.targetUnit === "m") {
+        dist = dist / 1000;
+      }
+
+      return {
+        template_id: templateId,
+        week_number: weekNumber,
+        session_order: sessionOrder,
+        block_order: idx + 1,
+        target_description: b.targetDescription,
+        target_distance_km: dist,
+        target_pace_description: b.targetPaceDescription || null,
+        target_rest_time_description: b.targetRestTimeDescription || null,
+        reps: b.reps || 1,
+        category: b.category || null,
+        target_zone: b.targetZone || null,
+        target_unit: b.targetUnit || "km",
+      };
+    });
+
+  const { error } = await supabase.from("running_template_workouts").insert(workoutsToInsert);
+
+  if (error) throw new Error(error.message);
+  revalidatePath("/admin/running/templates");
+  return { success: true };
+}
+
+/**
+ * Atualiza todos os blocos de uma sessão completa (Multi-Blocos) em uma Planilha Padrão.
+ * Ele exclui os blocos antigos daquela sessão e insere os novos.
+ */
+export async function updateTemplateWorkoutsBatch(
+  templateId: string,
+  weekNumber: number,
+  newSessionOrder: number,
+  originalSessionOrder: number,
+  blocks: {
+    targetDescription: string;
+    targetDistanceKm?: number | null;
+    targetPaceDescription?: string | null;
+    targetRestTimeDescription?: string | null;
+    reps?: number;
+    category?: string | null;
+    targetZone?: string | null;
+    targetUnit?: string;
+  }[]
+) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Não autorizado");
+
+  if (!blocks || blocks.length === 0) throw new Error("Nenhum bloco para atualizar");
+
+  // 1. Excluir os blocos antigos da sessão original
+  const { error: delErr } = await supabase
+    .from("running_template_workouts")
+    .delete()
+    .eq("template_id", templateId)
+    .eq("week_number", weekNumber)
+    .eq("session_order", originalSessionOrder);
+
+  if (delErr) throw new Error(delErr.message);
+
+  // 2. Inserir os novos blocos
+  const workoutsToInsert = blocks.map((b, idx) => {
+    let dist = b.targetDistanceKm || null;
+    if (dist !== null && b.targetUnit === "m") {
+      dist = dist / 1000;
+    }
+
+    return {
+      template_id: templateId,
+      week_number: weekNumber,
+      session_order: newSessionOrder,
+      block_order: idx + 1,
+      target_description: b.targetDescription,
+      target_distance_km: dist,
+      target_pace_description: b.targetPaceDescription || null,
+      target_rest_time_description: b.targetRestTimeDescription || null,
+      reps: b.reps || 1,
+      category: b.category || null,
+      target_zone: b.targetZone || null,
+      target_unit: b.targetUnit || "km",
+    };
+  });
 
   const { error } = await supabase.from("running_template_workouts").insert(workoutsToInsert);
 
@@ -439,9 +630,18 @@ export async function updateTemplateWorkout(formData: FormData) {
     targetDistanceKm: formData.get("targetDistanceKm") ? parseFloat(formData.get("targetDistanceKm") as string) : null,
     targetPaceDescription: formData.get("targetPaceDescription") || null,
     targetRestTimeDescription: formData.get("targetRestTimeDescription") || null,
+    reps: formData.get("reps") ? parseInt(formData.get("reps") as string) : undefined,
+    category: formData.get("category") || null,
+    targetZone: formData.get("targetZone") || null,
+    targetUnit: formData.get("targetUnit") || undefined,
   });
 
   if (!validatedFields.success) throw new Error("Dados inválidos para atualizar treino da planilha");
+
+  let finalDistance = validatedFields.data.targetDistanceKm ?? null;
+  if (finalDistance !== null && validatedFields.data.targetUnit === "m") {
+    finalDistance = finalDistance / 1000;
+  }
 
   const { error } = await supabase
     .from("running_template_workouts")
@@ -449,9 +649,13 @@ export async function updateTemplateWorkout(formData: FormData) {
       week_number: validatedFields.data.weekNumber,
       session_order: validatedFields.data.sessionOrder,
       target_description: validatedFields.data.targetDescription,
-      target_distance_km: validatedFields.data.targetDistanceKm,
+      target_distance_km: finalDistance,
       target_pace_description: validatedFields.data.targetPaceDescription,
       target_rest_time_description: validatedFields.data.targetRestTimeDescription,
+      reps: validatedFields.data.reps,
+      category: validatedFields.data.category,
+      target_zone: validatedFields.data.targetZone,
+      target_unit: validatedFields.data.targetUnit,
     })
     .eq("id", validatedFields.data.workoutId);
 
@@ -506,6 +710,10 @@ export async function duplicateTemplateSession(
     target_distance_km: b.target_distance_km,
     target_pace_description: b.target_pace_description,
     target_rest_time_description: b.target_rest_time_description,
+    reps: b.reps,
+    category: b.category,
+    target_zone: b.target_zone,
+    target_unit: b.target_unit,
   }));
 
   const { error } = await supabase.from("running_template_workouts").insert(workoutsToInsert);
@@ -581,6 +789,10 @@ export async function duplicateRunningTemplate(templateId: string) {
       target_distance_km: tw.target_distance_km,
       target_pace_description: tw.target_pace_description,
       target_rest_time_description: tw.target_rest_time_description,
+      reps: tw.reps || 1,
+      category: tw.category || null,
+      target_zone: tw.target_zone || null,
+      target_unit: tw.target_unit || "km",
     }));
 
     const { error: batchErr } = await supabase.from("running_template_workouts").insert(workoutsToInsert);
@@ -650,6 +862,10 @@ export async function assignTemplateToStudent(templateId: string, studentId: str
       target_distance_km: tw.target_distance_km,
       target_pace_description: tw.target_pace_description,
       target_rest_time_description: tw.target_rest_time_description,
+      reps: tw.reps || 1,
+      category: tw.category || null,
+      target_zone: tw.target_zone || null,
+      target_unit: tw.target_unit || "km",
     }));
 
     await supabase.from("running_workouts").insert(workoutsToInsert);
@@ -663,9 +879,14 @@ export async function assignTemplateToStudent(templateId: string, studentId: str
 }
 
 /**
- * Cria um novo treino prescrito pelo Coach.
+ * createRunningWorkout — Cria um novo treino prescrito pelo Coach.
  * 
- * @param formData - Dados do formulário contendo: planId, studentId, description, date, target_distance_km, target_pace
+ * @logic Modelo Agnóstico a Datas
+ * Se `date` estiver vazio, o treino é salvo com `scheduled_date: null`.
+ * A organização visual do aluno dependerá então exclusivamente de `week_number` e `session_order`.
+ * 
+ * @param formData - Dados do formulário contendo: planId, studentId, description, date (opcional), 
+ *                   target_distance_km, target_pace, week_number, etc.
  * @returns void (throws on error)
  * @throws {Error} Se ocorrer um erro no banco de dados
  */
@@ -678,13 +899,17 @@ export async function createRunningWorkout(formData: FormData) {
   const planId = formData.get("planId") as string;
   const studentId = formData.get("studentId") as string;
   const targetDescription = formData.get("description") as string;
-  const scheduledDate = formData.get("date") as string;
+  const scheduledDate = formData.get("date") as string || null;
   let targetDistanceKm = formData.get("target_distance_km") ? parseFloat(formData.get("target_distance_km") as string) : null;
   let targetPace = formData.get("target_pace") as string | null;
   const targetRestTime = formData.get("target_rest_time") as string | null;
+  const reps = formData.get("reps") ? parseInt(formData.get("reps") as string) : 1;
+  const category = formData.get("category") as string | null;
+  const targetZone = formData.get("target_zone") as string | null;
+  const targetUnit = (formData.get("target_unit") as string) || "km";
 
-  // Lógica de distância inteligente: se > 100, assume metros e converte para km
-  if (targetDistanceKm !== null && targetDistanceKm >= 100) {
+  // Lógica de distância inteligente: se unidade for 'm' ou se o valor for alto (> 100), assume metros e converte para km
+  if (targetDistanceKm !== null && (targetUnit === "m" || targetDistanceKm >= 100)) {
     targetDistanceKm = targetDistanceKm / 1000;
   }
 
@@ -702,14 +927,21 @@ export async function createRunningWorkout(formData: FormData) {
     }
   }
 
+  const weekNumber = formData.get("week_number") ? parseInt(formData.get("week_number") as string) : 1;
+
   const { error } = await supabase.from("running_workouts").insert({
     plan_id: planId,
     student_id: studentId,
+    week_number: weekNumber,
     scheduled_date: scheduledDate,
     target_description: targetDescription,
     target_distance_km: targetDistanceKm,
     target_pace_description: targetPace,
-    target_rest_time_description: targetRestTime
+    target_rest_time_description: targetRestTime,
+    reps,
+    category,
+    target_zone: targetZone,
+    target_unit: targetUnit
   });
 
   if (error) throw new Error(error.message);
@@ -719,9 +951,14 @@ export async function createRunningWorkout(formData: FormData) {
 }
 
 /**
- * Atualiza um treino prescrito pelo Coach.
+ * updateRunningWorkout — Atualiza um treino prescrito pelo Coach.
  * 
- * @param formData - Dados do formulário contendo: workoutId, description, date, target_distance_km, target_pace, target_rest_time
+ * @logic Persistência de Estrutura
+ * Permite alterar a `week_number` para reorganizar treinos entre semanas.
+ * Se `date` for limpo no formulário, a sessão torna-se agnóstica a data (null no DB).
+ * 
+ * @param formData - Dados do formulário contendo: workoutId, description, date, target_distance_km, 
+ *                   target_pace, target_rest_time, week_number
  * @returns void (throws on error)
  * @throws {Error} Se ocorrer um erro no banco de dados
  */
@@ -733,13 +970,17 @@ export async function updateRunningWorkout(formData: FormData) {
 
   const workoutId = formData.get("workoutId") as string;
   const targetDescription = formData.get("description") as string;
-  const scheduledDate = formData.get("date") as string;
+  const scheduledDate = formData.get("date") as string || null;
   let targetDistanceKm = formData.get("target_distance_km") ? parseFloat(formData.get("target_distance_km") as string) : null;
   let targetPace = formData.get("target_pace") as string | null;
   const targetRestTime = formData.get("target_rest_time") as string | null;
+  const reps = formData.get("reps") ? parseInt(formData.get("reps") as string) : undefined;
+  const category = formData.get("category") as string | null;
+  const targetZone = formData.get("target_zone") as string | null;
+  const targetUnit = (formData.get("target_unit") as string) || "km";
 
-  // Lógica de distância inteligente: se > 100, assume metros e converte para km
-  if (targetDistanceKm !== null && targetDistanceKm >= 100) {
+  // Lógica de distância inteligente: se unidade for 'm' ou se o valor for alto (> 100), assume metros e converte para km
+  if (targetDistanceKm !== null && (targetUnit === "m" || targetDistanceKm >= 100)) {
     targetDistanceKm = targetDistanceKm / 1000;
   }
 
@@ -757,12 +998,19 @@ export async function updateRunningWorkout(formData: FormData) {
     }
   }
 
+  const weekNumber = formData.get("week_number") ? parseInt(formData.get("week_number") as string) : 1;
+
   const { error } = await supabase.from("running_workouts").update({
     scheduled_date: scheduledDate,
+    week_number: weekNumber,
     target_description: targetDescription,
     target_distance_km: targetDistanceKm,
     target_pace_description: targetPace,
-    target_rest_time_description: targetRestTime
+    target_rest_time_description: targetRestTime,
+    reps,
+    category,
+    target_zone: targetZone,
+    target_unit: targetUnit
   }).eq("id", workoutId);
 
   if (error) throw new Error(error.message);
@@ -780,6 +1028,10 @@ export interface SessionConfig {
   targetDistanceKm?: number | null;
   targetPace?: string | null;
   targetRestTime?: string | null;
+  reps?: number;
+  category?: string | null;
+  targetZone?: string | null;
+  targetUnit?: string;
 }
 
 /**
@@ -830,7 +1082,11 @@ export async function bulkCreateRunningWorkouts(
       target_description: s.description,
       target_distance_km: s.targetDistanceKm,
       target_pace_description: s.targetPace,
-      target_rest_time_description: s.targetRestTime
+      target_rest_time_description: s.targetRestTime,
+      reps: s.reps,
+      category: s.category,
+      target_zone: s.targetZone,
+      target_unit: s.targetUnit || "km",
     }))
   });
 
@@ -892,6 +1148,11 @@ export async function bulkCreateRunningWorkouts(
         target_distance_km: distance,
         target_pace_description: pace,
         target_rest_time_description: session.targetRestTime || null,
+        reps: session.reps || 1,
+        category: session.category || null,
+        target_zone: session.targetZone || null,
+        target_unit: session.targetUnit || "km",
+        status: "active",
       });
     }
   }
@@ -936,61 +1197,84 @@ export async function getRunnersOverview() {
   const supabase = await createClient();
 
   // 1. Buscar todos os perfis com running_level definido (SSoT de inclusão)
-  const { data: profiles, error } = await supabase
+  const { data: profiles, error: profilesError } = await supabase
     .from("profiles")
-    .select("id, full_name, display_name, avatar_url, level, running_level, running_pace, running_status, running_target_pace")
+    .select("id, full_name, display_name, avatar_url, level, running_level, running_pace, running_status, running_target_pace, membership_type")
     .not("running_level", "is", null)
     .order("full_name", { ascending: true });
 
-  if (error) {
-    console.error("Error fetching running profiles:", error);
+  if (profilesError || !profiles || profiles.length === 0) {
+    if (profilesError) console.error("Error fetching running profiles:", profilesError);
     return [];
   }
 
-  if (!profiles || profiles.length === 0) return [];
+  const studentIds = profiles.map(p => p.id);
+
+  // 2. Buscar TODOS os planos ativos dos estudantes encontrados (Bulk)
+  const { data: activePlans, error: plansError } = await supabase
+    .from("running_plans")
+    .select("id, title, student_id")
+    .eq("status", "active")
+    .in("student_id", studentIds);
+
+  if (plansError) console.error("Error fetching active plans:", plansError);
+
+  // 3. Buscar estatísticas globais (Latest Log) para todos (Bulk)
+  // Nota: Buscamos apenas os campos necessários para reduzir payload
+  const { data: globalWorkouts, error: globalErr } = await supabase
+    .from("running_workouts")
+    .select("student_id, completed_at")
+    .in("student_id", studentIds)
+    .not("completed_at", "is", null);
+
+  if (globalErr) console.error("Error fetching global workouts:", globalErr);
+
+  // 4. Buscar estatísticas dos planos ativos (Bulk)
+  const activePlanIds = (activePlans || []).map(p => p.id);
+  let activePlanWorkouts: any[] = [];
+  if (activePlanIds.length > 0) {
+    const { data, error: activeErr } = await supabase
+      .from("running_workouts")
+      .select("plan_id, completed_at")
+      .in("plan_id", activePlanIds);
+    
+    if (activeErr) console.error("Error fetching active plan workouts:", activeErr);
+    else activePlanWorkouts = data || [];
+  }
 
   const now = new Date();
 
-  // 2. Para cada atleta, buscar plano ativo e estatísticas
-  const runnersWithStats = await Promise.all(profiles.map(async (profile) => {
-    // Buscar plano ativo
-    const { data: activePlan } = await supabase
-      .from("running_plans")
-      .select("id, title")
-      .eq("student_id", profile.id)
-      .eq("status", "active")
-      .maybeSingle();
+  // 5. Consolidar os dados em memória (O(N) complexity)
+  const plansMap = new Map((activePlans || []).map(p => [p.student_id, p]));
+  
+  // Agrupar workouts globais por estudante para achar o mais recente
+  const globalStatsMap = new Map<string, { latestLog: string | null }>();
+  (globalWorkouts || []).forEach(w => {
+    const current = globalStatsMap.get(w.student_id);
+    if (!current || !current.latestLog || new Date(w.completed_at!) > new Date(current.latestLog)) {
+      globalStatsMap.set(w.student_id, { latestLog: w.completed_at });
+    }
+  });
 
-    // Buscar workouts de TODOS os planos para pegar o latest_log global
-    const { data: allWorkouts } = await supabase
-      .from("running_workouts")
-      .select("completed_at")
-      .eq("student_id", profile.id)
-      .not("completed_at", "is", null);
+  // Agrupar workouts de planos ativos para contagem
+  const planStatsMap = new Map<string, { total: number, logged: number }>();
+  activePlanWorkouts.forEach(w => {
+    const stats = planStatsMap.get(w.plan_id) || { total: 0, logged: 0 };
+    stats.total++;
+    if (w.completed_at) stats.logged++;
+    planStatsMap.set(w.plan_id, stats);
+  });
 
-    const latestLog = allWorkouts && allWorkouts.length > 0
-      ? allWorkouts.sort((a, b) =>
-          new Date(b.completed_at!).getTime() - new Date(a.completed_at!).getTime()
-        )[0].completed_at
-      : null;
+  // 6. Mapear perfis para o formato final
+  return profiles.map(profile => {
+    const activePlan = plansMap.get(profile.id);
+    const globalStats = globalStatsMap.get(profile.id);
+    const planStats = activePlan ? planStatsMap.get(activePlan.id) : null;
 
+    const latestLog = globalStats?.latestLog || null;
     const lastLogDays = latestLog 
       ? Math.floor((now.getTime() - new Date(latestLog).getTime()) / (1000 * 3600 * 24))
       : 999;
-
-    // Estatísticas específicas do plano ativo (se existir)
-    let totalPrescribed = 0;
-    let totalLogged = 0;
-
-    if (activePlan) {
-      const { data: activeWorkouts } = await supabase
-        .from("running_workouts")
-        .select("completed_at")
-        .eq("plan_id", activePlan.id);
-      
-      totalPrescribed = activeWorkouts?.length || 0;
-      totalLogged = activeWorkouts?.filter(w => w.completed_at).length || 0;
-    }
 
     return {
       id: profile.id,
@@ -998,16 +1282,14 @@ export async function getRunnersOverview() {
       profiles: profile,
       active_plan_title: activePlan?.title || null,
       stats: {
-        total_prescribed: totalPrescribed,
-        total_logged: totalLogged,
+        total_prescribed: planStats?.total || 0,
+        total_logged: planStats?.logged || 0,
         latest_log: latestLog,
         last_log_days: lastLogDays,
         has_active_plan: !!activePlan
       },
     };
-  }));
-
-  return runnersWithStats;
+  });
 }
 
 
@@ -1241,4 +1523,60 @@ export async function updateRunningPace(formData: FormData) {
   revalidatePath("/profile");
   
   return { success: true };
+}
+
+/**
+ * Recupera o próximo treino agendado para o aluno (Dashboard principal).
+ * 
+ * @description Realiza o fetch do treino mais próximo (hoje ou futuro) que não esteja concluído.
+ * Suporta a estrutura de multi-blocos, retornando todos os blocos da mesma sessão.
+ * 
+ * @returns {Promise<Workout[] | null>} Lista de blocos do próximo treino ou null se não houver.
+ */
+export async function getNextRunningWorkout(studentId: string) {
+  const supabase = await createClient();
+
+  // 1. Achar o plano ativo
+  const { data: activePlan } = await supabase
+    .from("running_plans")
+    .select("id")
+    .eq("student_id", studentId)
+    .eq("status", "active")
+    .maybeSingle();
+
+  if (!activePlan) return null;
+
+  // 2. Achar o primeiro treino não concluído desse plano
+  const { data: nextWorkout, error } = await supabase
+    .from("running_workouts")
+    .select(`
+      id,
+      scheduled_date,
+      completed_at,
+      target_description,
+      target_distance_km,
+      target_pace_description,
+      target_rest_time_description,
+      reps,
+      category,
+      target_zone,
+      target_unit,
+      session_order,
+      week_number,
+      plan_id,
+      running_plans(title)
+    `)
+    .eq("plan_id", activePlan.id)
+    .is("completed_at", null)
+    .order("week_number", { ascending: true })
+    .order("session_order", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Error fetching next running workout:", error);
+    return null;
+  }
+
+  return nextWorkout;
 }

@@ -18,7 +18,7 @@ import {
   assignTemplateToStudent,
   type SessionConfig,
 } from "@/lib/actions/running_actions";
-import { RUNNING_LEVELS, formatPace, type RunningLevelKey } from "@/lib/constants/running";
+import { RUNNING_LEVELS, formatPace, RUNNING_CATEGORIES, RUNNING_ZONES, type RunningLevelKey } from "@/lib/constants/running";
 import RunningAnalytics from "@/components/RunningAnalytics";
 
 interface Props {
@@ -192,6 +192,9 @@ function WeeklyPlanGenerator({ planId, studentId, onSuccess, onCancel }: Generat
     unit: "km" | "m";
     pace: string;
     rest: string;
+    reps: number;
+    category: string;
+    zone: string;
     showMetrics: boolean;
   }
 
@@ -238,6 +241,9 @@ function WeeklyPlanGenerator({ planId, studentId, onSuccess, onCancel }: Generat
           unit: "km",
           pace: "",
           rest: "",
+          reps: 1,
+          category: "corrida",
+          zone: "Z2",
           showMetrics: false
         }];
         changed = true;
@@ -254,6 +260,9 @@ function WeeklyPlanGenerator({ planId, studentId, onSuccess, onCancel }: Generat
       unit: "km",
       pace: "",
       rest: "",
+      reps: 1,
+      category: "corrida",
+      zone: "Z2",
       showMetrics: false
     };
     setSessionConfigs({
@@ -313,7 +322,10 @@ function WeeklyPlanGenerator({ planId, studentId, onSuccess, onCancel }: Generat
     try {
       let currentTotal = 0;
       for (let w = 1; w <= weeks; w++) {
-        const weekConfigs = allWeeksConfigs[w] || allWeeksConfigs[1];
+        // Fallback inteligente: se a semana atual não tiver nenhuma sessão configurada, usa a Semana 1 como base
+        const currentWeekConfig = allWeeksConfigs[w];
+        const hasSessions = currentWeekConfig && Object.values(currentWeekConfig).some(blocks => blocks.length > 0);
+        const weekConfigs = hasSessions ? currentWeekConfig : allWeeksConfigs[1];
         const sessions: any[] = [];
         
         for (const sOrder of sessionKeys) {
@@ -332,6 +344,10 @@ function WeeklyPlanGenerator({ planId, studentId, onSuccess, onCancel }: Generat
               targetDistanceKm: dist,
               targetPace: item.pace || null,
               targetRestTime: item.rest || null,
+              reps: item.reps,
+              category: item.category,
+              targetZone: item.zone,
+              targetUnit: item.unit
             });
           }
         }
@@ -499,13 +515,56 @@ function WeeklyPlanGenerator({ planId, studentId, onSuccess, onCancel }: Generat
                           <div style={{ marginBottom: 10 }}>
                             <label style={{ display: "block", fontSize: 9, fontWeight: 900, color: "#888", marginBottom: 4, textTransform: "uppercase" }}>DESCRIÇÃO DO BLOCO</label>
                             <input
-                              placeholder={`ex: 5km Rodagem ou Descanso Ativo`}
+                              placeholder={`ex: 10x 400m ou 5km Rodagem`}
                               value={item.description}
                               onChange={e => updateBlock(sOrder, item.id, { description: e.target.value })}
                               maxLength={60}
                               style={{ ...inputSt, border: "2px solid #000" }}
                             />
                           </div>
+
+                          {item.showMetrics && (
+                            <div style={{ marginBottom: 12, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                              <div>
+                                <label style={{ display: "block", fontSize: 9, fontWeight: 900, color: "#888", marginBottom: 4, textTransform: "uppercase" }}>Categoria</label>
+                                <select 
+                                  value={item.category} 
+                                  onChange={e => updateBlock(sOrder, item.id, { category: e.target.value })}
+                                  style={inputSt}
+                                >
+                                  {RUNNING_CATEGORIES.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
+                                </select>
+                              </div>
+                              <div>
+                                <label style={{ display: "block", fontSize: 9, fontWeight: 900, color: "#888", marginBottom: 4, textTransform: "uppercase" }}>Intensidade (Zona)</label>
+                                <select 
+                                  value={item.zone} 
+                                  onChange={e => updateBlock(sOrder, item.id, { zone: e.target.value })}
+                                  style={inputSt}
+                                >
+                                  {RUNNING_ZONES.map(z => <option key={z.id} value={z.id}>{z.label}</option>)}
+                                </select>
+                              </div>
+                            </div>
+                          )}
+
+                          {item.showMetrics && (
+                            <div style={{ marginBottom: 12 }}>
+                               <label style={{ display: "block", fontSize: 9, fontWeight: 900, color: "#888", marginBottom: 4, textTransform: "uppercase" }}>Repetições (Multiplicador)</label>
+                               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                                 <input
+                                   type="number" min="1"
+                                   value={item.reps}
+                                   onChange={e => updateBlock(sOrder, item.id, { reps: parseInt(e.target.value) || 1 })}
+                                   style={{ ...inputSt, width: 80, textAlign: "center" }}
+                                 />
+                                 <span style={{ fontWeight: 900, fontSize: 14 }}>x</span>
+                                 <div style={{ fontSize: 10, color: "#666", fontWeight: 700 }}>
+                                   {item.reps > 1 ? "Série com " + item.reps + " repetições" : "Execução única"}
+                                 </div>
+                               </div>
+                            </div>
+                          )}
 
                           {!item.showMetrics ? (
                             <div style={{ display: "flex", gap: 8 }}>
@@ -682,6 +741,7 @@ export default function RunningCoachManager({ studentId }: Props) {
   const [editForm, setEditForm] = useState({
     description: "",
     date: "",
+    week_number: "1",
     target_distance_km: "",
     target_pace: "",
     target_rest_time: ""
@@ -797,6 +857,7 @@ export default function RunningCoachManager({ studentId }: Props) {
     setEditForm({
       description: w.target_description || "",
       date: w.scheduled_date ? w.scheduled_date.split("T")[0] : "",
+      week_number: String(w.week_number || 1),
       target_distance_km: w.target_distance_km ? String(w.target_distance_km) : "",
       target_pace: w.target_pace_description ? w.target_pace_description.replace("/km", "") : "",
       target_rest_time: w.target_rest_time_description || ""
@@ -1055,7 +1116,7 @@ export default function RunningCoachManager({ studentId }: Props) {
           position: "relative"
         }}>
           <form onSubmit={handleAddWorkout}>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 140px", gap: 16, marginBottom: 16 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 140px 100px", gap: 16, marginBottom: 16 }}>
               <div>
                 <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 900, marginBottom: 6, textTransform: "uppercase" }}>
                   <Activity size={14} /> DESCRIÇÃO DO TREINO *
@@ -1081,6 +1142,38 @@ export default function RunningCoachManager({ studentId }: Props) {
                   style={{ width: "100%", padding: "14px 16px", border: "3px solid #000", fontWeight: 800, boxSizing: "border-box" }}
                 />
               </div>
+              <div>
+                <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 900, marginBottom: 6, textTransform: "uppercase" }}>
+                  SEM *
+                </label>
+                <input
+                  name="week_number"
+                  type="number"
+                  min="1"
+                  required
+                  defaultValue="1"
+                  style={{ width: "100%", padding: "14px 16px", border: "3px solid #000", fontWeight: 800, boxSizing: "border-box" }}
+                />
+              </div>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 12 }}>
+              <div>
+                <label style={{ display: "block", fontSize: 11, fontWeight: 900, marginBottom: 6, textTransform: "uppercase" }}>REPETIÇÕES</label>
+                <input name="reps" type="number" min="1" defaultValue="1" style={{ width: "100%", padding: "12px 16px", border: "3px solid #000", fontWeight: 800 }} />
+              </div>
+              <div>
+                <label style={{ display: "block", fontSize: 11, fontWeight: 900, marginBottom: 6, textTransform: "uppercase" }}>CATEGORIA</label>
+                <select name="category" style={{ width: "100%", padding: "12px 16px", border: "3px solid #000", fontWeight: 800 }}>
+                  {RUNNING_CATEGORIES.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={{ display: "block", fontSize: 11, fontWeight: 900, marginBottom: 6, textTransform: "uppercase" }}>ZONA</label>
+                <select name="target_zone" style={{ width: "100%", padding: "12px 16px", border: "3px solid #000", fontWeight: 800 }}>
+                  {RUNNING_ZONES.map(z => <option key={z.id} value={z.id}>{z.label}</option>)}
+                </select>
+              </div>
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 20 }}>
@@ -1088,15 +1181,22 @@ export default function RunningCoachManager({ studentId }: Props) {
                 <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 900, marginBottom: 6, textTransform: "uppercase" }}>
                   <Target size={14} /> DISTÂNCIA
                 </label>
-                <input
-                  name="target_distance_km"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  max="9999"
-                  placeholder="Km ou Metros"
-                  style={{ width: "100%", padding: "14px 16px", border: "3px solid #000", fontWeight: 800, boxSizing: "border-box" }}
-                />
+                <div style={{ display: "flex", gap: 6 }}>
+                  <input
+                    name="target_distance_km"
+                    type="number"
+                    step="0.01"
+                    max="999.9"
+                    onKeyDown={(e) => ["e", "E", "+", "-"].includes(e.key) && e.preventDefault()}
+                    placeholder="Valor"
+                    style={{ flex: 1, padding: "12px 16px", border: "3px solid #000", fontWeight: 800 }}
+                  />
+                  <select name="target_unit" style={{ width: 70, padding: "12px 8px", border: "3px solid #000", fontWeight: 800 }}>
+                    <option value="km">KM</option>
+                    <option value="m">M</option>
+                    <option value="min">MIN</option>
+                  </select>
+                </div>
               </div>
               <div>
                 <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 900, marginBottom: 6, textTransform: "uppercase" }}>
@@ -1147,7 +1247,8 @@ export default function RunningCoachManager({ studentId }: Props) {
       )}
 
       {/* Lista de sessões */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      {/* Lista de sessões agrupadas por semana */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
         {!data?.workouts || data.workouts.length === 0 ? (
           <div style={{ padding: "40px 20px", textAlign: "center", border: "2px dashed #DDD" }}>
             <p style={{ fontSize: 12, color: "#999", fontWeight: 700, margin: 0 }}>
@@ -1155,251 +1256,366 @@ export default function RunningCoachManager({ studentId }: Props) {
             </p>
           </div>
         ) : (
-          data.workouts.map((w) => {
-            const isCompleted = !!w.completed_at;
+          // ────────────────────────────────────────────────────────────────────────
+          // MOTOR DE AGRUPAMENTO SEMANAL (Iron Monolith)
+          // ────────────────────────────────────────────────────────────────────────
+          // Agrupa treinos pelo 'week_number'. Se nulo, assume 'Semana 1' (legacy fallback).
+          // O agrupamento no Admin espelha o comportamento do Dashboard do Aluno para
+          // garantir paridade visual entre o que o Coach prescreve e o que o Aluno vê.
+          // ────────────────────────────────────────────────────────────────────────
+          Object.entries(
+            data.workouts.reduce((acc, w) => {
+              const week = w.week_number || 1;
+              if (!acc[week]) acc[week] = [];
+              acc[week].push(w);
+              return acc;
+            }, {} as Record<number, any[]>)
+          )
+            .sort(([a], [b]) => Number(a) - Number(b))
+            .map(([weekNum, weekWorkouts]) => {
+              const workouts = weekWorkouts as any[];
+              const completedCount = workouts.filter((w: any) => w.completed_at).length;
+              const totalCount = workouts.length;
 
-            // Inline Edit Form
-            if (editingWorkoutId === w.id) {
               return (
-                <div
-                  key={w.id}
-                  style={{
-                    padding: 24,
-                    border: "4px solid #000",
-                    background: "#FFF",
-                    marginBottom: 10,
-                    boxShadow: "6px 6px 0px #000",
-                    position: "relative"
-                  }}
-                >
-                  <form onSubmit={handleUpdateWorkout}>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 140px", gap: 16, marginBottom: 16 }}>
-                      <div>
-                        <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 900, marginBottom: 6, textTransform: "uppercase" }}>
-                          <Activity size={14} /> DESCRIÇÃO DO TREINO *
-                        </label>
-                        <input
-                          name="description"
-                          value={editForm.description}
-                          onChange={e => setEditForm({ ...editForm, description: e.target.value })}
-                          required
-                          autoFocus
-                          maxLength={50}
-                          style={{ width: "100%", padding: "14px 16px", border: "3px solid #000", fontWeight: 800, boxSizing: "border-box", fontSize: 14 }}
-                        />
-                      </div>
-                      <div>
-                        <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 900, marginBottom: 6, textTransform: "uppercase" }}>
-                          <Calendar size={14} /> DATA *
-                        </label>
-                        <input
-                          name="date"
-                          type="date"
-                          value={editForm.date}
-                          onChange={e => setEditForm({ ...editForm, date: e.target.value })}
-                          required
-                          style={{ width: "100%", padding: "14px 16px", border: "3px solid #000", fontWeight: 800, boxSizing: "border-box" }}
-                        />
-                      </div>
+                <div key={weekNum} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  {/* Cabeçalho da Semana */}
+                  <div style={{ 
+                    display: "flex", 
+                    alignItems: "center", 
+                    justifyContent: "space-between",
+                    padding: "10px 16px",
+                    background: "#000",
+                    color: "#FFF",
+                    borderRadius: "2px",
+                    border: "2px solid #000",
+                    boxShadow: "4px 4px 0px rgba(0,0,0,0.1)"
+                  }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <Calendar size={14} className="text-nb-yellow" />
+                      <span style={{ fontSize: 12, fontWeight: 950, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                        SEMANA {weekNum}
+                      </span>
                     </div>
-
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 20 }}>
-                      <div>
-                        <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 900, marginBottom: 6, textTransform: "uppercase" }}>
-                          <Target size={14} /> DISTÂNCIA
-                        </label>
-                        <input
-                          name="target_distance_km"
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          max="99999"
-                          value={editForm.target_distance_km}
-                          onChange={e => setEditForm({ ...editForm, target_distance_km: e.target.value })}
-                          onKeyDown={(e) => {
-                            if (["e", "E", "+", "-"].includes(e.key)) {
-                              e.preventDefault();
-                            }
-                          }}
-                          onInput={(e) => {
-                            if (e.currentTarget.value.length > 6) {
-                              e.currentTarget.value = e.currentTarget.value.slice(0, 6);
-                            }
-                          }}
-                          placeholder="Km ou Metros"
-                          style={{ width: "100%", padding: "14px 16px", border: "3px solid #000", fontWeight: 800, boxSizing: "border-box" }}
-                        />
-                      </div>
-                      <div>
-                        <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 900, marginBottom: 6, textTransform: "uppercase" }}>
-                          <Wind size={14} /> PACE ALVO
-                        </label>
-                        <input
-                          name="target_pace"
-                          type="text"
-                          placeholder="6:00"
-                          value={editForm.target_pace}
-                          onChange={e => setEditForm({ ...editForm, target_pace: maskPace(e.target.value) })}
-                          maxLength={10}
-                          style={{ width: "100%", padding: "14px 16px", border: "3px solid #000", fontWeight: 800, boxSizing: "border-box" }}
-                        />
-                      </div>
-                      <div>
-                        <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 900, marginBottom: 6, textTransform: "uppercase" }}>
-                          <Clock size={14} /> DESCANSO
-                        </label>
-                        <input
-                          name="target_rest_time"
-                          type="text"
-                          placeholder="1:00"
-                          value={editForm.target_rest_time}
-                          onChange={e => setEditForm({ ...editForm, target_rest_time: maskTime(e.target.value) })}
-                          maxLength={5}
-                          style={{ width: "100%", padding: "14px 16px", border: "3px solid #000", fontWeight: 800, boxSizing: "border-box" }}
-                        />
-                      </div>
-                    </div>
-
-                    <div style={{ display: "flex", gap: 12 }}>
-                      <button type="submit" disabled={isUpdating} className="admin-btn admin-btn-primary" style={{ flex: 1, height: 50, fontSize: 12, fontWeight: 950 }}>
-                        {isUpdating ? "SALVANDO..." : "SALVAR ALTERAÇÕES"}
-                      </button>
-                      <button type="button" onClick={() => setEditingWorkoutId(null)} className="admin-btn admin-btn-ghost" style={{ width: 120, height: 50, fontSize: 12, fontWeight: 950 }}>
-                        CANCELAR
-                      </button>
-                    </div>
-                  </form>
-                </div>
-              );
-            }
-
-            return (
-              <div
-                key={w.id}
-                style={{
-                  padding: "16px 20px",
-                  border: `3px solid ${isCompleted ? "#BBF7D0" : "#000"}`,
-                  background: isCompleted ? "#F0FDF4" : "#FFF",
-                  borderLeft: isCompleted ? "6px solid #22C55E" : "6px solid #3498DB",
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "flex-start",
-                  gap: 12,
-                  opacity: deletingId === w.id ? 0.4 : 1,
-                  transition: "opacity 0.2s ease",
-                }}
-              >
-                <div style={{ flex: 1 }}>
-                  {/* Data + Status */}
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                    {isCompleted
-                      ? <CheckCircle2 size={14} color="#22C55E" />
-                      : <Clock size={14} color="#3498DB" />
-                    }
-                    <span style={{ fontSize: 10, fontWeight: 900, color: isCompleted ? "#22C55E" : "#3498DB", textTransform: "uppercase" }}>
-                      {isCompleted ? "Realizado" : "Pendente"} —{" "}
-                      {new Date(w.scheduled_date).toLocaleDateString("pt-BR", { timeZone: "UTC", weekday: "short", day: "numeric", month: "short" })}
+                    <span style={{ fontSize: 10, fontWeight: 800, background: "rgba(255,255,255,0.2)", padding: "2px 8px", borderRadius: "10px" }}>
+                      {completedCount}/{totalCount} SESSÕES
                     </span>
                   </div>
 
-                  {/* Descrição */}
-                  <div style={{ fontSize: 14, fontWeight: 900, color: "#000", marginBottom: (w.target_distance_km || w.target_pace_description) ? 4 : (isCompleted ? 10 : 0) }}>
-                    {w.target_description}
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {(weekWorkouts as any[]).map((w: any) => {
+                      const isCompleted = !!w.completed_at;
+
+                      // Inline Edit Form
+                      if (editingWorkoutId === w.id) {
+                        return (
+                          <div
+                            key={w.id}
+                            style={{
+                              padding: 24,
+                              border: "4px solid #000",
+                              background: "#FFF",
+                              marginBottom: 10,
+                              boxShadow: "6px 6px 0px #000",
+                              position: "relative"
+                            }}
+                          >
+                            <form onSubmit={handleUpdateWorkout}>
+                              <div style={{ display: "grid", gridTemplateColumns: "1fr 140px 100px", gap: 16, marginBottom: 16 }}>
+                                <div>
+                                  <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 900, marginBottom: 6, textTransform: "uppercase" }}>
+                                    <Activity size={14} /> DESCRIÇÃO DO TREINO *
+                                  </label>
+                                  <input
+                                    name="description"
+                                    value={editForm.description}
+                                    onChange={e => setEditForm({ ...editForm, description: e.target.value })}
+                                    required
+                                    autoFocus
+                                    maxLength={50}
+                                    style={{ width: "100%", padding: "14px 16px", border: "3px solid #000", fontWeight: 800, boxSizing: "border-box", fontSize: 14 }}
+                                  />
+                                </div>
+                                <div>
+                                  <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 900, marginBottom: 6, textTransform: "uppercase" }}>
+                                    <Calendar size={14} /> DATA
+                                  </label>
+                                  <input
+                                    name="date"
+                                    type="date"
+                                    value={editForm.date}
+                                    onChange={e => setEditForm({ ...editForm, date: e.target.value })}
+                                    style={{ width: "100%", padding: "14px 16px", border: "3px solid #000", fontWeight: 800, boxSizing: "border-box" }}
+                                  />
+                                </div>
+                                <div>
+                                  <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 900, marginBottom: 6, textTransform: "uppercase" }}>
+                                    SEM *
+                                  </label>
+                                  <input
+                                    name="week_number"
+                                    type="number"
+                                    min="1"
+                                    required
+                                    value={editForm.week_number}
+                                    onChange={e => setEditForm({ ...editForm, week_number: e.target.value })}
+                                    style={{ width: "100%", padding: "14px 16px", border: "3px solid #000", fontWeight: 800, boxSizing: "border-box" }}
+                                  />
+                                </div>
+                              </div>
+
+                              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 12 }}>
+                                <div>
+                                  <label style={{ display: "block", fontSize: 11, fontWeight: 900, marginBottom: 6, textTransform: "uppercase" }}>REPS</label>
+                                  <input name="reps" type="number" min="1" defaultValue={w.reps || 1} style={{ width: "100%", padding: "12px 16px", border: "3px solid #000", fontWeight: 800 }} />
+                                </div>
+                                <div>
+                                  <label style={{ display: "block", fontSize: 11, fontWeight: 900, marginBottom: 6, textTransform: "uppercase" }}>CATEGORIA</label>
+                                  <select name="category" defaultValue={w.category || "corrida"} style={{ width: "100%", padding: "12px 16px", border: "3px solid #000", fontWeight: 800 }}>
+                                    {RUNNING_CATEGORIES.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
+                                  </select>
+                                </div>
+                                <div>
+                                  <label style={{ display: "block", fontSize: 11, fontWeight: 900, marginBottom: 6, textTransform: "uppercase" }}>ZONA</label>
+                                  <select name="target_zone" defaultValue={w.target_zone || "Z2"} style={{ width: "100%", padding: "12px 16px", border: "3px solid #000", fontWeight: 800 }}>
+                                    {RUNNING_ZONES.map(z => <option key={z.id} value={z.id}>{z.label}</option>)}
+                                  </select>
+                                </div>
+                              </div>
+
+                              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 20 }}>
+                                <div>
+                                  <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 900, marginBottom: 6, textTransform: "uppercase" }}>
+                                    <Target size={14} /> DISTÂNCIA
+                                  </label>
+                                  <div style={{ display: "flex", gap: 6 }}>
+                                    <input
+                                      name="target_distance_km"
+                                      type="number"
+                                      step="0.01"
+                                      max="999.9"
+                                      onKeyDown={(e) => ["e", "E", "+", "-"].includes(e.key) && e.preventDefault()}
+                                      value={editForm.target_distance_km}
+                                      onChange={e => {
+                                        const val = e.target.value;
+                                        if (parseFloat(val) > 999.9) return;
+                                        setEditForm({ ...editForm, target_distance_km: val });
+                                      }}
+                                      style={{ flex: 1, padding: "12px 16px", border: "3px solid #000", fontWeight: 800 }}
+                                    />
+                                    <select name="target_unit" defaultValue={w.target_unit || "km"} style={{ width: 80, padding: "12px 8px", border: "3px solid #000", fontWeight: 800 }}>
+                                      <option value="km">KM</option>
+                                      <option value="m">M</option>
+                                      <option value="min">MIN</option>
+                                    </select>
+                                  </div>
+                                </div>
+                                <div>
+                                  <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 900, marginBottom: 6, textTransform: "uppercase" }}>
+                                    <Wind size={14} /> PACE ALVO
+                                  </label>
+                                  <input
+                                    name="target_pace"
+                                    type="text"
+                                    placeholder="6:00"
+                                    value={editForm.target_pace}
+                                    onChange={e => setEditForm({ ...editForm, target_pace: maskPace(e.target.value) })}
+                                    maxLength={10}
+                                    style={{ width: "100%", padding: "14px 16px", border: "3px solid #000", fontWeight: 800, boxSizing: "border-box" }}
+                                  />
+                                </div>
+                                <div>
+                                  <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 900, marginBottom: 6, textTransform: "uppercase" }}>
+                                    <Clock size={14} /> DESCANSO
+                                  </label>
+                                  <input
+                                    name="target_rest_time"
+                                    type="text"
+                                    placeholder="1:00"
+                                    value={editForm.target_rest_time}
+                                    onChange={e => setEditForm({ ...editForm, target_rest_time: maskTime(e.target.value) })}
+                                    maxLength={5}
+                                    style={{ width: "100%", padding: "14px 16px", border: "3px solid #000", fontWeight: 800, boxSizing: "border-box" }}
+                                  />
+                                </div>
+                              </div>
+
+                              <div style={{ display: "flex", gap: 12 }}>
+                                <button type="submit" disabled={isUpdating} className="admin-btn admin-btn-primary" style={{ flex: 1, height: 50, fontSize: 12, fontWeight: 950 }}>
+                                  {isUpdating ? "SALVANDO..." : "SALVAR ALTERAÇÕES"}
+                                </button>
+                                <button type="button" onClick={() => setEditingWorkoutId(null)} className="admin-btn admin-btn-ghost" style={{ width: 120, height: 50, fontSize: 12, fontWeight: 950 }}>
+                                  CANCELAR
+                                </button>
+                              </div>
+                            </form>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div
+                          key={w.id}
+                          style={{
+                            padding: "16px 20px",
+                            border: `3px solid ${isCompleted ? "#BBF7D0" : "#000"}`,
+                            background: isCompleted ? "#F0FDF4" : "#FFF",
+                            borderLeft: isCompleted ? "6px solid #22C55E" : "6px solid #3498DB",
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "flex-start",
+                            gap: 12,
+                            opacity: deletingId === w.id ? 0.4 : 1,
+                            transition: "opacity 0.2s ease",
+                          }}
+                        >
+                          <div style={{ flex: 1 }}>
+                            {/* Data + Status + Sessão */}
+                            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                              {isCompleted
+                                ? <CheckCircle2 size={14} color="#22C55E" />
+                                : <Clock size={14} color="#3498DB" />
+                              }
+                              <span style={{ fontSize: 10, fontWeight: 900, color: isCompleted ? "#22C55E" : "#3498DB", textTransform: "uppercase" }}>
+                                {isCompleted ? "Realizado" : "Pendente"} 
+                                {w.scheduled_date && ` — ${new Date(w.scheduled_date).toLocaleDateString("pt-BR", { timeZone: "UTC", weekday: "short", day: "numeric", month: "short" })}`}
+                                {w.session_order && ` — SESSÃO ${w.session_order}`}
+                              </span>
+                            </div>
+
+                            {/* Descrição */}
+                            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                              {w.category && (
+                                <span style={{ 
+                                  fontSize: 8, 
+                                  fontWeight: 900, 
+                                  padding: "2px 6px", 
+                                  background: RUNNING_CATEGORIES.find(c => c.id === w.category)?.color || "#000",
+                                  color: "#FFF",
+                                  textTransform: "uppercase"
+                                }}>
+                                  {RUNNING_CATEGORIES.find(c => c.id === w.category)?.label || w.category}
+                                </span>
+                              )}
+                              {w.target_zone && (
+                                <span style={{ 
+                                  fontSize: 8, 
+                                  fontWeight: 950, 
+                                  padding: "2px 6px", 
+                                  background: RUNNING_ZONES.find(z => z.id === w.target_zone)?.color || "#000",
+                                  color: "#FFF",
+                                }}>
+                                  {w.target_zone}
+                                </span>
+                              )}
+                            </div>
+
+                            <div style={{ fontSize: 14, fontWeight: 900, color: "#000", marginBottom: (w.target_distance_km || w.target_pace_description) ? 4 : (isCompleted ? 10 : 0) }}>
+                              {w.reps > 1 && <span style={{ color: "var(--nb-blue)", marginRight: 4 }}>{w.reps}x</span>}
+                              {w.target_description}
+                            </div>
+
+                            {/* Metas Prescritas */}
+                            {!isCompleted && (w.target_distance_km || w.target_pace_description || w.target_rest_time_description) && (
+                              <div style={{ display: "flex", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
+                                {w.target_distance_km && (
+                                  <div style={{ fontSize: 9, fontWeight: 900, color: "#E67E22", background: "#FFF3E0", padding: "2px 6px", border: "1px solid #FFE0B2", textTransform: "uppercase" }}>
+                                    META: {w.target_unit === "m" 
+                                      ? `${((Number(w.target_distance_km) || 0) >= 1 ? Number(w.target_distance_km) : Number(w.target_distance_km) * 1000).toFixed(0)}M` 
+                                      : w.target_unit === "min" ? `${w.target_distance_km}MIN` : `${w.target_distance_km}KM`}
+                                    {w.reps > 1 && ` (TOTAL: ${w.target_unit === "min" ? (Number(w.target_distance_km) * w.reps) + "MIN" : (w.target_unit === "m" ? (((Number(w.target_distance_km) || 0) >= 1 ? Number(w.target_distance_km) : Number(w.target_distance_km) * 1000) * w.reps).toFixed(0) + "M" : (Number(w.target_distance_km) * w.reps).toFixed(1) + "KM")})`}
+                                  </div>
+                                )}
+                                {w.target_pace_description && (
+                                  <div style={{ fontSize: 9, fontWeight: 900, color: "#8E44AD", background: "#F3E5F5", padding: "2px 6px", border: "1px solid #E1BEE7", textTransform: "uppercase" }}>
+                                    PACE: {w.target_pace_description}
+                                  </div>
+                                )}
+                                {w.target_rest_time_description && (
+                                  <div style={{ fontSize: 9, fontWeight: 900, color: "#2980B9", background: "#EBF5FB", padding: "2px 6px", border: "1px solid #AED6F1", textTransform: "uppercase" }}>
+                                    DESC: {w.target_rest_time_description}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Dados de execução (só para concluídos) */}
+                            {isCompleted && (
+                              <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+                                {w.actual_distance_km && (
+                                  <div style={{ fontSize: 12, fontWeight: 900, color: "#15803D" }}>
+                                    📍 {parseFloat(w.actual_distance_km).toFixed(1)} km
+                                  </div>
+                                )}
+                                {w.actual_pace_seconds_per_km > 0 && (
+                                  <div style={{ fontSize: 12, fontWeight: 900, color: "#1D4ED8" }}>
+                                    ⏱ {formatPace(w.actual_pace_seconds_per_km)} /km
+                                  </div>
+                                )}
+                                {w.actual_duration_seconds > 0 && (
+                                  <div style={{ fontSize: 12, fontWeight: 700, color: "#555" }}>
+                                    🕐 {formatDuration(w.actual_duration_seconds)}
+                                  </div>
+                                )}
+                                {w.rpe && (
+                                  <div style={{ fontSize: 12, fontWeight: 900, color: w.rpe >= 8 ? "#DC2626" : w.rpe >= 6 ? "#D97706" : "#059669" }}>
+                                    💢 RPE {w.rpe}/10
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Notas do aluno */}
+                            {isCompleted && w.student_notes && (
+                              <div style={{
+                                marginTop: 10,
+                                padding: "8px 12px",
+                                background: "#FFF",
+                                border: "2px solid #D1FAE5",
+                                fontSize: 12,
+                                color: "#374151",
+                                fontStyle: "italic",
+                                lineHeight: 1.4,
+                                wordBreak: "break-word",
+                              }}>
+                                <span style={{ fontStyle: "normal", fontWeight: 900, color: "#059669", fontSize: 10 }}>NOTA DO ALUNO: </span>
+                                {w.student_notes}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Ações (Editar e Deletar) */}
+                          {!isCompleted && !isArchived && (
+                            <div style={{ display: "flex", gap: 8, flexShrink: 0, marginTop: 2 }}>
+                              <button
+                                onClick={() => startEditing(w)}
+                                className="admin-btn admin-btn-ghost"
+                                style={{ padding: "6px 8px", color: "#3498DB" }}
+                                title="Editar sessão prescrita"
+                              >
+                                <Edit2 size={16} />
+                              </button>
+                              <button
+                                onClick={() => handleDelete(w.id)}
+                                disabled={deletingId === w.id}
+                                className="admin-btn admin-btn-ghost"
+                                style={{ padding: "6px 8px", color: "#EF4444" }}
+                                title="Remover sessão pendente"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
-
-                  {/* Metas Prescritas */}
-                  {!isCompleted && (w.target_distance_km || w.target_pace_description || w.target_rest_time_description) && (
-                    <div style={{ display: "flex", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
-                      {w.target_distance_km && (
-                        <div style={{ fontSize: 9, fontWeight: 900, color: "#E67E22", background: "#FFF3E0", padding: "2px 6px", border: "1px solid #FFE0B2", textTransform: "uppercase" }}>
-                          META: {w.target_distance_km}KM
-                        </div>
-                      )}
-                      {w.target_pace_description && (
-                        <div style={{ fontSize: 9, fontWeight: 900, color: "#8E44AD", background: "#F3E5F5", padding: "2px 6px", border: "1px solid #E1BEE7", textTransform: "uppercase" }}>
-                          PACE: {w.target_pace_description}
-                        </div>
-                      )}
-                      {w.target_rest_time_description && (
-                        <div style={{ fontSize: 9, fontWeight: 900, color: "#2980B9", background: "#EBF5FB", padding: "2px 6px", border: "1px solid #AED6F1", textTransform: "uppercase" }}>
-                          DESC: {w.target_rest_time_description}
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Dados de execução (só para concluídos) */}
-                  {isCompleted && (
-                    <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-                      {w.actual_distance_km && (
-                        <div style={{ fontSize: 12, fontWeight: 900, color: "#15803D" }}>
-                          📍 {parseFloat(w.actual_distance_km).toFixed(1)} km
-                        </div>
-                      )}
-                      {w.actual_pace_seconds_per_km > 0 && (
-                        <div style={{ fontSize: 12, fontWeight: 900, color: "#1D4ED8" }}>
-                          ⏱ {formatPace(w.actual_pace_seconds_per_km)} /km
-                        </div>
-                      )}
-                      {w.actual_duration_seconds > 0 && (
-                        <div style={{ fontSize: 12, fontWeight: 700, color: "#555" }}>
-                          🕐 {formatDuration(w.actual_duration_seconds)}
-                        </div>
-                      )}
-                      {w.rpe && (
-                        <div style={{ fontSize: 12, fontWeight: 900, color: w.rpe >= 8 ? "#DC2626" : w.rpe >= 6 ? "#D97706" : "#059669" }}>
-                          💢 RPE {w.rpe}/10
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Notas do aluno */}
-                  {isCompleted && w.student_notes && (
-                    <div style={{
-                      marginTop: 10,
-                      padding: "8px 12px",
-                      background: "#FFF",
-                      border: "2px solid #D1FAE5",
-                      fontSize: 12,
-                      color: "#374151",
-                      fontStyle: "italic",
-                      lineHeight: 1.4,
-                      wordBreak: "break-word",
-                    }}>
-                      <span style={{ fontStyle: "normal", fontWeight: 900, color: "#059669", fontSize: 10 }}>NOTA DO ALUNO: </span>
-                      {w.student_notes}
-                    </div>
-                  )}
                 </div>
-
-                {/* Ações (Editar e Deletar) */}
-                {!isCompleted && !isArchived && (
-                  <div style={{ display: "flex", gap: 8, flexShrink: 0, marginTop: 2 }}>
-                    <button
-                      onClick={() => startEditing(w)}
-                      className="admin-btn admin-btn-ghost"
-                      style={{ padding: "6px 8px", color: "#3498DB" }}
-                      title="Editar sessão prescrita"
-                    >
-                      <Edit2 size={16} />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(w.id)}
-                      disabled={deletingId === w.id}
-                      className="admin-btn admin-btn-ghost"
-                      style={{ padding: "6px 8px", color: "#EF4444" }}
-                      title="Remover sessão pendente"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                )}
-              </div>
-            );
-          })
+              );
+            })
         )}
       </div>
+
     </div>
   );
 }

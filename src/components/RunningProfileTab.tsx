@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { User, Activity, Edit2, Check, Timer, Zap } from "lucide-react";
 import { updateRunningPace } from "@/lib/actions/running_actions";
 import { RUNNING_LEVELS, type RunningLevelKey } from "@/lib/constants/running";
+import AlertModal from "./AlertModal";
 
 interface RunningProfileTabProps {
   runnerProfile: {
@@ -43,6 +44,7 @@ export default function RunningProfileTab({
   const defaultPace = runnerProfile?.running_target_pace || "";
   const [paceInput, setPaceInput] = useState(defaultPace);
   const [isSaving, setIsSaving] = useState(false);
+  const [errorAlert, setErrorAlert] = useState<{ title: string; message: string } | null>(null);
 
   // Calcula idade se tiver data de nascimento
   let age = "--";
@@ -66,12 +68,18 @@ export default function RunningProfileTab({
       
       const res = await updateRunningPace(data);
       if (res?.error) {
-        alert("Erro ao salvar Pace: " + res.error);
+        setErrorAlert({
+          title: "Erro ao Salvar",
+          message: res.error || "Não foi possível atualizar seu pace alvo."
+        });
       } else {
         setIsEditingPace(false);
       }
     } catch (e) {
-      alert("Erro inesperado.");
+      setErrorAlert({
+        title: "Erro Inesperado",
+        message: "Ocorreu uma falha técnica. Tente novamente mais tarde."
+      });
     } finally {
       setIsSaving(false);
     }
@@ -353,10 +361,21 @@ export default function RunningProfileTab({
             CONECTADO
           </div>
         ) : (
-          <StravaConnectButton onClick={() => setShowAlert(true)} />
+          <StravaConnectButton onClick={() => {
+            // Em vez de redirecionar agora, mostramos um alerta de homologação conforme feedback do usuário
+            setShowAlert(true);
+          }} />
         )}
       </div>
 
+      {errorAlert && (
+        <AlertModal
+          title={errorAlert.title}
+          message={errorAlert.message}
+          type="error"
+          onClose={() => setErrorAlert(null)}
+        />
+      )}
     </div>
   );
 }

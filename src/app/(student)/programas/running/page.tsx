@@ -46,7 +46,8 @@ export default async function RunningDashboardPage() {
       .select("id, title, level_tag, status, created_at, running_workouts(*)")
       .eq("student_id", user.id)
       .eq("status", "active")
-      .order("scheduled_date", { foreignTable: "running_workouts", ascending: true })
+      .order("week_number", { foreignTable: "running_workouts", ascending: true })
+      .order("session_order", { foreignTable: "running_workouts", ascending: true })
       .maybeSingle(),
     supabase
       .from("running_workouts")
@@ -56,7 +57,7 @@ export default async function RunningDashboardPage() {
       .gte("completed_at", firstDayOfMonth),
     supabase
       .from("profiles")
-      .select("level, running_level, running_pace, running_target_pace, running_status, full_name, points_total, avatar_url, birth_date, gender")
+      .select("level, running_level, running_pace, running_target_pace, running_status, full_name, points_total, avatar_url, birth_date, gender, membership_type")
       .eq("id", user.id)
       .single(),
     getStudentRunningHistory(user.id),
@@ -209,7 +210,41 @@ export default async function RunningDashboardPage() {
                   display: "inline-block",
                   transform: "skewX(-5deg)",
                   marginLeft: "-4px"
-                }}>{firstName}!</span> ⚡
+                }}>{firstName}!</span>
+                
+                {/* Badge de Assinatura (Premium vs Pass) */}
+                <div style={{
+                  display: "inline-block",
+                  marginLeft: "12px",
+                  verticalAlign: "middle",
+                  transform: "translateY(-4px)"
+                }}>
+                  {profile?.membership_type === "club_pass" ? (
+                    <span style={{
+                      padding: "4px 8px",
+                      border: "2px solid #000",
+                      background: "#6B7280", // Gray para Pass
+                      color: "#FFF",
+                      fontSize: "9px",
+                      fontWeight: 900,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.05em",
+                      boxShadow: "2px 2px 0px #000"
+                    }}>PASS</span>
+                  ) : (
+                    <span style={{
+                      padding: "4px 8px",
+                      border: "2px solid #000",
+                      background: "var(--nb-blue)", // Blue para Premium
+                      color: "#FFF",
+                      fontSize: "9px",
+                      fontWeight: 900,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.05em",
+                      boxShadow: "2px 2px 0px #000"
+                    }}>PREMIUM</span>
+                  )}
+                </div>
               </h1>
             </div>
 

@@ -12,7 +12,7 @@ export const updateRunningPlanSchema = z.object({
   status: z.enum(["active", "completed", "archived"]).optional(),
 });
 
-// 2. Schema para Registrar Treino Realizado
+// 2. Schema para Registrar Treino Realizado (Legado único)
 export const logRunningWorkoutSchema = z.object({
   workoutId: z.string().uuid("ID do treino inválido"),
   actualDistance: z.number().positive("A distância deve ser um valor positivo"),
@@ -20,6 +20,19 @@ export const logRunningWorkoutSchema = z.object({
   paceSeconds: z.number().int().positive("O pace deve ser um valor positivo"),
   rpe: z.number().int().min(1).max(10, "A percepção de esforço deve ser entre 1 e 10"),
   notes: z.string().optional().nullable(),
+});
+
+// 2.1 Schema para Registrar Sessão Completa (Multi-Blocos)
+export const logRunningSessionSchema = z.object({
+  rpe: z.number().int().min(1).max(10, "A percepção de esforço deve ser entre 1 e 10"),
+  notes: z.string().optional().nullable(),
+  blocks: z.array(z.object({
+    workoutId: z.string().uuid("ID do bloco inválido"),
+    completed: z.boolean(),
+    actualDistance: z.number().nullable().optional(), // opcional dependendo do tipo
+    durationSeconds: z.number().int().nullable().optional(), // opcional dependendo do tipo
+    reps: z.number().int().min(1).optional()
+  })).min(1, "É necessário pelo menos um bloco")
 });
 
 // 3. Schema para Geração em Lote (Bulk)
@@ -34,6 +47,10 @@ export const bulkCreateRunningWorkoutsSchema = z.object({
     target_distance_km: z.number().nullable().optional(),
     target_pace_description: z.string().nullable().optional(),
     target_rest_time_description: z.string().nullable().optional(),
+    reps: z.number().int().min(1).default(1).optional(),
+    category: z.string().nullable().optional(),
+    target_zone: z.string().nullable().optional(),
+    target_unit: z.string().default("km").optional(),
   })).min(1, "É necessário pelo menos um treino para geração"),
 });
 
@@ -60,6 +77,10 @@ export const createTemplateWorkoutSchema = z.object({
   targetDistanceKm: z.number().nullable().optional(),
   targetPaceDescription: z.string().nullable().optional(),
   targetRestTimeDescription: z.string().nullable().optional(),
+  reps: z.number().int().min(1).optional(),
+  category: z.string().nullable().optional(),
+  targetZone: z.string().nullable().optional(),
+  targetUnit: z.string().optional(),
 });
 
 // 7. Schema para atualizar treino de um Template
@@ -71,6 +92,10 @@ export const updateTemplateWorkoutSchema = z.object({
   targetDistanceKm: z.number().nullable().optional(),
   targetPaceDescription: z.string().nullable().optional(),
   targetRestTimeDescription: z.string().nullable().optional(),
+  reps: z.number().int().min(1).optional(),
+  category: z.string().nullable().optional(),
+  targetZone: z.string().nullable().optional(),
+  targetUnit: z.string().optional(),
 });
 
 export type UpdateRunningPlanInput = z.infer<typeof updateRunningPlanSchema>;

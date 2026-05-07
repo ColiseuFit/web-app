@@ -340,8 +340,8 @@ export default function RunningHubTabs({
 
       {showAlert && (
         <AlertModal
-          title="Em Breve!"
-          message="Aguarde! Em breve você poderá conectar sua conta do Strava com o aplicativo Coliseu Running para sincronizar seus treinos automaticamente."
+          title="Homologação em Curso"
+          message="A integração com o Strava está em processo final de aprovação. Em breve você poderá conectar sua conta e sincronizar seus treinos automaticamente!"
           type="info"
           onClose={() => setShowAlert(false)}
         />
