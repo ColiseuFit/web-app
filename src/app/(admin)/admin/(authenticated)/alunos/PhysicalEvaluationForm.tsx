@@ -230,14 +230,21 @@ export default function PhysicalEvaluationForm({
       return parseFloat(parsed.toFixed(decimals));
     };
 
-    // Parse numeric values and ensure they don't have excessive decimal places for the DB
+    // Parse numeric values — nunca envia 0 ou null para campos que o Zod exige como positivo/opcional
+    const safeNum = (val: string | number | null | undefined, decimals = 2): number | undefined => {
+      const parsed = parseFloat(val?.toString() || "");
+      if (isNaN(parsed) || parsed === 0) return undefined; // 0 falha no .positive() do schema
+      return parseFloat(parsed.toFixed(decimals));
+    };
+
     const payload = {
       ...formData,
-      weight: formData.weight ? safeRound(formData.weight) : undefined,
-      height: formData.height ? safeRound(formData.height) : undefined,
-      body_fat_percentage: calculatedResults.bodyFat > 0 
-        ? safeRound(calculatedResults.bodyFat, 1) 
-        : (formData.body_fat_percentage ? safeRound(formData.body_fat_percentage, 1) : null),
+      weight: safeNum(formData.weight),
+      height: safeNum(formData.height),
+      // Prioridade: cálculo via Pollock 7 Dobras → fallback: valor manual → undefined (omite o campo)
+      body_fat_percentage: calculatedResults.bodyFat > 0
+        ? safeRound(calculatedResults.bodyFat, 1)
+        : (formData.body_fat_percentage ? safeRound(formData.body_fat_percentage, 1) : undefined),
       measurements: Object.fromEntries(Object.entries(formData.measurements).map(([k, v]) => [k, v !== "" ? safeRound(v as string) : null])),
       skinfolds: Object.fromEntries(Object.entries(formData.skinfolds).map(([k, v]) => [k, v !== "" ? safeRound(v as string) : null])),
       bone_diameters: Object.fromEntries(Object.entries(formData.bone_diameters).map(([k, v]) => [k, v !== "" ? safeRound(v as string) : null])),
@@ -399,7 +406,26 @@ export default function PhysicalEvaluationForm({
                 </div>
                 <div style={{ borderRight: "1px solid #333" }}>
                   <span style={{ fontSize: 9, fontWeight: 900, color: "#999", textTransform: "uppercase" }}>Gordura Corporal</span>
-                  <div style={{ fontSize: 24, fontWeight: 900, color: "#E31B23" }}>{calculatedResults.bodyFat.toFixed(1)}%</div>
+                  <div style={{ fontSize: 24, fontWeight: 900, color: "#E31B23" }}>
+                    {calculatedResults.bodyFat > 0
+                      ? `${calculatedResults.bodyFat.toFixed(1)}%`
+                      : formData.body_fat_percentage
+                      ? `${parseFloat(String(formData.body_fat_percentage)).toFixed(1)}%`
+                      : "—"}
+                  </div>
+                  {/* Bug #6 Fix: Badge de fonte — indica qual valor será persistido no banco */}
+                  <div style={{
+                    marginTop: 6,
+                    display: "inline-block",
+                    fontSize: 8,
+                    fontWeight: 900,
+                    letterSpacing: "0.08em",
+                    padding: "2px 6px",
+                    background: calculatedResults.bodyFat > 0 ? "#10B981" : formData.body_fat_percentage ? "#EAB308" : "#333",
+                    color: "#FFF"
+                  }}>
+                    {calculatedResults.bodyFat > 0 ? "VIA POLLOCK 7" : formData.body_fat_percentage ? "VALOR MANUAL" : "N/A"}
+                  </div>
                 </div>
                 <div style={{ borderRight: "1px solid #333" }}>
                   <span style={{ fontSize: 9, fontWeight: 900, color: "#999", textTransform: "uppercase" }}>Massa Magra</span>
@@ -744,50 +770,53 @@ export default function PhysicalEvaluationForm({
           </div>
         )}
 
-      </form>
+        {/* Footer — DENTRO do form: type="submit" garante que o browser gerencie
+            o ciclo de vida do envio, prevenindo double-submit em conexões lentas */}
+        <footer style={{ 
+          padding: "24px 32px", 
+          background: "#FFF", 
+          borderTop: "4px solid #000", 
+          display: "flex", 
+          gap: 16,
+          boxShadow: "0 -8px 24px rgba(0,0,0,0.05)",
+          zIndex: 10
+        }}>
+          <button 
+            type="submit"
+            disabled={loading} 
+            className="admin-btn admin-btn-primary" 
+            style={{ 
+              flex: 2, 
+              padding: "20px", 
+              display: "flex", 
+              alignItems: "center", 
+              justifyContent: "center", 
+              gap: 12,
+              fontSize: "14px",
+              fontWeight: 900,
+              letterSpacing: "0.05em"
+            }}
+          >
+            <Save size={20} />
+            {loading ? "PROCESSANDO..." : (formData.id ? "ATUALIZAR AVALIAÇÃO" : "FINALIZAR REGISTRO")}
+          </button>
+          <button 
+            type="button"
+            onClick={onClose} 
+            className="admin-btn admin-btn-ghost" 
+            style={{ 
+              flex: 1, 
+              padding: "20px",
+              fontSize: "12px",
+              fontWeight: 800,
+              color: "#666"
+            }}
+          >
+            CANCELAR
+          </button>
+        </footer>
 
-      <footer style={{ 
-        padding: "24px 32px", 
-        background: "#FFF", 
-        borderTop: "4px solid #000", 
-        display: "flex", 
-        gap: 16,
-        boxShadow: "0 -8px 24px rgba(0,0,0,0.05)",
-        zIndex: 10
-      }}>
-        <button 
-          onClick={(e) => { e.preventDefault(); handleSubmit(e); }} 
-          disabled={loading} 
-          className="admin-btn admin-btn-primary" 
-          style={{ 
-            flex: 2, 
-            padding: "20px", 
-            display: "flex", 
-            alignItems: "center", 
-            justifyContent: "center", 
-            gap: 12,
-            fontSize: "14px",
-            fontWeight: 900,
-            letterSpacing: "0.05em"
-          }}
-        >
-          <Save size={20} />
-          {loading ? "PROCESSANDO..." : (formData.id ? "ATUALIZAR AVALIAÇÃO" : "FINALIZAR REGISTRO")}
-        </button>
-        <button 
-          onClick={onClose} 
-          className="admin-btn admin-btn-ghost" 
-          style={{ 
-            flex: 1, 
-            padding: "20px",
-            fontSize: "12px",
-            fontWeight: 800,
-            color: "#666"
-          }}
-        >
-          CANCELAR
-        </button>
-      </footer>
+      </form>
 
       {alertConfig && (
         <AlertModal

@@ -1,11 +1,14 @@
 "use client";
 
-import { useState } from "react";
-import { Settings as SettingsIcon, Zap, ShieldCheck, Trophy, Star, Dumbbell, CheckSquare, Video } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+import { Settings as SettingsIcon, Zap, ShieldCheck, Trophy, Star, Dumbbell, CheckSquare, Video, KeyRound } from "lucide-react";
 import GeneralSettingsManager from "./GeneralSettingsManager";
 import WodSettingsManager from "./WodSettingsManager";
 import CheckinSettingsManager from "./CheckinSettingsManager";
 import VideoSettingsManager from "./VideoSettingsManager";
+import AccessManager from "./AccessManager";
+import { AccessType } from "@/lib/constants/access_actions";
 
 interface SettingsTabsProps {
   initialSettings: Record<string, string>;
@@ -13,6 +16,7 @@ interface SettingsTabsProps {
   initialLevels: any[];
   videoViewCount: number;
   totalStudents: number;
+  initialAccessTypes: Record<string, AccessType>;
 }
 
 /**
@@ -25,15 +29,32 @@ interface SettingsTabsProps {
  * 
  * @param {SettingsTabsProps} props - Dados hidratados do servidor (Settings, Rules, Levels).
  */
-export default function SettingsTabs({ initialSettings, initialRules, initialLevels, videoViewCount, totalStudents }: SettingsTabsProps) {
-  const [activeTab, setActiveTab] = useState<"geral" | "checkin" | "wod" | "video" | "seguranca">("geral");
+export default function SettingsTabs({ initialSettings, initialRules, initialLevels, videoViewCount, totalStudents, initialAccessTypes }: SettingsTabsProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [activeTab, setActiveTab] = useState<string>("geral");
+
+  // 1. Sincronizar aba ativa com a URL (Persistence)
+  useEffect(() => {
+    const tabParam = searchParams.get("tab");
+    if (tabParam) {
+      setActiveTab(tabParam);
+    }
+  }, [searchParams]);
+
+  const handleTabChange = (tabId: string) => {
+    setActiveTab(tabId);
+    // Atualiza a URL sem recarregar a página para manter o estado no Refresh
+    router.push(`?tab=${tabId}`, { scroll: false });
+  };
 
   const TABS = [
     { id: "geral", label: "Geral", icon: SettingsIcon },
     { id: "checkin", label: "Check-in", icon: CheckSquare },
     { id: "wod", label: "WOD", icon: Dumbbell },
     { id: "video", label: "Vídeo", icon: Video },
-    { id: "seguranca", label: "Segurança", icon: ShieldCheck }
+    { id: "seguranca", label: "Segurança", icon: ShieldCheck },
+    { id: "acessos", label: "Acessos", icon: KeyRound }
   ];
 
   return (
@@ -53,7 +74,7 @@ export default function SettingsTabs({ initialSettings, initialRules, initialLev
           return (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
+              onClick={() => handleTabChange(tab.id)}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -137,6 +158,10 @@ export default function SettingsTabs({ initialSettings, initialRules, initialLev
               </div>
             </div>
           </div>
+        )}
+
+        {activeTab === "acessos" && (
+          <AccessManager initialAccessTypes={initialAccessTypes} />
         )}
       </div>
     </>

@@ -33,14 +33,39 @@ export default async function EvaluationsPage() {
     .eq("id", user.id)
     .single();
 
+  // Bug #4 Fix: Regenera Signed URLs no render para as avaliações que exibem fotos
+  // (Apenas 'latest' e 'first' são usadas no comparativo visual da página)
+  // As URLs armazenadas no banco expiram em 1 ano — esta função garante URLs válidas por 1h por render.
+  const refreshSignedUrls = async (evalObj: any) => {
+    if (!evalObj?.photos?.length) return evalObj;
+    const refreshedPhotos = await Promise.all(
+      evalObj.photos.map(async (photo: { url: string; path?: string; label?: string }) => {
+        if (photo.path) {
+          const { data } = await supabase.storage
+            .from("physical-evaluations")
+            .createSignedUrl(photo.path, 3600); // 1h — seguro e sem sobrecarga de cache
+          return { ...photo, url: data?.signedUrl || photo.url };
+        }
+        return photo;
+      })
+    );
+    return { ...evalObj, photos: refreshedPhotos };
+  };
+
   // Enriquecimento de dados (Self-Healing via Centralized Engine)
-  const enrichedEvaluations = (evaluations || []).map(ev => 
+  const enrichedEvaluations = (evaluations || []).map(ev =>
     enrichEvaluation(ev, { gender: profile?.gender, birth_date: profile?.birth_date })
   );
 
+  // Aplica refresh de URLs nas avaliações que exibem fotos na página (latest e first)
+  // Executado em paralelo para não bloquear o render
+  const [latestWithPhotos, firstWithPhotos] = await Promise.all([
+    refreshSignedUrls(enrichedEvaluations?.[0]),
+    refreshSignedUrls(enrichedEvaluations?.[enrichedEvaluations?.length - 1]),
+  ]);
 
-  const latest = enrichedEvaluations?.[0];
-  const first = enrichedEvaluations?.[enrichedEvaluations?.length - 1];
+  const latest = latestWithPhotos;
+  const first = firstWithPhotos;
 
   // Cálculos Metabólicos (Baseado na mais recente)
   const age = profile?.birth_date && latest

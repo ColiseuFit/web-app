@@ -74,11 +74,11 @@ interface ActivityItem {
 
 export default function ActivityDashboard({ 
   history = [], 
-  isClubPass = false,
+  hasAccess = true,
   upgradeLink = null
 }: { 
   history?: ActivityItem[], 
-  isClubPass?: boolean,
+  hasAccess?: boolean,
   upgradeLink?: string | null
 }) {
   const [activePeriod, setActivePeriod] = useState("Mês");
@@ -115,8 +115,8 @@ export default function ActivityDashboard({
     }
   }
 
-  // Se for Clube Pass, exibe o Gate de Acesso Restrito em vez dos dados
-  if (isClubPass) {
+  // Se não tiver acesso, exibe o Gate de Acesso Restrito em vez dos dados
+  if (!hasAccess) {
     return (
       <div className="activity-dashboard-root" style={{ marginTop: "20px" }}>
         <AccessGate 

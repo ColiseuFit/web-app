@@ -160,9 +160,10 @@ export const physicalEvaluationSchema = z.object({
   id: z.string().uuid().optional(),
   student_id: z.string().uuid("ID do aluno obrigatório"),
   evaluation_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data inválida"),
-  weight: z.number().positive("Peso deve ser positivo").optional(),
-  height: z.number().positive("Altura deve ser positiva").optional(),
-  body_fat_percentage: z.number().min(0).max(100).optional(),
+  weight: z.number().positive("Peso deve ser positivo").optional().nullable(),
+  height: z.number().positive("Altura deve ser positiva").optional().nullable(),
+  // .nullable() é obrigatório: o form envia null quando não há valor (não undefined), e .optional() sozinho não aceita null no Zod
+  body_fat_percentage: z.number().min(0).max(100).optional().nullable(),
   protocol: z.string().default("Pollock 7 Dobras"),
   measurements: z.record(z.any()).default({}),
   skinfolds: z.record(z.any()).default({}),

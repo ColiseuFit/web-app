@@ -5,6 +5,7 @@ import StudentHeader from "@/components/StudentHeader";
 import BottomNav from "@/components/BottomNav";
 import ActivityDashboard from "./ActivityDashboard";
 import { getBoxSettings } from "@/lib/constants/settings_actions";
+import { getAccessPermissions } from "@/lib/constants/access_actions";
 
 export const metadata: Metadata = {
   title: "Minhas Atividades",
@@ -34,7 +35,9 @@ export default async function TreinosPage() {
 
   const displayName = profile?.display_name || profile?.full_name || "Atleta";
   const studentProfileLevel = profile?.level || "iniciante";
-  const isClubPass = profile?.membership_type === 'club_pass';
+  
+  const permissions = await getAccessPermissions(profile?.membership_type || 'club_pass');
+  const hasTimelineAccess = permissions.id === 'club'; // Todo: maybe add a toggle for this in the future if requested
 
   // Link de Upgrade (WhatsApp)
   const rawWhatsApp = boxSettings?.box_whatsapp || "";
@@ -239,7 +242,7 @@ export default async function TreinosPage() {
         {/* Activity Dashboard & Sync Badge */}
         <ActivityDashboard 
           history={wodHistory as any} 
-          isClubPass={isClubPass}
+          hasAccess={hasTimelineAccess}
           upgradeLink={upgradeLink}
         />
 

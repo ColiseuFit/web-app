@@ -209,7 +209,7 @@ export default function RunningHubClient({ runners }: RunningHubClientProps) {
           <thead>
             <tr>
               <th style={{ textAlign: "left", padding: "16px 24px" }}>Atleta</th>
-              <th style={{ textAlign: "left", padding: "16px" }}>Vínculo</th>
+              <th style={{ textAlign: "left", padding: "16px" }}>Acesso</th>
               <th style={{ textAlign: "left", padding: "16px" }}>Nível</th>
               <th style={{ textAlign: "center", padding: "16px" }}>Status</th>
               <th style={{ textAlign: "center", padding: "16px" }}>Progresso</th>

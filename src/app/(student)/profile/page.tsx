@@ -14,6 +14,7 @@ import { getTodayDate } from "@/lib/date-utils";
 import { getLevelInfo } from "@/lib/constants/levels";
 import { getCachedLevels } from "@/lib/constants/levels_actions";
 import { getBoxSettings } from "@/lib/constants/settings_actions";
+import { getAccessPermissions } from "@/lib/constants/access_actions";
 import { enrichEvaluation } from "@/lib/physique-utils";
 
 export const metadata: Metadata = {
@@ -99,7 +100,8 @@ export default async function ProfilePage() {
    * 2. Níveis (Graduações) são geridos separadamente pelos coaches e não vinculados mecanicamente aos pontos.
    */
   const pointsActual = profile?.points_balance || 0;
-  const isClubPass = profile?.membership_type === 'club_pass';
+  const permissions = await getAccessPermissions(profile?.membership_type || 'club_pass');
+  const hasEvalAccess = permissions.can_view_evaluations;
   
   const checkIns = checkInsCount || [];
   
@@ -196,7 +198,7 @@ export default async function ProfilePage() {
 
             <EvalGateLink
               href="/profile/evaluations"
-              isClubPass={isClubPass}
+              hasAccess={hasEvalAccess}
               upgradeLink={upgradeLink}
               style={{ 
                 marginTop: "24px",
@@ -299,7 +301,7 @@ export default async function ProfilePage() {
             <div style={{ flex: 1, height: "2px", background: "#000" }} />
             <EvalGateLink
               href="/profile/evaluations"
-              isClubPass={isClubPass}
+              hasAccess={hasEvalAccess}
               upgradeLink={upgradeLink}
               style={{ 
                 fontSize: "10px", 
@@ -317,7 +319,7 @@ export default async function ProfilePage() {
 
           {latestEvaluation ? (
             <>
-              <EvalGateLink href="/profile/evaluations" isClubPass={isClubPass} upgradeLink={upgradeLink} style={{ textDecoration: "none", color: "inherit", display: "block" }}>
+              <EvalGateLink href="/profile/evaluations" hasAccess={hasEvalAccess} upgradeLink={upgradeLink} style={{ textDecoration: "none", color: "inherit", display: "block" }}>
                 <div style={{ 
                   background: "#FFF", 
                   padding: "24px", 
@@ -367,7 +369,7 @@ export default async function ProfilePage() {
                 <EvalRequestButton
                   whatsappLink={whatsappLink}
                   upgradeLink={upgradeLink}
-                  isClubPass={isClubPass}
+                  hasAccess={hasEvalAccess}
                   label="SOLICITAR NOVA AVALIAÇÃO"
                   size={14}
                 />
@@ -385,7 +387,7 @@ export default async function ProfilePage() {
                 <EvalRequestButton
                   whatsappLink={whatsappLink}
                   upgradeLink={upgradeLink}
-                  isClubPass={isClubPass}
+                  hasAccess={hasEvalAccess}
                   label="SOLICITAR AVALIAÇÃO"
                   size={12}
                 />
@@ -396,7 +398,7 @@ export default async function ProfilePage() {
 
         {/* ── RECORDES PESSOAIS (PRs) ── */}
         <section style={{ marginBottom: "48px" }}>
-          {isClubPass ? (
+          {!hasEvalAccess ? (
             <AccessGate 
               message="OS RECORDES PESSOAIS (PRs) E O MONITORAMENTO DE EVOLUÇÃO DE CARGAS SÃO EXCLUSIVOS PARA O PLANO CLUBE PREMIUM."
               upgradeLink={upgradeLink}
@@ -444,7 +446,7 @@ export default async function ProfilePage() {
 
         {/* ── MURAL DE CONQUISTAS ── */}
         <section style={{ marginBottom: "0px" }}>
-          {isClubPass ? (
+          {!hasEvalAccess ? (
             <AccessGate 
               message="O MURAL DE CONQUISTAS E SELOS DE EXCELÊNCIA TÉCNICA É UMA FUNCIONALIDADE RESERVADA PARA ATLETAS CLUBE PREMIUM."
               upgradeLink={upgradeLink}

@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import ClubeClient from "./ClubeClient";
 import { getBoxSettings } from "@/lib/constants/settings_actions";
+import { getAccessPermissions } from "@/lib/constants/access_actions";
 
 export const metadata: Metadata = {
   title: "Comunidade",
@@ -33,7 +34,8 @@ export default async function ClubePage() {
     getBoxSettings()
   ]);
 
-  const isClubPass = profile?.membership_type === "club_pass";
+  const permissions = await getAccessPermissions(profile?.membership_type || "club_pass");
+  const hasAccess = permissions.can_view_leaderboard;
   
   // Link de Upgrade (WhatsApp)
   const rawWhatsApp = boxSettings?.box_whatsapp || "";
@@ -42,5 +44,5 @@ export default async function ClubePage() {
     ? `https://wa.me/55${whatsappNumber}?text=${encodeURIComponent("Olá! Gostaria de saber mais sobre como fazer o upgrade para o Plano Clube Premium.")}`
     : null;
 
-  return <ClubeClient isClubPass={isClubPass} upgradeLink={upgradeLink} />;
+  return <ClubeClient hasAccess={hasAccess} upgradeLink={upgradeLink} />;
 }

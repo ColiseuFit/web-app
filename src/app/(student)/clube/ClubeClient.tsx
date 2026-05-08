@@ -18,7 +18,7 @@ import AccessGate from "@/components/AccessGate";
  *
  * @status MOCK (Em Breve) — conteúdo real em desenvolvimento.
  */
-export default function ClubeClient({ isClubPass, upgradeLink }: { isClubPass: boolean, upgradeLink: string | null }) {
+export default function ClubeClient({ hasAccess, upgradeLink }: { hasAccess: boolean, upgradeLink: string | null }) {
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
@@ -57,10 +57,10 @@ export default function ClubeClient({ isClubPass, upgradeLink }: { isClubPass: b
           </p>
         </section>
 
-        {isClubPass ? (
-          /* ── GATE: ACESSO RESTRITO (club_pass) ── */
+        {!hasAccess ? (
+          /* ── GATE: ACESSO RESTRITO ── */
           <AccessGate 
-            message="O RANKING, O HALL DA FAMA E AS LIGAS SEMANAIS SÃO FUNCIONALIDADES EXCLUSIVAS PARA ATLETAS COM VÍNCULO CLUBE PREMIUM."
+            message="O RANKING, O HALL DA FAMA E AS LIGAS SEMANAIS SÃO FUNCIONALIDADES EXCLUSIVAS PARA ATLETAS COM ACESSO CLUBE PREMIUM."
             upgradeLink={upgradeLink}
           />
         ) : (

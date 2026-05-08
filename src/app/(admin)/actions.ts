@@ -419,13 +419,18 @@ export async function deleteWod(date: string) {
 
 /**
  * Persists a physical evaluation for a student.
+ * Cria ou atualiza um registro de avaliação física.
  * 
  * @security
  * - Role Requirement: 'admin', 'coach', or 'reception'.
  * - Validation: Strictly enforced by `physicalEvaluationSchema` (Zod).
  * - Data Integrity: Automatically assigns `evaluator_id` from the active session.
+ * - Authorization: Protected via RLS (admin bypass via service_role after session validation).
  * 
- * @param {PhysicalEvaluationInput} data - The complete evaluation payload including anthropometry, compositions, and photo links.
+ * @cache
+ * - Revalidates administrative and student paths to maintain SSoT.
+ * 
+ * @param {any} data - The complete evaluation payload including anthropometry, compositions, and photo links.
  * @returns {Promise<{ success?: boolean; error?: string }>} Upsert status.
  */
 export async function upsertPhysicalEvaluation(data: any) {
@@ -463,7 +468,11 @@ export async function upsertPhysicalEvaluation(data: any) {
     return { error: "Erro ao salvar a avaliação física." };
   }
 
+  // Invalida cache do admin E do aluno — SSoT: dados salvos devem ser visíveis em todos os portais imediatamente
   revalidatePath("/admin/alunos");
+  revalidatePath("/profile/evaluations");
+  revalidatePath("/profile");
+  revalidatePath("/dashboard");
   return { success: true };
 }
 
@@ -514,6 +523,21 @@ export async function getStudentEvaluations(studentId: string) {
  */
 export async function deletePhysicalEvaluation(id: string) {
   const supabase = await createClient();
+
+  // @security: Defesa em profundidade — verifica role mesmo com RLS ativo
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Sem sessão válida." };
+
+  const { data: roleData } = await supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", user.id)
+    .single();
+
+  if (!roleData || (roleData.role !== "admin" && roleData.role !== "reception")) {
+    return { error: "Acesso negado. Apenas Admin ou Recepção podem excluir avaliações." };
+  }
+
   const res = await supabase.from("physical_evaluations").delete().eq("id", id);
   if (res.error) {
     console.error("[deletePhysicalEvaluation] Error:", res.error);

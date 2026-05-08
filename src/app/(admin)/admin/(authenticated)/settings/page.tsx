@@ -1,4 +1,6 @@
+import { Suspense } from "react";
 import { getBoxSettings, getPointsRules, getLevels } from "@/lib/constants/settings_actions";
+import { getCachedAccessTypes } from "@/lib/constants/access_actions";
 import { createClient } from "@/lib/supabase/server";
 import SettingsTabs from "./SettingsTabs";
 
@@ -16,11 +18,12 @@ import SettingsTabs from "./SettingsTabs";
 export default async function SettingsPage() {
   const supabase = await createClient();
 
-  // Fetch initial settings from DB in parallel
-  const [initialSettings, initialRules, initialLevels] = await Promise.all([
+  // Fetch initial settings from DB in parallel (inclui Access Types)
+  const [initialSettings, initialRules, initialLevels, initialAccessTypes] = await Promise.all([
     getBoxSettings(),
     getPointsRules(),
-    getLevels()
+    getLevels(),
+    getCachedAccessTypes()
   ]);
 
   // Fetch video analytics data (dependent on settings for video_id)
@@ -48,13 +51,16 @@ export default async function SettingsPage() {
         </p>
       </div>
 
-      <SettingsTabs 
-        initialSettings={initialSettings} 
-        initialRules={initialRules}
-        initialLevels={initialLevels}
-        videoViewCount={videoViewCount}
-        totalStudents={totalStudents}
-      />
+      <Suspense fallback={<div>Carregando configurações...</div>}>
+        <SettingsTabs 
+          initialSettings={initialSettings} 
+          initialRules={initialRules}
+          initialLevels={initialLevels}
+          videoViewCount={videoViewCount}
+          totalStudents={totalStudents}
+          initialAccessTypes={initialAccessTypes}
+        />
+      </Suspense>
     </div>
   );
 }

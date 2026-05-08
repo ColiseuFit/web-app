@@ -527,7 +527,7 @@ export default function AlunosClient({
                 </select>
               </div>
               <div>
-                <label style={{ display: "block", fontSize: 12, fontWeight: 500, color: "var(--admin-text-secondary)", marginBottom: 6 }}>Vínculo / Categoria</label>
+                <label style={{ display: "block", fontSize: 12, fontWeight: 500, color: "var(--admin-text-secondary)", marginBottom: 6 }}>Acesso</label>
                 <select name="membership_type" defaultValue="club">
                   {MEMBERSHIP_TYPES.map((type) => (
                     <option key={type.id} value={type.id}>
@@ -594,7 +594,7 @@ export default function AlunosClient({
                 <tr>
                   <th style={{ paddingLeft: "24px" }}>Nome do Aluno</th>
                   <th style={{ width: "120px" }}>Nível</th>
-                  <th style={{ width: "130px" }}>Vínculo</th>
+                  <th style={{ width: "130px" }}>Acesso</th>
                   <th style={{ width: "110px" }}>Pontuação</th>
                   <th style={{ width: "75px" }}>Data</th>
                   <th style={{ width: "160px" }}>Contato</th>
@@ -701,7 +701,7 @@ export default function AlunosClient({
                     <th style={{ width: "180px", textAlign: "left", paddingLeft: "16px", borderLeft: "1px solid #E5E7EB" }}>Contato</th>
                     <th style={{ width: "70px", textAlign: "left", paddingLeft: "12px", borderLeft: "1px solid #E5E7EB" }}>Data</th>
                     <th style={{ width: "125px", textAlign: "center", borderLeft: "1px solid #E5E7EB" }}>Nível</th>
-                    <th style={{ width: "145px", textAlign: "center", borderLeft: "1px solid #E5E7EB" }}>Vínculo</th>
+                    <th style={{ width: "145px", textAlign: "center", borderLeft: "1px solid #E5E7EB" }}>Acesso</th>
                     <th style={{ width: "210px", textAlign: "center", borderLeft: "1px solid #E5E7EB" }}>Ações</th>
                   </tr>
                 </thead>
@@ -1041,7 +1041,7 @@ export default function AlunosClient({
                       </div>
                       
                       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                        <label style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", color: "#666" }}>Vínculo de Acesso</label>
+                        <label style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", color: "#666" }}>Tipo de Acesso</label>
                         <select name="membership_type" defaultValue={selectedStudent.membership_type || "club"} style={{ width: "100%", padding: 14, border: "3px solid #000", fontWeight: 800, outline: "none" }}>
                           {MEMBERSHIP_TYPES.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
                         </select>
@@ -1140,7 +1140,7 @@ export default function AlunosClient({
                         <div className="admin-card" style={{ padding: "20px 24px", border: "3px solid #000", background: "#F9FAFB", boxShadow: "4px 4px 0px rgba(0,0,0,0.05)" }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 8, color: "#666", marginBottom: 8 }}>
                             <Tag size={14} />
-                            <span style={{ fontSize: 10, fontWeight: 900, textTransform: "uppercase" }}>Vínculo</span>
+                            <span style={{ fontSize: 10, fontWeight: 900, textTransform: "uppercase" }}>Acesso</span>
                           </div>
                           <div style={{ fontSize: 16, fontWeight: 900, color: getMembershipLabel(selectedStudent.membership_type).includes("Pass") ? "#DC2626" : "#000" }}>
                             {getMembershipLabel(selectedStudent.membership_type)}
@@ -1270,7 +1270,7 @@ export default function AlunosClient({
                         <div key={e.id} className="admin-card" style={{ padding: 20, border: "3px solid #000", display: "flex", justifyContent: "space-between", alignItems: "center", boxShadow: "8px 8px 0px rgba(0,0,0,0.05)" }}>
                           <div>
                             <div style={{ fontSize: 16, fontWeight: 900 }}>{new Date(e.evaluation_date).toLocaleDateString("pt-BR", { timeZone: "UTC" })}</div>
-                            <div style={{ fontSize: 11, color: "#666", fontWeight: 800, marginTop: 4, textTransform: "uppercase" }}>{e.protocol || "PROTOCOLO N/A"} • {e.weight}kg • BF: {e.body_fat || "—"}%</div>
+                            <div style={{ fontSize: 11, color: "#666", fontWeight: 800, marginTop: 4, textTransform: "uppercase" }}>{e.protocol || "PROTOCOLO N/A"} • {e.weight}kg • BF: {e.body_fat_percentage?.toFixed(1) || "—"}%</div>
                           </div>
                           <div style={{ display: "flex", gap: 8 }}>
                             <button onClick={() => { setSelectedEval(e); setDrawerView("eval-form"); }} className="admin-btn admin-btn-ghost" style={{ width: 40, height: 40, padding: 0 }} title="Editar"><Pencil size={18} /></button>

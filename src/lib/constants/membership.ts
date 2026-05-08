@@ -1,10 +1,13 @@
 /**
- * 🎫 MEMBERSHIP TYPES: Classificação SSoT para controle de acesso (Vínculo).
+ * 🎫 ACCESS TYPES: Classificação SSoT para controle de acesso.
  * 
  * @description
- * Define a natureza do vínculo do aluno com o Coliseu.
+ * Define os tipos de acesso do aluno ao Coliseu.
  * - 'club': Membro nativo com acesso total ao box e ferramentas do app.
  * - 'club_pass': Membro vinculado por plataformas parceiras (Gympass, TotalPass).
+ * 
+ * @deprecated Usar `getCachedAccessTypes()` de `access_actions.ts` para dados dinâmicos.
+ * Este arquivo serve apenas como fallback estático e referência de tipagem.
  */
 export const MEMBERSHIP_TYPES = [
   { 

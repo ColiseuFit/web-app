@@ -333,7 +333,7 @@ export default function TemplateWorkoutsManager({ template, onUpdate }: Props) {
                               setShowAddForm({ week: weekNum, sessionOrder: sOrder, isEdit: true, originalSessionOrder: sOrder });
                               setAddBlocks(sessionBlocks.map(b => ({
                                 description: b.target_description || "",
-                                distance: b.target_distance_km ? b.target_distance_km.toString() : "",
+                                distance: b.target_distance_km ? (b.target_unit === "m" && b.target_distance_km < 1 ? b.target_distance_km * 1000 : b.target_distance_km).toString() : "",
                                 pace: b.target_pace_description || "",
                                 rest: b.target_rest_time_description || "",
                                 reps: b.reps || 1,
@@ -446,7 +446,7 @@ export default function TemplateWorkoutsManager({ template, onUpdate }: Props) {
                                     <div>
                                       <label style={{ display: "block", fontSize: 9, fontWeight: 900, marginBottom: 4 }}>DISTÂNCIA</label>
                                       <div style={{ display: "flex", gap: 4 }}>
-                                        <input name="targetDistanceKm" type="number" step="0.1" defaultValue={w.target_distance_km || ""} className="nb-input" style={{ flex: 1, padding: 8 }} />
+                                        <input name="targetDistanceKm" type="number" step="0.1" defaultValue={w.target_distance_km ? (w.target_unit === "m" && w.target_distance_km < 1 ? w.target_distance_km * 1000 : w.target_distance_km) : ""} className="nb-input" style={{ flex: 1, padding: 8 }} />
                                         <select name="targetUnit" defaultValue={w.target_unit || "km"} className="nb-input" style={{ width: 60, padding: 4, fontSize: 9 }}>
                                           <option value="km">KM</option>
                                           <option value="m">M</option>
@@ -524,7 +524,7 @@ export default function TemplateWorkoutsManager({ template, onUpdate }: Props) {
                                       <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10, fontWeight: 700, color: "#666" }}>
                                         <Zap size={10} /> 
                                         {w.target_unit === "m" 
-                                          ? `${w.target_distance_km}m` 
+                                          ? `${w.target_distance_km && w.target_distance_km < 1 ? w.target_distance_km * 1000 : w.target_distance_km}m` 
                                           : w.target_unit === "min"
                                           ? `${w.target_distance_km}min`
                                           : `${w.target_distance_km}km`}
@@ -532,7 +532,7 @@ export default function TemplateWorkoutsManager({ template, onUpdate }: Props) {
                                         {(w.reps || 1) > 1 && (
                                           <span style={{ opacity: 0.6, marginLeft: 2 }}>
                                             (Tot: {w.target_unit === "m" 
-                                              ? `${((w.target_distance_km || 0) * w.reps / 1000).toFixed(2)}km` 
+                                              ? `${((w.target_distance_km && w.target_distance_km >= 1 ? w.target_distance_km / 1000 : (w.target_distance_km || 0)) * w.reps).toFixed(2)}km` 
                                               : w.target_unit === "min"
                                               ? `${(w.target_distance_km || 0) * w.reps}min`
                                               : `${((w.target_distance_km || 0) * w.reps).toFixed(2)}km`})
@@ -694,7 +694,7 @@ export default function TemplateWorkoutsManager({ template, onUpdate }: Props) {
                                   value={block.distance}
                                   onChange={(e) => {
                                     const val = e.target.value;
-                                    if (parseFloat(val) > 999.9) return;
+                                    if (parseFloat(val) > 99999) return;
                                     updateBlockInForm(idx, "distance", val);
                                   }}
                                   onKeyDown={(e) => ["e", "E", "+", "-"].includes(e.key) && e.preventDefault()}

@@ -187,7 +187,8 @@ export default function CheckInButton({ wodId, date, alreadyChecked, status, res
         {isClassFinished && !result && (
           <EvalGateLink
             href="/treinos"
-            isClubPass={membershipType === 'club_pass'}
+            hasAccess={membershipType !== 'club_pass'}
+            message="O REGISTRO DE SCORES É EXCLUSIVO PARA O PLANO CLUBE PREMIUM."
             upgradeLink={upgradeLink}
             style={{ width: "100%", textDecoration: "none" }}
           >
@@ -222,7 +223,8 @@ export default function CheckInButton({ wodId, date, alreadyChecked, status, res
         {isClassFinished && result && (
            <EvalGateLink
             href="/treinos"
-            isClubPass={membershipType === 'club_pass'}
+            hasAccess={membershipType !== 'club_pass'}
+            message="O ACESSO AO LEADERBOARD É EXCLUSIVO PARA O PLANO CLUBE PREMIUM."
             upgradeLink={upgradeLink}
             style={{ width: "100%", textDecoration: "none" }}
           >

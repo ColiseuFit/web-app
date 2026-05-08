@@ -18,6 +18,7 @@ import { getNextRunningWorkout } from "@/lib/actions/running_actions";
 import RunningHomeCard from "@/components/RunningHomeCard";
 import { getTodayDate, getWeekDates, getMinWeekOffset } from "@/lib/date-utils";
 import { getBoxSettings } from "@/lib/constants/settings_actions";
+import { getAccessPermissions } from "@/lib/constants/access_actions";
 import { DAY_SHORT, ACTIVE_DAYS, SYSTEM_START_DATE } from "@/lib/constants/calendar";
 import { EvalGateLink } from "@/components/EvalRequestButton";
 
@@ -176,7 +177,8 @@ export default async function AppDashboard({ searchParams }: PageProps) {
     ? `https://wa.me/55${whatsappNumber}?text=${encodeURIComponent("Olá! Gostaria de saber mais sobre como fazer o upgrade para o Plano Clube Premium.")}`
     : null;
 
-  const isClubPass = profile?.membership_type === 'club_pass';
+  const permissions = await getAccessPermissions(profile?.membership_type || 'club_pass');
+  const isPremiumBadge = permissions.id === 'club';
 
   return (
     <div style={{ minHeight: "100vh", backgroundColor: "var(--nb-bg)", color: "var(--nb-text)", paddingBottom: "100px", position: "relative" }}>
@@ -287,13 +289,14 @@ export default async function AppDashboard({ searchParams }: PageProps) {
               {/* Membership Badge */}
               <EvalGateLink
                 href="#"
-                isClubPass={isClubPass}
+                hasAccess={isPremiumBadge}
+                message="FAÇA O UPGRADE PARA O PLANO CLUBE PREMIUM E DESBLOQUEIE TODAS AS FUNCIONALIDADES DO APP."
                 upgradeLink={upgradeLink}
                 style={{
                   display: "inline-flex",
                   alignItems: "center",
                   padding: "5px 10px",
-                  background: isClubPass ? "#000" : "var(--nb-red)",
+                  background: isPremiumBadge ? "#000" : "var(--nb-red)",
                   color: "#fff",
                   border: "2px solid #000",
                   boxShadow: "3px 3px 0px #000",
@@ -303,11 +306,11 @@ export default async function AppDashboard({ searchParams }: PageProps) {
                   textTransform: "uppercase",
                   height: "30px",
                   boxSizing: "border-box",
-                  cursor: isClubPass ? "pointer" : "default",
+                  cursor: isPremiumBadge ? "default" : "pointer",
                   whiteSpace: "nowrap",
                 }}
               >
-                {isClubPass ? 'CLUBE PASS' : 'CLUBE PREMIUM'}
+                {permissions.label}
               </EvalGateLink>
             </div>
           </div>

@@ -19,7 +19,7 @@ import AccessGate from "./AccessGate";
 interface EvalRequestButtonProps {
   whatsappLink: string;
   upgradeLink: string | null | undefined;
-  isClubPass: boolean;
+  hasAccess: boolean;
   label?: string;
   size?: number;
 }
@@ -27,13 +27,13 @@ interface EvalRequestButtonProps {
 export function EvalRequestButton({ 
   whatsappLink, 
   upgradeLink, 
-  isClubPass, 
+  hasAccess, 
   label = "SOLICITAR AVALIAÇÃO", 
   size = 12 
 }: EvalRequestButtonProps) {
   const [showGate, setShowGate] = useState(false);
 
-  if (!isClubPass) {
+  if (hasAccess) {
     return (
       <a
         href={whatsappLink}
@@ -62,7 +62,7 @@ export function EvalRequestButton({
       {showGate && (
         <AccessGate
           isModal
-          message="A SOLICITAÇÃO DE AVALIAÇÃO FÍSICA É EXCLUSIVA PARA ATLETAS COM VÍNCULO CLUBE PREMIUM."
+          message="A SOLICITAÇÃO DE AVALIAÇÃO FÍSICA É EXCLUSIVA PARA ATLETAS COM ACESSO CLUBE PREMIUM."
           upgradeLink={upgradeLink}
           onClose={() => setShowGate(false)}
         />
@@ -80,15 +80,16 @@ export function EvalRequestButton({
 interface EvalGateLinkProps {
   href: string;
   upgradeLink: string | null | undefined;
-  isClubPass: boolean;
+  hasAccess: boolean;
+  message?: string;
   style?: React.CSSProperties;
   children: React.ReactNode;
 }
 
-export function EvalGateLink({ href, upgradeLink, isClubPass, style, children }: EvalGateLinkProps) {
+export function EvalGateLink({ href, upgradeLink, hasAccess, message = "O HISTÓRICO DE AVALIAÇÕES FÍSICAS É EXCLUSIVO PARA ATLETAS COM ACESSO CLUBE PREMIUM.", style, children }: EvalGateLinkProps) {
   const [showGate, setShowGate] = useState(false);
 
-  if (!isClubPass) {
+  if (hasAccess) {
     return (
       <a href={href} style={style}>
         {children}
@@ -108,7 +109,7 @@ export function EvalGateLink({ href, upgradeLink, isClubPass, style, children }:
       {showGate && (
         <AccessGate
           isModal
-          message="O HISTÓRICO DE AVALIAÇÕES FÍSICAS É EXCLUSIVO PARA ATLETAS COM VÍNCULO CLUBE PREMIUM."
+          message={message}
           upgradeLink={upgradeLink}
           onClose={() => setShowGate(false)}
         />
