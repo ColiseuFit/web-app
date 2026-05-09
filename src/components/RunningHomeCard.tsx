@@ -25,10 +25,19 @@ interface Props {
 }
 
 /**
- * RunningHomeCard — Visualização da Próxima Sessão (Timeline Híbrida).
+ * RunningHomeCard - Componente de exibição do próximo treino na Home do Aluno.
  * 
- * @design Neo-Brutalist Blue (#2980BA / #E8F4FD).
- * @ux Focado na progressão linear por sessões, suportando múltiplos blocos.
+ * @description Exibe o próximo treino de corrida pendente do atleta.
+ * Ao invés de exibir apenas um bloco isolado, este componente processa um array de blocos 
+ * pertencentes à mesma sessão e os agrupa em uma interface limpa e gamificada (Neo-Brutalism).
+ * O volume total é normalizado em KM para prevenir bugs visuais e facilitar a leitura do atleta.
+ * 
+ * @param {Props} props - Propriedades do componente
+ * @param {RunningWorkout | RunningWorkout[] | null} props.workout - Dados do treino, contendo a lista completa de blocos daquela sessão.
+ * @returns {React.ReactElement | null} O Card do próximo treino, ou null se não houver treinos pendentes.
+ * 
+ * @UI_UX A estrutura do treino é comprimida em uma timeline vertical simplificada ("Estrutura do Treino"), 
+ *        exibindo apenas badges (Zona, Categoria, KM) para reduzir a carga cognitiva do usuário antes do play.
  */
 export default function RunningHomeCard({ workout }: Props) {
   if (!workout) return null;
@@ -47,9 +56,16 @@ export default function RunningHomeCard({ workout }: Props) {
     const dist = parseFloat(String(b.target_distance_km)) || 0;
     const reps = b.reps || 1;
     const unit = b.target_unit?.toLowerCase() || 'km';
+    
     if (unit === 'min') return acc;
-    if (unit === 'm') return acc + ((dist * reps) / 1000);
-    return acc + (dist * reps);
+    
+    // Normalização: se a unidade for "m", verifica se já está em km (ex: 0.5) ou em metros (ex: 500)
+    let distInKm = dist;
+    if (unit === 'm') {
+      distInKm = dist >= 1 ? dist / 1000 : dist;
+    }
+    
+    return acc + (distInKm * reps);
   }, 0);
 
   return (
@@ -116,7 +132,7 @@ export default function RunningHomeCard({ workout }: Props) {
                border: "1px solid #000",
                textTransform: "uppercase"
              }}>
-               SEM {firstBlock.week_number} · S{firstBlock.session_order}
+               SEMANA {firstBlock.week_number}
              </div>
           </div>
         </div>
@@ -125,74 +141,87 @@ export default function RunningHomeCard({ workout }: Props) {
         <div style={{ padding: "16px" }}>
           <div style={{ 
             fontSize: "10px", 
-            fontWeight: 800, 
+            fontWeight: 900, 
             color: "#2980BA", 
-            marginBottom: 8,
+            marginBottom: 4,
             textTransform: "uppercase",
-            letterSpacing: "0.02em"
+            letterSpacing: "0.04em"
           }}>
             {planTitle}
           </div>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div style={{
+            fontSize: "24px",
+            fontWeight: 950,
+            textTransform: "uppercase",
+            color: "#000",
+            marginBottom: 16,
+            lineHeight: 1.1
+          }}>
+            TREINO {firstBlock.session_order}
+          </div>
+
+          <div style={{ 
+            display: "flex", flexDirection: "column", gap: 12, 
+            background: "#F8FAFC", padding: "12px", border: "1px solid #E2E8F0" 
+          }}>
+            <div style={{ fontSize: "10px", fontWeight: 800, color: "#64748B", textTransform: "uppercase" }}>
+              Estrutura do Treino ({blocks.length} {blocks.length === 1 ? 'bloco' : 'blocos'})
+            </div>
             {blocks.map((b, idx) => (
               <div key={b.id} style={{ 
                 position: "relative", 
                 paddingLeft: 12,
-                borderLeft: idx === blocks.length - 1 ? "none" : "2px dashed #EEE"
+                borderLeft: idx === blocks.length - 1 ? "2px solid transparent" : "2px solid #CBD5E1",
+                paddingBottom: idx === blocks.length - 1 ? 0 : 12
               }}>
                 {/* Indicador de Timeline */}
                 <div style={{ 
-                  position: "absolute", left: -4, top: 4, 
-                  width: 6, height: 6, background: "#2980BA", borderRadius: "50%",
-                  border: "2px solid #FFF"
+                  position: "absolute", left: -5, top: 2, 
+                  width: 8, height: 8, background: "#2980BA", borderRadius: "50%",
                 }} />
 
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 900, fontSize: "14px", lineHeight: 1.2, color: "#000", textTransform: "uppercase" }}>
-                      {(b.reps || 1) > 1 && <span style={{ color: "var(--nb-blue)", marginRight: 4 }}>{b.reps}x</span>}
-                      {b.target_description}
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", alignItems: "center", marginTop: 1 }}>
+                  {b.category && (
+                    <span style={{ 
+                      fontSize: "9px", fontWeight: 900, padding: "2px 6px", 
+                      background: "#E2E8F0", color: "#334155", 
+                      textTransform: "uppercase", borderRadius: "2px"
+                    }}>
+                      {b.category}
+                    </span>
+                  )}
+                  {b.target_zone && b.target_zone.toLowerCase() !== "livre" && (
+                    <span style={{ 
+                      fontSize: "9px", fontWeight: 950, padding: "2px 6px", 
+                      background: "#E8F4FD", color: "#2980BA", 
+                      textTransform: "uppercase", borderRadius: "2px"
+                    }}>
+                      {b.target_zone}
+                    </span>
+                  )}
+                  {(b.target_distance_km || b.reps) && (
+                    <div style={{ display: "flex", alignItems: "center", gap: 2, fontSize: "10px", fontWeight: 900, color: "#000" }}>
+                      {(b.reps || 1) > 1 && <span style={{ color: "var(--nb-blue)", marginRight: 2 }}>{b.reps}x</span>}
+                      {b.target_unit === "m" 
+                        ? `${((Number(b.target_distance_km) || 0) >= 1 ? Number(b.target_distance_km) : Number(b.target_distance_km) * 1000).toFixed(0)}m`
+                        : b.target_unit === "min" 
+                          ? `${b.target_distance_km}min`
+                          : `${b.target_distance_km}km`
+                      }
                     </div>
-                    
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginTop: "6px" }}>
-                      {b.category && (
-                        <span style={{ 
-                          fontSize: "8px", fontWeight: 900, padding: "1px 4px", 
-                          background: "#F1F5F9", color: "#64748B", 
-                          border: "1px solid #CBD5E1", textTransform: "uppercase" 
-                        }}>
-                          {b.category}
-                        </span>
-                      )}
-                      {b.target_zone && b.target_zone.toLowerCase() !== "livre" && (
-                        <span style={{ 
-                          fontSize: "8px", fontWeight: 950, padding: "1px 4px", 
-                          background: "#E8F4FD", color: "#2980BA", 
-                          border: "1px solid #2980BA", textTransform: "uppercase" 
-                        }}>
-                          {b.target_zone}
-                        </span>
-                      )}
-                      {(b.target_distance_km || b.reps) && (
-                        <div style={{ display: "flex", alignItems: "center", gap: 2, fontSize: "9px", fontWeight: 800, color: "#475569" }}>
-                          <Zap size={8} color="#2980BA" fill="#2980BA" />
-                          {b.target_unit === "m" 
-                            ? `${((Number(b.target_distance_km) || 0) >= 1 ? Number(b.target_distance_km) : Number(b.target_distance_km) * 1000).toFixed(0)}M`
-                            : b.target_unit === "min" 
-                              ? `${b.target_distance_km}MIN`
-                              : `${b.target_distance_km}KM`
-                          }
-                        </div>
-                      )}
-                      {b.target_pace_description && (
-                        <div style={{ display: "flex", alignItems: "center", gap: 2, fontSize: "9px", fontWeight: 800, color: "#475569" }}>
-                          <ActivityIcon size={8} color="#2980BA" />
-                          {b.target_pace_description}
-                        </div>
-                      )}
+                  )}
+                  {b.target_pace_description && (
+                    <div style={{ display: "flex", alignItems: "center", gap: 2, fontSize: "9px", fontWeight: 800, color: "#475569" }}>
+                      <ActivityIcon size={10} color="#2980BA" />
+                      {b.target_pace_description}
                     </div>
-                  </div>
+                  )}
+                  {b.target_rest_time_description && (
+                    <div style={{ display: "flex", alignItems: "center", gap: 2, fontSize: "9px", fontWeight: 800, color: "#475569" }}>
+                      <span style={{ color: "#94A3B8" }}>DESC:</span> {b.target_rest_time_description}
+                    </div>
+                  )}
                 </div>
               </div>
             ))}

@@ -75,6 +75,12 @@ Independentemente do nível ou da frequência, a Metodologia Coliseu exige que t
 2. **Esforço (Effort):** O núcleo do treino ditado pelas regras do microciclo (ex: os tiros na Zona 3 ou a rodagem principal na Zona 1).
 3. **Volta à Calma (Cooldown):** Obrigatório. Redução drástica do pace para baixar frequência cardíaca (5-10 min caminhada leve).
 
+**Importante: Título vs Categoria**
+No sistema de gestão do Coliseu, separamos "Estrutura" de "Biomecânica" para maior clareza do aluno e precisão fisiológica no registro dos dados:
+- **Título do Bloco (Opcional, porém recomendado):** Define a etapa estrutural da sessão (Ex: *Aquecimento*, *Série Principal*, *Tiros*, *Desaquecimento*).
+- **Categoria (Obrigatória):** Define a ação biomecânica exata que o atleta executará (Ex: *Caminhada*, *Corrida*, *Tiro*, *Longo*, *Tempo Run*).
+- *Exemplo Prático:* O bloco 1 tem o Título "Aquecimento" e a Categoria "Caminhada". O Bloco 2 tem o Título "Treino Principal" e a Categoria "Corrida".
+
 *A disciplina na execução dos blocos de Aquecimento e Cooldown é tão avaliada quanto o bloco de Esforço no nosso sistema.*
 
 ---

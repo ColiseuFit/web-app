@@ -5,7 +5,7 @@ import { Footprints, TrendingUp, History, LayoutGrid, Zap, Timer, User } from "l
 import RunningWorkoutsList from "./RunningWorkoutsList";
 import RunningAnalytics from "./RunningAnalytics";
 import RunningProfileTab from "./RunningProfileTab";
-import { formatPace } from "@/lib/constants/running";
+import { formatPace, RUNNING_CATEGORIES, RUNNING_ZONES } from "@/lib/constants/running";
 import Link from "next/link";
 import AlertModal from "@/components/AlertModal";
 
@@ -286,42 +286,138 @@ export default function RunningHubTabs({
               <h3 style={{ fontSize: 12, fontWeight: 950, textTransform: "uppercase", margin: 0 }}>Histórico de Atividades</h3>
             </div>
             
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {historyData.workouts.map((w: any) => (
-                <div key={w.id} className="nb-card" style={{ padding: 16, background: "#FFF" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <div>
-                      <div style={{ fontSize: 9, fontWeight: 900, color: "var(--nb-red)", textTransform: "uppercase" }}>
-                        {new Date(w.completed_at!).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "2-digit" })}
-                      </div>
-                      <div style={{ fontSize: 14, fontWeight: 800 }}>{w.target_description || "Corrida Registrada"}</div>
-                    </div>
-                    <div style={{ textAlign: "right" }}>
-                      <div style={{ fontSize: 16, fontWeight: 950 }}>{w.actual_distance_km} KM</div>
-                      <div style={{ fontSize: 10, fontWeight: 700, color: "#666" }}>{formatPace(w.actual_pace_seconds_per_km)}/km</div>
-                      {/* Link obrigatório quando dado vem do Strava — Brand Guidelines §3 */}
-                      {(w.strava_activity_id || w.target_description?.includes("Strava")) && (
-                        <a
-                          href={w.strava_activity_id ? `https://www.strava.com/activities/${w.strava_activity_id}` : "https://www.strava.com/dashboard"}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          style={{
-                            fontSize: 9,
-                            fontWeight: 950,
-                            color: "#FC5200",
-                            textDecoration: "underline",
-                            textTransform: "uppercase",
-                            display: "block",
-                            marginTop: 4
-                          }}
-                        >
-                          View on Strava
-                        </a>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              {(() => {
+                // Agrupar por sessão (week_number - session_order)
+                const groupedSessions: Record<string, any[]> = {};
+                historyData.workouts.forEach((w: any) => {
+                   const key = `${w.week_number}-${w.session_order}`;
+                   if (!groupedSessions[key]) groupedSessions[key] = [];
+                   groupedSessions[key].push(w);
+                });
+                
+                // Ordenar sessões por data (pegar a data do primeiro bloco concluído)
+                const sortedSessionKeys = Object.keys(groupedSessions).sort((a, b) => {
+                   const dateA = new Date(groupedSessions[a][0].completed_at!).getTime();
+                   const dateB = new Date(groupedSessions[b][0].completed_at!).getTime();
+                   return dateB - dateA; // Decrescente
+                });
+
+                return sortedSessionKeys.map(sessionKey => {
+                   const sessionBlocks = groupedSessions[sessionKey].sort((a, b) => (a.block_order || 0) - (b.block_order || 0));
+                   const firstBlock = sessionBlocks[0];
+                   
+                   // Calcular volume total da sessão
+                   let sessionTotalKm = 0;
+                   sessionBlocks.forEach(b => {
+                      if (b.actual_distance_km) {
+                         sessionTotalKm += parseFloat(String(b.actual_distance_km));
+                      }
+                   });
+                   const isMeters = sessionTotalKm > 0 && sessionTotalKm < 1;
+                   const displaySessionVol = isMeters ? (sessionTotalKm * 1000).toFixed(0) : sessionTotalKm.toFixed(1);
+                   const displaySessionUnit = isMeters ? "M" : "KM";
+
+                   return (
+                     <div key={sessionKey} className="nb-card" style={{ padding: 0, background: "#FFF", overflow: "hidden" }}>
+                        {/* Header da Sessão */}
+                        <div style={{ background: "#000", color: "#FFF", padding: "12px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                           <div style={{ display: "flex", flexDirection: "column" }}>
+                              <span style={{ fontSize: 9, fontWeight: 900, color: "var(--nb-yellow)", textTransform: "uppercase" }}>
+                                {new Date(firstBlock.completed_at!).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "2-digit" })}
+                              </span>
+                              <span style={{ fontSize: 14, fontWeight: 950, textTransform: "uppercase" }}>
+                                TREINO {firstBlock.session_order < 999 ? firstBlock.session_order : "EXTRA"}
+                              </span>
+                           </div>
+                           <div style={{ textAlign: "right" }}>
+                              <div style={{ fontSize: 10, fontWeight: 700, color: "#999", textTransform: "uppercase" }}>Volume da Sessão</div>
+                              <div style={{ fontSize: 18, fontWeight: 950, color: "var(--nb-blue)", lineHeight: 1.1 }}>
+                                {sessionTotalKm > 0 ? displaySessionVol : "-"} <span style={{ fontSize: 10 }}>{sessionTotalKm > 0 ? displaySessionUnit : ""}</span>
+                              </div>
+                           </div>
+                        </div>
+
+                        {/* Blocos da Sessão */}
+                        <div style={{ padding: "16px 12px", display: "flex", flexDirection: "column", gap: "12px" }}>
+                          {sessionBlocks.map((w: any, bIdx: number) => {
+                             const cat = w.category ? RUNNING_CATEGORIES.find(c => c.id === w.category) : null;
+                             const zone = w.target_zone ? RUNNING_ZONES.find(z => z.id === w.target_zone) : null;
+                             const isBlockMeters = w.actual_distance_km && w.actual_distance_km < 1;
+                             const displayBlockVol = isBlockMeters ? (w.actual_distance_km * 1000).toFixed(0) : w.actual_distance_km;
+                             const displayBlockUnit = isBlockMeters ? "M" : "KM";
+
+                             return (
+                               <div key={w.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: bIdx === sessionBlocks.length - 1 ? "none" : "1px dashed #E5E7EB", paddingBottom: bIdx === sessionBlocks.length - 1 ? 0 : 12 }}>
+                                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+                                        {cat && <span style={{ fontSize: 9, fontWeight: 900, background: cat.color, color: "#FFF", padding: "2px 6px", borderRadius: 2, textTransform: "uppercase" }}>{cat.label}</span>}
+                                        {zone && zone.id !== "livre" && <span style={{ fontSize: 9, fontWeight: 950, background: zone.color, color: "#FFF", padding: "2px 6px", borderRadius: 2, textTransform: "uppercase" }}>{zone.label}</span>}
+                                        {w.reps && w.reps > 1 && <span style={{ fontSize: 9, fontWeight: 900, color: "var(--nb-red)" }}>{w.reps}x</span>}
+                                     </div>
+                                     <div style={{ fontSize: 11, fontWeight: 600, color: "#64748B" }}>
+                                        {w.target_distance_km || w.target_pace_description ? (
+                                          <>
+                                            Alvo: {
+                                              w.target_distance_km ? (
+                                                w.target_unit === "m"
+                                                  ? `${((Number(w.target_distance_km) || 0) >= 1 ? Number(w.target_distance_km) : Number(w.target_distance_km) * 1000).toFixed(0)}m `
+                                                  : w.target_unit === "min"
+                                                    ? `${w.target_distance_km}min `
+                                                    : `${w.target_distance_km}km `
+                                              ) : ""
+                                            }
+                                            {w.target_pace_description ? `@ ${w.target_pace_description}` : ""}
+                                          </>
+                                        ) : (
+                                          <span style={{ fontStyle: "italic" }}>Bloco Concluído</span>
+                                        )}
+                                     </div>
+                                  </div>
+
+                                  <div style={{ textAlign: "right" }}>
+                                     {w.actual_distance_km ? (
+                                       <>
+                                          <div style={{ fontSize: 14, fontWeight: 950, color: "var(--nb-blue)" }}>
+                                            {displayBlockVol}<span style={{ fontSize: 9, marginLeft: 2 }}>{displayBlockUnit}</span>
+                                          </div>
+                                          {w.actual_pace_seconds_per_km && (
+                                            <div style={{ fontSize: 10, fontWeight: 700, color: "#64748B", marginTop: 2 }}>
+                                              {formatPace(w.actual_pace_seconds_per_km)}/km
+                                            </div>
+                                          )}
+                                       </>
+                                     ) : (
+                                       <span style={{ fontSize: 10, fontWeight: 900, background: "var(--nb-yellow)", padding: "4px 8px", border: "2px solid #000", color: "#000" }}>CONCLUÍDO</span>
+                                     )}
+                                  </div>
+                               </div>
+                             );
+                          })}
+                        </div>
+                        
+                        {(() => {
+                           const stravaBlock = sessionBlocks.find(b => b.strava_activity_id || b.target_description?.includes("Strava"));
+                           if (stravaBlock) {
+                             return (
+                               <div style={{ background: "#FAFAFA", padding: "10px 16px", borderTop: "2px solid #000", textAlign: "right" }}>
+                                 <a
+                                   href={stravaBlock.strava_activity_id ? `https://www.strava.com/activities/${stravaBlock.strava_activity_id}` : "https://www.strava.com/dashboard"}
+                                   target="_blank"
+                                   rel="noopener noreferrer"
+                                   style={{ fontSize: 9, fontWeight: 950, color: "#FC5200", textDecoration: "underline", textTransform: "uppercase" }}
+                                 >
+                                   View on Strava
+                                 </a>
+                               </div>
+                             );
+                           }
+                           return null;
+                        })()}
+                     </div>
+                   );
+                });
+              })()}
             </div>
           </div>
         </div>

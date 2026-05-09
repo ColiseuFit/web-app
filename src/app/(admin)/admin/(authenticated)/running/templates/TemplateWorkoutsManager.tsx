@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Plus, Trash2, ChevronDown, ChevronRight, Zap, Timer, Edit2, X, Check, Copy, ArrowRightCircle } from "lucide-react";
+import { Plus, Trash2, ChevronDown, ChevronRight, Zap, Timer, Edit2, X, Check, Copy, ArrowRightCircle, ArrowUp, ArrowDown } from "lucide-react";
 import { 
   createTemplateWorkout, 
   deleteTemplateWorkout, 
@@ -17,6 +17,7 @@ interface TemplateWorkout {
   id: string;
   week_number: number;
   session_order: number;
+  title?: string | null;
   target_description: string;
   target_distance_km: number | null;
   target_pace_description: string | null;
@@ -82,6 +83,7 @@ export default function TemplateWorkoutsManager({ template, onUpdate }: Props) {
 
   // Estado para os blocos no formulário de adição
   const [addBlocks, setAddBlocks] = useState<Array<{
+    title: string;
     description: string;
     distance: string;
     pace: string;
@@ -91,7 +93,7 @@ export default function TemplateWorkoutsManager({ template, onUpdate }: Props) {
     zone: string;
     unit: string;
   }>>([{ 
-    description: "", distance: "", pace: "", rest: "", 
+    title: "", description: "", distance: "", pace: "", rest: "", 
     reps: 1, category: "corrida", zone: "Z2", unit: "km" 
   }]);
 
@@ -135,6 +137,7 @@ export default function TemplateWorkoutsManager({ template, onUpdate }: Props) {
           sessionOrder,
           showAddForm.originalSessionOrder,
           addBlocks.map(b => ({
+            title: b.title || null,
             targetDescription: b.description,
             targetDistanceKm: b.distance ? parseFloat(b.distance) : null,
             targetPaceDescription: b.pace || null,
@@ -152,6 +155,7 @@ export default function TemplateWorkoutsManager({ template, onUpdate }: Props) {
           showAddForm.week,
           sessionOrder,
           addBlocks.map(b => ({
+            title: b.title || null,
             targetDescription: b.description,
             targetDistanceKm: b.distance ? parseFloat(b.distance) : null,
             targetPaceDescription: b.pace || null,
@@ -166,7 +170,7 @@ export default function TemplateWorkoutsManager({ template, onUpdate }: Props) {
 
       setShowAddForm(null);
       setAddBlocks([{ 
-        description: "", distance: "", pace: "", rest: "", 
+        title: "", description: "", distance: "", pace: "", rest: "", 
         reps: 1, category: "corrida", zone: "Z2", unit: "km" 
       }]);
       if (onUpdate) onUpdate();
@@ -179,7 +183,7 @@ export default function TemplateWorkoutsManager({ template, onUpdate }: Props) {
 
   const addBlockToForm = () => {
     setAddBlocks(prev => [...prev, { 
-      description: "", distance: "", pace: "", rest: "", 
+      title: "", description: "", distance: "", pace: "", rest: "", 
       reps: 1, category: "corrida", zone: "Z2", unit: "km" 
     }]);
   };
@@ -211,6 +215,24 @@ export default function TemplateWorkoutsManager({ template, onUpdate }: Props) {
       }
 
       next[idx] = newBlock;
+      return next;
+    });
+  };
+
+  const moveBlockUp = (idx: number) => {
+    if (idx === 0) return;
+    setAddBlocks(prev => {
+      const next = [...prev];
+      [next[idx - 1], next[idx]] = [next[idx], next[idx - 1]];
+      return next;
+    });
+  };
+
+  const moveBlockDown = (idx: number) => {
+    if (idx === addBlocks.length - 1) return;
+    setAddBlocks(prev => {
+      const next = [...prev];
+      [next[idx], next[idx + 1]] = [next[idx + 1], next[idx]];
       return next;
     });
   };
@@ -332,6 +354,7 @@ export default function TemplateWorkoutsManager({ template, onUpdate }: Props) {
                             onClick={() => {
                               setShowAddForm({ week: weekNum, sessionOrder: sOrder, isEdit: true, originalSessionOrder: sOrder });
                               setAddBlocks(sessionBlocks.map(b => ({
+                                title: b.title || "",
                                 description: b.target_description || "",
                                 distance: b.target_distance_km ? (b.target_unit === "m" && b.target_distance_km < 1 ? b.target_distance_km * 1000 : b.target_distance_km).toString() : "",
                                 pace: b.target_pace_description || "",
@@ -419,8 +442,12 @@ export default function TemplateWorkoutsManager({ template, onUpdate }: Props) {
                                       <input name="sessionOrder" type="number" required defaultValue={w.session_order} className="nb-input" style={{ width: "100%", padding: 8 }} />
                                     </div>
                                     <div>
+                                      <label style={{ display: "block", fontSize: 9, fontWeight: 900, marginBottom: 4 }}>TÍTULO DO BLOCO (OPCIONAL)</label>
+                                      <input name="title" type="text" defaultValue={w.title || ""} placeholder="Ex: Aquecimento, Tiro, etc" className="nb-input" style={{ width: "100%", padding: 8, fontFamily: "inherit" }} />
+                                    </div>
+                                    <div>
                                       <label style={{ display: "block", fontSize: 9, fontWeight: 900, marginBottom: 4 }}>DESCRIÇÃO DO BLOCO</label>
-                                      <input name="targetDescription" required defaultValue={w.target_description} className="nb-input" style={{ width: "100%", padding: 8 }} />
+                                      <textarea name="targetDescription" required defaultValue={w.target_description} className="nb-input" rows={4} style={{ width: "100%", padding: 8, resize: "vertical", lineHeight: 1.6, fontFamily: "inherit" }} />
                                     </div>
                                   </div>
                                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
@@ -514,6 +541,11 @@ export default function TemplateWorkoutsManager({ template, onUpdate }: Props) {
                                     )}
                                   </div>
 
+                                  {w.title && (
+                                    <div style={{ fontWeight: 950, fontSize: 14, textTransform: "uppercase", marginBottom: 4 }}>
+                                      {w.title}
+                                    </div>
+                                  )}
                                   <div style={{ fontWeight: 800, fontSize: 13, marginBottom: 4 }}>
                                     {(w.reps || 1) > 1 && <span style={{ color: "var(--nb-blue)", marginRight: 4 }}>{w.reps}x</span>}
                                     {w.target_description}
@@ -592,15 +624,51 @@ export default function TemplateWorkoutsManager({ template, onUpdate }: Props) {
                     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                       {addBlocks.map((block, idx) => (
                         <div key={idx} style={{ padding: 16, border: "2px solid #000", background: "#F9F9F9", position: "relative" }}>
-                          {addBlocks.length > 1 && (
-                            <button 
-                              type="button" 
-                              onClick={() => removeBlockFromForm(idx)}
-                              style={{ position: "absolute", top: -10, right: -10, background: "#E74C3C", color: "#FFF", border: "2px solid #000", width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
-                            >
-                              <X size={14} />
-                            </button>
-                          )}
+                          <div style={{ position: "absolute", top: -12, right: -12, display: "flex", gap: 4 }}>
+                            {idx > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => moveBlockUp(idx)}
+                                style={{ background: "#000", color: "#FFF", border: "2px solid #000", width: 26, height: 26, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
+                                title="Mover para cima"
+                              >
+                                <ArrowUp size={14} />
+                              </button>
+                            )}
+                            {idx < addBlocks.length - 1 && (
+                              <button
+                                type="button"
+                                onClick={() => moveBlockDown(idx)}
+                                style={{ background: "#000", color: "#FFF", border: "2px solid #000", width: 26, height: 26, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
+                                title="Mover para baixo"
+                              >
+                                <ArrowDown size={14} />
+                              </button>
+                            )}
+                            {addBlocks.length > 1 && (
+                              <button 
+                                type="button" 
+                                onClick={() => removeBlockFromForm(idx)}
+                                style={{ background: "#E74C3C", color: "#FFF", border: "2px solid #000", width: 26, height: 26, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
+                                title="Remover bloco"
+                              >
+                                <X size={14} />
+                              </button>
+                            )}
+                          </div>
+                          
+                          <div style={{ marginBottom: 16 }}>
+                            <label style={{ display: "block", fontSize: 9, fontWeight: 900, marginBottom: 8, textTransform: "uppercase", color: "#666" }}>Título do Bloco (Opcional)</label>
+                            <input 
+                              type="text" 
+                              value={block.title} 
+                              onChange={(e) => updateBlockInForm(idx, "title", e.target.value)} 
+                              className="nb-input" 
+                              placeholder="Ex: Aquecimento, Tiro 1, etc"
+                              style={{ width: "100%", padding: 8, fontFamily: "inherit", fontSize: 14 }} 
+                            />
+                          </div>
+
                           <div style={{ marginBottom: 16 }}>
                             <label style={{ display: "block", fontSize: 9, fontWeight: 900, marginBottom: 8, textTransform: "uppercase", color: "#666" }}>Categoria</label>
                             <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
@@ -675,13 +743,14 @@ export default function TemplateWorkoutsManager({ template, onUpdate }: Props) {
 
                           <div style={{ marginBottom: 12 }}>
                             <label style={{ display: "block", fontSize: 9, fontWeight: 900, marginBottom: 4, textTransform: "uppercase", color: "#666" }}>Descrição do Bloco</label>
-                            <input 
+                            <textarea 
                               required 
                               placeholder="Ex: Tiro de 400m ou Corrida Leve" 
                               value={block.description}
                               onChange={(e) => updateBlockInForm(idx, "description", e.target.value)}
                               className="nb-input" 
-                              style={{ width: "100%", padding: 10 }} 
+                              rows={4}
+                              style={{ width: "100%", padding: 10, resize: "vertical", lineHeight: 1.6, fontFamily: "inherit" }} 
                             />
                           </div>
 
@@ -813,7 +882,7 @@ export default function TemplateWorkoutsManager({ template, onUpdate }: Props) {
                         <button type="submit" disabled={loading} className="nb-button" style={{ flex: 1, padding: 12, background: "#000", color: "#FFF", fontSize: 11, fontWeight: 950 }}>
                           {loading ? "SALVANDO..." : "⚡ SALVAR SESSÃO COMPLETA"}
                         </button>
-                        <button type="button" onClick={() => { setShowAddForm(null); setAddBlocks([{ description: "", distance: "", pace: "", rest: "", reps: 1, category: "corrida", zone: "Z2", unit: "km" }]); }} className="nb-button" style={{ padding: 12, background: "#EEE", color: "#000", fontSize: 11, fontWeight: 900 }}>
+                        <button type="button" onClick={() => { setShowAddForm(null); setAddBlocks([{ title: "", description: "", distance: "", pace: "", rest: "", reps: 1, category: "corrida", zone: "Z2", unit: "km" }]); }} className="nb-button" style={{ padding: 12, background: "#EEE", color: "#000", fontSize: 11, fontWeight: 900 }}>
                           CANCELAR
                         </button>
                       </div>
@@ -822,7 +891,7 @@ export default function TemplateWorkoutsManager({ template, onUpdate }: Props) {
                   </form>
                 ) : (
                   <button 
-                    onClick={() => { setShowAddForm({ week: weekNum }); setAddBlocks([{ description: "", distance: "", pace: "", rest: "", reps: 1, category: "corrida", zone: "Z2", unit: "km" }]); }}
+                    onClick={() => { setShowAddForm({ week: weekNum }); setAddBlocks([{ title: "", description: "", distance: "", pace: "", rest: "", reps: 1, category: "corrida", zone: "Z2", unit: "km" }]); }}
                     style={{ 
                       padding: 12, 
                       border: "2px dashed #CCC", 

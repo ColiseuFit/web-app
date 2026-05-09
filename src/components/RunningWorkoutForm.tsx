@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { logRunningSession } from "@/lib/actions/running_actions";
 import { MessageSquare, Star, X, Zap, Check } from "lucide-react";
-import { timeToSeconds } from "@/lib/constants/running";
+import { timeToSeconds, RUNNING_CATEGORIES, RUNNING_ZONES } from "@/lib/constants/running";
 import AlertModal from "./AlertModal";
 
 interface RunningWorkoutFormProps {
@@ -32,16 +32,25 @@ type BlockResult = {
 };
 
 /**
- * Formulário avançado para registro de sessões de corrida multi-bloco.
+ * RunningWorkoutForm - Formulário Full-Screen para registro de sessões de corrida multi-bloco.
  * 
  * @description
  * Este componente permite que o atleta registre o resultado real de cada bloco prescrito pelo coach.
  * Ele gerencia o estado local de múltiplos blocos, calculando o pace e validando o esforço (RPE).
+ * Para evitar conflitos de rolagem em dispositivos móveis, utiliza uma arquitetura "Full-Screen Takeover"
+ * (`position: fixed`, `z-index: 9999`) e um "Sticky Footer" para o botão de salvar.
+ * 
+ * @param {RunningWorkoutFormProps} props - Propriedades do componente
+ * @param {Array} props.sessionWorkouts - Lista de blocos que compõem a sessão do dia
+ * @param {Function} props.onClose - Função para fechar o modal/overlay
+ * @param {Function} props.onSuccess - Callback acionado após o registro bem sucedido no backend
+ * 
+ * @returns {React.ReactElement} Interface de formulário sobreposta (takeover)
  * 
  * @protocolo_ui Neo-Brutalismo (Iron Monolith)
  * - Feedback de validação via banner vermelho (proibido alert() nativo)
  * - Botões com estado de carregamento e labels contextuais
- * - Contraste agressivo para legibilidade em movimento
+ * - Contraste agressivo e badges padronizados via `RUNNING_CATEGORIES` e `RUNNING_ZONES`.
  */
 export default function RunningWorkoutForm({ sessionWorkouts, onClose, onSuccess }: RunningWorkoutFormProps) {
   const [loading, setLoading] = useState(false);
@@ -191,38 +200,46 @@ export default function RunningWorkoutForm({ sessionWorkouts, onClose, onSuccess
   };
 
   return (
-    <div className="modal-overlay" style={{
+    <div style={{
       position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
-      background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center",
-      zIndex: 1000, padding: "20px", overflowY: "auto"
+      background: "#fff",
+      zIndex: 9999,
+      display: "flex", flexDirection: "column",
+      animation: "slideInUp 0.25s ease-out"
     }}>
-      <div
-        className="nb-card"
-        style={{
-          width: "100%", maxWidth: "400px", background: "#fff", padding: "24px",
-          position: "relative", animation: "slideInUp 0.3s ease-out",
-          maxHeight: "90vh", overflowY: "auto"
-        }}
-      >
+      {/* Cabeçalho Fixo */}
+      <div style={{
+        padding: "16px 20px",
+        borderBottom: "3px solid #000",
+        background: "#fff",
+        display: "flex", justifyContent: "space-between", alignItems: "center",
+        flexShrink: 0
+      }}>
+        <h3 className="font-display" style={{ fontSize: "20px", fontWeight: 900, textTransform: "uppercase", margin: 0 }}>
+          REGISTRAR <span style={{ color: "var(--nb-red)" }}>TREINO</span>
+        </h3>
         <button
           onClick={onClose}
-          style={{ position: "absolute", top: "12px", right: "12px", background: "none", border: "none", cursor: "pointer" }}
+          style={{
+            background: "#F3F4F6", border: "2px solid #000", borderRadius: "50%",
+            width: "36px", height: "36px", display: "flex", alignItems: "center", justifyContent: "center",
+            cursor: "pointer"
+          }}
         >
-          <X size={24} />
+          <X size={18} strokeWidth={3} />
         </button>
+      </div>
 
-        <h3 className="font-display" style={{ fontSize: "24px", fontWeight: 900, textTransform: "uppercase", marginBottom: "16px" }}>
-          REGISTRAR <span style={{ color: "var(--nb-red)" }}>SESSÃO</span>
-        </h3>
-
-        {showSuccess ? (
-          <div style={{ textAlign: "center", padding: "20px 0", animation: "slideInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1)" }}>
+      {showSuccess ? (
+        /* ── Tela de Sucesso ── */
+        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }}>
+          <div style={{ textAlign: "center", animation: "slideInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1)" }}>
             <div style={{ width: "80px", height: "80px", background: "var(--nb-yellow)", border: "4px solid #000", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px" }}>
               <Zap size={40} fill="#000" />
             </div>
             <h2 className="font-display" style={{ fontSize: "32px", fontWeight: 950, marginBottom: "4px" }}>MISSÃO CONCLUÍDA!</h2>
             <p className="font-headline" style={{ fontSize: "12px", fontWeight: 900, opacity: 0.6, textTransform: "uppercase", marginBottom: "24px" }}>
-              Sessão registrada com sucesso
+              Treino registrado com sucesso
             </p>
             <div style={{ background: "#000", color: "#FFF", padding: "16px", border: "3px solid #000", boxShadow: "6px 6px 0 var(--nb-red)", marginBottom: "32px" }}>
               <div style={{ fontSize: "10px", fontWeight: 900, opacity: 0.7, textTransform: "uppercase" }}>Gamificação</div>
@@ -233,39 +250,100 @@ export default function RunningWorkoutForm({ sessionWorkouts, onClose, onSuccess
               VOLTAR AO HUB
             </button>
           </div>
-        ) : (
-          <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+        </div>
+      ) : (
+        <form onSubmit={handleSubmit} style={{ flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch", padding: "20px" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
 
             <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-              <div style={{ fontSize: "12px", fontWeight: 900, textTransform: "uppercase" }}>Detalhes da Sessão:</div>
+              <div style={{ fontSize: "12px", fontWeight: 900, textTransform: "uppercase" }}>Resumo do Treino:</div>
               {sessionWorkouts.map((w) => {
                 const blockState = blocks.find(b => b.workoutId === w.id)!;
                 const unit = w.target_unit?.toLowerCase() || "km";
 
                 return (
                   <div key={w.id} style={{
-                    border: "2px solid #000", padding: "12px",
-                    background: blockState.completed ? "var(--nb-yellow)" : "#f5f5f5",
-                    opacity: blockState.completed ? 1 : 0.7,
+                    border: "1px solid #e5e5e5",
+                    borderLeft: blockState.completed ? "4px solid var(--nb-yellow)" : "4px solid #ddd",
+                    padding: "16px",
+                    background: "#fff",
+                    opacity: blockState.completed ? 1 : 0.6,
                     transition: "all 0.2s ease"
                   }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                      <div>
-                        <div style={{ fontWeight: 900, textTransform: "uppercase", fontSize: "12px" }}>{w.target_description}</div>
-                        <div style={{ display: "flex", gap: "8px", marginTop: "4px", color: blockState.completed ? "var(--nb-red)" : "#666", flexWrap: "wrap", fontSize: "10px" }}>
-                          {w.category && <span>[{w.category}]</span>}
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px" }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: "flex", gap: "6px", marginBottom: "8px", flexWrap: "wrap", alignItems: "center" }}>
+                          {w.category && (() => {
+                            const cat = RUNNING_CATEGORIES.find(c => c.id === w.category);
+                            return (
+                              <span style={{
+                                fontSize: "10px", fontWeight: 900, padding: "3px 8px",
+                                background: cat?.color || "#000",
+                                color: "#FFF", textTransform: "uppercase", letterSpacing: "0.04em",
+                                borderRadius: "2px"
+                              }}>
+                                {cat?.label || w.category}
+                              </span>
+                            );
+                          })()}
+                          {w.target_zone && w.target_zone !== "livre" && (() => {
+                            const zone = RUNNING_ZONES.find(z => z.id === w.target_zone);
+                            return (
+                              <span style={{
+                                fontSize: "10px", fontWeight: 900, padding: "3px 8px",
+                                background: zone?.color || "#000",
+                                color: "#FFF", textTransform: "uppercase", letterSpacing: "0.04em",
+                                borderRadius: "2px"
+                              }}>
+                                {zone?.label || w.target_zone} · {zone?.desc || ""}
+                              </span>
+                            );
+                          })()}
+                          {w.target_zone === "livre" && (
+                            <span style={{
+                              fontSize: "10px", fontWeight: 900, padding: "3px 8px",
+                              background: "#E5E7EB", color: "#374151", textTransform: "uppercase", letterSpacing: "0.04em",
+                              borderRadius: "2px"
+                            }}>
+                              LIVRE
+                            </span>
+                          )}
+                        </div>
+
+                        <div style={{ fontWeight: 500, fontSize: "13px", lineHeight: "1.5", color: "#333", marginBottom: "12px" }}>
+                          {w.target_description}
+                        </div>
+
+                        <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
                           {(w.target_distance_km || w.reps) && (
-                            <span>
+                            <span style={{
+                              fontSize: "9px", fontWeight: 800, padding: "2px 6px",
+                              background: "#F3F4F6", color: "#000", textTransform: "uppercase", letterSpacing: "0.02em", border: "1px solid #DDD"
+                            }}>
                               {w.reps && w.reps > 1 ? `${w.reps}x ` : ""}
-                              {w.target_distance_km ? `${w.target_distance_km}${unit.toUpperCase()}` : ""}
+                              {w.target_distance_km ? (
+                                unit === "m" 
+                                    ? `${((Number(w.target_distance_km) || 0) >= 1 ? Number(w.target_distance_km) : Number(w.target_distance_km) * 1000).toFixed(0)}m`
+                                    : unit === "min" ? `${w.target_distance_km}min` : `${w.target_distance_km}km`
+                              ) : ""}
                             </span>
                           )}
-                          {(w.target_pace_description || w.target_zone) && (
-                            <span>
-                              {w.target_zone && w.target_zone !== "livre" ? w.target_zone : (w.target_pace_description ? `PACE ${w.target_pace_description}` : "LIVRE")}
+                          {w.target_pace_description && (
+                            <span style={{
+                              fontSize: "9px", fontWeight: 800, padding: "2px 6px",
+                              background: "#F3F4F6", color: "#000", textTransform: "uppercase", letterSpacing: "0.02em", border: "1px solid #DDD"
+                            }}>
+                              PACE {w.target_pace_description}
                             </span>
                           )}
-                          {w.target_rest_time_description && <span>DESC. {w.target_rest_time_description}</span>}
+                          {w.target_rest_time_description && (
+                            <span style={{
+                              fontSize: "9px", fontWeight: 800, padding: "2px 6px",
+                              background: "#F3F4F6", color: "#000", textTransform: "uppercase", letterSpacing: "0.02em", border: "1px solid #DDD"
+                            }}>
+                              DESC {w.target_rest_time_description}
+                            </span>
+                          )}
                         </div>
                       </div>
 
@@ -273,14 +351,15 @@ export default function RunningWorkoutForm({ sessionWorkouts, onClose, onSuccess
                         type="button"
                         onClick={() => updateBlock(w.id, "completed", !blockState.completed)}
                         style={{
-                          width: "28px", height: "28px", flexShrink: 0,
-                          border: "2px solid #000",
-                          background: blockState.completed ? "#000" : "#fff",
+                          width: "24px", height: "24px", flexShrink: 0,
+                          border: blockState.completed ? "none" : "2px solid #ccc",
+                          background: blockState.completed ? "var(--nb-blue)" : "#fff",
+                          borderRadius: "50%",
                           display: "flex", alignItems: "center", justifyContent: "center",
-                          cursor: "pointer"
+                          cursor: "pointer", marginTop: "2px"
                         }}
                       >
-                        {blockState.completed && <Check size={16} color="#fff" strokeWidth={4} />}
+                        {blockState.completed && <Check size={14} color="#fff" strokeWidth={3} />}
                       </button>
                     </div>
 
@@ -291,11 +370,11 @@ export default function RunningWorkoutForm({ sessionWorkouts, onClose, onSuccess
                             type="button"
                             onClick={() => updateBlock(w.id, "isEditing", true)}
                             style={{
-                              background: "none", border: "none", padding: 0, color: "#666",
-                              fontSize: "9px", fontWeight: 900, textDecoration: "underline", cursor: "pointer"
+                              background: "#F3F4F6", border: "1px solid #DDD", padding: "4px 8px", color: "#666",
+                              fontSize: "9px", fontWeight: 800, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "4px"
                             }}
                           >
-                            ✎ AJUSTAR RESULTADO
+                            <Zap size={10} /> AJUSTAR RESULTADO REAL
                           </button>
                         ) : (
                           <div style={{ display: "flex", gap: "10px", marginTop: "12px", paddingTop: "12px", borderTop: "2px dashed rgba(0,0,0,0.1)" }}>
@@ -350,7 +429,7 @@ export default function RunningWorkoutForm({ sessionWorkouts, onClose, onSuccess
             <div style={{ borderTop: "3px solid #000", paddingTop: "20px" }}>
               <div style={{ marginBottom: "20px" }}>
                 <label className="font-headline" style={{ fontSize: "11px", fontWeight: 900, marginBottom: "6px", display: "flex", alignItems: "center", gap: "6px" }}>
-                  <Star size={14} /> ESFORÇO DA SESSÃO (RPE 1-10)
+                  <Star size={14} /> ESFORÇO DO TREINO (RPE 1-10)
                 </label>
                 <div style={{ display: "flex", gap: "4px", justifyContent: "space-between" }}>
                   {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(val => (
@@ -371,34 +450,41 @@ export default function RunningWorkoutForm({ sessionWorkouts, onClose, onSuccess
 
               <div>
                 <label className="font-headline" style={{ fontSize: "11px", fontWeight: 900, marginBottom: "6px", display: "flex", alignItems: "center", gap: "6px" }}>
-                  <MessageSquare size={14} /> NOTAS DA SESSÃO
+                  <MessageSquare size={14} /> NOTAS DO TREINO
                 </label>
                 <textarea
                   value={notes} onChange={e => setNotes(e.target.value)}
-                  placeholder="Como você se sentiu nesta sessão?"
+                  placeholder="Como você se sentiu neste treino?"
                   className="nb-input" maxLength={140}
                   style={{ width: "100%", padding: "12px", minHeight: "80px", resize: "none" }}
                 />
               </div>
             </div>
 
-            <button
-              type="submit" disabled={loading}
-              className="nb-button"
-              style={{
-                width: "100%",
-                background: rpe === 0 ? "#666" : "var(--nb-red)",
-                color: "#fff",
-                padding: "16px",
-                opacity: rpe === 0 ? 0.7 : 1,
-                cursor: rpe === 0 ? "not-allowed" : "pointer"
-              }}
-            >
-              {loading ? "SALVANDO..." : rpe === 0 ? "SELECIONE O ESFORÇO" : "SALVAR SESSÃO COMPLETA"}
-            </button>
-          </form>
-        )}
-      </div>
+            </div>
+
+            <div style={{ 
+              position: "sticky", bottom: "-20px",
+              padding: "16px 0 0", marginTop: "4px",
+              background: "#fff"
+            }}>
+              <button
+                type="submit" disabled={loading}
+                className="nb-button"
+                style={{
+                  width: "100%",
+                  background: rpe === 0 ? "#666" : "var(--nb-red)",
+                  color: "#fff",
+                  padding: "16px",
+                  opacity: rpe === 0 ? 0.7 : 1,
+                  cursor: rpe === 0 ? "not-allowed" : "pointer"
+                }}
+              >
+                {loading ? "SALVANDO..." : rpe === 0 ? "SELECIONE O ESFORÇO" : "SALVAR TREINO COMPLETO"}
+              </button>
+            </div>
+        </form>
+      )}
 
       {errorAlert && (
         <AlertModal

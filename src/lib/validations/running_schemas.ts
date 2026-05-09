@@ -44,6 +44,7 @@ export const bulkCreateRunningWorkoutsSchema = z.object({
     session_order: z.number().int().positive("A ordem da sessão deve ser um número positivo").optional(),
     scheduled_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data agendada inválida"),
     target_description: z.string().min(2, "A descrição do treino é obrigatória"),
+    title: z.string().nullable().optional(),
     target_distance_km: z.number().nullable().optional(),
     target_pace_description: z.string().nullable().optional(),
     target_rest_time_description: z.string().nullable().optional(),
@@ -61,6 +62,18 @@ export const deleteRunningEntitySchema = z.object({
 
 // 5. Schema para criar um Template (Molde)
 export const createRunningTemplateSchema = z.object({
+  numericId: z.string().optional().nullable(),
+  title: z.string().min(3, "O título deve ter pelo menos 3 caracteres"),
+  description: z.string().optional().nullable(),
+  levelTag: z.string(),
+  frequencyPerWeek: z.number().int().min(1).max(7),
+  durationWeeks: z.number().int().min(1).max(24),
+});
+
+// 5.1 Schema para atualizar um Template (Molde)
+export const updateRunningTemplateSchema = z.object({
+  templateId: z.string().uuid("ID do template inválido"),
+  numericId: z.string().optional().nullable(),
   title: z.string().min(3, "O título deve ter pelo menos 3 caracteres"),
   description: z.string().optional().nullable(),
   levelTag: z.string(),
@@ -73,6 +86,7 @@ export const createTemplateWorkoutSchema = z.object({
   templateId: z.string().uuid("ID do template inválido"),
   weekNumber: z.number().int().min(1),
   sessionOrder: z.number().int().min(1).max(7),
+  title: z.string().nullable().optional(),
   targetDescription: z.string().min(2, "A descrição do treino é obrigatória"),
   targetDistanceKm: z.number().nullable().optional(),
   targetPaceDescription: z.string().nullable().optional(),
@@ -88,6 +102,7 @@ export const updateTemplateWorkoutSchema = z.object({
   workoutId: z.string().uuid("ID do treino inválido"),
   weekNumber: z.number().int().min(1).optional(),
   sessionOrder: z.number().int().min(1).max(7).optional(),
+  title: z.string().nullable().optional(),
   targetDescription: z.string().min(2, "A descrição do treino é obrigatória").optional(),
   targetDistanceKm: z.number().nullable().optional(),
   targetPaceDescription: z.string().nullable().optional(),
@@ -102,5 +117,6 @@ export type UpdateRunningPlanInput = z.infer<typeof updateRunningPlanSchema>;
 export type LogRunningWorkoutInput = z.infer<typeof logRunningWorkoutSchema>;
 export type BulkCreateRunningWorkoutsInput = z.infer<typeof bulkCreateRunningWorkoutsSchema>;
 export type CreateRunningTemplateInput = z.infer<typeof createRunningTemplateSchema>;
+export type UpdateRunningTemplateInput = z.infer<typeof updateRunningTemplateSchema>;
 export type CreateTemplateWorkoutInput = z.infer<typeof createTemplateWorkoutSchema>;
 export type UpdateTemplateWorkoutInput = z.infer<typeof updateTemplateWorkoutSchema>;

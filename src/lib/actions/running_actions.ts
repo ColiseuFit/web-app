@@ -9,6 +9,7 @@ import {
   bulkCreateRunningWorkoutsSchema,
   deleteRunningEntitySchema,
   createRunningTemplateSchema,
+  updateRunningTemplateSchema,
   createTemplateWorkoutSchema,
   updateTemplateWorkoutSchema
 } from "../validations/running_schemas";
@@ -363,9 +364,6 @@ export async function getRunningTemplates() {
 /**
  * Cria uma nova Planilha Padrão (Template) de Corrida.
  * Estas planilhas servem como moldes estruturais (snapshots) para novos alunos.
- * 
- * @param formData - Dados: title, description, levelTag, frequencyPerWeek, durationWeeks.
- * @throws {Error} Se o usuário não for coach/admin ou dados forem inválidos.
  */
 export async function createRunningTemplate(formData: FormData) {
   const supabase = await createClient();
@@ -373,6 +371,7 @@ export async function createRunningTemplate(formData: FormData) {
   if (!user) throw new Error("Não autorizado");
 
   const validatedFields = createRunningTemplateSchema.safeParse({
+    numericId: formData.get("numericId") || null,
     title: formData.get("title"),
     description: formData.get("description"),
     levelTag: formData.get("levelTag"),
@@ -384,12 +383,50 @@ export async function createRunningTemplate(formData: FormData) {
 
   const { error } = await supabase.from("running_templates").insert({
     coach_id: user.id,
+    numeric_id: validatedFields.data.numericId,
     title: validatedFields.data.title,
     description: validatedFields.data.description,
     level_tag: validatedFields.data.levelTag,
     frequency_per_week: validatedFields.data.frequencyPerWeek,
     duration_weeks: validatedFields.data.durationWeeks,
   });
+
+  if (error) throw new Error(error.message);
+  revalidatePath("/admin/running/templates");
+  return { success: true };
+}
+
+/**
+ * Atualiza as informações de uma Planilha Padrão (Template) existente.
+ */
+export async function updateRunningTemplate(formData: FormData) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Não autorizado");
+
+  const validatedFields = updateRunningTemplateSchema.safeParse({
+    templateId: formData.get("templateId"),
+    numericId: formData.get("numericId") || null,
+    title: formData.get("title"),
+    description: formData.get("description") || null,
+    levelTag: formData.get("levelTag"),
+    frequencyPerWeek: parseInt(formData.get("frequencyPerWeek") as string),
+    durationWeeks: parseInt(formData.get("durationWeeks") as string),
+  });
+
+  if (!validatedFields.success) throw new Error("Dados inválidos para atualizar template");
+
+  const { error } = await supabase
+    .from("running_templates")
+    .update({
+      numeric_id: validatedFields.data.numericId,
+      title: validatedFields.data.title,
+      description: validatedFields.data.description,
+      level_tag: validatedFields.data.levelTag,
+      frequency_per_week: validatedFields.data.frequencyPerWeek,
+      duration_weeks: validatedFields.data.durationWeeks,
+    })
+    .eq("id", validatedFields.data.templateId);
 
   if (error) throw new Error(error.message);
   revalidatePath("/admin/running/templates");
@@ -481,6 +518,7 @@ export async function createTemplateWorkoutsBatch(
   weekNumber: number,
   sessionOrder: number,
   blocks: {
+    title?: string | null;
     targetDescription: string;
     targetDistanceKm?: number | null;
     targetPaceDescription?: string | null;
@@ -508,6 +546,7 @@ export async function createTemplateWorkoutsBatch(
         week_number: weekNumber,
         session_order: sessionOrder,
         block_order: idx + 1,
+        title: b.title || null,
         target_description: b.targetDescription,
         target_distance_km: dist,
         target_pace_description: b.targetPaceDescription || null,
@@ -536,6 +575,7 @@ export async function updateTemplateWorkoutsBatch(
   newSessionOrder: number,
   originalSessionOrder: number,
   blocks: {
+    title?: string | null;
     targetDescription: string;
     targetDistanceKm?: number | null;
     targetPaceDescription?: string | null;
@@ -574,6 +614,7 @@ export async function updateTemplateWorkoutsBatch(
       week_number: weekNumber,
       session_order: newSessionOrder,
       block_order: idx + 1,
+      title: b.title || null,
       target_description: b.targetDescription,
       target_distance_km: dist,
       target_pace_description: b.targetPaceDescription || null,
@@ -706,6 +747,7 @@ export async function duplicateTemplateSession(
     week_number: destinationWeek,
     session_order: newOrder,
     block_order: b.block_order,
+    title: b.title || null,
     target_description: b.target_description,
     target_distance_km: b.target_distance_km,
     target_pace_description: b.target_pace_description,
@@ -767,6 +809,7 @@ export async function duplicateRunningTemplate(templateId: string) {
     .from("running_templates")
     .insert({
       coach_id: user.id,
+      numeric_id: original.numeric_id,
       title: `${original.title} (Cópia)`,
       description: original.description,
       level_tag: original.level_tag,
@@ -785,6 +828,7 @@ export async function duplicateRunningTemplate(templateId: string) {
       week_number: tw.week_number,
       session_order: tw.session_order,
       block_order: tw.block_order,
+      title: tw.title || null,
       target_description: tw.target_description,
       target_distance_km: tw.target_distance_km,
       target_pace_description: tw.target_pace_description,
@@ -858,6 +902,7 @@ export async function assignTemplateToStudent(templateId: string, studentId: str
       week_number: tw.week_number,
       session_order: tw.session_order,
       block_order: tw.block_order,
+      title: tw.title || null,
       target_description: tw.target_description,
       target_distance_km: tw.target_distance_km,
       target_pace_description: tw.target_pace_description,

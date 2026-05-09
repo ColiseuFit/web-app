@@ -35,6 +35,7 @@ interface Workout {
   week_number?: number | null;
   session_order?: number | null;
   block_order?: number | null;
+  title?: string | null;
   reps?: number | null;
   category?: string | null;
   target_zone?: string | null;
@@ -216,37 +217,63 @@ export default function RunningWorkoutsList({ workouts }: RunningWorkoutsListPro
                               )}
                             </div>
 
-                            <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: "12px" }}>
+                            <div style={{ padding: "12px", display: "flex", flexDirection: "column", gap: "12px" }}>
                               {sessionWorkouts
                                 .sort((a, b) => (a.block_order || 0) - (b.block_order || 0))
                                 .map((workout, bIdx) => (
                                   <div key={workout.id} style={{
-                                    paddingBottom: bIdx === sessionWorkouts.length - 1 ? 0 : 12,
-                                    borderBottom: bIdx === sessionWorkouts.length - 1 ? "none" : "1px dashed #DDD"
+                                    background: "#FAFAFA",
+                                    border: "1px solid #E5E7EB",
+                                    borderLeft: `4px solid ${RUNNING_CATEGORIES.find(c => c.id === workout.category)?.color || "#DDD"}`,
+                                    borderRadius: "4px",
+                                    padding: "14px",
+                                    position: "relative"
                                   }}>
-                                    <div style={{ display: "flex", gap: "6px", marginBottom: "8px", flexWrap: "wrap" }}>
-                                      {workout.category && (
-                                        <span style={{
-                                          fontSize: "9px", fontWeight: 800, padding: "2px 6px",
-                                          background: RUNNING_CATEGORIES.find(c => c.id === workout.category)?.color || "#000",
-                                          color: "#FFF", textTransform: "uppercase", letterSpacing: "0.02em"
-                                        }}>
-                                          {RUNNING_CATEGORIES.find(c => c.id === workout.category)?.label || workout.category}
-                                        </span>
-                                      )}
-                                      {workout.target_zone && workout.target_zone !== "livre" && (
-                                        <span style={{
-                                          fontSize: "9px", fontWeight: 800, padding: "2px 6px",
-                                          background: RUNNING_ZONES.find(z => z.id === workout.target_zone)?.color || "#000",
-                                          color: "#FFF", textTransform: "uppercase", letterSpacing: "0.02em"
-                                        }}>
-                                          {RUNNING_ZONES.find(z => z.id === workout.target_zone)?.label || workout.target_zone}
-                                        </span>
-                                      )}
+                                    <div style={{
+                                      fontSize: "8px", fontWeight: 900, color: "#9CA3AF",
+                                      textTransform: "uppercase", letterSpacing: "0.08em",
+                                      marginBottom: "8px", display: "flex", justifyContent: "space-between"
+                                    }}>
+                                      <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                                        <span>BLOCO {bIdx + 1} DE {sessionWorkouts.length}</span>
+                                        {workout.title && (
+                                          <span style={{ fontSize: "12px", color: "#000", fontWeight: 950 }}>{workout.title}</span>
+                                        )}
+                                      </div>
+                                      {workout.completed_at && <span style={{ color: "var(--nb-blue)", alignSelf: "flex-start" }}>✔ CONCLUÍDO</span>}
+                                    </div>
+                                    <div style={{ display: "flex", gap: "6px", marginBottom: "12px", flexWrap: "wrap", alignItems: "center" }}>
+                                      {workout.category && (() => {
+                                        const cat = RUNNING_CATEGORIES.find(c => c.id === workout.category);
+                                        return (
+                                          <span style={{
+                                            fontSize: "9px", fontWeight: 900, padding: "2px 6px",
+                                            background: cat?.color || "#000",
+                                            color: "#FFF", textTransform: "uppercase", letterSpacing: "0.04em",
+                                            borderRadius: "2px"
+                                          }}>
+                                            {cat?.label || workout.category}
+                                          </span>
+                                        );
+                                      })()}
+                                      {workout.target_zone && workout.target_zone !== "livre" && (() => {
+                                        const zone = RUNNING_ZONES.find(z => z.id === workout.target_zone);
+                                        return (
+                                          <span style={{
+                                            fontSize: "9px", fontWeight: 950, padding: "2px 6px",
+                                            background: zone?.color || "#000",
+                                            color: "#FFF", textTransform: "uppercase", letterSpacing: "0.04em",
+                                            borderRadius: "2px"
+                                          }}>
+                                            {zone?.label || workout.target_zone}
+                                          </span>
+                                        );
+                                      })()}
                                       {workout.target_zone === "livre" && (
                                         <span style={{
-                                          fontSize: "9px", fontWeight: 800, padding: "2px 6px",
-                                          background: "#E5E7EB", color: "#000", textTransform: "uppercase", letterSpacing: "0.02em"
+                                          fontSize: "9px", fontWeight: 900, padding: "2px 6px",
+                                          background: "#E5E7EB", color: "#374151", textTransform: "uppercase", letterSpacing: "0.04em",
+                                          borderRadius: "2px"
                                         }}>
                                           LIVRE
                                         </span>
@@ -258,77 +285,18 @@ export default function RunningWorkoutsList({ workouts }: RunningWorkoutsListPro
                                       )}
                                     </div>
 
-                                    <div style={{ marginBottom: "12px" }}>
-                                      <p style={{ fontSize: "13px", fontWeight: 500, margin: 0, lineHeight: "1.5", color: "#333" }}>
-                                        {workout.target_description}
-                                      </p>
-                                    </div>
-
                                     {workout.completed_at ? (
-                                      <>
-                                        {(workout.target_distance_km || workout.target_pace_description || workout.target_rest_time_description || workout.reps) ? (
-                                          <div style={{ 
-                                            display: "flex", gap: "16px", padding: "10px 12px", 
-                                            background: "var(--nb-yellow)", border: "1px solid #000", 
-                                            flexWrap: "wrap", alignItems: "center", marginBottom: "8px"
-                                          }}>
-                                            {(workout.target_distance_km || workout.reps) && (
-                                              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                                                <Zap size={16} strokeWidth={2.5} />
-                                                <div style={{ display: "flex", flexDirection: "column" }}>
-                                                  <span style={{ fontSize: "8px", fontWeight: 700, opacity: 0.7, textTransform: "uppercase", letterSpacing: "0.05em" }}>Alvo</span>
-                                                  <span style={{ fontWeight: 900, fontSize: "12px", textTransform: "uppercase" }}>
-                                                    {workout.reps && workout.reps > 1 ? <span style={{ color: "var(--nb-red)" }}>{workout.reps}x </span> : ""}
-                                                    {workout.target_distance_km ? (
-                                                      workout.target_unit === "m"
-                                                        ? `${((Number(workout.target_distance_km) || 0) >= 1 ? Number(workout.target_distance_km) : Number(workout.target_distance_km) * 1000).toFixed(0)}m`
-                                                        : workout.target_unit === "min"
-                                                          ? `${workout.target_distance_km}min`
-                                                          : `${workout.target_distance_km}km`
-                                                    ) : ""}
-                                                  </span>
-                                                </div>
-                                              </div>
-                                            )}
-                                            {workout.target_pace_description && (
-                                              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                                                <Timer size={16} strokeWidth={2.5} />
-                                                <div style={{ display: "flex", flexDirection: "column" }}>
-                                                  <span style={{ fontSize: "8px", fontWeight: 700, opacity: 0.7, textTransform: "uppercase", letterSpacing: "0.05em" }}>Pace</span>
-                                                  <span style={{ fontWeight: 900, fontSize: "12px", textTransform: "uppercase" }}>
-                                                    {workout.target_pace_description}
-                                                  </span>
-                                                </div>
-                                              </div>
-                                            )}
-                                            {workout.target_rest_time_description && (
-                                              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                                                <Coffee size={16} strokeWidth={2.5} />
-                                                <div style={{ display: "flex", flexDirection: "column" }}>
-                                                  <span style={{ fontSize: "8px", fontWeight: 700, opacity: 0.7, textTransform: "uppercase", letterSpacing: "0.05em" }}>Desc</span>
-                                                  <span style={{ fontWeight: 900, fontSize: "12px", textTransform: "uppercase" }}>
-                                                    {workout.target_rest_time_description}
-                                                  </span>
-                                                </div>
-                                              </div>
-                                            )}
-                                          </div>
-                                        ) : (
-                                          <div style={{ marginTop: "4px", fontSize: "11px", color: "#666", fontStyle: "italic", padding: "4px 0" }}>
-                                            💡 Orientação do Coach
-                                          </div>
-                                        )}
-
+                                      <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                                         <div style={{ 
-                                          display: "flex", gap: "16px", padding: "10px 12px", 
-                                          background: "var(--nb-blue)", border: "1px solid #000", 
-                                          color: "#FFF", flexWrap: "wrap", alignItems: "center" 
+                                          display: "flex", flexWrap: "wrap", gap: "16px", padding: "10px", 
+                                          background: "var(--nb-blue)", color: "#FFF", borderRadius: "4px",
+                                          alignItems: "center"
                                         }}>
-                                          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                                            <CheckCircle2 size={16} strokeWidth={2.5} color="var(--nb-yellow)" />
+                                          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                            <CheckCircle2 size={16} color="var(--nb-yellow)" />
                                             <div style={{ display: "flex", flexDirection: "column" }}>
                                               <span style={{ fontSize: "8px", fontWeight: 700, opacity: 0.8, textTransform: "uppercase", letterSpacing: "0.05em" }}>Realizado</span>
-                                              <span style={{ fontWeight: 900, fontSize: "12px", textTransform: "uppercase", color: "var(--nb-yellow)" }}>
+                                              <span style={{ fontWeight: 900, fontSize: "14px", textTransform: "uppercase", color: "var(--nb-yellow)" }}>
                                                 {workout.reps && workout.reps > 1 ? `${workout.reps}x ` : ""}
                                                 {workout.actual_distance_km 
                                                   ? (workout.actual_distance_km < 1 
@@ -338,80 +306,77 @@ export default function RunningWorkoutsList({ workouts }: RunningWorkoutsListPro
                                               </span>
                                             </div>
                                           </div>
-                                          {workout.actual_pace_seconds_per_km ? (
-                                            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                                              <Timer size={16} strokeWidth={2.5} />
+                                          {workout.actual_pace_seconds_per_km && (
+                                            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                              <Timer size={16} />
                                               <div style={{ display: "flex", flexDirection: "column" }}>
-                                                <span style={{ fontSize: "8px", fontWeight: 700, opacity: 0.8, textTransform: "uppercase", letterSpacing: "0.05em" }}>Pace</span>
-                                                <span style={{ fontWeight: 900, fontSize: "12px", textTransform: "uppercase" }}>
+                                                <span style={{ fontSize: "8px", fontWeight: 700, opacity: 0.8, textTransform: "uppercase", letterSpacing: "0.05em" }}>Pace Médio</span>
+                                                <span style={{ fontWeight: 900, fontSize: "14px", textTransform: "uppercase" }}>
                                                   {formatPace(workout.actual_pace_seconds_per_km)}/km
                                                 </span>
                                               </div>
                                             </div>
-                                          ) : null}
+                                          )}
                                         </div>
-                                      </>
-                                    ) : (
-                                      <>
-                                        {(workout.target_distance_km || workout.target_pace_description || workout.target_rest_time_description || workout.reps) ? (
-                                          <div style={{ 
-                                            display: "flex", gap: "16px", padding: "10px 12px", 
-                                            background: "var(--nb-yellow)", border: "1px solid #000", 
-                                            flexWrap: "wrap", alignItems: "center" 
-                                          }}>
+
+                                        {(workout.target_distance_km || workout.target_pace_description || workout.target_rest_time_description || workout.reps) && (
+                                          <div style={{ fontSize: "10px", fontWeight: 700, color: "#64748B", display: "flex", flexWrap: "wrap", gap: "8px", alignItems: "center" }}>
+                                            <span style={{ color: "#9CA3AF" }}>ALVO:</span>
                                             {(workout.target_distance_km || workout.reps) && (
-                                              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                                                <Zap size={16} strokeWidth={2.5} />
-                                                <div style={{ display: "flex", flexDirection: "column" }}>
-                                                  <span style={{ fontSize: "8px", fontWeight: 700, opacity: 0.7, textTransform: "uppercase", letterSpacing: "0.05em" }}>Volume</span>
-                                                  <span style={{ fontWeight: 900, fontSize: "12px", textTransform: "uppercase" }}>
-                                                    {workout.reps && workout.reps > 1 ? <span style={{ color: "var(--nb-red)" }}>{workout.reps}x </span> : ""}
-                                                    {workout.target_distance_km ? (
-                                                      workout.target_unit === "m"
-                                                        ? `${((Number(workout.target_distance_km) || 0) >= 1 ? Number(workout.target_distance_km) : Number(workout.target_distance_km) * 1000).toFixed(0)}m`
-                                                        : workout.target_unit === "min"
-                                                          ? `${workout.target_distance_km}min`
-                                                          : `${workout.target_distance_km}km`
-                                                    ) : ""}
-                                                  </span>
-                                                </div>
-                                              </div>
+                                              <span style={{ color: "#334155" }}>
+                                                {workout.reps && workout.reps > 1 ? `${workout.reps}x ` : ""}
+                                                {workout.target_distance_km ? (
+                                                  workout.target_unit === "m"
+                                                    ? `${((Number(workout.target_distance_km) || 0) >= 1 ? Number(workout.target_distance_km) : Number(workout.target_distance_km) * 1000).toFixed(0)}m`
+                                                    : workout.target_unit === "min"
+                                                      ? `${workout.target_distance_km}min`
+                                                      : `${workout.target_distance_km}km`
+                                                ) : ""}
+                                              </span>
                                             )}
                                             {workout.target_pace_description && (
-                                              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                                                <Timer size={16} strokeWidth={2.5} />
-                                                <div style={{ display: "flex", flexDirection: "column" }}>
-                                                  <span style={{ fontSize: "8px", fontWeight: 700, opacity: 0.7, textTransform: "uppercase", letterSpacing: "0.05em" }}>Pace</span>
-                                                  <span style={{ fontWeight: 900, fontSize: "12px", textTransform: "uppercase" }}>
-                                                    {workout.target_pace_description}
-                                                  </span>
-                                                </div>
-                                              </div>
+                                              <span style={{ color: "#334155" }}>• Pace {workout.target_pace_description}</span>
                                             )}
                                             {workout.target_rest_time_description && (
-                                              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                                                <Coffee size={16} strokeWidth={2.5} />
-                                                <div style={{ display: "flex", flexDirection: "column" }}>
-                                                  <span style={{ fontSize: "8px", fontWeight: 700, opacity: 0.7, textTransform: "uppercase", letterSpacing: "0.05em" }}>Desc</span>
-                                                  <span style={{ fontWeight: 900, fontSize: "12px", textTransform: "uppercase" }}>
-                                                    {workout.target_rest_time_description}
-                                                  </span>
-                                                </div>
-                                              </div>
+                                              <span style={{ color: "#334155" }}>• Desc {workout.target_rest_time_description}</span>
                                             )}
                                           </div>
-                                        ) : (
-                                          <div style={{
-                                            marginTop: "4px",
-                                            fontSize: "11px",
-                                            color: "#666",
-                                            fontStyle: "italic",
-                                            padding: "4px 0"
-                                          }}>
-                                            💡 Orientação do Coach
-                                          </div>
                                         )}
-                                      </>
+                                      </div>
+                                    ) : (
+                                      <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                                        <div style={{ display: "flex", flexWrap: "wrap", gap: "12px", alignItems: "center" }}>
+                                          {(workout.target_distance_km || workout.reps) && (
+                                            <div style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "11px", fontWeight: 900, color: "#000" }}>
+                                              <Zap size={12} color="var(--nb-blue)" />
+                                              {workout.reps && workout.reps > 1 ? <span style={{ color: "var(--nb-red)" }}>{workout.reps}x </span> : ""}
+                                              {workout.target_distance_km ? (
+                                                workout.target_unit === "m"
+                                                  ? `${((Number(workout.target_distance_km) || 0) >= 1 ? Number(workout.target_distance_km) : Number(workout.target_distance_km) * 1000).toFixed(0)}m`
+                                                  : workout.target_unit === "min"
+                                                    ? `${workout.target_distance_km}min`
+                                                    : `${workout.target_distance_km}km`
+                                              ) : ""}
+                                            </div>
+                                          )}
+                                          {workout.target_pace_description && (
+                                            <div style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "10px", fontWeight: 800, color: "#475569" }}>
+                                              <Timer size={12} color="#2980BA" />
+                                              {workout.target_pace_description}
+                                            </div>
+                                          )}
+                                          {workout.target_rest_time_description && (
+                                            <div style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "10px", fontWeight: 800, color: "#475569" }}>
+                                              <Coffee size={12} color="#2980BA" />
+                                              {workout.target_rest_time_description}
+                                            </div>
+                                          )}
+                                        </div>
+
+                                        <div style={{ fontSize: "12px", fontWeight: 600, lineHeight: "1.6", color: "#334155", whiteSpace: "pre-line" }}>
+                                          {workout.target_description}
+                                        </div>
+                                      </div>
                                     )}
                                   </div>
                                 ))}
