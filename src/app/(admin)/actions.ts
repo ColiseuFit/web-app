@@ -711,19 +711,20 @@ export async function approvePreRegistration(preRegistrationId: string, customLe
   const nameParts = lead.full_name.trim().split(" ");
   const lastName = nameParts.length > 1 ? nameParts.slice(1).join(" ") : null;
 
+  // Sanitização de campos opcionais/vazios para evitar quebra de restrições de unicidade (UNIQUE) e de formato (Date)
   const insertProfilePromise = supabaseAdmin
     .from("profiles")
     .insert({
       id: userId,
       full_name: lead.full_name,
       email: lead.email,
-      first_name: firstName,
-      last_name: lastName,
-      phone: lead.phone,
-      cpf: lead.cpf,
-      birth_date: lead.birth_date,
-      level: customLevel || "branco",
-      membership_type: membershipType,
+      first_name: firstName || null,
+      last_name: lastName || null,
+      phone: lead.phone || null,
+      cpf: lead.cpf || null,
+      birth_date: lead.birth_date || null,
+      level: customLevel && customLevel !== "branco" ? customLevel : "iniciante",
+      membership_type: membershipType || "club",
     });
 
   const insertRolePromise = supabaseAdmin
@@ -736,10 +737,11 @@ export async function approvePreRegistration(preRegistrationId: string, customLe
   const [profileRes, roleRes] = await Promise.all([insertProfilePromise, insertRolePromise]);
 
   if (profileRes.error || roleRes.error) {
+    const errorDetails = profileRes.error?.message || roleRes.error?.message || "Erro desconhecido";
     console.error("[approvePreRegistration] Erro relacional (Profile/Role):", profileRes.error || roleRes.error);
     // Rollback de Compensação Transacional: Remove a credencial recém-criada da tabela auth.users interna
     await supabaseAdmin.auth.admin.deleteUser(userId);
-    return { error: "Erro ao provisionar o perfil do aluno no banco. A transação foi revertida com segurança para evitar inconsistências." };
+    return { error: `Erro ao provisionar o perfil do aluno no banco (${errorDetails}). A transação foi revertida com segurança.` };
   }
 
   // 5. Marcar Pré-cadastro como Aprovado (SSoT: Movido para antes do e-mail para evitar inconsistência)
