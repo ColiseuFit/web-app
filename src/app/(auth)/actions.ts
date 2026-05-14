@@ -82,8 +82,8 @@ export async function createPreRegistration(formData: FormData) {
     full_name: formData.get("full_name"),
     email: formData.get("email"),
     phone: formData.get("phone"),
-    cpf: formData.get("cpf") || undefined,
-    birth_date: formData.get("birth_date") || undefined,
+    cpf: formData.get("cpf"),
+    birth_date: formData.get("birth_date"),
     bio: formData.get("bio") || undefined,
   };
 
@@ -93,11 +93,6 @@ export async function createPreRegistration(formData: FormData) {
   }
 
   const dataToInsert = validation.data;
-  
-  // Clean empty strings for optional dates
-  if (dataToInsert.birth_date === "") {
-    delete dataToInsert.birth_date;
-  }
 
   const supabase = await createClient();
 

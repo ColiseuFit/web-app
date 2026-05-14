@@ -217,14 +217,11 @@ export const preRegistrationSchema = z.object({
   email: z.string().email("E-mail inválido").max(150, "E-mail deve ter no máximo 150 caracteres"),
   phone: z.string().min(10, "Telefone inválido").max(15, "Telefone muito longo"),
   cpf: z.string()
-    .refine((val) => {
-      if (!val || val.trim() === "") return true;
-      return isValidCPF(val);
-    }, {
+    .min(11, "CPF obrigatório")
+    .refine((val) => isValidCPF(val), {
       message: "CPF Inválido ou inconsistente com a Receita Federal"
-    })
-    .optional(),
-  birth_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data inválida").optional().or(z.literal("")),
+    }),
+  birth_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data de nascimento obrigatória no formato YYYY-MM-DD"),
   bio: z.string().max(500, "Objetivo não pode passar de 500 caracteres").optional(),
 });
 

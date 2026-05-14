@@ -707,11 +707,11 @@ export async function approvePreRegistration(preRegistrationId: string, customLe
   const userId = authData.user.id;
   const actionLink = authData.properties.action_link;
 
-  // 3. Create Profile (Movido para ANTES do disparo de e-mail - Bug 02)
+  // 3. Inserção paralela de Profile e Role para ganho de performance e atomicidade relacional
   const nameParts = lead.full_name.trim().split(" ");
   const lastName = nameParts.length > 1 ? nameParts.slice(1).join(" ") : null;
 
-  const { error: profileError } = await supabaseAdmin
+  const insertProfilePromise = supabaseAdmin
     .from("profiles")
     .insert({
       id: userId,
@@ -723,25 +723,23 @@ export async function approvePreRegistration(preRegistrationId: string, customLe
       cpf: lead.cpf,
       birth_date: lead.birth_date,
       level: customLevel || "branco",
-      membership_type: membershipType, // Vínculo
+      membership_type: membershipType,
     });
 
-  if (profileError) {
-    console.error("[approvePreRegistration] Profile Error:", profileError);
-    return { error: "Erro ao criar perfil. O e-mail de convite NÃO foi enviado e a aprovação foi abortada." };
-  }
-
-  // 4. Assign Role
-  const { error: roleError } = await supabaseAdmin
+  const insertRolePromise = supabaseAdmin
     .from("user_roles")
     .insert({
       user_id: userId,
       role: "student",
     });
 
-  if (roleError) {
-    console.error("[approvePreRegistration] Role Error:", roleError);
-    return { error: "Erro ao setar permissões do perfil. O e-mail de convite NÃO foi enviado e a aprovação foi abortada." };
+  const [profileRes, roleRes] = await Promise.all([insertProfilePromise, insertRolePromise]);
+
+  if (profileRes.error || roleRes.error) {
+    console.error("[approvePreRegistration] Erro relacional (Profile/Role):", profileRes.error || roleRes.error);
+    // Rollback de Compensação Transacional: Remove a credencial recém-criada da tabela auth.users interna
+    await supabaseAdmin.auth.admin.deleteUser(userId);
+    return { error: "Erro ao provisionar o perfil do aluno no banco. A transação foi revertida com segurança para evitar inconsistências." };
   }
 
   // 5. Marcar Pré-cadastro como Aprovado (SSoT: Movido para antes do e-mail para evitar inconsistência)

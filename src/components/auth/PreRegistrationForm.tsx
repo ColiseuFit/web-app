@@ -224,11 +224,12 @@ export function PreRegistrationForm({ onBack, onSuccess }: PreRegistrationFormPr
         <div className="flex gap-4">
           <div className="flex-1">
             <label style={{ display: "block", fontSize: "10px", fontWeight: 800, color: "rgba(255,255,255,0.7)", letterSpacing: "0.2em", textTransform: "uppercase", marginBottom: "8px" }}>
-              CPF (Opcional)
+              CPF *
             </label>
             <input
               type="text"
               name="cpf"
+              required
               maxLength={14}
               placeholder="000.000.000-00"
               style={{
@@ -248,11 +249,12 @@ export function PreRegistrationForm({ onBack, onSuccess }: PreRegistrationFormPr
           </div>
           <div className="flex-1">
             <label style={{ display: "block", fontSize: "10px", fontWeight: 800, color: "rgba(255,255,255,0.7)", letterSpacing: "0.2em", textTransform: "uppercase", marginBottom: "8px" }}>
-              Nascimento
+              Nascimento *
             </label>
             <input
               type="date"
               name="birth_date"
+              required
               style={{
                 width: "100%",
                 background: "#0A0A0A",
