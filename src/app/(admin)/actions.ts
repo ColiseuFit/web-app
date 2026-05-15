@@ -108,7 +108,9 @@ export async function createStudent(formData: FormData) {
     });
 
   if (profileError) {
-    return { error: "Não foi possível criar o perfil do aluno no banco de dados." };
+    console.error("[createStudent] Profile Error:", profileError);
+    await supabaseAdmin.auth.admin.deleteUser(userId);
+    return { error: `Não foi possível criar o perfil do aluno no banco (${profileError.message}). A conta foi removida para segurança.` };
   }
 
   // 3. Atribui a Role correta
@@ -120,7 +122,11 @@ export async function createStudent(formData: FormData) {
     });
 
   if (roleError) {
-    return { error: "Falha ao definir o nível de acesso (role) do aluno." };
+    console.error("[createStudent] Role Error:", roleError);
+    // Rollback total: limpa perfil e auth
+    await supabaseAdmin.from("profiles").delete().eq("id", userId);
+    await supabaseAdmin.auth.admin.deleteUser(userId);
+    return { error: `Falha ao definir o nível de acesso (role) do aluno (${roleError.message}). Transação revertida.` };
   }
 
   revalidatePath("/admin/alunos");
@@ -195,7 +201,7 @@ export async function updateStudent(studentId: string, formData: FormData) {
 
   if (error) {
     console.error("[updateStudent] Supabase Error:", error);
-    return { error: "Não foi possível atualizar as informações do perfil." };
+    return { error: `Não foi possível atualizar as informações: ${error.message}` };
   }
 
   revalidatePath("/admin/alunos");
@@ -707,12 +713,12 @@ export async function approvePreRegistration(preRegistrationId: string, customLe
   const userId = authData.user.id;
   const actionLink = authData.properties.action_link;
 
-  // 3. Inserção paralela de Profile e Role para ganho de performance e atomicidade relacional
+  // 3. Inserção SEQUENCIAL de Profile e Role (FK: user_roles.user_id -> profiles.id exige ordem)
   const nameParts = lead.full_name.trim().split(" ");
   const lastName = nameParts.length > 1 ? nameParts.slice(1).join(" ") : null;
 
   // Sanitização de campos opcionais/vazios para evitar quebra de restrições de unicidade (UNIQUE) e de formato (Date)
-  const insertProfilePromise = supabaseAdmin
+  const profileRes = await supabaseAdmin
     .from("profiles")
     .insert({
       id: userId,
@@ -727,21 +733,26 @@ export async function approvePreRegistration(preRegistrationId: string, customLe
       membership_type: membershipType || "club",
     });
 
-  const insertRolePromise = supabaseAdmin
+  if (profileRes.error) {
+    console.error("[approvePreRegistration] Erro ao criar profile:", profileRes.error);
+    await supabaseAdmin.auth.admin.deleteUser(userId);
+    return { error: `Erro ao criar perfil do aluno (${profileRes.error.message}). A transação foi revertida.` };
+  }
+
+  // Só insere o role APÓS o profile existir no banco (FK constraint)
+  const roleRes = await supabaseAdmin
     .from("user_roles")
     .insert({
       user_id: userId,
       role: "student",
     });
 
-  const [profileRes, roleRes] = await Promise.all([insertProfilePromise, insertRolePromise]);
-
-  if (profileRes.error || roleRes.error) {
-    const errorDetails = profileRes.error?.message || roleRes.error?.message || "Erro desconhecido";
-    console.error("[approvePreRegistration] Erro relacional (Profile/Role):", profileRes.error || roleRes.error);
-    // Rollback de Compensação Transacional: Remove a credencial recém-criada da tabela auth.users interna
+  if (roleRes.error) {
+    console.error("[approvePreRegistration] Erro ao atribuir role:", roleRes.error);
+    // Rollback: remove profile e auth user para não deixar dados órfãos
+    await supabaseAdmin.from("profiles").delete().eq("id", userId);
     await supabaseAdmin.auth.admin.deleteUser(userId);
-    return { error: `Erro ao provisionar o perfil do aluno no banco (${errorDetails}). A transação foi revertida com segurança.` };
+    return { error: `Erro ao atribuir papel de aluno (${roleRes.error.message}). A transação foi revertida.` };
   }
 
   // 5. Marcar Pré-cadastro como Aprovado (SSoT: Movido para antes do e-mail para evitar inconsistência)
