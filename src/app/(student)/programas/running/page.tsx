@@ -9,6 +9,7 @@ import { getStudentRunningHistory } from "@/lib/actions/running_actions";
 import RunningHubTabs from "@/components/RunningHubTabs";
 import RunningAccessGate from "@/components/RunningAccessGate";
 import { RUNNING_LEVELS, type RunningLevelKey } from "@/lib/constants/running";
+import { getAccessPermissions } from "@/lib/constants/access_actions";
 
 
 export const metadata: Metadata = {
@@ -73,7 +74,8 @@ export default async function RunningDashboardPage() {
       .eq("student_id", user.id)
       .order("evaluation_date", { ascending: false })
       .limit(1)
-      .maybeSingle()
+      .maybeSingle(),
+    getAccessPermissions(profile?.membership_type || "club_pass")
   ]);
 
   // ── Métricas mensais ──────────────────────────────────────────────────────
@@ -122,21 +124,29 @@ export default async function RunningDashboardPage() {
 
   const firstName = profile?.full_name ? profile.full_name.split(" ")[0] : "Atleta";
 
-  // ── SE O ALUNO NÃO TIVER NÍVEL OU NÃO ESTIVER ATIVO, MOSTRA O BLOQUEIO (GATE) ──
+  // ── SE O ALUNO NÃO TIVER NÍVEL OU NÃO ESTIVER ATIVO OU NÃO TIVER PERMISSÃO PELO PLANO ──
   const isSuspended = profile?.running_status === "inactive" || profile?.running_status === "suspended";
   const hasNoLevel = !profile?.running_level;
+  const hasNoPlanAccess = !permissions?.can_access_running;
 
-  if (hasNoLevel || isSuspended) {
+  if (hasNoLevel || isSuspended || hasNoPlanAccess) {
     return (
       <div style={{ minHeight: "100vh", backgroundColor: "#F2F2F0", paddingBottom: "100px" }}>
         <DashboardStyles />
         <StudentHeader />
         <main style={{ maxWidth: "480px", margin: "0 auto", padding: "24px 20px" }}>
-          {/* Se não tem nível, isInactive é falso (mostra convite). Se tem nível mas está inativo, isInactive é true (mostra pausa) */}
-          <RunningAccessGate 
-            studentName={profile?.full_name || "Atleta"} 
-            isInactive={!!(profile?.running_level && isSuspended)} 
-          />
+          {/* Se não tem acesso pelo plano, mostra gate genérico. Senão, mostra gate específico de status/nível */}
+          {hasNoPlanAccess ? (
+             <AccessGate 
+                message="O PROGRAMA DE CORRIDA PERSONALIZADO É CONTROLADO PELO SEU PLANO. FALE COM A RECEPÇÃO PARA MAIS DETALHES."
+                upgradeLink={null} // O upgrade do running é um add-on ou plano específico
+             />
+          ) : (
+            <RunningAccessGate 
+              studentName={profile?.full_name || "Atleta"} 
+              isInactive={!!(profile?.running_level && isSuspended)} 
+            />
+          )}
         </main>
         <BottomNav />
       </div>
@@ -219,18 +229,18 @@ export default async function RunningDashboardPage() {
                   verticalAlign: "middle",
                   transform: "translateY(-4px)"
                 }}>
-                  {profile?.membership_type === "club_pass" ? (
+                  {!permissions.can_access_running ? (
                     <span style={{
                       padding: "4px 8px",
                       border: "2px solid #000",
-                      background: "#6B7280", // Gray para Pass
+                      background: "#6B7280", // Gray para sem acesso
                       color: "#FFF",
                       fontSize: "9px",
                       fontWeight: 900,
                       textTransform: "uppercase",
                       letterSpacing: "0.05em",
                       boxShadow: "2px 2px 0px #000"
-                    }}>PASS</span>
+                    }}>LIMITADO</span>
                   ) : (
                     <span style={{
                       padding: "4px 8px",
@@ -242,7 +252,7 @@ export default async function RunningDashboardPage() {
                       textTransform: "uppercase",
                       letterSpacing: "0.05em",
                       boxShadow: "2px 2px 0px #000"
-                    }}>PREMIUM</span>
+                    }}>RUNNING +</span>
                   )}
                 </div>
               </h1>

@@ -179,6 +179,8 @@ export default async function AppDashboard({ searchParams }: PageProps) {
 
   const permissions = await getAccessPermissions(profile?.membership_type || 'club_pass');
   const isPremiumBadge = permissions.id === 'club';
+  /** SSoT: Permissão de registro de resultado controlada pelo Motor Dinâmico. */
+  const canViewTimeline = permissions.can_view_timeline;
 
   return (
     <div style={{ minHeight: "100vh", backgroundColor: "var(--nb-bg)", color: "var(--nb-text)", paddingBottom: "100px", position: "relative" }}>
@@ -354,7 +356,7 @@ export default async function AppDashboard({ searchParams }: PageProps) {
             checkin={userCheckin}
             studentLevel={profile?.level || "branco"}
             holiday={holiday}
-            membershipType={profile?.membership_type}
+            canViewTimeline={canViewTimeline}
             upgradeLink={upgradeLink}
           />
         </section>

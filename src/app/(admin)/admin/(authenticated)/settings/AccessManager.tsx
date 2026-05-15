@@ -28,6 +28,12 @@ interface AccessManagerProps {
 /** Mapeamento das permissões para exibição na interface. */
 const PERMISSION_CONFIG = [
   {
+    key: "can_view_timeline" as const,
+    label: "Linha do Tempo / Resultados",
+    description: "Aba de Atividade, registro de scores e histórico de treinos.",
+    icon: Activity,
+  },
+  {
     key: "can_view_prs" as const,
     label: "Recordes Pessoais (PRs)",
     description: "Mural de recordes, metas e conquistas técnicas.",
@@ -67,7 +73,7 @@ export default function AccessManager({ initialAccessTypes }: AccessManagerProps
    */
   const handleToggle = async (
     accessId: string,
-    permKey: "can_view_prs" | "can_view_evaluations" | "can_view_leaderboard",
+    permKey: "can_view_prs" | "can_view_evaluations" | "can_view_leaderboard" | "can_view_timeline",
     newValue: boolean
   ) => {
     // Snapshot para rollback em caso de erro
@@ -169,6 +175,7 @@ export default function AccessManager({ initialAccessTypes }: AccessManagerProps
           can_view_prs: false,
           can_view_evaluations: false,
           can_view_leaderboard: false,
+          can_view_timeline: false,
           can_access_running: false,
           is_active: true,
         },

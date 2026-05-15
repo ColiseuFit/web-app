@@ -6,4 +6,4 @@
  * 
  * Padrão: YYYYMMDD.REV
  */
-export const APP_VERSION = "20260420.01";
+export const APP_VERSION = "20260515.01";

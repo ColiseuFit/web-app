@@ -37,7 +37,8 @@ export default async function TreinosPage() {
   const studentProfileLevel = profile?.level || "iniciante";
   
   const permissions = await getAccessPermissions(profile?.membership_type || 'club_pass');
-  const hasTimelineAccess = permissions.id === 'club'; // Todo: maybe add a toggle for this in the future if requested
+  /** SSoT: Acesso à Timeline controlado pelo Motor Dinâmico de Permissões (Admin > Configurações > Acessos). */
+  const hasTimelineAccess = permissions.can_view_timeline;
 
   // Link de Upgrade (WhatsApp)
   const rawWhatsApp = boxSettings?.box_whatsapp || "";

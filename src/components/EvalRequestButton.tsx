@@ -62,7 +62,7 @@ export function EvalRequestButton({
       {showGate && (
         <AccessGate
           isModal
-          message="A SOLICITAÇÃO DE AVALIAÇÃO FÍSICA É EXCLUSIVA PARA ATLETAS COM ACESSO CLUBE PREMIUM."
+          message="ESSA FUNCIONALIDADE É CONTROLADA PELO SEU PLANO. FALE COM A RECEPÇÃO PARA MAIS DETALHES."
           upgradeLink={upgradeLink}
           onClose={() => setShowGate(false)}
         />
@@ -86,7 +86,7 @@ interface EvalGateLinkProps {
   children: React.ReactNode;
 }
 
-export function EvalGateLink({ href, upgradeLink, hasAccess, message = "O HISTÓRICO DE AVALIAÇÕES FÍSICAS É EXCLUSIVO PARA ATLETAS COM ACESSO CLUBE PREMIUM.", style, children }: EvalGateLinkProps) {
+export function EvalGateLink({ href, upgradeLink, hasAccess, message = "ESSA FUNCIONALIDADE É CONTROLADA PELO SEU PLANO. FALE COM A RECEPÇÃO PARA MAIS DETALHES.", style, children }: EvalGateLinkProps) {
   const [showGate, setShowGate] = useState(false);
 
   if (hasAccess) {

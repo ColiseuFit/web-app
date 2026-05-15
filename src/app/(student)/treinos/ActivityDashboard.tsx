@@ -120,7 +120,7 @@ export default function ActivityDashboard({
     return (
       <div className="activity-dashboard-root" style={{ marginTop: "20px" }}>
         <AccessGate 
-          message="O DASHBOARD DE PERFORMANCE E O HISTÓRICO DETALHADO DE TREINOS SÃO FUNCIONALIDADES EXCLUSIVAS PARA ATLETAS CLUBE PREMIUM."
+          message="O DASHBOARD DE PERFORMANCE E O HISTÓRICO DETALHADO DE TREINOS SÃO CONTROLADOS PELO SEU PLANO. FALE COM A RECEPÇÃO PARA MAIS DETALHES."
           upgradeLink={upgradeLink}
         />
       </div>

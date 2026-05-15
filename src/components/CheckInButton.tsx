@@ -18,7 +18,7 @@ interface CheckInButtonProps {
   isClassFinished?: boolean;
   holiday?: any;
   time?: string | null;
-  membershipType?: string | null;
+  canViewTimeline?: boolean;
   upgradeLink?: string | null;
 }
 
@@ -36,7 +36,7 @@ interface CheckInButtonProps {
  * 
  * @param {CheckInButtonProps} props - Dados de estado local e handlers de ação.
  */
-export default function CheckInButton({ wodId, date, alreadyChecked, status, result, isClassFinished, holiday, time, membershipType, upgradeLink }: CheckInButtonProps) {
+export default function CheckInButton({ wodId, date, alreadyChecked, status, result, isClassFinished, holiday, time, canViewTimeline, upgradeLink }: CheckInButtonProps) {
   const [open, setOpen] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [done, setDone] = useState(alreadyChecked);
@@ -187,8 +187,8 @@ export default function CheckInButton({ wodId, date, alreadyChecked, status, res
         {isClassFinished && !result && (
           <EvalGateLink
             href="/treinos"
-            hasAccess={membershipType !== 'club_pass'}
-            message="O REGISTRO DE SCORES É EXCLUSIVO PARA O PLANO CLUBE PREMIUM."
+            hasAccess={canViewTimeline !== false}
+            message="O REGISTRO DE SCORES É CONTROLADO PELO SEU PLANO. FALE COM A RECEPÇÃO."
             upgradeLink={upgradeLink}
             style={{ width: "100%", textDecoration: "none" }}
           >
@@ -223,8 +223,8 @@ export default function CheckInButton({ wodId, date, alreadyChecked, status, res
         {isClassFinished && result && (
            <EvalGateLink
             href="/treinos"
-            hasAccess={membershipType !== 'club_pass'}
-            message="O ACESSO AO LEADERBOARD É EXCLUSIVO PARA O PLANO CLUBE PREMIUM."
+            hasAccess={canViewTimeline !== false}
+            message="O ACESSO AO LEADERBOARD É CONTROLADO PELO SEU PLANO. FALE COM A RECEPÇÃO."
             upgradeLink={upgradeLink}
             style={{ width: "100%", textDecoration: "none" }}
           >

@@ -26,6 +26,7 @@ export interface AccessType {
   can_view_prs: boolean;
   can_view_evaluations: boolean;
   can_view_leaderboard: boolean;
+  can_view_timeline: boolean;
   can_access_running: boolean;
   is_active: boolean;
 }
@@ -39,6 +40,7 @@ const STATIC_FALLBACK: Record<string, AccessType> = {
     can_view_prs: true,
     can_view_evaluations: true,
     can_view_leaderboard: true,
+    can_view_timeline: true,
     can_access_running: true,
     is_active: true,
   },
@@ -49,6 +51,7 @@ const STATIC_FALLBACK: Record<string, AccessType> = {
     can_view_prs: false,
     can_view_evaluations: false,
     can_view_leaderboard: false,
+    can_view_timeline: true,
     can_access_running: false,
     is_active: true,
   },
@@ -89,6 +92,7 @@ export const getCachedAccessTypes = cache(
             can_view_prs: row.can_view_prs,
             can_view_evaluations: row.can_view_evaluations,
             can_view_leaderboard: row.can_view_leaderboard,
+            can_view_timeline: row.can_view_timeline ?? false,
             can_access_running: row.can_access_running,
             is_active: row.is_active,
           };
@@ -125,6 +129,7 @@ export async function getAccessPermissions(
       can_view_prs: false,
       can_view_evaluations: false,
       can_view_leaderboard: false,
+      can_view_timeline: false,
       can_access_running: false,
       is_active: true,
     }
@@ -156,6 +161,7 @@ export async function updateAccessTypeAction(
         can_view_prs: updates.can_view_prs,
         can_view_evaluations: updates.can_view_evaluations,
         can_view_leaderboard: updates.can_view_leaderboard,
+        can_view_timeline: updates.can_view_timeline,
         can_access_running: updates.can_access_running,
         updated_at: new Date().toISOString(),
       })
@@ -170,6 +176,8 @@ export async function updateAccessTypeAction(
     revalidatePath("/dashboard");
     revalidatePath("/progresso");
     revalidatePath("/profile");
+    revalidatePath("/treinos");
+    revalidatePath("/programas/running");
 
     return { success: true };
   } catch (e) {
@@ -266,6 +274,7 @@ export async function createAccessTypeAction(
       can_view_prs: false,
       can_view_evaluations: false,
       can_view_leaderboard: false,
+      can_view_timeline: false,
       can_access_running: false,
       is_active: true,
     });

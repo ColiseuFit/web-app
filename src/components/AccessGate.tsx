@@ -9,6 +9,8 @@ interface AccessGateProps {
   isModal?: boolean;
   onClose?: () => void;
   title?: string;
+  ribbonText?: string;
+  ctaText?: string;
 }
 
 /**
@@ -26,7 +28,9 @@ export default function AccessGate({
   upgradeLink, 
   isModal = false, 
   onClose,
-  title = "ACESSO RESTRITO"
+  title = "ACESSO RESTRITO",
+  ribbonText = "PREMIUM",
+  ctaText = "SEJA CLUBE PREMIUM"
 }: AccessGateProps) {
   
   const content = (
@@ -64,7 +68,7 @@ export default function AccessGate({
         letterSpacing: "0.2em",
         zIndex: 10
       }}>
-        PREMIUM
+        {ribbonText}
       </div>
 
       {isModal && onClose && (
@@ -120,7 +124,7 @@ export default function AccessGate({
             boxShadow: "4px 4px 0px #000"
           }}
         >
-          SEJA CLUBE PREMIUM
+          {ctaText}
         </a>
       )}
     </div>
