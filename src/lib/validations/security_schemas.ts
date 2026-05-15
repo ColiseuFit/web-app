@@ -132,12 +132,16 @@ export const wodSchema = z.object({
   warm_up: z.string().optional(),
   technique: z.string().optional(),
   wod_content: z.string().min(5, "O detalhamento do WOD deve ser mais completo"),
+  wod_content_l4: z.string().optional(),
+  wod_content_l3: z.string().optional(),
+  wod_content_l2: z.string().optional(),
+  wod_content_l1: z.string().optional(),
   coach_id: z.string().uuid().optional(),
   tags: z.array(z.string()).optional(),
   video_url: z.string().url().optional().or(z.literal("")),
   type_tag: z.string().min(2, "Selecione uma modalidade").optional(),
   time_cap: z.string().optional(),
-  result_type: z.enum(["time", "reps", "load", "rounds"]).optional(),
+  result_type: z.string().optional(), // Allows comma-separated types (e.g. "time,calories")
 });
 
 /**

@@ -80,8 +80,11 @@ function ResultEntryBlock({
   const [min, setMin] = useState("");
   const [sec, setSec] = useState("");
   
-  // Estado para reps/carga
-  const [numericValue, setNumericValue] = useState("");
+  // Estado para outros tipos
+  const [resultsMap, setResultsMap] = useState<Record<string, string>>({});
+
+  // Parse dos tipos permitidos (compatibilidade com legado string única)
+  const resultTypes = (resultType || "text").split(",").map(t => t.trim()).filter(Boolean);
 
   // Estado para Nível de Performance (Coliseu Levels)
   const [selectedLevel, setSelectedLevel] = useState<string>(defaultLevel || "iniciante");
@@ -92,42 +95,49 @@ function ResultEntryBlock({
 
   const handleSave = async () => {
     setError(null);
-    let finalValueRes = "";
-    let displayValue = "";
+    const partsRes: string[] = [];
+    const partsDisplay: string[] = [];
 
-    if (resultType === "time") {
-      if (!min.trim() || !sec.trim()) {
-        setError("Preencha minutos e segundos.");
-        return;
+    const unitMap: Record<string, string> = { 
+      load: "KG", rounds: "RDS", reps: "REP", 
+      distance: "M/KM", calories: "CAL", points: "PTS", text: "" 
+    };
+
+    for (const rt of resultTypes) {
+      if (rt === "time") {
+        if (!min.trim() || !sec.trim()) {
+          setError("Preencha minutos e segundos.");
+          return;
+        }
+        const m = parseInt(min);
+        const s = parseInt(sec);
+        if (isNaN(m) || isNaN(s) || s >= 60) {
+          setError("Tempo inválido.");
+          return;
+        }
+        const formattedM = min.padStart(2, "0");
+        const formattedS = sec.padStart(2, "0");
+        const fmt = `${formattedM}:${formattedS}`;
+        partsRes.push(fmt);
+        partsDisplay.push(`${fmt} MIN`);
+      } else {
+        const val = resultsMap[rt] || "";
+        if (!val.trim()) {
+          setError(`Preencha todos os campos obrigatórios.`);
+          return;
+        }
+        if (rt !== "rounds" && rt !== "text" && isNaN(Number(val))) {
+          setError("Digite apenas números válidos.");
+          return;
+        }
+        partsRes.push(val.trim());
+        const u = unitMap[rt];
+        partsDisplay.push(u ? `${val.trim()} ${u}` : val.trim());
       }
-      const m = parseInt(min);
-      const s = parseInt(sec);
-      if (isNaN(m) || isNaN(s)) {
-        setError("Digite apenas números.");
-        return;
-      }
-      if (s >= 60) {
-        setError("Segundos devem ser < 60.");
-        return;
-      }
-      // Formata como MM:SS
-      const formattedM = min.padStart(2, "0");
-      const formattedS = sec.padStart(2, "0");
-      finalValueRes = `${formattedM}:${formattedS}`;
-      displayValue = `${finalValueRes} MIN`;
-    } else {
-      if (!numericValue.trim()) {
-        setError("Digite um valor válido.");
-        return;
-      }
-      if (resultType !== "rounds" && isNaN(Number(numericValue))) {
-        setError("Digite apenas números.");
-        return;
-      }
-      finalValueRes = numericValue.trim();
-      const unitMap: Record<string, string> = { load: "KG", rounds: "RDS", reps: "REP" };
-      displayValue = `${finalValueRes} ${unitMap[resultType] ?? "REP"}`;
     }
+
+    const finalValueRes = partsRes.join(" | ");
+    const displayValue = partsDisplay.join(" | ");
 
     setSaving(true);
     setSavedResult(displayValue);
@@ -271,78 +281,74 @@ function ResultEntryBlock({
         RESULTADO DO WOD ({selectedLevel.toUpperCase()})
       </div>
 
-      <div style={{ display: "flex", gap: "10px", alignItems: "flex-end" }}>
-        {resultType === "time" ? (
-          <div style={{ display: "flex", gap: "10px", flex: 1, alignItems: "center" }}>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: "9px", fontWeight: 900, color: "rgba(0,0,0,0.5)", marginBottom: "6px", textAlign: "center" }}>MINUTOS</div>
-              <input
-                type="tel"
-                placeholder="00"
-                value={min}
-                onChange={(e) => { setMin(e.target.value.replace(/\D/g, "").slice(0, 2)); setError(null); }}
-                style={{
-                  width: "100%",
-                  padding: "14px",
-                  border: "2px solid #000",
-                  fontSize: "22px",
-                  fontWeight: 950,
-                  textAlign: "center",
-                  background: "#FFF",
-                  outline: "none",
-                  boxShadow: "inset 4px 4px 0px rgba(0,0,0,0.05)"
-                }}
-              />
-            </div>
-            <span style={{ fontSize: "24px", fontWeight: 950, paddingTop: "20px", color: "#000" }}>:</span>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: "9px", fontWeight: 900, color: "rgba(0,0,0,0.5)", marginBottom: "6px", textAlign: "center" }}>SEGUNDOS</div>
-              <input
-                type="tel"
-                placeholder="00"
-                value={sec}
-                onChange={(e) => { setSec(e.target.value.replace(/\D/g, "").slice(0, 2)); setError(null); }}
-                style={{
-                  width: "100%",
-                  padding: "14px",
-                  border: "2px solid #000",
-                  fontSize: "22px",
-                  fontWeight: 950,
-                  textAlign: "center",
-                  background: "#FFF",
-                  outline: "none",
-                  boxShadow: "inset 4px 4px 0px rgba(0,0,0,0.05)"
-                }}
-              />
-            </div>
-          </div>
-        ) : (
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: "9px", fontWeight: 900, color: "rgba(0,0,0,0.5)", marginBottom: "6px" }}>
-              {resultType === "load" ? "CARGA MÁXIMA (KG)" : resultType === "rounds" ? "ROUNDS + REPS" : "TOTAL DE REPETIÇÕES"}
-            </div>
-            <input
-              type={resultType === "rounds" ? "text" : "tel"}
-              placeholder={resultType === "rounds" ? "Ex: 5+12" : "0"}
-              value={numericValue}
-              onChange={(e) => { 
-                const val = e.target.value;
-                setNumericValue(resultType === "rounds" ? val.replace(/[^\d+]/g, "") : val.replace(/\D/g, "")); 
-                setError(null); 
-              }}
-              style={{
-                width: "100%",
-                padding: "14px",
-                border: "2px solid #000",
-                fontSize: "22px",
-                fontWeight: 950,
-                background: "#FFF",
-                outline: "none",
-                boxShadow: "inset 4px 4px 0px rgba(0,0,0,0.05)"
-              }}
-            />
-          </div>
-        )}
+      <div style={{ display: "flex", gap: "10px", alignItems: "flex-end", flexWrap: "wrap" }}>
+        {resultTypes.map((rt) => {
+          if (rt === "time") {
+            return (
+              <div key={rt} style={{ display: "flex", gap: "10px", flex: "1 1 auto", alignItems: "center" }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: "9px", fontWeight: 900, color: "rgba(0,0,0,0.5)", marginBottom: "6px", textAlign: "center" }}>MINUTOS</div>
+                  <input
+                    type="tel"
+                    placeholder="00"
+                    value={min}
+                    onChange={(e) => { setMin(e.target.value.replace(/\D/g, "").slice(0, 2)); setError(null); }}
+                    style={{
+                      width: "100%", padding: "14px", border: "2px solid #000",
+                      fontSize: "22px", fontWeight: 950, textAlign: "center",
+                      background: "#FFF", outline: "none", boxShadow: "inset 4px 4px 0px rgba(0,0,0,0.05)"
+                    }}
+                  />
+                </div>
+                <span style={{ fontSize: "24px", fontWeight: 950, paddingTop: "20px", color: "#000" }}>:</span>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: "9px", fontWeight: 900, color: "rgba(0,0,0,0.5)", marginBottom: "6px", textAlign: "center" }}>SEGUNDOS</div>
+                  <input
+                    type="tel"
+                    placeholder="00"
+                    value={sec}
+                    onChange={(e) => { setSec(e.target.value.replace(/\D/g, "").slice(0, 2)); setError(null); }}
+                    style={{
+                      width: "100%", padding: "14px", border: "2px solid #000",
+                      fontSize: "22px", fontWeight: 950, textAlign: "center",
+                      background: "#FFF", outline: "none", boxShadow: "inset 4px 4px 0px rgba(0,0,0,0.05)"
+                    }}
+                  />
+                </div>
+              </div>
+            );
+          } else {
+             const labels: Record<string, string> = {
+                load: "CARGA (KG)", rounds: "ROUNDS", text: "DESEMPENHO",
+                distance: "DISTÂNCIA", calories: "CALORIAS", points: "PONTOS", reps: "REPETIÇÕES"
+             };
+             return (
+               <div key={rt} style={{ flex: "1 1 auto", minWidth: "120px" }}>
+                 <div style={{ fontSize: "9px", fontWeight: 900, color: "rgba(0,0,0,0.5)", marginBottom: "6px" }}>
+                   {labels[rt] || "VALOR NUMÉRICO"}
+                 </div>
+                 <input
+                   type={rt === "text" ? "text" : "tel"}
+                   placeholder={rt === "text" ? "Ex: Feito" : "0"}
+                   value={resultsMap[rt] || ""}
+                   onChange={(e) => { 
+                     const val = e.target.value;
+                     let formatted = val;
+                     if (rt !== "text") formatted = val.replace(/\D/g, "");
+                     
+                     setResultsMap(prev => ({ ...prev, [rt]: formatted }));
+                     setError(null); 
+                   }}
+                   style={{
+                     width: "100%", padding: "14px", border: "2px solid #000",
+                     fontSize: "22px", fontWeight: 950, background: "#FFF", outline: "none",
+                     boxShadow: "inset 4px 4px 0px rgba(0,0,0,0.05)"
+                   }}
+                 />
+               </div>
+             );
+          }
+        })}
 
         <button
           onClick={handleSave}

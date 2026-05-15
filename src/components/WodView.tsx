@@ -12,6 +12,10 @@ interface Wod {
   warm_up: string;
   technique?: string;
   wod_content: string;
+  wod_content_l4?: string | null;
+  wod_content_l3?: string | null;
+  wod_content_l2?: string | null;
+  wod_content_l1?: string | null;
   tags?: string[];
   type_tag?: string | null;
   time_cap?: number | null;
@@ -53,26 +57,19 @@ export default function WodView({
 }: WodViewProps) {
   const [activeLevel, setActiveLevel] = useState(getLevelInfo(studentLevel).id);
 
-  const getAdaptedContent = (baseContent: string, levelId: string) => {
-    if (!baseContent) return "TREINO NÃO DISPONÍVEL PARA ESTE NÍVEL.";
+  const getAdaptedContent = (wodObj: Wod, levelId: string) => {
+    if (!wodObj.wod_content) return "TREINO NÃO DISPONÍVEL PARA ESTE NÍVEL.";
     
-    if (levelId === "L1") {
-        return baseContent.replace(/Thrusters.*/g, "15-12-9 Air Squats").replace(/Pull-ups.*/g, "Ring Rows");
-    }
-    if (levelId === "L2") {
-        return baseContent.replace(/Thrusters.*/g, "15-12-9 Goblet Squats @16kg").replace(/Pull-ups.*/g, "Jumping Pull-ups");
-    }
-    if (levelId === "L3") {
-        return baseContent.replace(/Thrusters.*/g, "21-15-9 Thrusters @30/20kg").replace(/Pull-ups.*/g, "Pull-ups (Banded if needed)");
-    }
-    if (levelId === "L4") return baseContent; // RX
-    if (levelId === "L5") {
-        return baseContent.replace(/Thrusters.*/g, "21-15-9 Thrusters @50/35kg").replace(/Pull-ups.*/g, "Chest-to-Bar Pull-ups");
-    }
-    return baseContent;
+    let content = wodObj.wod_content; // Fallback para L5/RX
+    if (levelId === "L1" && wodObj.wod_content_l1) content = wodObj.wod_content_l1;
+    else if (levelId === "L2" && wodObj.wod_content_l2) content = wodObj.wod_content_l2;
+    else if (levelId === "L3" && wodObj.wod_content_l3) content = wodObj.wod_content_l3;
+    else if (levelId === "L4" && wodObj.wod_content_l4) content = wodObj.wod_content_l4;
+    
+    return content;
   };
 
-  const adaptedWod = wod ? getAdaptedContent(wod.wod_content, activeLevel) : "";
+  const adaptedWod = wod ? getAdaptedContent(wod, activeLevel) : "";
   const activeLevelInfo = ALL_LEVELS.find(l => l.id === activeLevel);
 
   return (

@@ -6,6 +6,9 @@ import BottomNav from "@/components/BottomNav";
 import DashboardStyles from "@/components/DashboardStyles";
 import Link from "next/link";
 import { Zap, ChevronRight, Activity } from "lucide-react";
+import { getAccessPermissions } from "@/lib/constants/access_actions";
+import { getBoxSettings } from "@/lib/constants/settings_actions";
+import { EvalGateLink } from "@/components/EvalRequestButton";
 
 export const metadata: Metadata = {
   title: "Programas e Planos",
@@ -17,11 +20,23 @@ export default async function ProgramasPage() {
 
   if (!user) redirect("/login");
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("running_level, running_status")
-    .eq("id", user.id)
-    .single();
+  const [
+    { data: profile },
+    boxSettings
+  ] = await Promise.all([
+    supabase.from("profiles").select("running_level, running_status, membership_type").eq("id", user.id).single(),
+    getBoxSettings()
+  ]);
+
+  const permissions = await getAccessPermissions(profile?.membership_type || "club_pass");
+  const hasRunningAccess = permissions.can_access_running;
+
+  // Link de Upgrade (WhatsApp)
+  const rawWhatsApp = boxSettings?.box_whatsapp || "";
+  const whatsappNumber = rawWhatsApp.replace(/\D/g, "");
+  const upgradeLink = whatsappNumber
+    ? `https://wa.me/55${whatsappNumber}?text=${encodeURIComponent("Olá! Gostaria de saber mais sobre como fazer o upgrade para o Plano Clube Premium.")}`
+    : null;
 
   const isRunningInactive = profile?.running_status && profile.running_status !== "active";
   const hasRunningLevel = !!profile?.running_level;
@@ -81,9 +96,12 @@ export default async function ProgramasPage() {
 
         <div style={{ display: "grid", gap: "20px" }}>
           {programs.map((program, idx) => (
-            <Link 
+            <EvalGateLink 
               key={program.id} 
               href={program.href}
+              hasAccess={hasRunningAccess}
+              upgradeLink={upgradeLink}
+              message="O PROGRAMA DE CORRIDA PERSONALIZADO É CONTROLADO PELO SEU PLANO. FALE COM A RECEPÇÃO PARA MAIS DETALHES."
               style={{ textDecoration: "none", color: "inherit" }}
             >
               <div
@@ -160,10 +178,10 @@ export default async function ProgramasPage() {
                   marginTop: "8px",
                   zIndex: 1
                 }}>
-                  ACESSAR PROGRAMA <ChevronRight size={16} strokeWidth={3} />
+                  {hasRunningAccess ? "ACESSAR PROGRAMA" : "RESTRITO AO PLANO"} <ChevronRight size={16} strokeWidth={3} />
                 </div>
               </div>
-            </Link>
+            </EvalGateLink>
           ))}
 
           {/* Placeholder para próximos programas */}

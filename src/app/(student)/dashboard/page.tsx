@@ -362,9 +362,11 @@ export default async function AppDashboard({ searchParams }: PageProps) {
         </section>
 
         {/* ── RUNNING SESSION (Hybrid Timeline) ── */}
-        <RunningHomeCard 
-          workout={runningWorkouts}
-        />
+        {permissions.can_access_running && (
+          <RunningHomeCard 
+            workout={runningWorkouts}
+          />
+        )}
 
         {/* Recent PRs moved to Progress page as requested */}
 

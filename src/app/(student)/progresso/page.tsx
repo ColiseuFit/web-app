@@ -49,7 +49,7 @@ export default async function ProgressPage() {
   ]);
 
   const permissions = await getAccessPermissions(profile?.membership_type || "club_pass");
-  const hasAccess = permissions.can_view_prs;
+  const hasAccess = permissions.can_view_evaluations;
 
   // Link de Upgrade (WhatsApp)
   const rawWhatsApp = boxSettings?.box_whatsapp || "";

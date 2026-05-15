@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { KeyRound, Save, Shield, Activity, Trophy, BarChart3, Edit3, Trash2, Plus } from "lucide-react";
+import { KeyRound, Save, Shield, Activity, Trophy, BarChart3, Edit3, Trash2, Plus, Footprints } from "lucide-react";
 import { AccessType, updateAccessTypeAction, deleteAccessTypeAction, createAccessTypeAction } from "@/lib/constants/access_actions";
 import Toast, { ToastStatus } from "@/components/Toast";
 import ConfirmModal from "@/components/ConfirmModal";
@@ -51,6 +51,12 @@ const PERMISSION_CONFIG = [
     description: "Posição no ranking semanal e hall da fama.",
     icon: BarChart3,
   },
+  {
+    key: "can_access_running" as const,
+    label: "Running Hub",
+    description: "Planilhas de corrida, métricas de pace e histórico.",
+    icon: Footprints,
+  },
 ];
 
 export default function AccessManager({ initialAccessTypes }: AccessManagerProps) {
@@ -73,7 +79,7 @@ export default function AccessManager({ initialAccessTypes }: AccessManagerProps
    */
   const handleToggle = async (
     accessId: string,
-    permKey: "can_view_prs" | "can_view_evaluations" | "can_view_leaderboard" | "can_view_timeline",
+    permKey: "can_view_prs" | "can_view_evaluations" | "can_view_leaderboard" | "can_view_timeline" | "can_access_running",
     newValue: boolean
   ) => {
     // Snapshot para rollback em caso de erro

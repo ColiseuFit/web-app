@@ -14,6 +14,7 @@ import { upsertWod, deleteWod } from "../../../actions";
 import BenchmarkLibraryModal from "@/components/admin/BenchmarkLibraryModal";
 import ConfirmModal from "@/components/ConfirmModal";
 import AlertModal from "@/components/AlertModal";
+import { ALL_LEVELS } from "@/lib/constants/levels";
 
 /**
  * WodsClient: Brutalist Split-Screen WOD Builder & Benchmark Integration.
@@ -43,6 +44,10 @@ interface Wod {
   warm_up: string | null;
   technique: string | null;
   wod_content: string;
+  wod_content_l4?: string | null;
+  wod_content_l3?: string | null;
+  wod_content_l2?: string | null;
+  wod_content_l1?: string | null;
   type_tag: string | null;
   time_cap: string | null;
   result_type: string | null;
@@ -67,10 +72,14 @@ const WOD_MODALITIES = [
 ];
 
 const RESULT_TYPES = [
-  { value: "reps", label: "Repetições / Rounds" },
+  { value: "reps", label: "Repetições" },
   { value: "time", label: "Tempo (HH:MM:SS)" },
   { value: "load", label: "Carga Máxima (kg)" },
-  { value: "rounds", label: "Rounds + Reps" },
+  { value: "rounds", label: "Rounds" },
+  { value: "distance", label: "Distância (m/km)" },
+  { value: "calories", label: "Calorias (cal)" },
+  { value: "points", label: "Pontos / Score" },
+  { value: "text", label: "Misto / Texto Livre (Combinações)" },
 ];
 
 /** Active editor tab */
@@ -106,6 +115,7 @@ export default function WodsClient({ initialWods, weekDates, weekOffset }: WodsC
   const [showEditor, setShowEditor] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [activeTab, setActiveTab] = useState<EditorTab>("warmup");
+  const [activeLevelTab, setActiveLevelTab] = useState<string>("L5");
   const [showModalitySelect, setShowModalitySelect] = useState(false);
   const [isBenchmarkModalOpen, setIsBenchmarkModalOpen] = useState(false);
 
@@ -121,6 +131,10 @@ export default function WodsClient({ initialWods, weekDates, weekOffset }: WodsC
   const [warmup, setWarmup] = useState(currentWod?.warm_up || "");
   const [technique, setTechnique] = useState(currentWod?.technique || "");
   const [wodContent, setWodContent] = useState(currentWod?.wod_content || "");
+  const [wodContentL4, setWodContentL4] = useState(currentWod?.wod_content_l4 || "");
+  const [wodContentL3, setWodContentL3] = useState(currentWod?.wod_content_l3 || "");
+  const [wodContentL2, setWodContentL2] = useState(currentWod?.wod_content_l2 || "");
+  const [wodContentL1, setWodContentL1] = useState(currentWod?.wod_content_l1 || "");
   const [typeTag, setTypeTag] = useState(currentWod?.type_tag || "AMRAP");
   const [timeCap, setTimeCap] = useState(currentWod?.time_cap || "");
   const [resultType, setResultType] = useState(currentWod?.result_type || "reps");
@@ -135,11 +149,25 @@ export default function WodsClient({ initialWods, weekDates, weekOffset }: WodsC
     setWarmup(wod?.warm_up || "");
     setTechnique(wod?.technique || "");
     setWodContent(wod?.wod_content || "");
+    setWodContentL4(wod?.wod_content_l4 || "");
+    setWodContentL3(wod?.wod_content_l3 || "");
+    setWodContentL2(wod?.wod_content_l2 || "");
+    setWodContentL1(wod?.wod_content_l1 || "");
     setTypeTag(wod?.type_tag || "AMRAP");
     setTimeCap(wod?.time_cap || "");
     setResultType(wod?.result_type || "reps");
     setShowEditor(false);
     setActiveTab("warmup");
+    setActiveLevelTab("L5");
+  }
+
+  // Auto-propagation logic for main WOD content
+  function handleMainWodChange(val: string) {
+    setWodContent(val);
+    if (!wodContentL4 || wodContentL4 === wodContent) setWodContentL4(val);
+    if (!wodContentL3 || wodContentL3 === wodContent) setWodContentL3(val);
+    if (!wodContentL2 || wodContentL2 === wodContent) setWodContentL2(val);
+    if (!wodContentL1 || wodContentL1 === wodContent) setWodContentL1(val);
   }
 
   function openEditor() {
@@ -148,6 +176,10 @@ export default function WodsClient({ initialWods, weekDates, weekOffset }: WodsC
       setWarmup(currentWod.warm_up || "");
       setTechnique(currentWod.technique || "");
       setWodContent(currentWod.wod_content || "");
+      setWodContentL4(currentWod.wod_content_l4 || "");
+      setWodContentL3(currentWod.wod_content_l3 || "");
+      setWodContentL2(currentWod.wod_content_l2 || "");
+      setWodContentL1(currentWod.wod_content_l1 || "");
       setTypeTag(currentWod.type_tag || "AMRAP");
       setTimeCap(currentWod.time_cap || "");
       setResultType(currentWod.result_type || "reps");
@@ -163,6 +195,10 @@ export default function WodsClient({ initialWods, weekDates, weekOffset }: WodsC
     formData.append("warm_up", warmup);
     formData.append("technique", technique);
     formData.append("wod_content", wodContent);
+    formData.append("wod_content_l4", wodContentL4);
+    formData.append("wod_content_l3", wodContentL3);
+    formData.append("wod_content_l2", wodContentL2);
+    formData.append("wod_content_l1", wodContentL1);
     formData.append("type_tag", typeTag);
     formData.append("time_cap", timeCap);
     formData.append("result_type", resultType);
@@ -515,8 +551,8 @@ export default function WodsClient({ initialWods, weekDates, weekOffset }: WodsC
                   </div>
 
                   {/* Time Cap + Result Type */}
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-                    <div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+                    <div style={{ width: "50%" }}>
                       <label style={labelStyle}>Time Cap</label>
                       <div style={{ position: "relative" }}>
                         <input
@@ -530,16 +566,37 @@ export default function WodsClient({ initialWods, weekDates, weekOffset }: WodsC
                       </div>
                     </div>
                     <div>
-                      <label style={labelStyle}>Tipo de Resultado</label>
-                      <select
-                        value={resultType}
-                        onChange={(e) => setResultType(e.target.value)}
-                        style={{ ...inputStyle, cursor: "pointer" }}
-                      >
-                        {RESULT_TYPES.map((rt) => (
-                          <option key={rt.value} value={rt.value}>{rt.label}</option>
-                        ))}
-                      </select>
+                      <label style={labelStyle}>Tipos de Resultado (Pode selecionar múltiplos para pontuação mista)</label>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                        {RESULT_TYPES.map((rt) => {
+                          const isSelected = resultType.split(',').includes(rt.value);
+                          return (
+                            <button
+                              key={rt.value}
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                const currentArr = resultType.split(',').map(x => x.trim()).filter(Boolean);
+                                if (isSelected) {
+                                  const newArr = currentArr.filter(x => x !== rt.value);
+                                  setResultType(newArr.length > 0 ? newArr.join(',') : "");
+                                } else {
+                                  setResultType([...currentArr, rt.value].join(','));
+                                }
+                              }}
+                              style={{
+                                padding: "8px 12px", border: "2px solid #000",
+                                background: isSelected ? "#000" : "#FFF",
+                                color: isSelected ? "#FFF" : "#000",
+                                fontSize: "11px", fontWeight: 800, cursor: "pointer",
+                                textTransform: "uppercase"
+                              }}
+                            >
+                              {rt.label}
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
                   </div>
 
@@ -556,10 +613,45 @@ export default function WodsClient({ initialWods, weekDates, weekOffset }: WodsC
                         <BookOpen size={12} style={{ marginRight: "4px" }} /> CARREGAR BENCHMARK
                       </button>
                     </div>
+
+                    {/* WOD Content Tabs */}
+                    <div style={{ display: "flex", gap: "4px", marginBottom: "8px", overflowX: "auto", paddingBottom: "4px" }}>
+                      {[...ALL_LEVELS].reverse().map(lvl => (
+                        <button
+                          key={lvl.id}
+                          type="button"
+                          onClick={(e) => { e.preventDefault(); setActiveLevelTab(lvl.id); }}
+                          style={{
+                            padding: "6px 12px", border: "2px solid #000",
+                            background: activeLevelTab === lvl.id ? "#000" : "#FFF",
+                            color: activeLevelTab === lvl.id ? "#FFF" : "#000",
+                            fontSize: "11px", fontWeight: 800, cursor: "pointer",
+                            whiteSpace: "nowrap", flex: lvl.id === "L5" ? "1 1 auto" : "0 0 auto",
+                            textAlign: "center", textTransform: "uppercase"
+                          }}
+                        >
+                          {lvl.label} {lvl.id === "L5" ? "(PADRÃO)" : ""}
+                        </button>
+                      ))}
+                    </div>
+
                     <textarea
                       rows={10}
-                      value={wodContent}
-                      onChange={(e) => setWodContent(e.target.value)}
+                      value={
+                        activeLevelTab === "L5" ? wodContent :
+                        activeLevelTab === "L4" ? wodContentL4 :
+                        activeLevelTab === "L3" ? wodContentL3 :
+                        activeLevelTab === "L2" ? wodContentL2 :
+                        wodContentL1
+                      }
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (activeLevelTab === "L5") handleMainWodChange(val);
+                        else if (activeLevelTab === "L4") setWodContentL4(val);
+                        else if (activeLevelTab === "L3") setWodContentL3(val);
+                        else if (activeLevelTab === "L2") setWodContentL2(val);
+                        else if (activeLevelTab === "L1") setWodContentL1(val);
+                      }}
                       placeholder={"Ex:\n21-15-9\nThrusters (43/30kg)\nPull-ups"}
                       style={{
                         ...textareaStyle,
@@ -567,6 +659,8 @@ export default function WodsClient({ initialWods, weekDates, weekOffset }: WodsC
                         fontSize: "16px",
                         fontWeight: 700,
                         lineHeight: 1.5,
+                        borderColor: activeLevelTab !== "L5" ? "#666" : "#000",
+                        background: activeLevelTab !== "L5" ? "#F9FAFB" : "#FFF"
                       }}
                     />
                   </div>
@@ -646,7 +740,12 @@ export default function WodsClient({ initialWods, weekDates, weekOffset }: WodsC
                 <div style={{ background: "rgba(255,255,255,0.05)", padding: "8px 14px", border: "1px solid rgba(255,255,255,0.08)" }}>
                   <span style={{ fontSize: "8px", fontWeight: 800, color: "rgba(255,255,255,0.3)", display: "block", marginBottom: "2px" }}>RESULTADO</span>
                   <span style={{ fontSize: "12px", fontWeight: 900, color: "#FFF" }}>
-                    {RESULT_TYPES.find(r => r.value === resultType)?.label.split(" ")[0] || "—"}
+                    {
+                      resultType.split(',')
+                        .map(val => RESULT_TYPES.find(r => r.value === val.trim())?.label.split(" ")[0])
+                        .filter(Boolean)
+                        .join(" + ") || "—"
+                    }
                   </span>
                 </div>
               </div>
@@ -693,7 +792,13 @@ export default function WodsClient({ initialWods, weekDates, weekOffset }: WodsC
                       <div style={{ flex: 1, height: "1px", background: "linear-gradient(90deg, rgba(227,27,35,0.3), transparent)" }} />
                     </div>
                     <p style={{ fontSize: "17px", fontWeight: 700, whiteSpace: "pre-line", lineHeight: 1.4, margin: 0 }}>
-                      {wodContent}
+                      {
+                        activeLevelTab === "L5" ? wodContent :
+                        activeLevelTab === "L4" ? wodContentL4 :
+                        activeLevelTab === "L3" ? wodContentL3 :
+                        activeLevelTab === "L2" ? wodContentL2 :
+                        wodContentL1
+                      }
                     </p>
                   </div>
                 )}
