@@ -10,6 +10,7 @@ import RunningHubTabs from "@/components/RunningHubTabs";
 import RunningAccessGate from "@/components/RunningAccessGate";
 import { RUNNING_LEVELS, type RunningLevelKey } from "@/lib/constants/running";
 import { getAccessPermissions } from "@/lib/constants/access_actions";
+import AccessGate from "@/components/AccessGate";
 
 
 export const metadata: Metadata = {
@@ -34,13 +35,21 @@ export default async function RunningDashboardPage() {
   const now = new Date();
   const firstDayOfMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString();
 
+  // 1. Primeiro buscamos o perfil para saber o tipo de membro (essencial para permissões)
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("level, running_level, running_pace, running_target_pace, running_status, full_name, points_total, avatar_url, birth_date, gender, membership_type")
+    .eq("id", user.id)
+    .single();
+
+  // 2. Com o perfil em mãos, buscamos o restante em paralelo
   const [
     { data: activePlan }, 
     { data: monthlyWorkouts }, 
-    { data: profile },
     historyData,
     { data: stravaIntegration },
-    { data: latestEval }
+    { data: latestEval },
+    permissions
   ] = await Promise.all([
     supabase
       .from("running_plans")
@@ -56,11 +65,6 @@ export default async function RunningDashboardPage() {
       .eq("student_id", user.id)
       .not("completed_at", "is", null)
       .gte("completed_at", firstDayOfMonth),
-    supabase
-      .from("profiles")
-      .select("level, running_level, running_pace, running_target_pace, running_status, full_name, points_total, avatar_url, birth_date, gender, membership_type")
-      .eq("id", user.id)
-      .single(),
     getStudentRunningHistory(user.id),
     supabase
       .from("athlete_integrations")
