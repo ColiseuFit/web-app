@@ -53,9 +53,10 @@ graph TD
     - `docs/PLAYBOOKS/STRAVA_INTEGRATION.md`: Webhooks, homologação e conformidade com o Strava API Program.
     - `docs/PLAYBOOKS/RUNNING_SUPORTE.md`: Playbook operacional da página obrigatória de suporte (Compliance Strava).
     - `docs/PLAYBOOKS/COMPARTILHAMENTO_ATIVIDADE.md`: Playbook do motor de compartilhamento de stickers de WOD (Estilo Strava).
+    - `docs/PLAYBOOKS/PWA_HYBRID_SYNC.md`: Playbook do motor de sincronização híbrida PWA (Revalidação de Visibilidade e Toque).
 
 ---
 ---
-**Versão: 4.2.0 (Maio/2026) - Compartilhamento de Atividades Integrado**  
+**Versão: 4.2.1 (Maio/2026) - PWA Sincronização Híbrida Ready**  
 **Status da Auditoria:** 🏛️ LEGACY PROOF (Protocolo 1.0.3) - CONCLUÍDA  
 **Equipe:** Antigravity AI & Coliseu Engineering Team

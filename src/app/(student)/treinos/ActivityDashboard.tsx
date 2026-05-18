@@ -88,7 +88,11 @@ export default function ActivityDashboard({
   
   const router = useRouter();
 
-  // ── SINC EXTERN (PWA HYBRID SYSTEM) ──
+  /**
+   * ── SINC EXTERN (PWA HYBRID SYSTEM) ──
+   * Mecanismo modular de atualização híbrida (PWA Standalone).
+   * Une escutas passivas (visibilitychange/focus) a um wrapper ativo de toque (Pull-to-Refresh).
+   */
   const [pullDistance, setPullDistance] = useState(0);
   const [startY, setStartY] = useState(0);
   const [isPulling, setIsPulling] = useState(false);
@@ -101,7 +105,11 @@ export default function ActivityDashboard({
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(history.length === 10);
 
-  // Revalidação Silenciosa e Reset do Feed
+  /**
+   * ── REVALIDAÇÃO SILENCIOSA E RESET DE ESTADO ──
+   * Efeito reativo disparado sempre que a prop `history` muda (via revalidação Server-Side Next.js).
+   * Alinha o feed client-side com os dados novos do banco, reiniciando o cursor de paginação.
+   */
   useEffect(() => {
     // Quando a prop history atualizar via router.refresh(), injetamos no feed e resetamos a paginação local.
     setFeed(history);
@@ -125,7 +133,12 @@ export default function ActivityDashboard({
     };
   }, [router]);
 
-  // Touch Handlers
+  /**
+   * ── TOQUE E GESTOS (PULL-TO-REFRESH PHYSICS) ──
+   * Conjunto de manipuladores de toque (touchstart, touchmove, touchend) projetados para
+   * interceptar arrastes descendentes a partir do topo absoluto da janela (scrollY === 0)
+   * e acionar a revalidação dinâmica de dados no servidor sem interferir no scroll padrão.
+   */
   const handleTouchStart = (e: React.TouchEvent) => {
     if (window.scrollY === 0 && !isRefreshing) {
       setStartY(e.touches[0].clientY);
