@@ -6,6 +6,7 @@ import { Flame, Zap, BarChart3, History, Loader } from "lucide-react";
 import { getTodayDate } from "@/lib/date-utils";
 import { getPaginatedHistory } from "@/app/(student)/actions";
 import AccessGate from "@/components/AccessGate";
+import { useRouter } from "next/navigation";
 
 /**
  * Componente AnimatedNumber
@@ -84,14 +85,90 @@ export default function ActivityDashboard({
   const [activePeriod, setActivePeriod] = useState("Mês");
   const [isBroken, setIsBroken] = useState(false);
   const activePeriodLow = activePeriod.toLowerCase();
+  
+  const router = useRouter();
+
+  // ── SINC EXTERN (PWA HYBRID SYSTEM) ──
+  const [pullDistance, setPullDistance] = useState(0);
+  const [startY, setStartY] = useState(0);
+  const [isPulling, setIsPulling] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const PULL_THRESHOLD = 70;
 
   // ── PAGINAÇÃO (Load More) ──
-  // Feed local inicializado com os 10 primeiros WODs vindos do servidor (SSR page 0).
   const [feed, setFeed] = useState<ActivityItem[]>(history);
-  const [currentPage, setCurrentPage] = useState(1); // próxima página a buscar
+  const [currentPage, setCurrentPage] = useState(1);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
-  // Se o servidor retornou exatamente 10 itens, assume que pode ter mais.
   const [hasMore, setHasMore] = useState(history.length === 10);
+
+  // Revalidação Silenciosa e Reset do Feed
+  useEffect(() => {
+    // Quando a prop history atualizar via router.refresh(), injetamos no feed e resetamos a paginação local.
+    setFeed(history);
+    setCurrentPage(2);
+    setHasMore(history.length >= 10);
+  }, [history]);
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        router.refresh();
+      }
+    };
+    
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("focus", handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("focus", handleVisibilityChange);
+    };
+  }, [router]);
+
+  // Touch Handlers
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (window.scrollY === 0 && !isRefreshing) {
+      setStartY(e.touches[0].clientY);
+      setIsPulling(true);
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isPulling || isRefreshing) return;
+    const y = e.touches[0].clientY;
+    const distance = y - startY;
+    
+    if (distance > 0 && window.scrollY === 0) {
+      // Cria uma resistência visual puxando menos pixels
+      const dampenedDistance = Math.min(distance * 0.4, PULL_THRESHOLD + 20);
+      setPullDistance(dampenedDistance);
+    } else {
+      setPullDistance(0);
+      setIsPulling(false);
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (!isPulling || isRefreshing) return;
+    
+    if (pullDistance >= PULL_THRESHOLD) {
+      setIsRefreshing(true);
+      setPullDistance(PULL_THRESHOLD);
+      
+      // Async revalidation on server
+      router.refresh();
+      
+      // Mantém a animação brutalista para dar feedback seguro de sucesso, depois fecha
+      setTimeout(() => {
+        setIsRefreshing(false);
+        setPullDistance(0);
+        setIsPulling(false);
+      }, 1500);
+    } else {
+      setPullDistance(0);
+      setIsPulling(false);
+    }
+  };
 
   /**
    * Carrega o próximo bloco de 10 WODs e faz append no feed local.
@@ -201,7 +278,57 @@ export default function ActivityDashboard({
   }
 
   return (
-    <div key={activePeriod} className="activity-dashboard-root">
+    <div 
+      className="activity-dashboard-wrapper"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      style={{ position: "relative" }}
+    >
+      {/* ── LOADER BRUTALISTA PULL-TO-REFRESH ── */}
+      <div style={{
+        position: "absolute",
+        top: "-70px",
+        left: 0,
+        right: 0,
+        height: "70px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        opacity: Math.min(pullDistance / (PULL_THRESHOLD * 0.8), 1),
+        pointerEvents: "none",
+        zIndex: 50
+      }}>
+         <div style={{
+           background: "#FFF",
+           border: "3px solid #000",
+           borderRadius: "50%",
+           width: "48px",
+           height: "48px",
+           display: "flex",
+           alignItems: "center",
+           justifyContent: "center",
+           boxShadow: pullDistance >= PULL_THRESHOLD || isRefreshing ? "4px 4px 0px var(--red)" : "2px 2px 0px #000",
+           transition: "all 0.2s ease-out",
+           transform: `scale(${Math.min(pullDistance / PULL_THRESHOLD, 1)})`
+         }}>
+           <Flame 
+              size={24} 
+              color="#000" 
+              fill={pullDistance >= PULL_THRESHOLD || isRefreshing ? "var(--red)" : "transparent"} 
+              className={isRefreshing ? "animate-spin" : ""}
+           />
+         </div>
+      </div>
+
+      <div 
+        key={activePeriod} 
+        className="activity-dashboard-root"
+        style={{
+          transform: `translateY(${pullDistance}px)`,
+          transition: isPulling ? "none" : "transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
+        }}
+      >
       
       {/* ── HEADER: ATHLETE PERFORMANCE STATUS ── */}
       <div 
@@ -479,6 +606,7 @@ export default function ActivityDashboard({
               to { transform: rotate(360deg); }
           }
       `}</style>
+      </div>
     </div>
   );
 }
