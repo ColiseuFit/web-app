@@ -83,6 +83,15 @@
    ============================ */
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
+html {
+  scroll-behavior: smooth;
+}
+
+/* Âncora de resultado: compensa header fixo + safe area no scroll automático */
+#resultado {
+  scroll-margin-top: calc(80px + var(--sat, 0px));
+}
+
 body {
   background: var(--bg) !important;
   color: var(--text) !important;

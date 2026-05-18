@@ -186,7 +186,7 @@ export default function CheckInButton({ wodId, date, alreadyChecked, status, res
         {/* Botão de Ação Principal (Mudar Horário ou Registrar Resultado) */}
         {isClassFinished && !result && (
           <EvalGateLink
-            href="/treinos"
+            href="/treinos#resultado"
             hasAccess={canViewTimeline !== false}
             message="O REGISTRO DE SCORES É CONTROLADO PELO SEU PLANO. FALE COM A RECEPÇÃO."
             upgradeLink={upgradeLink}

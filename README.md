@@ -52,10 +52,10 @@ graph TD
     - `docs/PLAYBOOKS/TIMEZONE_SSoT.md`: Protocolo inegociável de manipulação de datas e horários (UTC-3 Anchor).
     - `docs/PLAYBOOKS/STRAVA_INTEGRATION.md`: Webhooks, homologação e conformidade com o Strava API Program.
     - `docs/PLAYBOOKS/RUNNING_SUPORTE.md`: Playbook operacional da página obrigatória de suporte (Compliance Strava).
-    ... (outros playbooks)
+    - `docs/PLAYBOOKS/COMPARTILHAMENTO_ATIVIDADE.md`: Playbook do motor de compartilhamento de stickers de WOD (Estilo Strava).
 
 ---
 ---
-**Versão: 4.1.0 (Maio/2026) - Engenharia de Treino V1 Ready**  
+**Versão: 4.2.0 (Maio/2026) - Compartilhamento de Atividades Integrado**  
 **Status da Auditoria:** 🏛️ LEGACY PROOF (Protocolo 1.0.3) - CONCLUÍDA  
 **Equipe:** Antigravity AI & Coliseu Engineering Team

@@ -558,7 +558,14 @@ export default function WodsClient({ initialWods, weekDates, weekOffset }: WodsC
                         <input
                           type="text"
                           value={timeCap}
-                          onChange={(e) => setTimeCap(e.target.value)}
+                          onChange={(e) => {
+                            /** Máscara de Time Cap: aceita dígitos, ':', espaço, letras e '-'
+                             *  para suportar formatos EMOM (ex: "1:30 ON - 1:30 OFF").
+                             *  Bloqueia símbolos perigosos e lixo numérico aleatório. */
+                            const sanitized = e.target.value.replace(/[^0-9a-zA-Z:\s\-\/]/g, "").slice(0, 20);
+                            setTimeCap(sanitized);
+                          }}
+                          maxLength={20}
                           placeholder="Ex: 15:00"
                           style={inputStyle}
                         />

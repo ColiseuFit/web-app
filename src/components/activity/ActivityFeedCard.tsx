@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useState } from "react";
-import { Zap, Clock, Weight, Award, User, Target, Trophy, CheckCircle2 } from "lucide-react";
+import { Zap, Clock, Weight, Award, User, Target, Trophy, CheckCircle2, Share2 } from "lucide-react";
 import { updateWodResult } from "@/app/(student)/actions";
 import { LEVEL_CONFIG, getLevelInfo, ALL_LEVELS } from "@/lib/constants/levels";
+import { ShareActivityModal } from "./ShareActivityModal";
 
 interface ActivityMetric {
   label: string;
@@ -45,6 +46,7 @@ interface ActivityFeedCardProps {
   time?: string;
   performanceLevel?: string | null;
   studentLevel?: string | null;
+  rawContent?: string;
 }
 
 // ─── TYPED RESULT INPUT ──────────────────────────────────────────────────────
@@ -56,16 +58,18 @@ interface ActivityFeedCardProps {
  * - Só renderiza quando `status === 'confirmed'` e nenhum resultado foi salvo ainda.
  * - Estados Otimistas: o resultado é exibido imediatamente no badge local antes
  *   da confirmação do banco de dados (useState `savedResult`).
- * - "time": placeholder MM:SS, validação de regex antes de salvar.
- * - "reps": input numérico, unidade em REP.
- * - "load": input numérico, unidade em KG.
+ * - **Single vs Multi-Result**: Se `resultType` contém múltiplos tipos (ex: "time,rounds"),
+ *   exibe todos empilhados como opcionais. A action `handleSave` exige "ao menos um" válido.
  * 
- * @security
- *   A Server Action `updateWodResult` valida via Zod e RLS garante que o aluno
- *   só atualize seu próprio check-in (`student_id = auth.uid()`).
+ * @security & @validation
+ * - Zod Validation: Server Action `updateWodResult` valida os payloads.
+ * - RLS: Garante que o aluno só atualize seu próprio check-in (`student_id = auth.uid()`).
+ * - Zero-Garbage Policy: Inputs numéricos (`type="text" inputMode="numeric"`) sanitizados em
+ *   tempo real (stripping de letras/símbolos) e text-inputs bloqueiam caracteres perigosos.
  * 
  * @param checkInId  - UUID do registro de check-in a ser atualizado.
- * @param resultType - Tipo de resultado ("time" | "reps" | "load").
+ * @param resultType - Tipo(s) de resultado (ex: "time" ou "time,rounds,reps").
+ * @param defaultLevel - Nível de performance pre-selecionado (ex: "iniciante").
  */
 function ResultEntryBlock({ 
   checkInId, 
@@ -93,47 +97,101 @@ function ResultEntryBlock({
   const [savedResult, setSavedResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  /**
+   * handleSave — Persiste o resultado do WOD no banco.
+   *
+   * @logic
+   * - Se o WOD tem UM tipo de resultado: campo é obrigatório.
+   * - Se o WOD tem MÚLTIPLOS tipos (ex: "time,rounds,reps"): cada campo
+   *   é opcional, mas ao menos UM deve ser preenchido.
+   *   Isso reflete a semântica CrossFit: "For Time" com time cap → aluno
+   *   registra tempo SE completou, ou rounds+reps SE foi cappado.
+   *
+   * @validation
+   * - time: minutos 0-99, segundos 0-59, ambos devem ser preenchidos se um deles for
+   * - numéricos (reps, rounds, load, etc.): somente dígitos, valor positivo, max 99999
+   * - text: sanitizado contra injection, max 50 caracteres
+   */
   const handleSave = async () => {
     setError(null);
     const partsRes: string[] = [];
     const partsDisplay: string[] = [];
+    const isMulti = resultTypes.length > 1;
 
-    const unitMap: Record<string, string> = { 
-      load: "KG", rounds: "RDS", reps: "REP", 
-      distance: "M/KM", calories: "CAL", points: "PTS", text: "" 
+    const unitMap: Record<string, string> = {
+      load: "KG", rounds: "RDS", reps: "REP",
+      distance: "M", calories: "CAL", points: "PTS", text: ""
     };
 
     for (const rt of resultTypes) {
       if (rt === "time") {
-        if (!min.trim() || !sec.trim()) {
-          setError("Preencha minutos e segundos.");
+        const hasMin = min.trim().length > 0;
+        const hasSec = sec.trim().length > 0;
+
+        // Se preencheu parcialmente (só min ou só sec), exigir ambos
+        if (hasMin !== hasSec) {
+          setError("Preencha minutos e segundos completos.");
           return;
         }
+
+        // Se não preencheu nenhum: obrigatório em single, ignora em multi
+        if (!hasMin && !hasSec) {
+          if (!isMulti) { setError("Preencha minutos e segundos."); return; }
+          continue;
+        }
+
         const m = parseInt(min);
         const s = parseInt(sec);
-        if (isNaN(m) || isNaN(s) || s >= 60) {
-          setError("Tempo inválido.");
+        if (isNaN(m) || m < 0 || m > 99) {
+          setError("Minutos inválidos (0-99).");
           return;
         }
-        const formattedM = min.padStart(2, "0");
-        const formattedS = sec.padStart(2, "0");
-        const fmt = `${formattedM}:${formattedS}`;
+        if (isNaN(s) || s < 0 || s >= 60) {
+          setError("Segundos inválidos (0-59).");
+          return;
+        }
+        const fmt = `${min.padStart(2, "0")}:${sec.padStart(2, "0")}`;
         partsRes.push(fmt);
         partsDisplay.push(`${fmt} MIN`);
       } else {
         const val = resultsMap[rt] || "";
+
+        // Se não preencheu: obrigatório em single, ignora em multi
         if (!val.trim()) {
-          setError(`Preencha todos os campos obrigatórios.`);
-          return;
+          if (!isMulti) { setError("Preencha o campo de resultado."); return; }
+          continue;
         }
-        if (rt !== "rounds" && rt !== "text" && isNaN(Number(val))) {
-          setError("Digite apenas números válidos.");
-          return;
+
+        if (rt === "text") {
+          // Text: sanitizado, max 50 chars
+          const sanitized = val.trim().slice(0, 50);
+          if (sanitized.length === 0) continue;
+          partsRes.push(sanitized);
+          partsDisplay.push(sanitized);
+        } else {
+          // Numéricos: deve ser inteiro válido e positivo
+          const numVal = Number(val);
+          if (isNaN(numVal) || numVal < 0) {
+            setError("Digite apenas números válidos e positivos.");
+            return;
+          }
+          if (numVal > 99999) {
+            setError("Valor muito alto. Verifique o preenchimento.");
+            return;
+          }
+          partsRes.push(val.trim());
+          const u = unitMap[rt];
+          partsDisplay.push(u ? `${val.trim()} ${u}` : val.trim());
         }
-        partsRes.push(val.trim());
-        const u = unitMap[rt];
-        partsDisplay.push(u ? `${val.trim()} ${u}` : val.trim());
       }
+    }
+
+    // Gate final: ao menos UM campo preenchido
+    if (partsRes.length === 0) {
+      setError(isMulti
+        ? "Preencha ao menos um campo de resultado."
+        : "Preencha o campo de resultado.");
+      return;
     }
 
     const finalValueRes = partsRes.join(" | ");
@@ -191,7 +249,7 @@ function ResultEntryBlock({
             <CheckCircle2 size={24} color="#FFF" strokeWidth={3} />
           </div>
           <div>
-            <div style={{ fontSize: "9px", fontWeight: 900, color: "rgba(255,255,255,0.6)", letterSpacing: "0.15em", textTransform: "uppercase" }}>MISSÃO CUMPRIDA</div>
+            <div style={{ fontSize: "9px", fontWeight: 900, color: "rgba(255,255,255,0.6)", letterSpacing: "0.15em", textTransform: "uppercase" }}>TREINO CONCLUÍDO</div>
             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                <div style={{ fontSize: "18px", fontWeight: 950, color: "#FFF", letterSpacing: "-0.02em" }}>{savedResult}</div>
                <span style={{
@@ -277,67 +335,109 @@ function ResultEntryBlock({
         })}
       </div>
 
-      <div style={{ fontSize: "9px", fontWeight: 900, color: "rgba(0,0,0,0.5)", marginBottom: "8px", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-        RESULTADO DO WOD ({selectedLevel.toUpperCase()})
+      {/* Instrução contextual: muda conforme quantidade de tipos */}
+      <div style={{ fontSize: "9px", fontWeight: 900, color: "rgba(0,0,0,0.5)", marginBottom: resultTypes.length > 1 ? "4px" : "8px", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+        {resultTypes.length > 1
+          ? "PREENCHA O QUE SE APLICA AO SEU RESULTADO"
+          : `RESULTADO DO WOD (${selectedLevel.toUpperCase()})`
+        }
       </div>
+      {resultTypes.length > 1 && (
+        <div style={{ fontSize: "8px", fontWeight: 700, color: "rgba(0,0,0,0.35)", marginBottom: "12px", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+          Completou o treino? Preencha só o tempo. Não completou? Preencha rounds e repetições.
+        </div>
+      )}
 
-      <div style={{ display: "flex", gap: "10px", alignItems: "flex-end", flexWrap: "wrap" }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
         {resultTypes.map((rt) => {
+          const isMulti = resultTypes.length > 1;
           if (rt === "time") {
             return (
-              <div key={rt} style={{ display: "flex", gap: "10px", flex: "1 1 auto", alignItems: "center" }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: "9px", fontWeight: 900, color: "rgba(0,0,0,0.5)", marginBottom: "6px", textAlign: "center" }}>MINUTOS</div>
-                  <input
-                    type="tel"
-                    placeholder="00"
-                    value={min}
-                    onChange={(e) => { setMin(e.target.value.replace(/\D/g, "").slice(0, 2)); setError(null); }}
-                    style={{
-                      width: "100%", padding: "14px", border: "2px solid #000",
-                      fontSize: "22px", fontWeight: 950, textAlign: "center",
-                      background: "#FFF", outline: "none", boxShadow: "inset 4px 4px 0px rgba(0,0,0,0.05)"
-                    }}
-                  />
+              <div key={rt}>
+                <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "8px" }}>
+                  <span style={{ fontSize: "9px", fontWeight: 900, color: "rgba(0,0,0,0.5)", textTransform: "uppercase" }}>TEMPO</span>
+                  {isMulti && <span style={{ fontSize: "7px", fontWeight: 800, color: "rgba(0,0,0,0.25)", border: "1px solid rgba(0,0,0,0.15)", padding: "1px 5px", letterSpacing: "0.05em" }}>OPCIONAL</span>}
                 </div>
-                <span style={{ fontSize: "24px", fontWeight: 950, paddingTop: "20px", color: "#000" }}>:</span>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: "9px", fontWeight: 900, color: "rgba(0,0,0,0.5)", marginBottom: "6px", textAlign: "center" }}>SEGUNDOS</div>
-                  <input
-                    type="tel"
-                    placeholder="00"
-                    value={sec}
-                    onChange={(e) => { setSec(e.target.value.replace(/\D/g, "").slice(0, 2)); setError(null); }}
-                    style={{
-                      width: "100%", padding: "14px", border: "2px solid #000",
-                      fontSize: "22px", fontWeight: 950, textAlign: "center",
-                      background: "#FFF", outline: "none", boxShadow: "inset 4px 4px 0px rgba(0,0,0,0.05)"
-                    }}
-                  />
+                <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: "8px", fontWeight: 900, color: "rgba(0,0,0,0.35)", marginBottom: "4px", textAlign: "center" }}>MINUTOS</div>
+                    <input
+                      type="tel"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      placeholder="00"
+                      maxLength={2}
+                      value={min}
+                      onChange={(e) => { setMin(e.target.value.replace(/\D/g, "").slice(0, 2)); setError(null); }}
+                      style={{
+                        width: "100%", padding: "14px", border: "2px solid #000",
+                        fontSize: "22px", fontWeight: 950, textAlign: "center",
+                        background: "#FFF", outline: "none", boxShadow: "inset 4px 4px 0px rgba(0,0,0,0.05)"
+                      }}
+                    />
+                  </div>
+                  <span style={{ fontSize: "24px", fontWeight: 950, paddingTop: "20px", color: "#000" }}>:</span>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: "8px", fontWeight: 900, color: "rgba(0,0,0,0.35)", marginBottom: "4px", textAlign: "center" }}>SEGUNDOS</div>
+                    <input
+                      type="tel"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      placeholder="00"
+                      maxLength={2}
+                      value={sec}
+                      onChange={(e) => { setSec(e.target.value.replace(/\D/g, "").slice(0, 2)); setError(null); }}
+                      style={{
+                        width: "100%", padding: "14px", border: "2px solid #000",
+                        fontSize: "22px", fontWeight: 950, textAlign: "center",
+                        background: "#FFF", outline: "none", boxShadow: "inset 4px 4px 0px rgba(0,0,0,0.05)"
+                      }}
+                    />
+                  </div>
                 </div>
               </div>
             );
           } else {
              const labels: Record<string, string> = {
-                load: "CARGA (KG)", rounds: "ROUNDS", text: "DESEMPENHO",
-                distance: "DISTÂNCIA", calories: "CALORIAS", points: "PONTOS", reps: "REPETIÇÕES"
+                load: "CARGA (KG)", rounds: "ROUNDS", text: "OBSERVAÇÃO",
+                distance: "DISTÂNCIA (M)", calories: "CALORIAS", points: "PONTOS", reps: "REPETIÇÕES"
+             };
+             const placeholders: Record<string, string> = {
+                load: "Ex: 60", rounds: "Ex: 5", text: "Ex: Completado",
+                distance: "Ex: 400", calories: "Ex: 30", points: "Ex: 100", reps: "Ex: 50"
+             };
+             /** Limites de caracteres por tipo para prevenir input absurdo */
+             const maxLens: Record<string, number> = {
+                load: 4, rounds: 4, text: 50,
+                distance: 6, calories: 5, points: 5, reps: 5
              };
              return (
-               <div key={rt} style={{ flex: "1 1 auto", minWidth: "120px" }}>
-                 <div style={{ fontSize: "9px", fontWeight: 900, color: "rgba(0,0,0,0.5)", marginBottom: "6px" }}>
-                   {labels[rt] || "VALOR NUMÉRICO"}
+               <div key={rt}>
+                 <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "6px" }}>
+                   <span style={{ fontSize: "9px", fontWeight: 900, color: "rgba(0,0,0,0.5)", textTransform: "uppercase" }}>
+                     {labels[rt] || "VALOR"}
+                   </span>
+                   {isMulti && <span style={{ fontSize: "7px", fontWeight: 800, color: "rgba(0,0,0,0.25)", border: "1px solid rgba(0,0,0,0.15)", padding: "1px 5px", letterSpacing: "0.05em" }}>OPCIONAL</span>}
                  </div>
                  <input
                    type={rt === "text" ? "text" : "tel"}
-                   placeholder={rt === "text" ? "Ex: Feito" : "0"}
+                   inputMode={rt === "text" ? "text" : "numeric"}
+                   pattern={rt === "text" ? undefined : "[0-9]*"}
+                   placeholder={placeholders[rt] || "0"}
+                   maxLength={maxLens[rt] || 6}
                    value={resultsMap[rt] || ""}
-                   onChange={(e) => { 
+                   onChange={(e) => {
                      const val = e.target.value;
-                     let formatted = val;
-                     if (rt !== "text") formatted = val.replace(/\D/g, "");
-                     
+                     let formatted: string;
+                     if (rt === "text") {
+                       // Text: alfanuméricos + espaços + pontuação básica. Strip chars perigosos.
+                       formatted = val.replace(/[<>{}|\\^`~]/g, "").slice(0, 50);
+                     } else {
+                       // Numéricos: somente dígitos, zero tolerância a letras/símbolos
+                       formatted = val.replace(/\D/g, "").slice(0, maxLens[rt] || 6);
+                     }
                      setResultsMap(prev => ({ ...prev, [rt]: formatted }));
-                     setError(null); 
+                     setError(null);
                    }}
                    style={{
                      width: "100%", padding: "14px", border: "2px solid #000",
@@ -440,7 +540,9 @@ export const ActivityFeedCard: React.FC<ActivityFeedCardProps> = ({
   time,
   performanceLevel,
   studentLevel,
+  rawContent,
 }) => {
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
   const getIcon = (iconName: string) => {
     switch (iconName) {
@@ -458,7 +560,9 @@ export const ActivityFeedCard: React.FC<ActivityFeedCardProps> = ({
   const showResultBadge = status === "confirmed" && !!result;
 
   return (
-    <div style={{
+    <div
+      id={showResultEntry ? "resultado" : undefined}
+      style={{
       background: "#FFF",
       border: "3px solid #000",
       padding: "24px",
@@ -557,6 +661,26 @@ export const ActivityFeedCard: React.FC<ActivityFeedCardProps> = ({
                 {performanceLevel.startsWith("RPE") ? performanceLevel : getLevelInfo(performanceLevel).label}
               </span>
             )}
+            
+            <button
+              onClick={() => setIsShareModalOpen(true)}
+              style={{
+                background: "#FFF",
+                border: "2px solid #000",
+                color: "#000",
+                marginLeft: "8px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: "pointer",
+                padding: "6px",
+                boxShadow: "2px 2px 0px var(--red)",
+                transition: "transform 0.1s"
+              }}
+              title="Compartilhar resultado"
+            >
+              <Share2 size={16} strokeWidth={2.5} />
+            </button>
           </div>
         )}
 
@@ -651,6 +775,17 @@ export const ActivityFeedCard: React.FC<ActivityFeedCardProps> = ({
             )}
           </div>
         </div>
+      )}
+
+      {isShareModalOpen && (
+        <ShareActivityModal
+          onClose={() => setIsShareModalOpen(false)}
+          title={title}
+          dateStr={date}
+          wodContent={rawContent || description}
+          result={result || null}
+          levelInfo={getLevelInfo(performanceLevel || studentLevel || "iniciante")}
+        />
       )}
     </div>
   );
