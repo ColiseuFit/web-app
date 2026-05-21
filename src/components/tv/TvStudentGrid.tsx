@@ -45,13 +45,30 @@ export default function TvStudentGrid({ students, capacity, timeStart, className
       </div>
 
       {/* Grade de Alunos */}
-      {checkinsCount > 0 ? (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "20px" }}>
-          {students.map((student) => (
-            <TvStudentCard key={student.id} student={student} />
-          ))}
-        </div>
-      ) : (
+      {checkinsCount > 0 ? (() => {
+        let gridCols = 3;
+        let gridGap = "20px";
+        let isCompact = false;
+
+        if (checkinsCount > 8) {
+          gridCols = 4;
+          gridGap = "14px";
+          isCompact = true;
+        }
+        if (checkinsCount > 16) {
+          gridCols = 5;
+          gridGap = "10px";
+          isCompact = true;
+        }
+
+        return (
+          <div style={{ display: "grid", gridTemplateColumns: `repeat(${gridCols}, 1fr)`, gap: gridGap }}>
+            {students.map((student) => (
+              <TvStudentCard key={student.id} student={student} isCompact={isCompact} />
+            ))}
+          </div>
+        );
+      })() : (
         <div 
           className="flex flex-col items-center justify-center border-3 border-black bg-white p-12 text-center shadow-[8px_8px_0px_#000] min-h-[420px] relative overflow-hidden"
           style={{
