@@ -401,18 +401,6 @@ export default function TvClient() {
               {renderWodContent(data?.wodContent || "")}
             </div>
           </div>
-
-          <div className="border-t-2 border-black pt-3 flex items-center justify-between">
-            <div className="flex items-center gap-1.5">
-              <Layers size={14} className="text-neutral-500" />
-              <span className="font-display font-black text-[10px] text-neutral-500 uppercase">
-                COLISEU V2 ENGINE
-              </span>
-            </div>
-            <span className="font-display font-black text-[10px] bg-black text-white px-2 py-0.5 border border-black uppercase">
-              ATIVIDADE
-            </span>
-          </div>
         </aside>
 
         {/* Painel Direito: Lista de Alunos e Horários (3/4 da tela) */}
