@@ -139,6 +139,7 @@ export async function proxy(request: NextRequest) {
   const isPublicPath = 
     isAuthPage || 
     targetPath.startsWith("/admin/login") ||
+    targetPath.startsWith("/tv") ||
     (targetPath === "/" && !hostname.startsWith('admin'));
 
   // Redirect to login if user is not authenticated

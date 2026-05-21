@@ -250,13 +250,13 @@ export function resolveSlotCoach(slot: any, dateStr: string): { name: string, is
   
   if (activeSub) {
     return {
-      name: activeSub.profiles?.full_name || activeSub.coach_profile?.full_name || "Professor Substituto",
+      name: activeSub.profiles?.full_name || activeSub.coach_profile?.full_name || "Coach Substituto",
       isSubstitution: true
     };
   }
 
   // Fallback to default coach profile or legacy name
-  const name = slot.profiles?.full_name || slot.coach_profile?.full_name || slot.coach_name || "Sem instrutor";
+  const name = slot.profiles?.full_name || slot.coach_profile?.full_name || slot.coach_name || "Sem Coach";
   return { name, isSubstitution: false };
 }
 /**
