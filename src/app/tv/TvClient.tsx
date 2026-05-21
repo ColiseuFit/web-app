@@ -273,13 +273,14 @@ export default function TvClient() {
 
   return (
     <div 
-      className="min-h-screen text-black flex flex-col font-sans relative overflow-x-hidden"
+      className="min-h-screen text-black flex flex-col font-sans relative overflow-hidden"
       style={{
         backgroundColor: "#F3F4F6",
         backgroundImage: "radial-gradient(circle, rgba(0, 0, 0, 0.07) 1.5px, transparent 1.5px)",
         backgroundSize: "24px 24px",
-        padding: "36px 48px", // Margem segura generosa para evitar cortes em telas de TV (overscan)
-        gap: "28px"           // Espaço vertical uniforme entre componentes
+        padding: "24px 32px",
+        gap: "20px",
+        zoom: 0.75,  // Zoom-out global para caber 100% na tela física da TV sem scroll
       }}
     >
       {/* 1. Header do Painel */}
