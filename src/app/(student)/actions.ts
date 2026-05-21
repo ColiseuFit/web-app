@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { revalidatePath } from "next/cache";
 import { 
   getTodayDate, 
@@ -110,7 +111,21 @@ export async function getAvailableSlots(date: string): Promise<{
     .from("class_enrollments")
     .select("class_slot_id, student_id");
 
-  const { data: checkIns } = await supabase
+  /**
+   * @security Elevated Service Role Client para contagem de ocupação.
+   * A tabela check_ins possui RLS que restringe SELECT ao próprio student_id (auth.uid()),
+   * impedindo que um aluno veja check-ins de outros alunos. Para calcular a ocupação
+   * real da turma (quantos alunos fizeram check-in), precisamos de service_role.
+   * Apenas o count numérico é retornado ao cliente — dados pessoais nunca vazam.
+   */
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const adminClient = serviceRoleKey
+    ? createAdminClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceRoleKey)
+    : null;
+
+  const occupancyClient = adminClient || supabase;
+
+  const { data: checkIns } = await occupancyClient
     .from("check_ins")
     .select("class_slot_id, student_id, wods!inner(date)")
     .eq("wods.date", date)
