@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import { X, Share2, Download, Copy, CheckCircle2 } from "lucide-react";
 import { toBlob } from "html-to-image";
 import { WodSticker } from "./WodSticker";
+import { createPortal } from "react-dom";
 
 /**
  * Propriedades para o Modal de Compartilhamento de Atividade.
@@ -49,24 +50,44 @@ export function ShareActivityModal({
   const stickerRef = useRef<HTMLDivElement>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const [dimensions, setDimensions] = useState({ width: 320, height: 568, scale: 0.296 });
 
-  // Background xadrez para dar ideia de transparência
-  const checkerboardStyle = {
-    backgroundSize: "20px 20px",
-    backgroundPosition: "0 0, 10px 10px",
-    backgroundImage: `
-      linear-gradient(45deg, #1A1A1A 25%, transparent 25%, transparent 75%, #1A1A1A 75%, #1A1A1A),
-      linear-gradient(45deg, #1A1A1A 25%, transparent 25%, transparent 75%, #1A1A1A 75%, #1A1A1A)
-    `,
-    backgroundColor: "#2A2A2A",
-    borderRadius: "12px",
-    overflow: "hidden",
-    position: "relative" as const,
-    aspectRatio: "9/16",
-    width: "100%",
-    maxWidth: "320px",
-    margin: "0 auto"
-  };
+  useEffect(() => {
+    setMounted(true);
+    // Bloqueia a rolagem de fundo no dispositivo
+    document.body.style.overflow = "hidden";
+
+    const handleResize = () => {
+      // Ajusta dinamicamente com base nas dimensões reais da tela, evitando cortes no mobile
+      const headerHeight = 65;
+      const footerHeight = 220; // Espaço reservado para botões e margem segura (Safe Areas do iOS)
+      const verticalPadding = 40;
+      
+      const availableHeight = Math.max(200, window.innerHeight - headerHeight - footerHeight - verticalPadding);
+      const availableWidth = Math.max(150, window.innerWidth - 40);
+      const maxWidth = Math.min(320, availableWidth);
+      
+      // Proporção de aspecto 9:16 nativa do WOD Sticker
+      const fitWidth = Math.min(maxWidth, availableHeight * (9 / 16));
+      const fitHeight = fitWidth * (16 / 9);
+      const scale = fitWidth / 1080;
+      
+      setDimensions({
+        width: fitWidth,
+        height: fitHeight,
+        scale: scale
+      });
+    };
+
+    handleResize();
+    window.addEventListener("resize", handleResize);
+
+    return () => {
+      document.body.style.overflow = "unset";
+      window.removeEventListener("resize", handleResize);
+    };
+  }, []);
 
   const generateImageBlob = async (): Promise<Blob | null> => {
     if (!stickerRef.current) return null;
@@ -139,7 +160,9 @@ export function ShareActivityModal({
     }
   };
 
-  return (
+  if (!mounted) return null;
+
+  const modalContent = (
     <div style={{
       position: "fixed",
       inset: 0,
@@ -178,20 +201,37 @@ export function ShareActivityModal({
       }}>
         
         {/* PREVIEW CONTAINER */}
-        <div style={checkerboardStyle}>
+        <div style={{
+          backgroundSize: "20px 20px",
+          backgroundPosition: "0 0, 10px 10px",
+          backgroundImage: `
+            linear-gradient(45deg, #1A1A1A 25%, transparent 25%, transparent 75%, #1A1A1A 75%, #1A1A1A),
+            linear-gradient(45deg, #1A1A1A 25%, transparent 25%, transparent 75%, #1A1A1A 75%, #1A1A1A)
+          `,
+          backgroundColor: "#2A2A2A",
+          borderRadius: "12px",
+          overflow: "hidden",
+          position: "relative",
+          width: `${dimensions.width}px`,
+          height: `${dimensions.height}px`,
+          margin: "0 auto",
+          boxShadow: "0 10px 30px rgba(0, 0, 0, 0.5)",
+          border: "2px solid #333"
+        }}>
            {/* Crachá indicando transparente */}
            <div style={{
              position: "absolute",
              top: 12,
              left: 12,
-             background: "rgba(0,0,0,0.5)",
+             background: "rgba(0,0,0,0.6)",
              border: "1px solid #555",
              color: "#FFF",
-             fontSize: "10px",
+             fontSize: "9px",
              padding: "4px 8px",
              borderRadius: "4px",
              fontWeight: 700,
-             letterSpacing: "0.05em"
+             letterSpacing: "0.05em",
+             zIndex: 10
            }}>
              TRANSPARENTE
            </div>
@@ -201,7 +241,7 @@ export function ShareActivityModal({
              width: "1080px",
              height: "1920px",
              transformOrigin: "top left",
-             transform: "scale(0.296)", // 320 / 1080 (ajusta pro container visual)
+             transform: `scale(${dimensions.scale})`,
              pointerEvents: "none"
            }}>
              <WodSticker
@@ -311,4 +351,6 @@ export function ShareActivityModal({
 
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 }
