@@ -46,7 +46,7 @@ export default function TvStudentGrid({ students, capacity, timeStart, className
 
       {/* Grade de Alunos */}
       {checkinsCount > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4" style={{ gap: "20px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "20px" }}>
           {students.map((student) => (
             <TvStudentCard key={student.id} student={student} />
           ))}

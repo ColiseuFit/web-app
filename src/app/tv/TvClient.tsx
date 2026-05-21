@@ -284,10 +284,12 @@ export default function TvClient() {
     >
       {/* 1. Header do Painel */}
       <header 
-        className="flex flex-col md:flex-row items-center justify-between z-10 bg-white border-3 border-black shadow-[6px_6px_0px_#000]"
+        className="flex items-center justify-between z-10 bg-white border-3 border-black shadow-[6px_6px_0px_#000]"
         style={{
-          padding: "20px 28px", // Margem interna explícita e ultra consistente
-          gap: "20px"
+          padding: "20px 28px",
+          gap: "20px",
+          flexDirection: "row",  // Forçar horizontal — Smart TVs podem ignorar md: breakpoints
+          flexWrap: "wrap"
         }}
       >
         <div className="flex items-center">
@@ -375,15 +377,20 @@ export default function TvClient() {
 
       {/* 2. Grid de Conteúdo */}
       <div 
-        className="grid grid-cols-1 lg:grid-cols-4 items-start flex-grow z-10"
-        style={{ gap: "28px" }}
+        className="items-start flex-grow z-10"
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 3fr",  // WOD (1/4) | Alunos (3/4) — forçado para TV horizontal
+          gap: "28px",
+          alignItems: "start"
+        }}
       >
         
         {/* Painel Esquerdo: O WOD (1/4 da tela) */}
         <aside 
-          className="lg:col-span-1 flex flex-col bg-white border-3 border-black shadow-[6px_6px_0px_#000] self-stretch min-h-[400px]"
+          className="flex flex-col bg-white border-3 border-black shadow-[6px_6px_0px_#000] self-stretch min-h-[400px]"
           style={{
-            padding: "24px", // Margem interna generosa para excelente respirabilidade e sem cortes
+            padding: "24px",
             gap: "20px"
           }}
         >
@@ -404,7 +411,7 @@ export default function TvClient() {
         </aside>
 
         {/* Painel Direito: Lista de Alunos e Horários (3/4 da tela) */}
-        <main className="lg:col-span-3 flex flex-col" style={{ gap: "28px" }}>
+        <main className="flex flex-col" style={{ gap: "28px" }}>
           {currentSlot ? (
             <div className="flex flex-col" style={{ gap: "16px" }}>
               <div 
