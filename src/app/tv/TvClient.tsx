@@ -376,43 +376,9 @@ export default function TvClient() {
         </div>
       </header>
 
-      {/* 2. Grid de Conteúdo */}
-      <div 
-        className="items-start flex-grow z-10"
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 3fr",  // WOD (1/4) | Alunos (3/4) — forçado para TV horizontal
-          gap: "28px",
-          alignItems: "start"
-        }}
-      >
-        
-        {/* Painel Esquerdo: O WOD (1/4 da tela) */}
-        <aside 
-          className="flex flex-col bg-white border-3 border-black shadow-[6px_6px_0px_#000] self-stretch min-h-[400px]"
-          style={{
-            padding: "24px",
-            gap: "20px"
-          }}
-        >
-          <div className="border-b-2 border-black pb-3">
-            <span className="font-display font-black text-xs text-neutral-400 tracking-wider block uppercase">
-              TREINO DO DIA
-            </span>
-            <h2 className="font-headline font-black text-xl md:text-2xl text-black uppercase leading-tight mt-1">
-              {data?.wodTitle}
-            </h2>
-          </div>
-
-          <div className="flex-grow overflow-y-auto max-h-[600px] pr-2">
-            <div className="flex flex-col gap-1">
-              {renderWodContent(data?.wodContent || "")}
-            </div>
-          </div>
-        </aside>
-
-        {/* Painel Direito: Lista de Alunos e Horários (3/4 da tela) */}
-        <main className="flex flex-col" style={{ gap: "28px" }}>
+      {/* 2. Conteúdo Principal (Alunos Ocupando 100% da Largura) */}
+      <div className="flex-grow z-10" style={{ width: "100%" }}>
+        <main className="flex flex-col" style={{ gap: "24px" }}>
           {currentSlot ? (
             <div className="flex flex-col" style={{ gap: "16px" }}>
               <div 
@@ -446,8 +412,56 @@ export default function TvClient() {
             </div>
           )}
         </main>
-
       </div>
+
+      {/* 3. Painel de Baixo: O WOD (100% da largura, horizontalizado) */}
+      {data && (
+        <footer 
+          className="bg-white border-3 border-black shadow-[6px_6px_0px_#000] z-10"
+          style={{
+            padding: "16px 24px",
+            display: "grid",
+            gridTemplateColumns: "1fr 1.5fr 1fr",
+            gap: "32px",
+            alignItems: "center"
+          }}
+        >
+          {/* Coluna 1: Título do Treino */}
+          <div className="flex flex-col justify-center border-r-2 border-black pr-6" style={{ minHeight: "80px" }}>
+            <span className="font-display font-black text-[10px] text-neutral-400 tracking-widest block uppercase">
+              TREINO DO DIA
+            </span>
+            <h2 className="font-headline font-black text-xl md:text-2xl text-black uppercase leading-tight mt-1">
+              {data?.wodTitle}
+            </h2>
+          </div>
+
+          {/* Coluna 2: Exercícios e Metas (Renderizado em 2 colunas internas) */}
+          <div className="flex flex-col justify-center border-r-2 border-black pr-6" style={{ minHeight: "80px" }}>
+            <div className="grid grid-cols-2 gap-x-6 gap-y-0.5">
+              {(() => {
+                const lines = (data?.wodContent || "").split("\n").map(l => l.trim()).filter(Boolean);
+                const exercisesAndTargets = lines.filter(line => !line.startsWith("RX:") && !line.startsWith("INT:") && !line.startsWith("SC:") && !line.startsWith("INI:"));
+                return renderWodContent(exercisesAndTargets.join("\n"));
+              })()}
+            </div>
+          </div>
+
+          {/* Coluna 3: Cargas (RX, INT, SC, INI) */}
+          <div className="flex flex-col justify-center pl-2" style={{ minHeight: "80px" }}>
+            <span className="font-display font-black text-[9px] text-neutral-400 tracking-widest block uppercase mb-1.5">
+              CARGAS TÉCNICAS
+            </span>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+              {(() => {
+                const lines = (data?.wodContent || "").split("\n").map(l => l.trim()).filter(Boolean);
+                const categories = lines.filter(line => line.startsWith("RX:") || line.startsWith("INT:") || line.startsWith("SC:") || line.startsWith("INI:"));
+                return renderWodContent(categories.join("\n"));
+              })()}
+            </div>
+          </div>
+        </footer>
+      )}
     </div>
   );
 }

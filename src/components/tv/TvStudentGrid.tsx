@@ -46,17 +46,17 @@ export default function TvStudentGrid({ students, capacity, timeStart, className
 
       {/* Grade de Alunos */}
       {checkinsCount > 0 ? (() => {
-        let gridCols = 3;
+        let gridCols = 4;
         let gridGap = "20px";
         let isCompact = false;
 
         if (checkinsCount > 8) {
-          gridCols = 4;
+          gridCols = 5;
           gridGap = "14px";
           isCompact = true;
         }
         if (checkinsCount > 16) {
-          gridCols = 5;
+          gridCols = 6;
           gridGap = "10px";
           isCompact = true;
         }
