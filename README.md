@@ -47,13 +47,15 @@ graph TD
   - `docs/PLAYBOOKS/COACH_LITE_LEGACY.md`: Guia para suporte a iPad 2/iOS 9.
   - `docs/PLAYBOOKS/STUDENT_APP.md`: Guia mestre da experiência do aluno.
   - `docs/PLAYBOOKS/PWA_UPDATE_GUARD.md`: Procedimento de versionamento e atualização de cache.
-    - `docs/PLAYBOOKS/RUNNING_HUB.md`: Gestão estratégica de atletas, gerador de planilhas em massa, Engenharia de Treino V1 (Multi-blocos/Zonas) e métricas de Pace.
-    - `docs/PLAYBOOKS/AVALIACOES_FISICAS.md`: Motor de cálculos biométricos (Pollock 7), Self-Healing Engine e Hub de Progresso.
-    - `docs/PLAYBOOKS/TIMEZONE_SSoT.md`: Protocolo inegociável de manipulação de datas e horários (UTC-3 Anchor).
-    - `docs/PLAYBOOKS/STRAVA_INTEGRATION.md`: Webhooks, homologação e conformidade com o Strava API Program.
-    - `docs/PLAYBOOKS/RUNNING_SUPORTE.md`: Playbook operacional da página obrigatória de suporte (Compliance Strava).
-    - `docs/PLAYBOOKS/COMPARTILHAMENTO_ATIVIDADE.md`: Playbook do motor de compartilhamento de stickers de WOD (Estilo Strava).
-    - `docs/PLAYBOOKS/PWA_HYBRID_SYNC.md`: Playbook do motor de sincronização híbrida PWA (Revalidação de Visibilidade e Toque).
+  - `docs/PLAYBOOKS/RUNNING_HUB.md`: Gestão estratégica de atletas, gerador de planilhas em massa, Engenharia de Treino V1 (Multi-blocos/Zonas) e métricas de Pace.
+  - `docs/PLAYBOOKS/AVALIACOES_FISICAS.md`: Motor de cálculos biométricos (Pollock 7), Self-Healing Engine e Hub de Progresso.
+  - `docs/PLAYBOOKS/TIMEZONE_SSoT.md`: Protocolo inegociável de manipulação de datas e horários (UTC-3 Anchor).
+  - `docs/PLAYBOOKS/STRAVA_INTEGRATION.md`: Webhooks, homologação e conformidade com o Strava API Program.
+  - `docs/PLAYBOOKS/RUNNING_SUPORTE.md`: Playbook operacional da página obrigatória de suporte (Compliance Strava).
+  - `docs/PLAYBOOKS/COMPARTILHAMENTO_ATIVIDADE.md`: Playbook do motor de compartilhamento de stickers de WOD (Estilo Strava).
+  - `docs/PLAYBOOKS/EDGE_SECURITY_CRAWLER_MITIGATION.md`: Playbook da arquitetura de Escudo Duplo (Cloudflare + Geoblocking no Middleware).
+  - `docs/PLAYBOOKS/PWA_HYBRID_SYNC.md`: Playbook do motor de sincronização híbrida PWA (Revalidação de Visibilidade e Toque).
+  - `docs/PLAYBOOKS/UI_ICON_STRATEGY.md`: Procedimento Operacional Padrão de Ícones SVG Nativos (Zero Font Symbols).
 
 ---
 ---
