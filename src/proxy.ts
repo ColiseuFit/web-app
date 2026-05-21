@@ -26,6 +26,37 @@ export async function proxy(request: NextRequest) {
     request,
   });
 
+  const path = request.nextUrl.pathname;
+  const hostname = request.headers.get("host") || "";
+
+  // 1. GEOBLOCKING (Edge-Level Defense-in-Depth for Hobby Plan)
+  // Vercel automatically attaches the x-vercel-ip-country header (ISO 3166-1 alpha-2)
+  const country = request.headers.get("x-vercel-ip-country") || "";
+  const isLocalhost = hostname.includes("localhost") || hostname.includes("192.168.");
+
+  if (country && country !== "BR" && !isLocalhost) {
+    // Whitelist: Allow external API webhooks (e.g. Strava servers are in the US)
+    // and internal callback/auth handshakes so they don't break.
+    const isWebhookOrApi = 
+      path.startsWith("/api/webhooks") || 
+      path.startsWith("/api/auth") || 
+      path.startsWith("/api/internal") ||
+      path === "/api/version";
+
+    if (!isWebhookOrApi) {
+      return new NextResponse(
+        "Acesso Restrito: Este aplicativo é de uso exclusivo para alunos no Brasil (Restricted Access).",
+        { 
+          status: 403,
+          headers: {
+            "Content-Type": "text/plain; charset=utf-8",
+          }
+        }
+      );
+    }
+  }
+
+
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -50,8 +81,6 @@ export async function proxy(request: NextRequest) {
   // This is required for Server Components to have the correct user session
   const { data: { user } } = await supabase.auth.getUser();
 
-  const hostname = request.headers.get("host") || "";
-  const path = request.nextUrl.pathname;
   const url = request.nextUrl.clone();
 
   // EARLY BYPASS: Auth, Verification, Webhooks and Version routes must be handled by their respective handlers

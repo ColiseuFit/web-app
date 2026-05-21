@@ -1,0 +1,12 @@
+User-agent: *
+Disallow: /admin/
+Disallow: /admin-portal/
+Disallow: /coach-portal/
+Disallow: /coach/
+Disallow: /dashboard/
+Disallow: /clube/
+Disallow: /api/
+
+# Impedir indexação geral de arquivos de sistema e de rotas internas
+Disallow: /_next/
+Disallow: /static/
