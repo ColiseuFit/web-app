@@ -1,6 +1,28 @@
 "use server";
 
-export * from "./actions-student";
-export * from "./actions-wod";
-export * from "./actions-evaluation";
-export * from "./actions-pre-registration";
+export {
+  createStudent,
+  updateStudent,
+  getStudentBiometricsInfo,
+  deleteStudent,
+  updateStudentAuth
+} from "./actions-student";
+
+export {
+  upsertWod,
+  deleteWod
+} from "./actions-wod";
+
+export {
+  approvePreRegistration,
+  rejectPreRegistration,
+  updatePreRegistration,
+  resendInviteEmail
+} from "./actions-pre-registration";
+
+export {
+  upsertPhysicalEvaluation,
+  getStudentEvaluations,
+  deletePhysicalEvaluation,
+  uploadEvaluationPhoto
+} from "./actions-evaluation";
