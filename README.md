@@ -42,23 +42,63 @@ graph TD
 - `src/app/(student)`: Experiência mobile do aluno (Fundo Branco/Neo-Brutalism).
 - `src/app/(coach)`: Interface operacional para coaches no tatame. Inclui `/coach-lite`.
 - `src/app/(admin)`: Painel de gestão estratégica e financeira.
-- `docs/`: Sistema de conhecimento distribuído (Playbooks e SOPs).
-  - `docs/PLAYBOOKS/ACCESS_MANAGEMENT.md`: Motor de Permissões Dinâmico e gestão de planos.
-  - `docs/PLAYBOOKS/COACH_LITE_LEGACY.md`: Guia para suporte a iPad 2/iOS 9.
+- `docs/`: Sistema de conhecimento distribuído (Playbooks e SOPs), organizado por categoria.
+
+  **🎓 Aluno & Identidade**
   - `docs/PLAYBOOKS/STUDENT_APP.md`: Guia mestre da experiência do aluno.
-  - `docs/PLAYBOOKS/PWA_UPDATE_GUARD.md`: Procedimento de versionamento e atualização de cache.
-  - `docs/PLAYBOOKS/RUNNING_HUB.md`: Gestão estratégica de atletas, gerador de planilhas em massa, Engenharia de Treino V1 (Multi-blocos/Zonas) e métricas de Pace.
-  - `docs/PLAYBOOKS/AVALIACOES_FISICAS.md`: Motor de cálculos biométricos (Pollock 7), Self-Healing Engine e Hub de Progresso.
-  - `docs/PLAYBOOKS/TIMEZONE_SSoT.md`: Protocolo inegociável de manipulação de datas e horários (UTC-3 Anchor).
+  - `docs/PLAYBOOKS/STUDENT_DASHBOARD.md`: Dashboard do aluno (WOD, check-in, atividades).
+  - `docs/PLAYBOOKS/ATHLETE_IDENTITY_PROFILE.md`: Perfil do atleta, apelido, WhatsApp e sticky save.
+  - `docs/PLAYBOOKS/coliseu-levels.md`: Sistema de Níveis Técnicos (L1–L5), SSoT e identidade visual.
+  - `docs/PLAYBOOKS/POINTS_ENGINE.md`: Motor de pontuação e gamificação (Coliseu Pontos).
+  - `docs/PLAYBOOKS/PONTUACAO.md`: Regras de negócio de pontuação detalhadas.
+  - `docs/PLAYBOOKS/ACTIVITY_DASHBOARD.md`: Dashboard de atividades e histórico de treinos.
+  - `docs/PLAYBOOKS/RESULTS_LOGGING.md`: Registro de resultados de WODs e PRs.
+  - `docs/PLAYBOOKS/COMPARTILHAMENTO_ATIVIDADE.md`: Motor de compartilhamento de stickers de WOD.
+  - `docs/PLAYBOOKS/ACCESS_MANAGEMENT.md`: Motor de Permissões Dinâmico e gestão de planos.
+
+  **🏃 Módulo Running**
+  - `docs/PLAYBOOKS/RUNNING_HUB.md`: Gestão estratégica de atletas, planilhas em massa, Engenharia de Treino V1.
+  - `docs/PLAYBOOKS/RUNNING_SUPORTE.md`: Página de suporte (Compliance Strava).
   - `docs/PLAYBOOKS/STRAVA_INTEGRATION.md`: Webhooks, homologação e conformidade com o Strava API Program.
-  - `docs/PLAYBOOKS/RUNNING_SUPORTE.md`: Playbook operacional da página obrigatória de suporte (Compliance Strava).
-  - `docs/PLAYBOOKS/COMPARTILHAMENTO_ATIVIDADE.md`: Playbook do motor de compartilhamento de stickers de WOD (Estilo Strava).
-  - `docs/PLAYBOOKS/EDGE_SECURITY_CRAWLER_MITIGATION.md`: Playbook da arquitetura de Escudo Duplo (Cloudflare + Geoblocking no Middleware).
-  - `docs/PLAYBOOKS/PWA_HYBRID_SYNC.md`: Playbook do motor de sincronização híbrida PWA (Revalidação de Visibilidade e Toque).
-  - `docs/PLAYBOOKS/UI_ICON_STRATEGY.md`: Procedimento Operacional Padrão de Ícones SVG Nativos (Zero Font Symbols).
+
+  **🏋️ Admin & Gestão**
+  - `docs/PLAYBOOKS/ADMIN_HUB.md`: Visão geral do painel administrativo.
+  - `docs/PLAYBOOKS/ADMIN_WOD_ENGINE.md`: Motor de criação e gestão de WODs.
+  - `docs/PLAYBOOKS/ADMIN_STUDENT_MANAGEMENT.md`: Gestão de alunos pelo admin.
+  - `docs/PLAYBOOKS/ADMIN_COACH_MANAGEMENT.md`: Gestão de coaches e substituições.
+  - `docs/PLAYBOOKS/CLASSES_MANAGEMENT.md`: Gestão de turmas e grade de horários.
+  - `docs/PLAYBOOKS/FECHAMENTO_AULA.md`: Procedimento de fechamento e validação de aulas.
+  - `docs/PLAYBOOKS/gestao_turmas.md`: Fluxo detalhado de gestão de turmas.
+  - `docs/PLAYBOOKS/registro_resultados.md`: Fluxo de registro de resultados via admin.
+
+  **🧑‍🏫 Coach**
+  - `docs/PLAYBOOKS/COACH_PORTAL.md`: Portal do Coach — presença, chamada e fechamento.
+  - `docs/PLAYBOOKS/COACH_LITE_LEGACY.md`: Guia para suporte a iPad 2/iOS 9 (Coach Lite SSR).
+
+  **🔐 Segurança & Infraestrutura**
+  - `docs/PLAYBOOKS/AUTH-LOGIN.md`: Fluxo de autenticação e login.
+  - `docs/PLAYBOOKS/RECUPERACAO_SENHA.md`: Fluxo de recuperação de senha.
+  - `docs/PLAYBOOKS/PRE_CADASTRO.md`: Fluxo de pré-cadastro e aprovação de leads.
+  - `docs/PLAYBOOKS/EDGE_SECURITY_CRAWLER_MITIGATION.md`: Escudo Duplo (Cloudflare + Geoblocking).
+  - `docs/PLAYBOOKS/ROUTING_ARCHITECTURE.md`: Arquitetura de roteamento multi-portal.
+  - `docs/PLAYBOOKS/DATABASE_OPTIMIZATION_PLAYBOOK.md`: Otimizações e índices do banco de dados.
+
+  **📱 PWA & Performance**
+  - `docs/PLAYBOOKS/PWA_UPDATE_GUARD.md`: Versionamento e atualização de cache PWA.
+  - `docs/PLAYBOOKS/PWA_HYBRID_SYNC.md`: Motor de sincronização híbrida PWA.
+  - `docs/PLAYBOOKS/TIMEZONE_SSoT.md`: Protocolo de manipulação de datas (UTC-3 Anchor).
+
+  **🎨 Design & UI**
+  - `docs/PLAYBOOKS/IRON_MONOLITH_GUIDE.md`: Guia de estética Neo-Brutalist (Iron Monolith).
+  - `docs/PLAYBOOKS/UI_ICON_STRATEGY.md`: Política de ícones SVG Nativos (Zero Font Symbols).
+  - `docs/PLAYBOOKS/FEEDBACK_SYSTEM.md`: Sistema de feedback visual (toasts, modais, estados).
+
+  **🏥 Avaliações**
+  - `docs/PLAYBOOKS/AVALIACOES_FISICAS.md`: Motor de cálculos biométricos (Pollock 7) e Hub de Progresso.
 
 ---
 ---
-**Versão: 4.2.1 (Maio/2026) - PWA Sincronização Híbrida Ready**  
-**Status da Auditoria:** 🏛️ LEGACY PROOF (Protocolo 1.0.3) - CONCLUÍDA  
+**Versão: 4.3.0 (Maio/2026) - Auditoria & Refatoração Estrutural**
+**Status da Auditoria:** 🏛️ LEGACY PROOF (Protocolo 1.0.3) - CONCLUÍDA
 **Equipe:** Antigravity AI & Coliseu Engineering Team
+

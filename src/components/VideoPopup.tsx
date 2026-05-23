@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { X } from "lucide-react";
-import { trackVideoView } from "@/app/(student)/video-actions";
+import { trackVideoView } from "@/lib/actions/video_actions";
 
 /**
  * VIDEO POPUP COMPONENT (Neo-Brutalist)
