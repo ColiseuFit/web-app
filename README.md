@@ -92,13 +92,14 @@ graph TD
   - `docs/PLAYBOOKS/IRON_MONOLITH_GUIDE.md`: Guia de estética Neo-Brutalist (Iron Monolith).
   - `docs/PLAYBOOKS/UI_ICON_STRATEGY.md`: Política de ícones SVG Nativos (Zero Font Symbols).
   - `docs/PLAYBOOKS/FEEDBACK_SYSTEM.md`: Sistema de feedback visual (toasts, modais, estados).
+  - `docs/PLAYBOOKS/COLISEU_TV.md`: Playbook do Coliseu TV (Grade adaptativa de check-ins, WOD estruturado e auto-cura).
 
   **🏥 Avaliações**
   - `docs/PLAYBOOKS/AVALIACOES_FISICAS.md`: Motor de cálculos biométricos (Pollock 7) e Hub de Progresso.
 
 ---
 ---
-**Versão: 4.3.0 (Maio/2026) - Auditoria & Refatoração Estrutural**
-**Status da Auditoria:** 🏛️ LEGACY PROOF (Protocolo 1.0.3) - CONCLUÍDA
+**Versão: 4.4.0 (Junho/2026) - Redesign Coliseu TV (Abas & Grade Adaptativa)**
+**Status da Auditoria:** 🏛️ LEGACY PROOF (Protocolo 1.0.4) - CONCLUÍDA
 **Equipe:** Antigravity AI & Coliseu Engineering Team
 

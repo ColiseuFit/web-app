@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { APP_VERSION } from "@/lib/constants/version";
 import { RefreshCw } from "lucide-react";
 
@@ -23,13 +23,13 @@ import { RefreshCw } from "lucide-react";
 export function VersionGuard() {
   const [hasUpdate, setHasUpdate] = useState(false);
   const [serverVersion, setServerVersion] = useState<string | null>(null);
-  const [isChecking, setIsChecking] = useState(false);
+  const isCheckingRef = useRef(false);
 
   const checkVersion = useCallback(async () => {
-    if (isChecking || hasUpdate) return;
+    if (isCheckingRef.current || hasUpdate) return;
     
     try {
-      setIsChecking(true);
+      isCheckingRef.current = true;
       
       // Usamos XMLHttpRequest para compatibilidade total (iOS 9 / iPad 2)
       // onde o 'fetch' não é nativo.
@@ -38,26 +38,29 @@ export function VersionGuard() {
       xhr.open("GET", "/api/version?t=" + new Date().getTime(), true);
       
       xhr.onreadystatechange = function() {
-        if (xhr.readyState === 4 && xhr.status === 200) {
-          try {
-            const data = JSON.parse(xhr.responseText);
-            if (data.version && data.version !== APP_VERSION) {
-              console.log("[VersionGuard] Nova versao detectada:", data.version);
-              setServerVersion(data.version);
-              setHasUpdate(true);
+        if (xhr.readyState === 4) {
+          if (xhr.status === 200) {
+            try {
+              const data = JSON.parse(xhr.responseText);
+              if (data.version && data.version !== APP_VERSION) {
+                console.log("[VersionGuard] Nova versao detectada:", data.version);
+                setServerVersion(data.version);
+                setHasUpdate(true);
+              }
+            } catch (e) {
+              console.error("[VersionGuard] Erro no parse:", e);
             }
-          } catch (e) {
-            console.error("[VersionGuard] Erro no parse:", e);
           }
+          // Garante a liberação da trava apenas após o encerramento completo da requisição
+          isCheckingRef.current = false;
         }
       };
       xhr.send();
     } catch (err) {
       console.error("[VersionGuard] Erro ao verificar versao:", err);
-    } finally {
-      setIsChecking(false);
+      isCheckingRef.current = false;
     }
-  }, [hasUpdate, isChecking]);
+  }, [hasUpdate]);
 
   useEffect(() => {
     // 1. Verificar ao montar

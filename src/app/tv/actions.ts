@@ -2,6 +2,17 @@
 
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { getTodayDate, resolveSlotCoach } from "@/lib/date-utils";
+import { z } from "zod";
+
+/**
+ * Schema de validação para o parâmetro de data da TV.
+ * Aceita apenas strings no formato ISO (YYYY-MM-DD) para evitar
+ * injeções, RangeErrors ou queries malformatadas no banco de dados.
+ */
+const targetDateSchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "Formato de data inválido. Use YYYY-MM-DD.")
+  .optional();
 
 export interface TvStudent {
   id: string;
@@ -11,6 +22,14 @@ export interface TvStudent {
   status: string;
   performance_level: string | null;
   validated_at: string | null;
+  birth_date: string | null;
+}
+
+export interface TvBirthday {
+  id: string;
+  full_name: string;
+  avatar_url: string | null;
+  birth_date: string;
 }
 
 export interface TvClassSlot {
@@ -26,7 +45,12 @@ export interface TvDataResponse {
   date: string;
   wodTitle: string;
   wodContent: string;
+  warmUp: string | null;
+  technique: string | null;
+  typeTag: string | null;
+  timeCap: string | null;
   slots: TvClassSlot[];
+  birthdays: TvBirthday[];
 }
 
 /**
@@ -44,6 +68,12 @@ export interface TvDataResponse {
  */
 export async function getTvData(targetDate?: string): Promise<{ data?: TvDataResponse; error?: string }> {
   try {
+    // Validação estrita de entrada: rejeita datas malformatadas antes de qualquer acesso ao DB
+    const parsedDate = targetDateSchema.safeParse(targetDate);
+    if (!parsedDate.success) {
+      return { error: "Formato de data inválido. Use YYYY-MM-DD." };
+    }
+
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim().split(' ')[0];
     if (!serviceRoleKey) {
       return { error: "Erro de configuração: Chave mestra não encontrada no servidor." };
@@ -53,7 +83,7 @@ export async function getTvData(targetDate?: string): Promise<{ data?: TvDataRes
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       serviceRoleKey
     );
-    const dateStr = targetDate || getTodayDate();
+    const dateStr = parsedDate.data || getTodayDate();
 
     // 1. Resolver o dia da semana (0-6) para buscar os slots corretos
     // Evita deslocamentos usando timezone explicitamente (UTC alignment)
@@ -86,46 +116,57 @@ export async function getTvData(targetDate?: string): Promise<{ data?: TvDataRes
           date: dateStr,
           wodTitle: "Nenhum Treino",
           wodContent: "Sem turmas ativas programadas para hoje.",
-          slots: []
+          warmUp: null,
+          technique: null,
+          typeTag: null,
+          timeCap: null,
+          slots: [],
+          birthdays: []
         }
       };
     }
 
-    // 3. Buscar o WOD do dia correspondente
+    // 3. Buscar o WOD do dia correspondente com todos os campos estruturados
     const { data: wod } = await supabase
       .from("wods")
-      .select("id, title, wod_content")
+      .select("id, title, warm_up, technique, wod_content, type_tag, time_cap")
       .eq("date", dateStr)
       .maybeSingle();
 
     const wodId = wod?.id || null;
     const wodTitle = wod?.title || "Treino do Dia";
     const wodContent = wod?.wod_content || "Nenhum treino cadastrado para hoje.";
+    const warmUp = wod?.warm_up || null;
+    const technique = wod?.technique || null;
+    const typeTag = wod?.type_tag || null;
+    const timeCap = wod?.time_cap || null;
 
     // 4. Buscar todos os check-ins vinculados ao WOD desta data
     let checkInsList: any[] = [];
-    const { data: checkins, error: checkinsError } = await supabase
-      .from("check_ins")
-      .select(`
-        id,
-        class_slot_id,
-        status,
-        performance_level,
-        validated_at,
-        wods!inner(date),
-        profiles:student_id (
+    if (wodId) {
+      const { data: checkins, error: checkinsError } = await supabase
+        .from("check_ins")
+        .select(`
           id,
-          full_name,
-          avatar_url,
-          membership_type,
-          level
-        )
-      `)
-      .eq("wods.date", dateStr)
-      .neq("status", "missed");
+          class_slot_id,
+          status,
+          performance_level,
+          validated_at,
+          profiles:student_id (
+            id,
+            full_name,
+            avatar_url,
+            membership_type,
+            level,
+            birth_date
+          )
+        `)
+        .eq("wod_id", wodId)
+        .neq("status", "missed");
 
-    if (!checkinsError && checkins) {
-      checkInsList = checkins;
+      if (!checkinsError && checkins) {
+        checkInsList = checkins;
+      }
     }
 
     // 5. Agrupar os check-ins por slot_id para enriquecer os slots estruturais
@@ -141,7 +182,8 @@ export async function getTvData(targetDate?: string): Promise<{ data?: TvDataRes
             membership_type: profile?.membership_type || "club",
             status: c.status,
             performance_level: c.performance_level || profile?.level || null,
-            validated_at: c.validated_at || null
+            validated_at: c.validated_at || null,
+            birth_date: profile?.birth_date || null
           };
         });
 
@@ -158,12 +200,50 @@ export async function getTvData(targetDate?: string): Promise<{ data?: TvDataRes
       };
     });
 
+    // 6. Buscar Aniversariantes do Mês
+    // Busca todos os perfis que possuem data de nascimento e filtra em memória pelo mês da targetDate.
+    // É uma operação rápida (< 1ms para milhares de perfis)
+    let birthdaysOfMonth: TvBirthday[] = [];
+    const targetMonth = dateObj.getUTCMonth(); // 0 a 11
+
+    const { data: allProfiles, error: profilesError } = await supabase
+      .from("profiles")
+      .select("id, full_name, avatar_url, birth_date")
+      .not("birth_date", "is", null);
+
+    if (!profilesError && allProfiles) {
+      birthdaysOfMonth = allProfiles
+        .filter(p => {
+          if (!p.birth_date) return false;
+          // Garantir que não teremos shifts de timezone na extração do mês
+          const bDate = new Date(p.birth_date + "T12:00:00Z");
+          return bDate.getUTCMonth() === targetMonth;
+        })
+        .map(p => ({
+          id: p.id,
+          full_name: p.full_name || "Aluno Coliseu",
+          avatar_url: p.avatar_url || null,
+          birth_date: p.birth_date!
+        }))
+        // Ordenar pelo dia do mês crescente
+        .sort((a, b) => {
+          const dayA = new Date(a.birth_date + "T12:00:00Z").getUTCDate();
+          const dayB = new Date(b.birth_date + "T12:00:00Z").getUTCDate();
+          return dayA - dayB;
+        });
+    }
+
     return {
       data: {
         date: dateStr,
         wodTitle,
         wodContent,
-        slots: enrichedSlots
+        warmUp,
+        technique,
+        typeTag,
+        timeCap,
+        slots: enrichedSlots,
+        birthdays: birthdaysOfMonth
       }
     };
 

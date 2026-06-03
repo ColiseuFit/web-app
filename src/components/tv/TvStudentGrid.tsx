@@ -5,119 +5,164 @@ import TvStudentCard from "./TvStudentCard";
 
 interface TvStudentGridProps {
   students: TvStudent[];
-  capacity: number;
   timeStart: string;
   className?: string;
 }
 
-export default function TvStudentGrid({ students, capacity, timeStart, className }: TvStudentGridProps) {
+/**
+ * Grade de exibição de alunos checked-in para o Coliseu TV.
+ * Determina dinamicamente a quantidade de colunas, espaçamentos e o tamanho de card
+ * com base na quantidade de alunos presentes para maximizar o preenchimento da tela.
+ *
+ * @param {TvStudentGridProps} props - Propriedades do componente.
+ * @param {TvStudent[]} props.students - Lista de estudantes com check-in confirmado.
+ * @param {string} props.timeStart - Horário de início do slot atual (ex: "19:00:00").
+ * @param {string} [props.className] - Classe CSS opcional para estilização externa.
+ * @returns {React.ReactElement} Grade adaptativa brutalista ou tela de empty state.
+ */
+export default function TvStudentGrid({ students, timeStart, className }: TvStudentGridProps) {
   const checkinsCount = students.length;
 
   return (
     <div className={`flex flex-col w-full ${className || ""}`} style={{ gap: "24px" }}>
-      {/* Indicadores de Turma */}
-      <div 
-        className="flex flex-wrap items-center justify-between bg-yellow-300 border-3 border-black shadow-[4px_4px_0px_#000]"
-        style={{ padding: "20px 24px", gap: "20px" }}
-      >
-        <div>
-          <span className="font-display font-black text-xs md:text-sm text-black tracking-widest block uppercase">
-            STATUS DA TURMA
-          </span>
-          <span className="font-headline font-black text-2xl md:text-3xl text-black uppercase">
-            HORÁRIO: {timeStart.slice(0, 5)}
-          </span>
-        </div>
-
-        <div className="flex" style={{ gap: "16px" }}>
-          <div 
-            className="bg-white border-2 border-black text-center shadow-[2px_2px_0px_#000]"
-            style={{ padding: "8px 24px" }}
-          >
-            <span className="font-display font-black text-[10px] text-neutral-500 block uppercase">
-              CHECK-INS ATIVOS
-            </span>
-            <span className="font-headline font-black text-xl md:text-2xl text-black">
-              {checkinsCount} / {capacity}
-            </span>
-          </div>
-        </div>
-      </div>
 
       {/* Grade de Alunos */}
       {checkinsCount > 0 ? (() => {
         let gridCols = 4;
-        let gridGap = "20px";
-        let isCompact = false;
+        let gridGap = "24px";
+        let cardSize: "large" | "normal" | "compact" = "large";
+        let maxWidth = "100%";
 
-        if (checkinsCount > 8) {
+        if (checkinsCount <= 4) {
+          gridCols = 2;
+          cardSize = "large";
+          maxWidth = "1250px";
+        } else if (checkinsCount <= 8) {
+          gridCols = 3;
+          cardSize = "large";
+          maxWidth = "1750px";
+        } else if (checkinsCount <= 16) {
+          gridCols = 4;
+          cardSize = "large";
+          maxWidth = "2250px";
+        } else if (checkinsCount <= 28) {
           gridCols = 5;
-          gridGap = "14px";
-          isCompact = true;
-        }
-        if (checkinsCount > 16) {
+          gridGap = "18px";
+          cardSize = "normal";
+          maxWidth = "100%";
+        } else {
           gridCols = 6;
-          gridGap = "10px";
-          isCompact = true;
+          gridGap = "12px";
+          cardSize = "compact";
+          maxWidth = "100%";
         }
 
         return (
-          <div style={{ display: "grid", gridTemplateColumns: `repeat(${gridCols}, 1fr)`, gap: gridGap }}>
+          <div 
+            style={{ 
+              display: "grid", 
+              gridTemplateColumns: `repeat(${gridCols}, 1fr)`, 
+              gap: gridGap,
+              width: "100%",
+              maxWidth: maxWidth,
+              margin: "0 auto"
+            }}
+          >
             {students.map((student) => (
-              <TvStudentCard key={student.id} student={student} isCompact={isCompact} />
+              <TvStudentCard key={student.id} student={student} cardSize={cardSize} />
             ))}
           </div>
         );
       })() : (
         <div 
-          className="flex flex-col items-center justify-center border-3 border-black bg-white p-12 text-center shadow-[8px_8px_0px_#000] min-h-[420px] relative overflow-hidden"
+          className="flex flex-col items-center justify-center border-3 border-black bg-white text-center shadow-[8px_8px_0px_#000] relative overflow-hidden"
           style={{
-            backgroundImage: "radial-gradient(#e5e7eb 2px, transparent 2px)",
-            backgroundSize: "16px 16px"
+            flexGrow: 1,
+            minHeight: "calc(100vh / 0.75 - 220px)",
+            padding: "60px 40px",
           }}
         >
-          {/* Listras Brutalistas Decorativas nas Pontas */}
-          <div 
-            className="absolute top-0 left-0 right-0 h-3 border-b-2 border-black"
+          {/* Fundo com padrão de pontos sutil */}
+          <div
+            className="absolute inset-0 pointer-events-none"
             style={{
-              backgroundImage: "repeating-linear-gradient(45deg, #facc15, #facc15 15px, #000000 15px, #000000 30px)"
+              backgroundImage: "radial-gradient(#e5e7eb 1.5px, transparent 1.5px)",
+              backgroundSize: "20px 20px",
+              opacity: 0.6,
             }}
           />
 
-          <div className="relative">
-            <span className="text-6xl md:text-7xl mb-4 select-none block animate-bounce">
-              🏋️‍♂️
-            </span>
-            <div className="absolute -top-2 -right-4 bg-red-500 text-white font-display font-black text-[10px] px-2 py-0.5 border border-black uppercase tracking-widest shadow-[1px_1px_0px_#000] animate-pulse">
-              SEM ALUNOS
-            </div>
-          </div>
-
-          <h2 className="font-headline font-black text-3xl md:text-4xl text-black uppercase tracking-tight mt-4">
-            MURAL DE CHECK-INS VAZIO
-          </h2>
-          <p className="font-display font-bold text-sm md:text-base text-neutral-500 max-w-lg mt-3 uppercase tracking-wide leading-relaxed">
-            Abra o aplicativo <span className="text-black underline decoration-yellow-400 decoration-3">Coliseu Fit</span> agora mesmo, confirme sua presença e seja o primeiro a subir na TV para a aula das <span className="text-black bg-yellow-300 border border-black px-1.5 py-0.5 font-mono shadow-[1px_1px_0px_#000]">{timeStart.slice(0, 5)}</span>!
-          </p>
-
-          {/* Instruções de QR Code Brutalistas */}
+          {/* Listras Brutalistas Decorativas — Topo */}
           <div 
-            className="flex flex-col md:flex-row items-center bg-yellow-50 border-2 border-black shadow-[4px_4px_0px_#000] max-w-md"
-            style={{ marginTop: "32px", padding: "20px", gap: "24px" }}
-          >
-            <div className="bg-black text-white p-3 border border-black flex-shrink-0 flex items-center justify-center font-mono font-black text-xs h-16 w-16 select-none relative">
-              {/* Moldura de QrCode Simulado */}
-              <div className="absolute inset-1 border-2 border-yellow-300 border-dashed animate-pulse" />
-              QR CODE
+            className="absolute top-0 left-0 right-0 border-b-2 border-black"
+            style={{
+              height: "8px",
+              backgroundImage: "repeating-linear-gradient(45deg, #facc15, #facc15 15px, #000000 15px, #000000 30px)",
+            }}
+          />
+
+          {/* Listras Brutalistas Decorativas — Base */}
+          <div 
+            className="absolute bottom-0 left-0 right-0 border-t-2 border-black"
+            style={{
+              height: "8px",
+              backgroundImage: "repeating-linear-gradient(45deg, #facc15, #facc15 15px, #000000 15px, #000000 30px)",
+            }}
+          />
+
+          {/* Conteúdo Central */}
+          <div className="relative z-10 flex flex-col items-center" style={{ gap: "16px" }}>
+            {/* Ícone grande com badge flutuante */}
+            <div className="relative">
+              <div
+                className="bg-yellow-300 border-3 border-black shadow-[6px_6px_0px_#000] flex items-center justify-center"
+                style={{ width: "120px", height: "120px" }}
+              >
+                <span className="text-7xl select-none block" style={{ lineHeight: 1 }}>
+                  🏋️‍♂️
+                </span>
+              </div>
+              <div 
+                className="absolute bg-red-500 text-white font-display font-black uppercase tracking-widest shadow-[2px_2px_0px_#000] border-2 border-black animate-pulse"
+                style={{
+                  top: "-10px",
+                  right: "-16px",
+                  fontSize: "11px",
+                  padding: "3px 10px",
+                }}
+              >
+                VAZIO
+              </div>
             </div>
-            <div className="text-left">
-              <span className="font-display font-black text-xs text-black uppercase block tracking-wider">
-                💡 COMO CONFIRMAR SUA PRESENÇA:
+
+            {/* Título Principal */}
+            <h2
+              className="font-headline font-black text-black uppercase tracking-tight"
+              style={{ fontSize: "clamp(32px, 4vw, 56px)", lineHeight: 1.1, marginTop: "12px" }}
+            >
+              MURAL DE CHECK-INS VAZIO
+            </h2>
+
+            {/* Subtítulo */}
+            <p
+              className="font-display font-bold text-neutral-500 uppercase tracking-wide leading-relaxed"
+              style={{ fontSize: "clamp(14px, 1.5vw, 22px)", maxWidth: "800px" }}
+            >
+              Abra o aplicativo{" "}
+              <span className="text-black underline decoration-yellow-400 decoration-4">
+                Coliseu Fit
+              </span>{" "}
+              agora mesmo, confirme sua presença e seja o primeiro a aparecer na TV para a aula das{" "}
+              <span
+                className="text-black bg-yellow-300 border-2 border-black font-mono shadow-[2px_2px_0px_#000] inline-block"
+                style={{ padding: "2px 10px", fontSize: "clamp(16px, 1.8vw, 26px)" }}
+              >
+                {timeStart.slice(0, 5)}
               </span>
-              <span className="font-display font-bold text-[11px] text-neutral-600 uppercase mt-1 block leading-tight">
-                Escaneie o QR Code oficial do totem do box no seu app para realizar a validação e aparecer no painel.
-              </span>
-            </div>
+              !
+            </p>
+
+
           </div>
         </div>
       )}

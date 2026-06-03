@@ -3,7 +3,9 @@
 import { useState, useRef, useEffect } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Search, Plus, Phone, X, UserPlus, ChevronDown, Pencil, Trash2, User, Mail, Calendar, CreditCard, Info, Activity, ShieldCheck, Lock as LockIcon, Mail as MailIcon, ChevronLeft, ChevronRight, Copy, Check, Tag, Zap } from "lucide-react";
-import { createStudent, updateStudent, deleteStudent, getStudentEvaluations, deletePhysicalEvaluation, updateStudentAuth, updatePreRegistration } from "../../../actions";
+import { createStudent, updateStudent, deleteStudent, updateStudentAuth } from "../../../actions-student";
+import { getStudentEvaluations, deletePhysicalEvaluation } from "../../../actions-evaluation";
+import { updatePreRegistration } from "../../../actions-pre-registration";
 import PhysicalEvaluationForm from "./PhysicalEvaluationForm";
 import ConfirmModal from "@/components/ConfirmModal";
 import AlertModal from "@/components/AlertModal";
@@ -13,7 +15,11 @@ import AthleteIdentity from "@/components/Identity/AthleteIdentity";
 import AthleteAvatar from "@/components/Identity/AthleteAvatar";
 import { RUNNING_LEVELS } from "@/lib/constants/running";
 import { maskCPF, maskPhone, maskCEP } from "@/lib/utils/masks";
-import RunningIdentityEditor from "./RunningIdentityEditor";
+import DrawerProfile from "./drawer-views/DrawerProfile";
+import DrawerSecurity from "./drawer-views/DrawerSecurity";
+import DrawerEvaluations from "./drawer-views/DrawerEvaluations";
+import DrawerRunning from "./drawer-views/DrawerRunning";
+import type { Student } from "./drawer-views/types";
 
 
 /**
@@ -32,38 +38,7 @@ import RunningIdentityEditor from "./RunningIdentityEditor";
  * 3. Feedback: Optimistic UI e mensagens de erro validadas via Zod no servidor.
  */
 
-interface Student {
-  id: string;
-  full_name: string;
-  display_name: string | null;
-  first_name: string | null;
-  last_name: string | null;
-  level: string;
-  phone: string | null;
-  avatar_url: string | null;
-  created_at: string;
-  points: number;
-  bio: string | null;
-  cpf: string | null;
-  birth_date: string | null;
-  gender: string | null;
-  membership_type: string;
-  email: string | null;
-  member_number: number | null;
-  emergency_contact_name: string | null;
-  emergency_contact_phone: string | null;
-  address_zip_code: string | null;
-  address_street: string | null;
-  address_number: string | null;
-  address_complement: string | null;
-  address_neighborhood: string | null;
-  address_city: string | null;
-  address_state: string | null;
-  running_level: string | null;
-  running_pace: string | null;
-  running_status: string | null;
-  running_target_pace: string | null;
-}
+// Student interface importada de './drawer-views/types' (SSoT)
 
 // We will define this inside the component to use dynamic levels
 
@@ -981,306 +956,30 @@ export default function AlunosClient({
               flexDirection: "column"
             }}>
               {drawerView === "profile" && (
-                <div style={{ width: "100%" }}>
-                  {isEditing ? (
-                    <form ref={editFormRef} action={handleUpdate} style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-                      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                        <label style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", color: "#666" }}>Nome Completo *</label>
-                        <input type="text" name="full_name" defaultValue={selectedStudent.full_name || ""} style={{ width: "100%", padding: 14, border: "3px solid #000", fontWeight: 800, outline: "none" }} required />
-                      </div>
-
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
-                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                          <label style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", color: "#666" }}>Nome de Exibição</label>
-                          <input type="text" name="display_name" defaultValue={selectedStudent.display_name || ""} style={{ width: "100%", padding: 14, border: "3px solid #000", fontWeight: 800, outline: "none" }} />
-                        </div>
-                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                          <label style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", color: "#666" }}>WhatsApp</label>
-                          <input 
-                            type="text" 
-                            name="phone" 
-                            defaultValue={selectedStudent.phone || ""} 
-                            onChange={(e) => { e.target.value = maskPhone(e.target.value); }}
-                            style={{ width: "100%", padding: 14, border: "3px solid #000", fontWeight: 800, outline: "none" }} 
-                          />
-                        </div>
-                      </div>
-                      
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
-                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                          <label style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", color: "#666" }}>CPF</label>
-                          <input 
-                            type="text" 
-                            name="cpf" 
-                            defaultValue={selectedStudent.cpf || ""} 
-                            onChange={(e) => { e.target.value = maskCPF(e.target.value); }}
-                            style={{ width: "100%", padding: 14, border: "3px solid #000", fontWeight: 800, outline: "none" }} 
-                          />
-                        </div>
-                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                          <label style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", color: "#666" }}>Data de Nascimento</label>
-                          <input type="date" name="birth_date" defaultValue={selectedStudent.birth_date || ""} style={{ width: "100%", padding: 14, border: "3px solid #000", fontWeight: 800, outline: "none" }} />
-                        </div>
-                      </div>
-
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
-                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                          <label style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", color: "#666" }}>Nível Técnico</label>
-                          <select name="level" defaultValue={selectedStudent.level} style={{ width: "100%", padding: 14, border: "3px solid #000", fontWeight: 800, outline: "none" }}>
-                            {levelsList.map(l => <option key={l.key} value={l.key}>{l.label}</option>)}
-                          </select>
-                        </div>
-                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                          <label style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", color: "#666" }}>Gênero</label>
-                          <select name="gender" defaultValue={selectedStudent.gender || ""} style={{ width: "100%", padding: 14, border: "3px solid #000", fontWeight: 800, outline: "none" }}>
-                            <option value="">Selecione...</option>
-                            <option value="Masculino">Masculino</option>
-                            <option value="Feminino">Feminino</option>
-                          </select>
-                        </div>
-                      </div>
-                      
-                      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                        <label style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", color: "#666" }}>Tipo de Acesso</label>
-                        <select name="membership_type" defaultValue={selectedStudent.membership_type || "club"} style={{ width: "100%", padding: 14, border: "3px solid #000", fontWeight: 800, outline: "none" }}>
-                          {MEMBERSHIP_TYPES.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
-                        </select>
-                      </div>
-
-                      <div style={{ background: "#000", color: "#FFF", padding: "2px 20px", display: "inline-block", width: "fit-content", fontSize: 11, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.1em" }}>
-                        Contato de Emergência
-                      </div>
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
-                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                          <label style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", color: "#666" }}>Nome do Contato</label>
-                          <input type="text" name="emergency_contact_name" defaultValue={selectedStudent.emergency_contact_name || ""} style={{ width: "100%", padding: 14, border: "3px solid #000", fontWeight: 800, outline: "none" }} />
-                        </div>
-                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                          <label style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", color: "#666" }}>Telefone do Contato</label>
-                          <input 
-                            type="text" 
-                            name="emergency_contact_phone" 
-                            defaultValue={selectedStudent.emergency_contact_phone || ""} 
-                            onChange={(e) => { e.target.value = maskPhone(e.target.value); }}
-                            style={{ width: "100%", padding: 14, border: "3px solid #000", fontWeight: 800, outline: "none" }} 
-                          />
-                        </div>
-                      </div>
-
-                      <div style={{ background: "#000", color: "#FFF", padding: "2px 20px", display: "inline-block", width: "fit-content", fontSize: 11, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.1em" }}>
-                        Endereço
-                      </div>
-                      <div style={{ display: "grid", gridTemplateColumns: "140px 1fr", gap: 20 }}>
-                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                          <label style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", color: "#666" }}>
-                            CEP {isFetchingCEP && <span style={{ color: "#EAB308", fontSize: 10 }}>...BUSCANDO</span>}
-                          </label>
-                          <input 
-                            type="text" 
-                            name="address_zip_code" 
-                            defaultValue={selectedStudent.address_zip_code || ""} 
-                            onBlur={handleCEPBlur}
-                            onChange={(e) => { e.target.value = maskCEP(e.target.value); }}
-                            placeholder="00000-000"
-                            style={{ width: "100%", padding: 14, border: "3px solid #000", fontWeight: 800, outline: "none" }} 
-                          />
-                        </div>
-                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                          <label style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", color: "#666" }}>Rua / Logradouro</label>
-                          <input type="text" name="address_street" defaultValue={selectedStudent.address_street || ""} style={{ width: "100%", padding: 14, border: "3px solid #000", fontWeight: 800, outline: "none" }} />
-                        </div>
-                      </div>
-
-                      <div style={{ display: "grid", gridTemplateColumns: "120px 1fr 1fr", gap: 20 }}>
-                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                          <label style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", color: "#666" }}>Número</label>
-                          <input type="text" name="address_number" defaultValue={selectedStudent.address_number || ""} style={{ width: "100%", padding: 14, border: "3px solid #000", fontWeight: 800, outline: "none" }} />
-                        </div>
-                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                          <label style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", color: "#666" }}>Bairro</label>
-                          <input type="text" name="address_neighborhood" defaultValue={selectedStudent.address_neighborhood || ""} style={{ width: "100%", padding: 14, border: "3px solid #000", fontWeight: 800, outline: "none" }} />
-                        </div>
-                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                          <label style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", color: "#666" }}>Complemento</label>
-                          <input type="text" name="address_complement" defaultValue={selectedStudent.address_complement || ""} style={{ width: "100%", padding: 14, border: "3px solid #000", fontWeight: 800, outline: "none" }} />
-                        </div>
-                      </div>
-
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 100px", gap: 20 }}>
-                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                          <label style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", color: "#666" }}>Cidade</label>
-                          <input type="text" name="address_city" defaultValue={selectedStudent.address_city || ""} style={{ width: "100%", padding: 14, border: "3px solid #000", fontWeight: 800, outline: "none" }} />
-                        </div>
-                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                          <label style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", color: "#666" }}>UF (Estado)</label>
-                          <input type="text" name="address_state" defaultValue={selectedStudent.address_state || ""} maxLength={2} style={{ width: "100%", padding: 14, border: "3px solid #000", fontWeight: 800, outline: "none" }} />
-                        </div>
-                      </div>
-
-                      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                        <label style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", color: "#666" }}>Bio / Notas Gerais</label>
-                        <textarea name="bio" defaultValue={selectedStudent.bio || ""} rows={4} maxLength={500} style={{ width: "100%", padding: 14, border: "3px solid #000", fontWeight: 800, outline: "none", resize: "none" }} />
-                      </div>
-
-                      <div style={{ display: "flex", gap: 16, marginTop: 10 }}>
-                        <button type="submit" disabled={loading} className="admin-btn admin-btn-primary" style={{ flex: 1, height: 56 }}>{loading ? "Salvando..." : "SALVAR ALTERAÇÕES"}</button>
-                        <button type="button" onClick={() => setIsEditing(false)} className="admin-btn admin-btn-ghost" style={{ flex: 1, height: 56 }}>CANCELAR</button>
-                      </div>
-                    </form>
-                  ) : (
-                    <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
-                        <div className="admin-card" style={{ padding: "20px 24px", border: "3px solid #000", background: "#F9FAFB", boxShadow: "4px 4px 0px rgba(0,0,0,0.05)" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 8, color: "#666", marginBottom: 8 }}>
-                            <Calendar size={14} />
-                            <span style={{ fontSize: 10, fontWeight: 900, textTransform: "uppercase" }}>Matriculado</span>
-                          </div>
-                          <div style={{ fontSize: 16, fontWeight: 900 }}>{formatDate(selectedStudent.created_at)}</div>
-                        </div>
-                        <div className="admin-card" style={{ padding: "20px 24px", border: "3px solid #000", background: "#F9FAFB", boxShadow: "4px 4px 0px rgba(0,0,0,0.05)" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 8, color: "#666", marginBottom: 8 }}>
-                            <Tag size={14} />
-                            <span style={{ fontSize: 10, fontWeight: 900, textTransform: "uppercase" }}>Acesso</span>
-                          </div>
-                          <div style={{ fontSize: 16, fontWeight: 900, color: getMembershipLabel(selectedStudent.membership_type).includes("Pass") ? "#DC2626" : "#000" }}>
-                            {getMembershipLabel(selectedStudent.membership_type)}
-                          </div>
-                        </div>
-                        <div className="admin-card" style={{ padding: "20px 24px", border: "3px solid #000", background: "#F9FAFB", boxShadow: "4px 4px 0px rgba(0,0,0,0.05)" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 8, color: "#666", marginBottom: 8 }}>
-                            <Activity size={14} />
-                            <span style={{ fontSize: 10, fontWeight: 900, textTransform: "uppercase" }}>Pontuação</span>
-                          </div>
-                          <div style={{ fontSize: 16, fontWeight: 900 }}>{selectedStudent.points.toLocaleString()} <span style={{ fontSize: 11, color: "#666" }}>PTS</span></div>
-                        </div>
-                      </div>
-
-                      <div style={{ background: "#000", color: "#FFF", padding: "2px 20px", display: "inline-block", width: "fit-content", fontSize: 11, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.1em" }}>
-                        Dados Cadastrais
-                      </div>
-
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1.5fr", gap: 24, background: "#FFF", padding: 20, border: "1px solid #EEE" }}>
-                        <div>
-                          <p style={{ fontSize: 11, fontWeight: 800, color: "#666", textTransform: "uppercase", marginBottom: 4 }}>WhatsApp</p>
-                          <p style={{ fontSize: 14, fontWeight: 900, margin: 0 }}>{selectedStudent.phone || "---"}</p>
-                        </div>
-                        <div>
-                          <p style={{ fontSize: 11, fontWeight: 800, color: "#666", textTransform: "uppercase", marginBottom: 4 }}>CPF</p>
-                          <p style={{ fontSize: 14, fontWeight: 900, margin: 0 }}>{selectedStudent.cpf || "---"}</p>
-                        </div>
-                        <div>
-                          <p style={{ fontSize: 11, fontWeight: 800, color: "#666", textTransform: "uppercase", marginBottom: 4 }}>E-mail de Acesso</p>
-                          <p style={{ fontSize: 14, fontWeight: 900, margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{selectedStudent.email || "---"}</p>
-                        </div>
-                        <div>
-                          <p style={{ fontSize: 11, fontWeight: 800, color: "#666", textTransform: "uppercase", marginBottom: 4 }}>Nascimento</p>
-                          <p style={{ fontSize: 14, fontWeight: 900, margin: 0 }}>{selectedStudent.birth_date ? new Date(selectedStudent.birth_date).toLocaleDateString("pt-BR", { timeZone: "UTC" }) : "---"}</p>
-                        </div>
-                        <div>
-                          <p style={{ fontSize: 11, fontWeight: 800, color: "#666", textTransform: "uppercase", marginBottom: 4 }}>Gênero</p>
-                          <p style={{ fontSize: 14, fontWeight: 900, margin: 0 }}>{selectedStudent.gender || "---"}</p>
-                        </div>
-                        <div>
-                          <p style={{ fontSize: 11, fontWeight: 800, color: "#666", textTransform: "uppercase", marginBottom: 4 }}>Identidade Corrida</p>
-                          <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 2 }}>
-                            <Zap size={14} style={{ color: RUNNING_LEVELS[selectedStudent.running_level as keyof typeof RUNNING_LEVELS]?.color || "#333" }} />
-                            <p style={{ fontSize: 14, fontWeight: 900, margin: 0 }}>
-                              {RUNNING_LEVELS[selectedStudent.running_level as keyof typeof RUNNING_LEVELS]?.label || "NÃO DEFINIDO"}
-                            </p>
-                          </div>
-                        </div>
-                        <div>
-                          <p style={{ fontSize: 11, fontWeight: 800, color: "#666", textTransform: "uppercase", marginBottom: 4 }}>Status do Aluno</p>
-                          <p style={{ fontSize: 14, fontWeight: 900, margin: 0, color: "#059669" }}>ATIVO</p>
-                        </div>
-                      </div>
-
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, padding: "0 20px" }}>
-                        <div>
-                          <p style={{ fontSize: 11, fontWeight: 800, color: "#666", textTransform: "uppercase", marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
-                            <Phone size={12} /> Emergência
-                          </p>
-                          <div style={{ padding: "12px 16px", border: "1px solid #EEE", borderRadius: 4 }}>
-                            <div style={{ fontWeight: 900, fontSize: 13 }}>{selectedStudent.emergency_contact_name || "---"}</div>
-                            <div style={{ fontWeight: 700, fontSize: 11, color: "#666", marginTop: 2 }}>{selectedStudent.emergency_contact_phone || "---"}</div>
-                          </div>
-                        </div>
-                        <div>
-                          <p style={{ fontSize: 11, fontWeight: 800, color: "#666", textTransform: "uppercase", marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
-                            <User size={12} /> Endereço Residencial
-                          </p>
-                          <div style={{ padding: "12px 16px", border: "1px solid #EEE", borderRadius: 4 }}>
-                            <div style={{ fontWeight: 900, fontSize: 12, lineHeight: 1.4 }}>
-                              {selectedStudent.address_street ? `${selectedStudent.address_street}, ${selectedStudent.address_number}` : "---"}
-                              {selectedStudent.address_complement && <span style={{ fontWeight: 600, color: "#666" }}> ({selectedStudent.address_complement})</span>}
-                            </div>
-                            <div style={{ fontWeight: 700, fontSize: 10, color: "#666", marginTop: 2, textTransform: "uppercase" }}>
-                              {selectedStudent.address_neighborhood} {selectedStudent.address_neighborhood && "•"} {selectedStudent.address_city}-{selectedStudent.address_state} {selectedStudent.address_zip_code && `[${selectedStudent.address_zip_code}]`}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {selectedStudent.bio && (
-                        <div>
-                          <p style={{ fontSize: 11, fontWeight: 800, color: "#666", textTransform: "uppercase", marginBottom: 8 }}>Bio / Observações de Performance</p>
-                          <div style={{ padding: 20, border: "2px solid #EEE", fontSize: 13, fontWeight: 600, color: "#444", background: "#F9FAFB", lineHeight: 1.5 }}>
-                            {selectedStudent.bio}
-                          </div>
-                        </div>
-                      )}
-
-                      <div style={{ display: "flex", gap: 16, marginTop: 10 }}>
-                        <button onClick={() => setIsEditing(true)} className="admin-btn admin-btn-primary" style={{ flex: 1, height: 56 }}>
-                          <Pencil size={18} /> EDITAR PERFIL
-                        </button>
-                        <button onClick={() => handleDelete(selectedStudent.id)} className="admin-btn admin-btn-ghost" style={{ flex: 1, height: 56, color: "#DC2626" }}>
-                          <Trash2 size={18} /> EXCLUIR ALUNO
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
+                <DrawerProfile
+                  selectedStudent={selectedStudent}
+                  isEditing={isEditing}
+                  setIsEditing={setIsEditing}
+                  loading={loading}
+                  handleUpdate={handleUpdate}
+                  handleDelete={handleDelete}
+                  editFormRef={editFormRef}
+                  levelsList={levelsList}
+                  dynamicLevels={dynamicLevels}
+                  handleCEPBlur={handleCEPBlur}
+                  isFetchingCEP={isFetchingCEP}
+                />
               )}
 
               {drawerView === "evaluations" && (
-                <div style={{ width: "100%" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <Activity size={20} />
-                      <h4 style={{ fontSize: 16, fontWeight: 900, textTransform: "uppercase", margin: 0 }}>Histórico Biométrico</h4>
-                    </div>
-                    <button onClick={() => { setSelectedEval(null); setDrawerView("eval-form"); }} className="admin-btn admin-btn-primary" style={{ padding: "10px 20px", fontSize: 12 }}>
-                      <Plus size={16} /> NOVA AVALIAÇÃO
-                    </button>
-                  </div>
-
-                  {loadingEvals ? (
-                    <div style={{ padding: 60, textAlign: "center" }}>
-                      <p style={{ fontSize: 12, fontWeight: 900, color: "#999" }}>CARREGANDO DADOS...</p>
-                    </div>
-                  ) : evaluations.length === 0 ? (
-                    <div style={{ padding: 60, textAlign: "center", border: "4px dashed #EEE" }}>
-                      <p style={{ fontSize: 14, fontWeight: 800, color: "#999", margin: 0 }}>NENHUMA AVALIAÇÃO FÍSICA REGISTRADA</p>
-                      <p style={{ fontSize: 11, color: "#CCC", marginTop: 8 }}>Clique no botão acima para iniciar o primeiro registro.</p>
-                    </div>
-                  ) : (
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 16 }}>
-                      {evaluations.map(e => (
-                        <div key={e.id} className="admin-card" style={{ padding: 20, border: "3px solid #000", display: "flex", justifyContent: "space-between", alignItems: "center", boxShadow: "8px 8px 0px rgba(0,0,0,0.05)" }}>
-                          <div>
-                            <div style={{ fontSize: 16, fontWeight: 900 }}>{new Date(e.evaluation_date).toLocaleDateString("pt-BR", { timeZone: "UTC" })}</div>
-                            <div style={{ fontSize: 11, color: "#666", fontWeight: 800, marginTop: 4, textTransform: "uppercase" }}>{e.protocol || "PROTOCOLO N/A"} • {e.weight}kg • BF: {e.body_fat_percentage?.toFixed(1) || "—"}%</div>
-                          </div>
-                          <div style={{ display: "flex", gap: 8 }}>
-                            <button onClick={() => { setSelectedEval(e); setDrawerView("eval-form"); }} className="admin-btn admin-btn-ghost" style={{ width: 40, height: 40, padding: 0 }} title="Editar"><Pencil size={18} /></button>
-                            <button onClick={() => handleDeleteEval(e.id)} className="admin-btn admin-btn-ghost" style={{ width: 40, height: 40, padding: 0, color: "#DC2626" }} title="Remover"><Trash2 size={18} /></button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                <DrawerEvaluations
+                  selectedStudent={selectedStudent}
+                  evaluations={evaluations}
+                  loadingEvals={loadingEvals}
+                  setSelectedEval={setSelectedEval}
+                  setDrawerView={setDrawerView}
+                  handleDeleteEval={handleDeleteEval}
+                />
               )}
 
               {drawerView === "eval-form" && (
@@ -1293,86 +992,20 @@ export default function AlunosClient({
               )}
 
               {drawerView === "security" && (
-                <div style={{ maxWidth: 600, margin: "0 auto", width: "100%" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 32 }}>
-                    <ShieldCheck size={24} style={{ color: "var(--admin-primary)" }} />
-                    <h3 style={{ fontSize: 20, fontWeight: 900, textTransform: "uppercase", margin: 0 }}>Gestão de Acesso</h3>
-                  </div>
-
-                  <form action={handleUpdateAuth} style={{ display: "flex", flexDirection: "column", gap: 32 }}>
-                    <div className="admin-card" style={{ padding: 24, border: "3px solid #000" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
-                        <MailIcon size={16} />
-                        <span style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase" }}>Alterar E-mail de Login</span>
-                      </div>
-                      <input 
-                        type="email" 
-                        name="email" 
-                        placeholder="Novo e-mail (Obrigatório para login)" 
-                        style={{ width: "100%", padding: 14, border: "2px solid #000", fontWeight: 700 }}
-                      />
-                      <p style={{ fontSize: 11, color: "#666", marginTop: 8 }}>Muda o endereço usado pelo atleta para entrar no Coliseu.</p>
-                    </div>
-
-                    <div className="admin-card" style={{ padding: 24, border: "3px solid #000" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
-                        <LockIcon size={16} />
-                        <span style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase" }}>Resetar Senha</span>
-                      </div>
-                      <input 
-                        type="text" 
-                        name="password" 
-                        placeholder="Nova senha (Min 8 caracteres)" 
-                        style={{ width: "100%", padding: 14, border: "2px solid #000", fontWeight: 700 }}
-                      />
-                      <p style={{ fontSize: 11, color: "#666", marginTop: 8 }}>Cuidado: A nova senha terá efeito imediato e deslogará sessões antigas se configurado.</p>
-                    </div>
-
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 16 }}>
-                      <button 
-                        type="submit" 
-                        disabled={loading} 
-                        className="admin-btn admin-btn-primary" 
-                        style={{ height: 64, fontSize: 14 }}
-                      >
-                        {loading ? "ATUALIZANDO CREDENCIAIS..." : "CONFIRMAR ALTERAÇÕES DE SEGURANÇA"}
-                      </button>
-
-                      <div style={{ height: "1px", background: "#000", margin: "16px 0", opacity: 0.1 }} />
-
-                      <div className="admin-card" style={{ padding: 24, border: "3px dashed #000", background: "#FAFAFA", textAlign: "center" }}>
-                        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 12 }}>
-                          <MailIcon size={18} />
-                          <span style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase" }}>Reenviar Link de Onboarding</span>
-                        </div>
-                        <p style={{ fontSize: 11, color: "#666", marginBottom: 20 }}>
-                          Use isto se o aluno não recebeu o e-mail inicial ou se o link expirou. Isso gerará um novo link de ativação.
-                        </p>
-                        <button 
-                          type="button"
-                          onClick={() => handleResendInvite(selectedStudent.id)}
-                          disabled={loading}
-                          className="admin-btn admin-btn-ghost"
-                          style={{ width: "100%", height: 48, borderColor: "#000", borderStyle: "solid", borderWidth: "2px", fontWeight: 900, fontSize: 12 }}
-                        >
-                          {loading ? "PROCESSANDO..." : "REENVIAR AGORA"}
-                        </button>
-                      </div>
-                    </div>
-                  </form>
-                </div>
+                <DrawerSecurity
+                  selectedStudent={selectedStudent}
+                  loading={loading}
+                  handleUpdateAuth={handleUpdateAuth}
+                  handleResendInvite={handleResendInvite}
+                />
               )}
 
               {drawerView === "running" && (
-                <div style={{ maxWidth: 800, margin: "0 auto", width: "100%" }}>
-                  <RunningIdentityEditor 
-                    student={selectedStudent} 
-                    onUpdate={() => {
-                      setMessage({ type: "success", text: "Perfil de corrida atualizado!" });
-                    }} 
-                    updateStudentAction={updateStudent} 
-                  />
-                </div>
+                <DrawerRunning
+                  selectedStudent={selectedStudent}
+                  setMessage={setMessage}
+                  updateStudentAction={updateStudent}
+                />
               )}
 
             </div>

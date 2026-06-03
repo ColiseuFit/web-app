@@ -8,7 +8,7 @@ import AthleteIdentity from "@/components/Identity/AthleteIdentity";
 import { RUNNING_LEVELS, RUNNING_STATUSES, RunningLevelKey, RunningStatusKey } from "@/lib/constants/running";
 import RunningCoachManager from "../alunos/RunningCoachManager";
 import RunningIdentityEditor from "../alunos/RunningIdentityEditor";
-import { updateStudent } from "../../../actions";
+import { updateStudent } from "../../../actions-student";
 
 interface RunningHubClientProps {
   runners: any[];

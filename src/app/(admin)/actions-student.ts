@@ -3,7 +3,7 @@
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
-import { createStudentSchema, profileSchema } from "@/lib/validations/security_schemas";
+import { createStudentSchema, profileSchema, updateAuthSchema } from "@/lib/validations/security_schemas";
 
 /**
  * Cria um novo aluno tanto no Auth quanto no Banco de Dados.
@@ -298,10 +298,16 @@ export async function updateStudentAuth(studentId: string, formData: FormData) {
     return { error: "Apenas administradores podem gerenciar acessos." };
   }
 
-  const email = formData.get("email") as string;
-  const password = formData.get("password") as string;
+  const emailInput = (formData.get("email") as string || "").trim() || undefined;
+  const passwordInput = (formData.get("password") as string || "") || undefined;
 
-  if (!email && !password) return { error: "Nenhuma alteração fornecida." };
+  // Validação Zod
+  const validation = updateAuthSchema.safeParse({ email: emailInput, password: passwordInput });
+  if (!validation.success) {
+    return { error: "Dados inválidos: " + validation.error.issues[0].message };
+  }
+
+  const { email, password } = validation.data;
 
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim().split(' ')[0];
   if (!serviceRoleKey) {
@@ -313,10 +319,30 @@ export async function updateStudentAuth(studentId: string, formData: FormData) {
     serviceRoleKey
   );
 
+  // Busca perfil atual do aluno para verificar se o e-mail realmente mudou
+  const { data: profile, error: profileFetchError } = await supabaseAdmin
+    .from("profiles")
+    .select("email")
+    .eq("id", studentId)
+    .single();
+
+  if (profileFetchError) {
+    console.error("[updateStudentAuth] Fetch Profile Error:", profileFetchError);
+    return { error: "Erro ao buscar dados do perfil do aluno." };
+  }
+
+  const currentEmail = profile?.email;
+  const isEmailChanging = email && email.toLowerCase() !== currentEmail?.toLowerCase();
+
   const updates: any = {};
-  if (email) updates.email = email;
+  if (isEmailChanging) updates.email = email;
   if (password) updates.password = password;
 
+  if (Object.keys(updates).length === 0) {
+    return { error: "Nenhuma alteração detectada. Digite uma nova senha ou um e-mail diferente do atual." };
+  }
+
+  // Atualização no Supabase Auth
   const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(studentId, updates);
   
   if (authError) {
@@ -326,6 +352,19 @@ export async function updateStudentAuth(studentId: string, formData: FormData) {
       errorMessage = "O novo e-mail informado já está em uso por outro usuário.";
     }
     return { error: errorMessage };
+  }
+
+  // Sincroniza o e-mail na tabela pública profiles se atualizado com sucesso no Auth
+  if (isEmailChanging) {
+    const { error: profileError } = await supabaseAdmin
+      .from("profiles")
+      .update({ email })
+      .eq("id", studentId);
+      
+    if (profileError) {
+      console.error("[updateStudentAuth] Profile Sync Error:", profileError);
+      return { error: "Credenciais de login atualizadas no Auth, mas falhou ao atualizar a tabela de cadastro." };
+    }
   }
 
   revalidatePath("/admin/alunos");
