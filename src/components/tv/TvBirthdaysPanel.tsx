@@ -173,7 +173,7 @@ export default function TvBirthdaysPanel({ birthdays, targetDate }: TvBirthdaysP
           )}
 
           {/* SEÇÃO: NESTA SEMANA */}
-          <div className="flex flex-col min-h-0" style={{ gap: '16px' }}>
+          <div className="flex flex-col min-h-0 flex-1 overflow-hidden" style={{ gap: '12px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <div 
                 className="bg-black text-yellow-400 border-2 border-black shadow-[2px_2px_0px_#FFD700] shrink-0 flex items-center justify-center"
@@ -186,30 +186,42 @@ export default function TvBirthdaysPanel({ birthdays, targetDate }: TvBirthdaysP
               </h2>
             </div>
             
-            <div className="overflow-y-auto pr-1">
+            <div className="flex-1 min-h-0 overflow-y-auto pr-1">
               {weekBirthdays.length > 0 ? (
-                <div className="grid grid-cols-2 xl:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 w-full content-start">
                   {weekBirthdays.map((student) => (
                     <div 
                       key={student.id} 
-                      className="bg-white border-3 border-black shadow-[3px_3px_0px_#000] shrink-0"
+                      className="bg-white border-3 border-black shadow-[3px_3px_0px_#000] min-w-0"
                       style={{ 
-                        padding: '12px 16px', 
-                        minHeight: '130px',
+                        padding: '10px 14px', 
+                        minHeight: '64px',
                         display: 'flex',
-                        flexDirection: 'column',
+                        flexDirection: 'row',
                         alignItems: 'center',
-                        justifyContent: 'center',
-                        textAlign: 'center'
+                        justifyContent: 'space-between',
+                        gap: '12px'
                       }}
                     >
-                      <AthleteAvatar url={student.avatar_url} name={student.full_name} size={44} borderWidth={2} rounded={true} />
-                      <span 
-                        className="font-headline font-black text-sm uppercase leading-tight line-clamp-1 truncate w-full"
-                        style={{ marginTop: '8px', marginBottom: '8px' }}
+                      <div 
+                        style={{ 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          gap: '10px', 
+                          minWidth: 0, 
+                          flex: 1 
+                        }}
                       >
-                        {student.full_name}
-                      </span>
+                        <div className="shrink-0">
+                          <AthleteAvatar url={student.avatar_url} name={student.full_name} size={36} borderWidth={2} rounded={true} />
+                        </div>
+                        <span 
+                          className="font-headline font-black text-sm uppercase truncate" 
+                          style={{ lineHeight: '1.2' }}
+                        >
+                          {student.full_name}
+                        </span>
+                      </div>
                       <div 
                         className="bg-yellow-400 text-black border-2 border-black font-display font-black text-[9px] uppercase shrink-0"
                         style={{ 
@@ -218,7 +230,8 @@ export default function TvBirthdaysPanel({ birthdays, targetDate }: TvBirthdaysP
                           alignItems: 'center', 
                           justifyContent: 'center',
                           lineHeight: '1',
-                          boxShadow: '2px 2px 0px #000'
+                          boxShadow: '2px 2px 0px #000',
+                          marginLeft: '8px'
                         }}
                       >
                         Dia {new Date(student.birth_date + "T12:00:00Z").getUTCDate()}
@@ -227,8 +240,8 @@ export default function TvBirthdaysPanel({ birthdays, targetDate }: TvBirthdaysP
                   ))}
                 </div>
               ) : (
-                <div className="bg-white border-3 border-black border-dashed shadow-[4px_4px_0px_#000] p-6 text-center">
-                  <p className="font-display font-bold text-neutral-500 text-sm uppercase">Nenhum aniversário nesta semana.</p>
+                <div className="bg-white border-3 border-black border-dashed shadow-[3px_3px_0px_#000] p-4 text-center">
+                  <p className="font-display font-bold text-neutral-500 text-xs uppercase">Nenhum aniversário nesta semana.</p>
                 </div>
               )}
             </div>
