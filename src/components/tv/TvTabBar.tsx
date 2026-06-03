@@ -25,10 +25,10 @@ interface TvTabBarProps {
  */
 export default function TvTabBar({ activeTab, onTabChange }: TvTabBarProps) {
   const tabs: TvTab[] = [
-    { id: "checkin", label: "CHECK-IN", icon: <Users size={16} /> },
-    { id: "wod", label: "WOD", icon: <Zap size={16} /> },
-    { id: "ranking", label: "RANKING", icon: <Trophy size={16} /> },
-    { id: "birthdays", label: "ANIVERSARIANTES", icon: <Cake size={16} /> },
+    { id: "checkin", label: "CHECK-IN", icon: <Users size={16} className="flex-shrink-0" /> },
+    { id: "wod", label: "WOD", icon: <Zap size={16} className="flex-shrink-0" /> },
+    { id: "ranking", label: "RANKING", icon: <Trophy size={16} className="flex-shrink-0" /> },
+    { id: "birthdays", label: "ANIVERSARIANTES", icon: <Cake size={16} className="flex-shrink-0" /> },
   ];
 
   return (
@@ -39,8 +39,11 @@ export default function TvTabBar({ activeTab, onTabChange }: TvTabBarProps) {
           <button
             key={tab.id}
             onClick={() => onTabChange(tab.id)}
-            className="font-display font-black text-xs uppercase tracking-wider cursor-pointer flex items-center border-2 border-black"
+            className="font-display font-black text-xs uppercase tracking-wider cursor-pointer whitespace-nowrap flex-shrink-0 border-2 border-black"
             style={{
+              display: "inline-flex",
+              alignItems: "center",
+              lineHeight: "1",
               padding: "10px 18px",
               gap: "8px",
               backgroundColor: isActive ? "#FACC15" : "#FFFFFF",
@@ -51,7 +54,7 @@ export default function TvTabBar({ activeTab, onTabChange }: TvTabBarProps) {
             }}
           >
             {tab.icon}
-            <span className="hidden md:inline">{tab.label}</span>
+            <span className="hidden md:inline whitespace-nowrap">{tab.label}</span>
           </button>
         );
       })}

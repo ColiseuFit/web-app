@@ -204,7 +204,7 @@ export default function TvClient() {
 
   return (
     <div
-      className="text-black flex flex-col font-sans relative overflow-hidden"
+      className="text-black flex flex-col font-sans overflow-hidden fixed inset-0"
       style={{
         backgroundColor: "var(--nb-surface-low)",
         backgroundImage:
@@ -212,13 +212,15 @@ export default function TvClient() {
         backgroundSize: "24px 24px",
         padding: "48px 64px",
         gap: "20px",
-        zoom: 0.75,
-        minHeight: "calc(100vh / 0.75)", // Compensa o zoom: o CSS 100vh cobre apenas 75% da tela real
+        width: "133.33vw",
+        height: "133.33vh",
+        transform: "scale(0.75)",
+        transformOrigin: "top left",
       }}
     >
       {/* ═══ 1. Header do Painel — Layout 2 Linhas ═══ */}
       <header
-        className="z-10 bg-white border-3 border-black shadow-[6px_6px_0px_#000] flex flex-col"
+        className="z-10 bg-white border-3 border-black shadow-[6px_6px_0px_#000] flex flex-col shrink-0"
       >
         {/* ── Linha 1: Branding (Logo + Abas + Clock) ── */}
         <div

@@ -190,13 +190,14 @@ export default function TvWodPanel({ data }: TvWodPanelProps) {
                     }}
                   >
                     <span
-                      className="font-display font-black text-sm uppercase text-center leading-none"
+                      className="font-display font-black text-sm uppercase text-center whitespace-nowrap flex-shrink-0"
                       style={{
                         backgroundColor: badgeBg,
                         color: "#000000",
                         display: "inline-flex",
                         alignItems: "center",
                         justifyContent: "center",
+                        lineHeight: "1",
                         padding: "5px 12px",
                         border: "2px solid #000000",
                         boxShadow: "3px 3px 0px #000000",

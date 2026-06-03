@@ -33,26 +33,32 @@ export default function TvStudentGrid({ students, timeStart, className }: TvStud
         let cardSize: "large" | "normal" | "compact" = "large";
         let maxWidth = "100%";
 
-        if (checkinsCount <= 4) {
-          gridCols = 2;
-          cardSize = "large";
-          maxWidth = "1250px";
-        } else if (checkinsCount <= 8) {
+        if (checkinsCount <= 6) {
           gridCols = 3;
           cardSize = "large";
-          maxWidth = "1750px";
-        } else if (checkinsCount <= 16) {
+          maxWidth = "1500px";
+        } else if (checkinsCount <= 8) {
           gridCols = 4;
           cardSize = "large";
-          maxWidth = "2250px";
-        } else if (checkinsCount <= 28) {
-          gridCols = 5;
-          gridGap = "18px";
+          maxWidth = "1800px";
+        } else if (checkinsCount <= 12) {
+          gridCols = 4;
+          gridGap = "20px";
+          cardSize = "normal";
+          maxWidth = "1500px";
+        } else if (checkinsCount <= 18) {
+          gridCols = 6;
+          gridGap = "16px";
+          cardSize = "normal";
+          maxWidth = "100%";
+        } else if (checkinsCount <= 24) {
+          gridCols = 6;
+          gridGap = "12px";
           cardSize = "normal";
           maxWidth = "100%";
         } else {
-          gridCols = 6;
-          gridGap = "12px";
+          gridCols = 7;
+          gridGap = "10px";
           cardSize = "compact";
           maxWidth = "100%";
         }
