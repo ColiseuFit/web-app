@@ -115,6 +115,18 @@ export async function updateCoachProfile(
   const ctx = await getAdminContext();
   if ("error" in ctx) return { error: ctx.error };
 
+  // If email is being updated, we must update it in Supabase Auth first to avoid mismatch
+  if (updates.email !== undefined && updates.email.trim() !== "") {
+    const { error: authError } = await ctx.adminClient.auth.admin.updateUserById(userId, {
+      email: updates.email.trim(),
+      email_confirm: true
+    });
+    if (authError) {
+      console.error("[updateCoachProfile] Auth Update Error:", authError);
+      return { error: "Erro ao atualizar o e-mail de login no servidor de autenticação: " + authError.message };
+    }
+  }
+
   // Build the update payload, splitting full_name into first/last
   const payload: Record<string, string | null> = {};
   if (updates.full_name !== undefined) {
@@ -132,7 +144,7 @@ export async function updateCoachProfile(
     .update(payload)
     .eq("id", userId);
 
-  if (error) return { error: "Erro ao atualizar perfil: " + error.message };
+  if (error) return { error: "Erro ao atualizar perfil no banco de dados: " + error.message };
 
   revalidatePath("/admin/professores");
   return { success: true };
