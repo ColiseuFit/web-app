@@ -197,7 +197,7 @@ export default function TvBirthdaysPanel({ birthdays, targetDate }: TvBirthdaysP
                 </h2>
               </div>
               
-              <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6 items-stretch">
+              <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-6 gap-6 items-stretch">
                 {weekBirthdays.map(student => (
                   <div 
                     key={student.id} 
@@ -238,7 +238,7 @@ export default function TvBirthdaysPanel({ birthdays, targetDate }: TvBirthdaysP
                 </h2>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5 items-stretch">
+              <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-6 gap-5 items-stretch">
                 {monthBirthdays.map(student => (
                   <div 
                     key={student.id} 
