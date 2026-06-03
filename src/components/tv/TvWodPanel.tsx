@@ -2,6 +2,7 @@
 
 import { TvDataResponse } from "@/app/tv/actions";
 import { Flame, Zap, Dumbbell, Timer, Target } from "lucide-react";
+import { useEffect, useRef } from "react";
 
 interface TvWodPanelProps {
   data: TvDataResponse;
@@ -12,6 +13,7 @@ interface TvWodPanelProps {
  * Utiliza o layout de 2 colunas para organizar o treino:
  * - Coluna Esquerda: Título do Treino, Badges de Meta (Modality, Time Cap), Aquecimento e Cargas Técnicas.
  * - Coluna Direita: Técnica/Skill e Exercícios principais do WOD.
+ * Implementa auto-scroll automático em cada seção reativa (warm-up, technique, metcon) se o volume de texto exceder a tela.
  * 
  * @param {TvWodPanelProps} props - Propriedades do componente.
  * @param {TvDataResponse} props.data - Dados estruturados do WOD carregados do banco.
@@ -48,6 +50,97 @@ export default function TvWodPanel({ data }: TvWodPanelProps) {
   const categoryLines = allWodLines.filter(isCategoryLine);
   const exerciseLines = allWodLines.filter((line) => !isCategoryLine(line));
 
+  // Referências do DOM para controle do autoscroll independente de cada contêiner
+  const warmUpScrollRef = useRef<HTMLDivElement>(null);
+  const techniqueScrollRef = useRef<HTMLDivElement>(null);
+  const wodScrollRef = useRef<HTMLDivElement>(null);
+
+  /**
+   * Configura o ciclo de autoscroll vertical para contêineres de texto longo do WOD.
+   * Raciocínio de Constantes:
+   * - step (0.8px): Deslocamento suave por tick para legibilidade contínua à distância.
+   * - delay (40ms): 25 frames/s. Roda com fluidez mesmo em navegadores Tizen/WebOS com CPU modesta.
+   * - waitCounter (75 ticks): Congela nas extremidades por ~3 segundos.
+   */
+  useEffect(() => {
+    const setupAutoScroll = (element: HTMLDivElement | null) => {
+      if (!element) return;
+
+      let intervalId: NodeJS.Timeout;
+      let scrollDirection = 1; // 1 = descendo, -1 = subindo
+      let waitCounter = 0;
+      let isInteracting = false; // Flag para suspender auto-scroll sob interação
+      
+      const step = 0.8;
+      const delay = 40;
+
+      // Eventos de interação humana para pausar a rolagem
+      const handleMouseEnter = () => { isInteracting = true; };
+      const handleMouseLeave = () => { isInteracting = false; };
+      const handleFocus = () => { isInteracting = true; };
+      const handleBlur = () => { isInteracting = false; };
+
+      element.addEventListener("mouseenter", handleMouseEnter);
+      element.addEventListener("mouseleave", handleMouseLeave);
+      element.addEventListener("focusin", handleFocus);
+      element.addEventListener("focusout", handleBlur);
+      element.addEventListener("touchstart", handleMouseEnter);
+      element.addEventListener("touchend", handleMouseLeave);
+
+      const performScroll = () => {
+        if (isInteracting) return;
+
+        const maxScroll = element.scrollHeight - element.clientHeight;
+        if (maxScroll <= 0) {
+          element.scrollTop = 0;
+          return;
+        }
+
+        if (waitCounter > 0) {
+          waitCounter--;
+          return;
+        }
+
+        element.scrollTop += scrollDirection * step;
+
+        // Borda Inferior
+        if (scrollDirection === 1 && element.scrollTop >= maxScroll - 1) {
+          element.scrollTop = maxScroll;
+          scrollDirection = -1; // Inverte para subir
+          waitCounter = 75; // Pausa no final por 3s
+        }
+        // Borda Superior
+        else if (scrollDirection === -1 && element.scrollTop <= 0) {
+          element.scrollTop = 0;
+          scrollDirection = 1; // Inverte para descer
+          waitCounter = 75; // Pausa no topo por 3s
+        }
+      };
+
+      intervalId = setInterval(performScroll, delay);
+
+      return () => {
+        clearInterval(intervalId);
+        element.removeEventListener("mouseenter", handleMouseEnter);
+        element.removeEventListener("mouseleave", handleMouseLeave);
+        element.removeEventListener("focusin", handleFocus);
+        element.removeEventListener("focusout", handleBlur);
+        element.removeEventListener("touchstart", handleMouseEnter);
+        element.removeEventListener("touchend", handleMouseLeave);
+      };
+    };
+
+    const cleanupWarmUp = setupAutoScroll(warmUpScrollRef.current);
+    const cleanupTechnique = setupAutoScroll(techniqueScrollRef.current);
+    const cleanupWod = setupAutoScroll(wodScrollRef.current);
+
+    return () => {
+      if (cleanupWarmUp) cleanupWarmUp();
+      if (cleanupTechnique) cleanupTechnique();
+      if (cleanupWod) cleanupWod();
+    };
+  }, [data]);
+
   return (
     <div
       className="flex-grow grid min-h-0 overflow-hidden"
@@ -58,6 +151,17 @@ export default function TvWodPanel({ data }: TvWodPanelProps) {
         alignItems: "stretch",
       }}
     >
+      {/* Estilo local para ocultar barras de rolagem nativas */}
+      <style dangerouslySetInnerHTML={{__html: `
+        .tv-wod-scroll-container {
+          scrollbar-width: none !important;
+          -ms-overflow-style: none !important;
+        }
+        .tv-wod-scroll-container::-webkit-scrollbar {
+          display: none !important;
+        }
+      `}} />
+
       {/* ═══ Coluna Esquerda: Meta + Aquecimento + Cargas ═══ */}
       <div className="flex flex-col h-full min-h-0 overflow-hidden" style={{ gap: "16px" }}>
         
@@ -134,7 +238,10 @@ export default function TvWodPanel({ data }: TvWodPanelProps) {
               </span>
             </div>
 
-            <div className="flex flex-col flex-grow overflow-y-auto pr-1 gap-1">
+            <div 
+              ref={warmUpScrollRef}
+              className="flex flex-col flex-grow overflow-y-auto pr-1 gap-1 tv-wod-scroll-container"
+            >
               {warmUpLines.map((line, idx) => (
                 <div
                   key={idx}
@@ -231,7 +338,10 @@ export default function TvWodPanel({ data }: TvWodPanelProps) {
               </span>
             </div>
 
-            <div className="flex flex-col flex-grow overflow-y-auto pr-1 gap-1">
+            <div 
+              ref={techniqueScrollRef}
+              className="flex flex-col flex-grow overflow-y-auto pr-1 gap-1 tv-wod-scroll-container"
+            >
               {techniqueLines.map((line, idx) => (
                 <div
                   key={idx}
@@ -261,7 +371,10 @@ export default function TvWodPanel({ data }: TvWodPanelProps) {
           </div>
 
           {exerciseLines.length > 0 ? (
-            <div className="flex flex-col flex-grow overflow-y-auto pr-1 gap-1">
+            <div 
+              ref={wodScrollRef}
+              className="flex flex-col flex-grow overflow-y-auto pr-1 gap-1 tv-wod-scroll-container"
+            >
               {exerciseLines.map((line, idx) => {
                 // Detecção de metas ou estruturação de rounds no WOD
                 const isTarget =
