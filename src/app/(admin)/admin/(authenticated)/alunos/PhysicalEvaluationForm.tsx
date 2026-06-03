@@ -191,11 +191,11 @@ export default function PhysicalEvaluationForm({
           type: "error"
         });
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Upload handler critical error:", err);
       setAlertConfig({
         title: "ERRO CRÍTICO",
-        message: "NÃO FOI POSSÍVEL PROCESSAR O UPLOAD. TENTE NOVAMENTE.",
+        message: `NÃO FOI POSSÍVEL PROCESSAR O UPLOAD: ${err?.message || "Erro desconhecido. Tente novamente."}`,
         type: "error"
       });
     } finally {

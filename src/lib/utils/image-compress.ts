@@ -30,12 +30,19 @@ function loadHeicScript(): Promise<void> {
     }
 
     const script = document.createElement("script");
-    script.src =
-      "https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js";
+    script.src = "/js/heic2any.min.js";
     script.async = true;
     script.onload = () => resolve();
-    script.onerror = () =>
-      reject(new Error("Falha ao carregar conversor HEIC via CDN."));
+    script.onerror = () => {
+      console.warn("Falha ao carregar conversor HEIC local. Tentando CDN...");
+      const cdnScript = document.createElement("script");
+      cdnScript.src = "https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js";
+      cdnScript.async = true;
+      cdnScript.onload = () => resolve();
+      cdnScript.onerror = () =>
+        reject(new Error("Falha ao carregar conversor HEIC local e via CDN."));
+      document.head.appendChild(cdnScript);
+    };
     document.head.appendChild(script);
   });
 }
