@@ -42,7 +42,7 @@ export default function TabAntropometria({ formData, handleNestedChange, formatO
               </label>
               <input 
                 type="number" step="0.1" 
-                value={(formData.measurements as any)[field.key] as string} 
+                value={((formData.measurements as any)[field.key] ?? "") as string} 
                 onChange={e => handleNestedChange("measurements", field.key, e.target.value)} 
                 onBlur={() => formatOnBlur(field.key, (formData.measurements as any)[field.key], "measurements")}
                 style={{ 
@@ -77,7 +77,7 @@ export default function TabAntropometria({ formData, handleNestedChange, formatO
               <label style={{ fontSize: 10, fontWeight: 800, color: "#666", marginBottom: 4 }}>{field.label}</label>
               <input 
                 type="number" step="0.1" 
-                value={(formData.measurements as any)[field.key] as string} 
+                value={((formData.measurements as any)[field.key] ?? "") as string} 
                 onChange={e => handleNestedChange("measurements", field.key, e.target.value)} 
                 onBlur={() => formatOnBlur(field.key, (formData.measurements as any)[field.key], "measurements")}
                 style={{ width: "100%", textAlign: "left", padding: "6px 8px", border: "2px solid #EEE", fontWeight: 800, outline: "none" }}

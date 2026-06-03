@@ -166,13 +166,19 @@ export async function uploadEvaluationPhoto(formData: FormData) {
   if (!file) return { error: "Nenhum arquivo de imagem detectado." };
   if (!studentId) return { error: "ID do aluno é obrigatório para o armazenamento." };
 
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim().split(' ')[0];
+  if (!serviceRoleKey) {
+    return { error: "Erro de configuração: Chave mestra não encontrada no servidor." };
+  }
+  const supabaseAdmin = createAdminClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceRoleKey);
+
   const fileExt = file.name.split(".").pop();
   const filePath = `${studentId}/${Date.now()}.${fileExt}`;
 
   try {
-    // 1. Storage Upload (Converted to Uint8Array for maximum compatibility in Server Actions)
+    // 1. Storage Upload using supabaseAdmin (bypasses RLS storage permissions checking on Server Side)
     const arrayBuffer = await file.arrayBuffer();
-    const { error: uploadError } = await supabase.storage
+    const { error: uploadError } = await supabaseAdmin.storage
       .from("physical-evaluations")
       .upload(filePath, new Uint8Array(arrayBuffer), {
         contentType: file.type || 'image/jpeg',
@@ -185,7 +191,7 @@ export async function uploadEvaluationPhoto(formData: FormData) {
     }
 
     // 2. Immediate Signed URL generation (1 year expiration)
-    const { data: signedData, error: signedError } = await supabase.storage
+    const { data: signedData, error: signedError } = await supabaseAdmin.storage
       .from("physical-evaluations")
       .createSignedUrl(filePath, 31536000); 
 

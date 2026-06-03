@@ -15,7 +15,7 @@ export default function TabPostura({ formData, handleNestedChange }: Pick<Evalua
             {view.label}
           </label>
           <textarea 
-            value={(formData.postural_analysis as any)[view.key] as string} 
+            value={((formData.postural_analysis as any)[view.key] ?? "") as string} 
             onChange={e => handleNestedChange("postural_analysis", view.key, e.target.value)} 
             rows={4} 
             maxLength={500}

@@ -6,7 +6,7 @@ export default function TabGeral({ formData, handleInputChange, formatOnBlur, ca
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
         <div>
           <label style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: "#666", marginBottom: 8, display: "block" }}>Data da Avaliação</label>
-          <input type="date" value={formData.evaluation_date} onChange={e => handleInputChange("evaluation_date", e.target.value)} required />
+          <input type="date" value={formData.evaluation_date ?? ""} onChange={e => handleInputChange("evaluation_date", e.target.value)} required />
         </div>
         <div>
           <label style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: "#666", marginBottom: 8, display: "block" }}>Protocolo Ativo</label>
@@ -21,7 +21,7 @@ export default function TabGeral({ formData, handleInputChange, formatOnBlur, ca
           <label style={{ fontSize: 10, fontWeight: 800, textTransform: "uppercase", color: "#666" }}>Peso (kg)</label>
           <input 
             type="number" step="0.1" 
-            value={formData.weight} 
+            value={formData.weight ?? ""} 
             onChange={e => handleInputChange("weight", e.target.value)} 
             onBlur={() => formatOnBlur("weight", formData.weight)}
             placeholder="70.0"
@@ -33,7 +33,7 @@ export default function TabGeral({ formData, handleInputChange, formatOnBlur, ca
           <label style={{ fontSize: 10, fontWeight: 800, textTransform: "uppercase", color: "#666" }}>Altura (m)</label>
           <input 
             type="number" step="0.01" 
-            value={formData.height} 
+            value={formData.height ?? ""} 
             onChange={e => handleInputChange("height", e.target.value)} 
             onBlur={() => formatOnBlur("height", formData.height)}
             placeholder="1.70"
@@ -45,7 +45,7 @@ export default function TabGeral({ formData, handleInputChange, formatOnBlur, ca
           <label style={{ fontSize: 10, fontWeight: 800, textTransform: "uppercase", color: "#666" }}>% Gordura (Opc.)</label>
           <input 
             type="number" step="0.1" 
-            value={formData.body_fat_percentage} 
+            value={formData.body_fat_percentage ?? ""} 
             onChange={e => handleInputChange("body_fat_percentage", e.target.value)} 
             onBlur={() => formatOnBlur("body_fat_percentage", formData.body_fat_percentage, undefined, 1)}
             placeholder="0%"
@@ -61,7 +61,7 @@ export default function TabGeral({ formData, handleInputChange, formatOnBlur, ca
           Observações Clínicas / Gerais
         </label>
         <textarea 
-          value={formData.notes} 
+          value={formData.notes ?? ""} 
           onChange={e => handleInputChange("notes", e.target.value)} 
           rows={4} 
           maxLength={500}

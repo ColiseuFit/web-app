@@ -9,7 +9,7 @@ export default function TabComposicao({ formData, handleNestedChange, formatOnBl
           DOBRAS CUTÂNEAS (MM)
         </h3>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "12px 24px" }}>
-          {[
+            {[
             { key: "triceps", label: "TRÍCEPS" },
             { key: "subscapular", label: "SUBESCAPULAR" },
             { key: "chest", label: "PEITORAL" },
@@ -22,7 +22,7 @@ export default function TabComposicao({ formData, handleNestedChange, formatOnBl
               <label style={{ fontSize: 10, fontWeight: 800, color: "#666", marginBottom: 4 }}>{field.label}</label>
               <input 
                 type="number" step="0.1" 
-                value={(formData.skinfolds as any)[field.key] as string} 
+                value={((formData.skinfolds as any)[field.key] ?? "") as string} 
                 onChange={e => handleNestedChange("skinfolds", field.key, e.target.value)} 
                 onBlur={() => formatOnBlur(field.key, (formData.skinfolds as any)[field.key], "skinfolds")}
                 style={{ width: "100%", textAlign: "left", padding: "6px 8px", border: "2px solid #EEE", fontWeight: 800, outline: "none" }}
@@ -49,7 +49,7 @@ export default function TabComposicao({ formData, handleNestedChange, formatOnBl
               <label style={{ fontSize: 10, fontWeight: 800, color: "#666", marginBottom: 4 }}>{field.label}</label>
               <input 
                 type="number" step="0.1" 
-                value={(formData.bone_diameters as any)[field.key] as string} 
+                value={((formData.bone_diameters as any)[field.key] ?? "") as string} 
                 onChange={e => handleNestedChange("bone_diameters", field.key, e.target.value)} 
                 onBlur={() => formatOnBlur(field.key, (formData.bone_diameters as any)[field.key], "bone_diameters")}
                 style={{ width: "100%", textAlign: "left", padding: "6px 8px", border: "2px solid #EEE", fontWeight: 800, outline: "none" }}
