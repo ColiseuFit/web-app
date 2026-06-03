@@ -4,11 +4,26 @@ import { TvBirthday } from "@/app/tv/actions";
 import { Cake, Calendar, Sparkles, ChevronRight } from "lucide-react";
 import AthleteAvatar from "@/components/Identity/AthleteAvatar";
 
+/**
+ * Propriedades para o componente TvBirthdaysPanel.
+ */
 interface TvBirthdaysPanelProps {
+  /** Lista de todos os aniversariantes do mês carregados do banco de dados */
   birthdays: TvBirthday[];
+  /** Data alvo de exibição do painel da TV (YYYY-MM-DD), usada como base para a data atual da TV */
   targetDate: string;
 }
 
+/**
+ * Painel especializado para exibição dos aniversariantes do mês na Coliseu TV.
+ * Segue a estética brutalista ("Iron Monolith") e separa os alunos em 3 seções:
+ * - Hoje: Alunos que fazem aniversário na data atual da TV (Destaque principal).
+ * - Nesta Semana: Alunos que fazem aniversário dentro da semana corrente da TV.
+ * - Demais do Mês: Outros aniversariantes do mesmo mês de exibição.
+ * 
+ * @param {TvBirthdaysPanelProps} props - Propriedades do componente.
+ * @returns {React.ReactElement} O painel de aniversariantes estruturado.
+ */
 export default function TvBirthdaysPanel({ birthdays, targetDate }: TvBirthdaysPanelProps) {
   const [year, month, day] = targetDate.split("-").map(Number);
   const tvDate = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
