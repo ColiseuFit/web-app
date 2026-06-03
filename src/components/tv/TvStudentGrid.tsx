@@ -6,6 +6,7 @@ import TvStudentCard from "./TvStudentCard";
 interface TvStudentGridProps {
   students: TvStudent[];
   timeStart: string;
+  activeDate?: string;
   className?: string;
 }
 
@@ -17,10 +18,11 @@ interface TvStudentGridProps {
  * @param {TvStudentGridProps} props - Propriedades do componente.
  * @param {TvStudent[]} props.students - Lista de estudantes com check-in confirmado.
  * @param {string} props.timeStart - Horário de início do slot atual (ex: "19:00:00").
+ * @param {string} [props.activeDate] - Data ativa da TV (YYYY-MM-DD).
  * @param {string} [props.className] - Classe CSS opcional para estilização externa.
  * @returns {React.ReactElement} Grade adaptativa brutalista ou tela de empty state.
  */
-export default function TvStudentGrid({ students, timeStart, className }: TvStudentGridProps) {
+export default function TvStudentGrid({ students, timeStart, activeDate, className }: TvStudentGridProps) {
   const checkinsCount = students.length;
 
   return (
@@ -83,7 +85,7 @@ export default function TvStudentGrid({ students, timeStart, className }: TvStud
             }}
           >
             {students.map((student) => (
-              <TvStudentCard key={student.id} student={student} cardSize={cardSize} />
+              <TvStudentCard key={student.id} student={student} cardSize={cardSize} activeDate={activeDate} />
             ))}
           </div>
         );

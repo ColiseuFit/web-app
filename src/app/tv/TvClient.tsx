@@ -29,6 +29,63 @@ export default function TvClient() {
   const [activeTab, setActiveTab] = useState<TvTabId>("checkin");
   const autoModeTimerRef = useRef<NodeJS.Timeout | null>(null);
   const pollingTimerRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Controle de rotação automática de abas (cooldown de 15 minutos se houver interação)
+  const [isTabRotationActive, setIsTabRotationActive] = useState<boolean>(true);
+  const tabRotationTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const tabCooldownTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  /**
+   * Ativa a pausa na rotação automática das abas por 15 minutos em caso de qualquer interação.
+   */
+  const triggerTabCooldown = useCallback(() => {
+    setIsTabRotationActive(false);
+
+    if (tabCooldownTimerRef.current) clearTimeout(tabCooldownTimerRef.current);
+    tabCooldownTimerRef.current = setTimeout(() => {
+      setIsTabRotationActive(true);
+    }, 900000); // 15 minutos (900.000 ms)
+  }, []);
+
+  /**
+   * Altera a aba ativa e pausa temporariamente a rotação.
+   */
+  const handleTabChange = useCallback((tabId: TvTabId) => {
+    setActiveTab(tabId);
+    triggerTabCooldown();
+  }, [triggerTabCooldown]);
+
+  // Loop de rotação automática das abas (Check-in -> WOD -> Aniversariantes)
+  useEffect(() => {
+    if (!isTabRotationActive) {
+      if (tabRotationTimerRef.current) clearInterval(tabRotationTimerRef.current);
+      return;
+    }
+
+    const ROTATABLE_TABS: TvTabId[] = ["checkin", "wod", "birthdays"];
+
+    tabRotationTimerRef.current = setInterval(() => {
+      setActiveTab((current) => {
+        const currentIndex = ROTATABLE_TABS.indexOf(current);
+        const nextIndex = (currentIndex + 1) % ROTATABLE_TABS.length;
+        return ROTATABLE_TABS[nextIndex];
+      });
+    }, 20000); // 20 segundos por aba
+
+    return () => {
+      if (tabRotationTimerRef.current) clearInterval(tabRotationTimerRef.current);
+    };
+  }, [isTabRotationActive]);
+
+  // Limpa todos os timers no desmonte do componente
+  useEffect(() => {
+    return () => {
+      if (pollingTimerRef.current) clearTimeout(pollingTimerRef.current);
+      if (autoModeTimerRef.current) clearTimeout(autoModeTimerRef.current);
+      if (tabRotationTimerRef.current) clearInterval(tabRotationTimerRef.current);
+      if (tabCooldownTimerRef.current) clearTimeout(tabCooldownTimerRef.current);
+    };
+  }, []);
 
   /**
    * Busca e sincroniza os dados da TV a partir do servidor.
@@ -156,6 +213,7 @@ export default function TvClient() {
 
     setSelectedSlotIndex(targetIndex);
     setIsAutoMode(false);
+    triggerTabCooldown();
 
     // Configura um timer de autocura: se o coach navegar manualmente, após 10 minutos de inatividade,
     // a TV retorna automaticamente ao modo de monitoramento automático.
@@ -238,7 +296,7 @@ export default function TvClient() {
               </span>
             </div>
 
-            <TvTabBar activeTab={activeTab} onTabChange={setActiveTab} />
+            <TvTabBar activeTab={activeTab} onTabChange={handleTabChange} />
           </div>
 
           {/* Clock alinhado à direita */}
@@ -256,19 +314,21 @@ export default function TvClient() {
               {/* Coach da Turma Atual */}
               {currentSlot ? (
                 <div
-                  className="flex items-center font-display font-black text-sm text-neutral-500 bg-white border-2 border-black shadow-[2px_2px_0px_#000] uppercase"
+                  className="flex items-center font-display font-black text-sm text-neutral-500 bg-white border-2 border-black shadow-[2px_2px_0px_#000] uppercase whitespace-nowrap flex-shrink-0"
                   style={{ padding: "0 16px", gap: "8px", height: "44px" }}
                 >
-                  <User size={14} className="text-black" />
-                  COACH: <span className="text-black">{currentSlot.coach_name}</span>
+                  <User size={14} className="text-black flex-shrink-0" />
+                  <span>
+                    COACH: <span className="text-black">{currentSlot.coach_name}</span>
+                  </span>
                 </div>
               ) : (
                 <div
-                  className="flex items-center font-display font-black text-sm text-neutral-400 bg-neutral-50 border-2 border-neutral-300 uppercase"
+                  className="flex items-center font-display font-black text-sm text-neutral-400 bg-neutral-50 border-2 border-neutral-300 uppercase whitespace-nowrap flex-shrink-0"
                   style={{ padding: "0 16px", gap: "8px", height: "44px" }}
                 >
-                  <User size={14} className="text-neutral-400" />
-                  SEM TURMA SELECIONADA
+                  <User size={14} className="text-neutral-400 flex-shrink-0" />
+                  <span>SEM TURMA SELECIONADA</span>
                 </div>
               )}
 
@@ -290,7 +350,10 @@ export default function TvClient() {
             <div className="flex items-center" style={{ gap: "10px" }}>
               {/* Botão de Auto-ajuste */}
               <button
-                onClick={() => setIsAutoMode(!isAutoMode)}
+                onClick={() => {
+                  setIsAutoMode(!isAutoMode);
+                  triggerTabCooldown();
+                }}
                 className={`border-2 border-black font-display font-black text-sm uppercase tracking-wide cursor-pointer transition-all flex items-center ${
                   isAutoMode
                     ? "bg-green-400 text-black shadow-none translate-x-[2px] translate-y-[2px]"
@@ -351,7 +414,10 @@ export default function TvClient() {
 
               {/* Refresh */}
               <button
-                onClick={() => fetchData(true)}
+                onClick={() => {
+                  fetchData(true);
+                  triggerTabCooldown();
+                }}
                 className={`bg-white border-2 border-black cursor-pointer active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all flex items-center justify-center ${
                   isRefreshing ? "animate-spin" : ""
                 }`}
@@ -372,7 +438,7 @@ export default function TvClient() {
       {/* ═══ 2. Conteúdo por Aba ═══ */}
       <div className="flex-grow z-10 flex flex-col" style={{ width: "100%" }}>
         {activeTab === "checkin" && (
-          <TvCheckInPanel currentSlot={currentSlot} />
+          <TvCheckInPanel currentSlot={currentSlot} activeDate={data?.date} />
         )}
 
         {activeTab === "wod" && data && <TvWodPanel data={data} />}

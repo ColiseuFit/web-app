@@ -5,6 +5,7 @@ import TvStudentGrid from "./TvStudentGrid";
 
 interface TvCheckInPanelProps {
   currentSlot: TvClassSlot | undefined;
+  activeDate?: string;
 }
 
 /**
@@ -12,8 +13,9 @@ interface TvCheckInPanelProps {
  * Ocupa 100% da área vertical disponível abaixo do header da TV.
  *
  * @param currentSlot - Slot de aula selecionado contendo a lista de alunos e metadados do coach.
+ * @param activeDate - Data ativa em exibição na TV.
  */
-export default function TvCheckInPanel({ currentSlot }: TvCheckInPanelProps) {
+export default function TvCheckInPanel({ currentSlot, activeDate }: TvCheckInPanelProps) {
   if (!currentSlot) {
     return (
       <div
@@ -36,6 +38,7 @@ export default function TvCheckInPanel({ currentSlot }: TvCheckInPanelProps) {
     <TvStudentGrid
       students={currentSlot.students}
       timeStart={currentSlot.time_start}
+      activeDate={activeDate}
       className=""
     />
   );

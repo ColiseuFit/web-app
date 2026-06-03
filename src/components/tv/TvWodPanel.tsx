@@ -33,22 +33,20 @@ export default function TvWodPanel({ data }: TvWodPanelProps) {
   const techniqueLines = getLines(technique);
   const allWodLines = getLines(wodContent);
 
-  // Separar cargas técnicas de exercícios do WOD principal
-  const categoryLines = allWodLines.filter(
-    (line) =>
-      line.startsWith("RX:") ||
-      line.startsWith("INT:") ||
-      line.startsWith("SC:") ||
-      line.startsWith("INI:")
-  );
+  // Helper para verificar se a linha representa uma carga técnica (Case-Insensitive)
+  const isCategoryLine = (line: string) => {
+    const clean = line.trim().toUpperCase();
+    return (
+      clean.startsWith("RX:") ||
+      clean.startsWith("INT:") ||
+      clean.startsWith("SC:") ||
+      clean.startsWith("INI:")
+    );
+  };
 
-  const exerciseLines = allWodLines.filter(
-    (line) =>
-      !line.startsWith("RX:") &&
-      !line.startsWith("INT:") &&
-      !line.startsWith("SC:") &&
-      !line.startsWith("INI:")
-  );
+  // Separar cargas técnicas de exercícios do WOD principal
+  const categoryLines = allWodLines.filter(isCategoryLine);
+  const exerciseLines = allWodLines.filter((line) => !isCategoryLine(line));
 
   return (
     <div
@@ -169,7 +167,7 @@ export default function TvWodPanel({ data }: TvWodPanelProps) {
             <div className="flex flex-col gap-4">
               {categoryLines.map((line, idx) => {
                 const parts = line.split(":");
-                const category = parts[0].trim();
+                const category = parts[0].trim().toUpperCase();
                 const detail = parts.slice(1).join(":").trim();
 
                 let badgeBg = "#FACC15"; // RX

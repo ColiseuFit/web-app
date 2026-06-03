@@ -16,6 +16,7 @@ export type CardSize = "large" | "normal" | "compact";
 interface TvStudentCardProps {
   student: TvStudent;
   cardSize?: CardSize;
+  activeDate?: string;
 }
 
 /** Mapa dimensional: centraliza todos os tokens de tamanho e comportamento por tier */
@@ -100,6 +101,7 @@ const SIZE_MAP: Record<
 export default function TvStudentCard({
   student,
   cardSize = "normal",
+  activeDate,
 }: TvStudentCardProps) {
   const [imgError, setImgError] = useState(false);
 
@@ -116,9 +118,9 @@ export default function TvStudentCard({
   // Verifica se o aluno faz aniversário hoje (usando UTC para evitar shift)
   let isBirthdayToday = false;
   if (student.birth_date) {
-    const today = new Date();
+    const comparisonDate = activeDate ? new Date(activeDate + "T12:00:00Z") : new Date();
     const bDate = new Date(student.birth_date + "T12:00:00Z");
-    if (today.getUTCMonth() === bDate.getUTCMonth() && today.getUTCDate() === bDate.getUTCDate()) {
+    if (comparisonDate.getUTCMonth() === bDate.getUTCMonth() && comparisonDate.getUTCDate() === bDate.getUTCDate()) {
       isBirthdayToday = true;
     }
   }

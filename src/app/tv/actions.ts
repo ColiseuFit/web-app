@@ -3,6 +3,42 @@
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { getTodayDate, resolveSlotCoach } from "@/lib/date-utils";
 import { z } from "zod";
+import { unstable_cache } from "next/cache";
+
+/**
+ * Recupera todos os perfis com data de nascimento do banco de dados.
+ * Cacheado por 1 hora (3600 segundos) para reduzir drasticamente o load no Supabase
+ * causado pelo polling de 15 segundos da TV.
+ */
+const getCachedProfilesWithBirthdays = unstable_cache(
+  async () => {
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim().split(' ')[0];
+    if (!serviceRoleKey) {
+      throw new Error("Erro de configuração: Chave mestra não encontrada no servidor.");
+    }
+
+    const supabase = createAdminClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      serviceRoleKey
+    );
+
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("id, full_name, avatar_url, birth_date")
+      .not("birth_date", "is", null);
+
+    if (error) {
+      throw new Error("Erro ao buscar perfis para aniversariantes: " + error.message);
+    }
+
+    return data || [];
+  },
+  ["profiles-birthdays-list"],
+  {
+    revalidate: 3600, // Cache de 1 hora
+    tags: ["profiles", "birthdays"],
+  }
+);
 
 /**
  * Schema de validação para o parâmetro de data da TV.
@@ -201,17 +237,12 @@ export async function getTvData(targetDate?: string): Promise<{ data?: TvDataRes
     });
 
     // 6. Buscar Aniversariantes do Mês
-    // Busca todos os perfis que possuem data de nascimento e filtra em memória pelo mês da targetDate.
-    // É uma operação rápida (< 1ms para milhares de perfis)
+    // Busca os perfis cadastrados a partir do cache e filtra em memória pelo mês da targetDate.
     let birthdaysOfMonth: TvBirthday[] = [];
     const targetMonth = dateObj.getUTCMonth(); // 0 a 11
 
-    const { data: allProfiles, error: profilesError } = await supabase
-      .from("profiles")
-      .select("id, full_name, avatar_url, birth_date")
-      .not("birth_date", "is", null);
-
-    if (!profilesError && allProfiles) {
+    try {
+      const allProfiles = await getCachedProfilesWithBirthdays();
       birthdaysOfMonth = allProfiles
         .filter(p => {
           if (!p.birth_date) return false;
@@ -231,6 +262,10 @@ export async function getTvData(targetDate?: string): Promise<{ data?: TvDataRes
           const dayB = new Date(b.birth_date + "T12:00:00Z").getUTCDate();
           return dayA - dayB;
         });
+    } catch (cacheErr: any) {
+      console.error("[getTvData] Erro ao recuperar aniversariantes do cache:", cacheErr);
+      // Fallback resiliente para não quebrar o polling principal da TV
+      birthdaysOfMonth = [];
     }
 
     return {
