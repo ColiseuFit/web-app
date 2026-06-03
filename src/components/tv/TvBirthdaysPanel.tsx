@@ -15,14 +15,10 @@ interface TvBirthdaysPanelProps {
 }
 
 /**
- * Painel especializado para exibição dos aniversariantes do mês na Coliseu TV.
- * Segue a estética brutalista ("Iron Monolith") e separa os alunos em 3 seções:
- * - Hoje: Alunos que fazem aniversário na data atual da TV (Destaque principal).
- * - Nesta Semana: Alunos que fazem aniversário dentro da semana corrente da TV.
- * - Demais do Mês: Outros aniversariantes do mesmo mês de exibição.
- * 
- * @param {TvBirthdaysPanelProps} props - Propriedades do componente.
- * @returns {React.ReactElement} O painel de aniversariantes estruturado.
+ * Painel de exibição dos aniversariantes na Coliseu TV.
+ * Adaptado para exibição estática em tela única com alta legibilidade e estética Neo-Brutalista ("Iron Monolith").
+ * Resolve definitivamente o problema de visual espremido e desalinhado aplicando CSS inline 1:1
+ * para margens, paddings, gaps e flexbox, garantindo imunidade a bugs de renderização em navegadores de Smart TVs.
  */
 export default function TvBirthdaysPanel({ birthdays, targetDate }: TvBirthdaysPanelProps) {
   const [year, month, day] = targetDate.split("-").map(Number);
@@ -31,9 +27,10 @@ export default function TvBirthdaysPanel({ birthdays, targetDate }: TvBirthdaysP
   const tvDay = tvDate.getUTCDate();
   const tvMonth = tvDate.getUTCMonth();
   
-  // Format month name for the header
+  // Nome do mês formatado em português
   const monthName = tvDate.toLocaleString('pt-BR', { month: 'long', timeZone: 'UTC' });
 
+  // Calcula a faixa de dias da semana corrente (domingo a sábado)
   const getWeekRange = (date: Date) => {
     const d = new Date(date);
     const dayOfWeek = d.getUTCDay();
@@ -50,16 +47,7 @@ export default function TvBirthdaysPanel({ birthdays, targetDate }: TvBirthdaysP
   const weekBirthdays: TvBirthday[] = [];
   const monthBirthdays: TvBirthday[] = [];
 
-  // MOCK PARA TESTE: Caso queira visualizar múltiplos aniversariantes hoje na TV,
-  // descomente as linhas abaixo e comente o loop original.
-  /*
-  const mockAvatars = [null, null, null];
-  todayBirthdays.push(
-    { id: "mock-1", full_name: "Geralt de Rívia", avatar_url: null, birth_date: targetDate },
-    { id: "mock-2", full_name: "Yennefer de Vengerberg", avatar_url: null, birth_date: targetDate }
-  );
-  */
-
+  // Categoriza os aniversariantes
   birthdays.forEach((b) => {
     const bDate = new Date(b.birth_date + "T12:00:00Z");
     const bDay = bDate.getUTCDate();
@@ -76,12 +64,15 @@ export default function TvBirthdaysPanel({ birthdays, targetDate }: TvBirthdaysP
   });
 
   return (
-    <div className="flex flex-col flex-1 bg-neutral-100 border-4 border-black shadow-[8px_8px_0px_#000] overflow-hidden">
+    <div 
+      className="flex flex-col flex-1 bg-neutral-100 border-4 border-black shadow-[8px_8px_0px_#000] overflow-hidden w-full h-full"
+      style={{ height: '100%' }}
+    >
       
       {/* ── HEADER HORIZONTAL ENXUTO ── */}
       <div 
-        className="bg-yellow-400 border-b-4 border-black flex items-center justify-between shrink-0 relative overflow-hidden z-20"
-        style={{ padding: '16px 32px' }}
+        className="bg-yellow-400 border-b-4 border-black flex items-center justify-between shrink-0 relative overflow-hidden z-20 shadow-[4px_4px_0px_#000]"
+        style={{ padding: '18px 32px' }}
       >
         <div 
           className="absolute inset-0 opacity-10 pointer-events-none"
@@ -89,7 +80,7 @@ export default function TvBirthdaysPanel({ birthdays, targetDate }: TvBirthdaysP
         />
         <div className="relative z-10 flex items-center gap-4">
           <div className="bg-white border-3 border-black shadow-[4px_4px_0px_#000] rotate-[-5deg] shrink-0" style={{ padding: '8px' }}>
-            <Cake size={32} className="text-black" />
+            <Cake size={32} className="text-black flex-shrink-0" />
           </div>
           <h1 className="font-headline font-black text-3xl md:text-4xl uppercase tracking-tighter text-black" style={{ lineHeight: '1' }}>
             Aniversariantes
@@ -105,169 +96,223 @@ export default function TvBirthdaysPanel({ birthdays, targetDate }: TvBirthdaysP
         </div>
       </div>
 
-      {/* ── CONTEÚDO SCROLLÁVEL GRID ── */}
-      <div className="flex-1 overflow-y-auto w-full relative flex flex-col">
+      {/* ── CONTEÚDO PRINCIPAL EM DUAS COLUNAS (Espaço de Margem p-10 e gap-10 via CSS Inline) ── */}
+      <div 
+        className="flex-1 grid grid-cols-12 min-h-0 overflow-hidden w-full"
+        style={{ padding: '40px', gap: '40px' }}
+      >
         
-        {/* ── BANDA DE DESTAQUE: HOJE ── */}
-        {(todayBirthdays.length > 0 || (weekBirthdays.length === 0 && monthBirthdays.length === 0)) && (
-          <div className="w-full shrink-0 border-b-4 border-black relative bg-yellow-300">
-            <div 
-              className="absolute inset-0 opacity-5 pointer-events-none"
-              style={{ backgroundImage: "repeating-linear-gradient(-45deg, #000 0, #000 2px, transparent 2px, transparent 16px)" }}
-            />
-            
-            <div className="w-full max-w-[1920px] mx-auto relative z-10" style={{ padding: '32px 40px' }}>
-              <div className="flex flex-col shrink-0">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="bg-white text-yellow-500 p-2 border-3 border-black shadow-[4px_4px_0px_#000] shrink-0">
-                    <Sparkles size={32} className="animate-pulse" />
-                  </div>
-                  <h2 className="font-headline font-black text-4xl uppercase tracking-widest text-black pt-1" style={{ textShadow: '2px 2px 0px #fff' }}>
-                    Hoje!
-                  </h2>
-                </div>
-
-                {todayBirthdays.length > 0 ? (
-                  <div className={todayBirthdays.length === 1 ? 'w-full block' : 'grid gap-8 grid-cols-1 xl:grid-cols-2'}>
-                    {todayBirthdays.map((student) => (
-                      <div 
-                        key={student.id}
-                        className="bg-white border-4 border-black shadow-[12px_12px_0px_#000] flex flex-row items-center gap-8 relative w-full h-full"
-                        style={{ 
-                          padding: '32px', 
-                          maxWidth: todayBirthdays.length === 1 ? '900px' : '100%',
-                          margin: todayBirthdays.length === 1 ? '0 auto' : '0'
-                        }}
-                      >
-                        {/* Selo Festa */}
-                        <div 
-                          className="absolute -top-4 -right-4 bg-red-500 text-white font-display font-black border-3 border-black shadow-[4px_4px_0px_#000] uppercase rotate-3 z-10"
-                          style={{ padding: '6px 24px', fontSize: '18px' }}
-                        >
-                          Festa no Box
-                        </div>
-
-                        <div style={{ flexShrink: 0 }}>
-                          <AthleteAvatar
-                            url={student.avatar_url}
-                            name={student.full_name}
-                            size={160}
-                            borderWidth={4}
-                            shadowSize={4}
-                            rounded={true}
-                          />
-                        </div>
-                        <div className="flex flex-col min-w-0 flex-1 justify-center">
-                          <span className="font-display font-black text-2xl text-yellow-600 uppercase tracking-widest mb-2 block">
-                            Feliz Aniversário
-                          </span>
-                          <h3 className="font-headline font-black text-5xl uppercase text-black break-words min-w-0" style={{ lineHeight: '1.1' }}>
-                            {student.full_name}
-                          </h3>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div 
-                    className="bg-white border-4 border-black border-dashed flex flex-col items-center justify-center shrink-0 w-full max-w-2xl mx-auto h-full"
-                    style={{ padding: '48px' }}
-                  >
-                    <span className="text-6xl block mb-4 grayscale opacity-80">🎂</span>
-                    <p className="font-display font-black text-2xl text-neutral-500 uppercase">Sem festa hoje.</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ── BANDA SECUNDÁRIA: SEMANA E MÊS ── */}
-        <div className="flex flex-col w-full max-w-[1920px] mx-auto flex-1 shrink-0" style={{ padding: '40px', gap: '48px' }}>
+        {/* COLUNA ESQUERDA (5/12): HOJE! + NESTA SEMANA */}
+        <div className="col-span-5 flex flex-col min-h-0" style={{ gap: '32px' }}>
           
-          {/* SEÇÃO: NESTA SEMANA */}
-          {weekBirthdays.length > 0 && (
-            <div className="flex flex-col shrink-0">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="bg-black text-yellow-400 p-2 border-3 border-black shadow-[4px_4px_0px_#FFD700] shrink-0">
-                  <Calendar size={28} />
+          {/* SEÇÃO: HOJE! */}
+          {todayBirthdays.length > 0 && (
+            <div className="flex flex-col shrink-0" style={{ gap: '16px' }}>
+              {/* Título de Seção */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div 
+                  className="bg-yellow-300 text-black border-2 border-black shadow-[2px_2px_0px_#000] shrink-0 flex items-center justify-center"
+                  style={{ padding: '8px', display: 'inline-flex', alignItems: 'center' }}
+                >
+                  <Sparkles size={24} className="animate-pulse flex-shrink-0" />
                 </div>
-                <h2 className="font-headline font-black text-3xl uppercase tracking-tight text-black pt-1">
-                  Nesta Semana
+                <h2 className="font-headline font-black text-2xl uppercase tracking-wider text-black pt-0.5 leading-none">
+                  Hoje!
                 </h2>
               </div>
-              
-              <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-6 gap-6 items-stretch">
-                {weekBirthdays.map(student => (
+
+              {/* Cards de Hoje */}
+              <div className={`grid gap-4 ${todayBirthdays.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
+                {todayBirthdays.map((student) => (
+                  <div 
+                    key={student.id}
+                    className="bg-white border-3 border-black shadow-[4px_4px_0px_#000] relative w-full"
+                    style={{ 
+                      padding: '24px', 
+                      minHeight: '108px',
+                      display: 'flex',
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: '20px'
+                    }}
+                  >
+                    <div 
+                      className="absolute bg-red-500 text-white font-display font-black border-2 border-black shadow-[2px_2px_0px_#000] uppercase rotate-2 z-10 text-[10px] whitespace-nowrap"
+                      style={{ 
+                        padding: '6px 16px', 
+                        top: '-14px', 
+                        right: '-8px',
+                        lineHeight: '1'
+                      }}
+                    >
+                      Festa no Box
+                    </div>
+
+                    <div className="shrink-0">
+                      <AthleteAvatar
+                        url={student.avatar_url}
+                        name={student.full_name}
+                        size={60}
+                        borderWidth={2}
+                        shadowSize={2}
+                        rounded={true}
+                      />
+                    </div>
+                    <div className="flex flex-col min-w-0 flex-1 justify-center">
+                      <span className="font-display font-black text-[10px] text-yellow-600 uppercase tracking-widest block leading-none" style={{ marginBottom: '6px' }}>
+                        Feliz Aniversário
+                      </span>
+                      <h3 className="font-headline font-black text-lg uppercase text-black truncate leading-tight">
+                        {student.full_name}
+                      </h3>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* SEÇÃO: NESTA SEMANA */}
+          <div className="flex flex-col min-h-0" style={{ gap: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div 
+                className="bg-black text-yellow-400 border-2 border-black shadow-[2px_2px_0px_#FFD700] shrink-0 flex items-center justify-center"
+                style={{ padding: '8px', display: 'inline-flex', alignItems: 'center' }}
+              >
+                <Calendar size={24} className="flex-shrink-0" />
+              </div>
+              <h2 className="font-headline font-black text-2xl uppercase tracking-tight text-black pt-0.5 leading-none">
+                Nesta Semana
+              </h2>
+            </div>
+            
+            <div className="overflow-y-auto pr-1">
+              {weekBirthdays.length > 0 ? (
+                <div className="grid grid-cols-2 xl:grid-cols-3 gap-4">
+                  {weekBirthdays.map((student) => (
+                    <div 
+                      key={student.id} 
+                      className="bg-white border-3 border-black shadow-[4px_4px_0px_#000] shrink-0"
+                      style={{ 
+                        padding: '24px', 
+                        minHeight: '180px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        textAlign: 'center'
+                      }}
+                    >
+                      <AthleteAvatar url={student.avatar_url} name={student.full_name} size={56} borderWidth={2} rounded={true} />
+                      <span 
+                        className="font-headline font-black text-base uppercase leading-tight line-clamp-2"
+                        style={{ marginTop: '16px', marginBottom: '16px' }}
+                      >
+                        {student.full_name}
+                      </span>
+                      <div 
+                        className="bg-yellow-400 text-black border-2 border-black font-display font-black text-[10px] uppercase shrink-0"
+                        style={{ 
+                          padding: '6px 16px', 
+                          display: 'inline-flex', 
+                          alignItems: 'center', 
+                          justifyContent: 'center',
+                          lineHeight: '1',
+                          boxShadow: '2px 2px 0px #000'
+                        }}
+                      >
+                        Dia {new Date(student.birth_date + "T12:00:00Z").getUTCDate()}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="bg-white border-3 border-black border-dashed shadow-[4px_4px_0px_#000] p-6 text-center">
+                  <p className="font-display font-bold text-neutral-500 text-sm uppercase">Nenhum aniversário nesta semana.</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+        </div>
+
+        {/* COLUNA DIREITA (7/12): DEMAIS DO MÊS */}
+        <div className="col-span-7 flex flex-col min-h-0" style={{ gap: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div 
+              className="bg-neutral-300 text-black border-2 border-black shadow-[2px_2px_0px_#000] shrink-0 flex items-center justify-center"
+              style={{ padding: '8px', display: 'inline-flex', alignItems: 'center' }}
+            >
+              <ChevronRight size={24} className="flex-shrink-0" />
+            </div>
+            <h2 className="font-headline font-black text-2xl uppercase tracking-tight text-black pt-0.5 leading-none">
+              Demais do Mês
+            </h2>
+          </div>
+
+          <div className="flex-1 min-h-0 overflow-y-auto pr-1">
+            {monthBirthdays.length > 0 ? (
+              <div className="grid grid-cols-2 xl:grid-cols-3 gap-4 w-full content-start">
+                {monthBirthdays.map((student) => (
                   <div 
                     key={student.id} 
-                    className="bg-white border-3 border-black shadow-[4px_4px_0px_#000] flex flex-col items-center text-center relative w-full h-full transition-transform hover:-translate-y-1"
-                    style={{ paddingTop: '32px' }}
+                    className="bg-white border-3 border-black shadow-[4px_4px_0px_#000] min-w-0"
+                    style={{ 
+                      padding: '16px 20px', 
+                      minHeight: '88px',
+                      display: 'flex',
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '16px'
+                    }}
                   >
-                    <div style={{ flexShrink: 0, marginBottom: '16px', paddingLeft: '24px', paddingRight: '24px' }}>
-                      <AthleteAvatar url={student.avatar_url} name={student.full_name} size={96} borderWidth={3} shadowSize={3} rounded={true} />
-                    </div>
-                    
-                    <div className="flex-1 flex flex-col items-center justify-center w-full min-w-0" style={{ paddingLeft: '16px', paddingRight: '16px', marginBottom: '24px' }}>
-                      <span className="font-headline font-black text-2xl uppercase line-clamp-3 min-w-0 break-words" style={{ lineHeight: '1.2' }}>
+                    <div 
+                      style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: '16px', 
+                        minWidth: 0, 
+                        flex: 1 
+                      }}
+                    >
+                      <div className="shrink-0">
+                        <AthleteAvatar url={student.avatar_url} name={student.full_name} size={48} borderWidth={2} rounded={true} />
+                      </div>
+                      <span 
+                        className="font-headline font-black text-base uppercase truncate" 
+                        style={{ lineHeight: '1.2' }}
+                      >
                         {student.full_name}
                       </span>
                     </div>
-
                     <div 
-                      className="bg-yellow-400 text-black border-t-3 border-black font-display font-black text-xl uppercase whitespace-nowrap w-full mt-auto flex items-center justify-center"
-                      style={{ padding: '12px 0', flexShrink: 0 }}
+                      className="bg-neutral-800 text-white border-2 border-black font-display font-black text-[10px] uppercase shrink-0"
+                      style={{ 
+                        padding: '8px 16px', 
+                        display: 'inline-flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center',
+                        lineHeight: '1',
+                        boxShadow: '2px 2px 0px #000',
+                        marginLeft: '16px'
+                      }}
                     >
                       Dia {new Date(student.birth_date + "T12:00:00Z").getUTCDate()}
                     </div>
                   </div>
                 ))}
               </div>
-            </div>
-          )}
-
-          {/* SEÇÃO: DO MÊS */}
-          {monthBirthdays.length > 0 && (
-            <div className="flex flex-col shrink-0">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="bg-neutral-300 text-black p-2 border-3 border-black shadow-[4px_4px_0px_#000] shrink-0">
-                  <ChevronRight size={28} />
-                </div>
-                <h2 className="font-headline font-black text-2xl uppercase tracking-tight text-black pt-1">
-                  Demais do Mês
-                </h2>
+            ) : (
+              <div className="bg-white border-3 border-black border-dashed shadow-[4px_4px_0px_#000] p-6 text-center">
+                <p className="font-display font-bold text-neutral-400 text-sm uppercase">Nenhum outro aniversariante cadastrado.</p>
               </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-6 gap-5 items-stretch">
-                {monthBirthdays.map(student => (
-                  <div 
-                    key={student.id} 
-                    className="flex flex-row items-stretch justify-between bg-white border-3 border-neutral-400 shadow-[3px_3px_0px_#000] gap-0 transition-transform hover:-translate-x-1 h-full w-full"
-                  >
-                    <div className="flex items-center gap-4 min-w-0 flex-1" style={{ padding: '16px' }}>
-                      <div style={{ flexShrink: 0 }}>
-                        <AthleteAvatar url={student.avatar_url} name={student.full_name} size={64} borderWidth={2} shadowSize={0} rounded={true} />
-                      </div>
-                      <div className="flex flex-col flex-1 min-w-0 justify-center">
-                        <span className="font-headline font-black text-xl uppercase line-clamp-2 min-w-0 break-words" style={{ lineHeight: '1.1' }}>
-                          {student.full_name}
-                        </span>
-                      </div>
-                    </div>
-                    <div 
-                      className="bg-neutral-800 text-white border-l-3 border-neutral-400 font-display font-black text-lg uppercase flex items-center justify-center whitespace-nowrap"
-                      style={{ padding: '0 20px', flexShrink: 0 }}
-                    >
-                      Dia {new Date(student.birth_date + "T12:00:00Z").getUTCDate()}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
+            )}
+          </div>
         </div>
+
       </div>
+
     </div>
   );
 }
