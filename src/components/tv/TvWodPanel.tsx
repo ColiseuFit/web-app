@@ -50,29 +50,29 @@ export default function TvWodPanel({ data }: TvWodPanelProps) {
 
   return (
     <div
-      className="flex-grow grid"
+      className="flex-grow grid min-h-0 overflow-hidden"
       style={{
         gridTemplateColumns: "1fr 1.50fr",
-        gap: "32px",
+        gap: "20px",
         width: "100%",
         alignItems: "stretch",
       }}
     >
       {/* ═══ Coluna Esquerda: Meta + Aquecimento + Cargas ═══ */}
-      <div className="flex flex-col h-full" style={{ gap: "28px" }}>
+      <div className="flex flex-col h-full min-h-0 overflow-hidden" style={{ gap: "16px" }}>
         
         {/* Card do Título do WOD & Metadata */}
         <div
-          className="bg-black text-white border-4 border-black shadow-[8px_8px_0px_#FACC15] relative overflow-hidden"
-          style={{ padding: "32px 28px" }}
+          className="bg-black text-white border-3 border-black shadow-[6px_6px_0px_#FACC15] relative overflow-hidden shrink-0"
+          style={{ padding: "16px 20px" }}
         >
-          <div className="absolute right-[-25px] top-[-25px] text-yellow-400/15 text-[120px] font-black select-none pointer-events-none transform rotate-12">
+          <div className="absolute right-[-20px] top-[-20px] text-yellow-400/15 text-[90px] font-black select-none pointer-events-none transform rotate-12">
             ⚡
           </div>
-          <span className="font-display font-black text-xs text-yellow-400 tracking-[0.3em] block uppercase mb-3">
+          <span className="font-display font-black text-[10px] text-yellow-400 tracking-[0.3em] block uppercase mb-2">
             TREINO DO DIA
           </span>
-          <h2 className="font-headline font-black text-4xl md:text-5xl text-white uppercase leading-tight tracking-tight relative z-10">
+          <h2 className="font-headline font-black text-3xl md:text-4xl text-white uppercase leading-tight tracking-tight relative z-10">
             {wodTitle}
           </h2>
           
@@ -124,24 +124,24 @@ export default function TvWodPanel({ data }: TvWodPanelProps) {
         {/* Card de Aquecimento (Warm-up) */}
         {warmUpLines.length > 0 && (
           <div
-            className="bg-white border-4 border-black shadow-[8px_8px_0px_#000] flex flex-col flex-1"
-            style={{ padding: "32px" }}
+            className="bg-white border-3 border-black shadow-[6px_6px_0px_#000] flex flex-col flex-1 min-h-0 overflow-hidden"
+            style={{ padding: "16px 20px" }}
           >
-            <div className="flex items-center gap-3 border-b-3 border-black pb-4 mb-5">
-              <Flame size={24} className="text-yellow-500" />
-              <span className="font-display font-black text-base md:text-lg text-black tracking-[0.18em] uppercase">
+            <div className="flex items-center gap-2 border-b-2 border-black pb-2 mb-3 shrink-0">
+              <Flame size={18} className="text-yellow-500 flex-shrink-0" />
+              <span className="font-display font-black text-sm md:text-base text-black tracking-[0.18em] uppercase">
                 AQUECIMENTO (WARM-UP)
               </span>
             </div>
 
-            <div className="flex flex-col justify-center flex-grow gap-2">
+            <div className="flex flex-col flex-grow overflow-y-auto pr-1 gap-1">
               {warmUpLines.map((line, idx) => (
                 <div
                   key={idx}
-                  className="flex items-start font-display font-bold text-lg md:text-xl text-neutral-800 uppercase tracking-wide gap-3"
-                  style={{ padding: "10px 0" }}
+                  className="flex items-start font-display font-bold text-base md:text-lg text-neutral-800 uppercase tracking-wide gap-2"
+                  style={{ padding: "4px 0" }}
                 >
-                  <span className="text-yellow-500 font-black select-none text-xs mt-1.5">
+                  <span className="text-yellow-500 font-black select-none text-[10px] mt-1.5 flex-shrink-0">
                     ■
                   </span>
                   <span className="leading-tight">{line}</span>
@@ -154,12 +154,12 @@ export default function TvWodPanel({ data }: TvWodPanelProps) {
         {/* Card de Cargas Técnicas */}
         {categoryLines.length > 0 && (
           <div
-            className="bg-white border-4 border-black shadow-[8px_8px_0px_#000] flex flex-col"
-            style={{ padding: "32px" }}
+            className="bg-white border-3 border-black shadow-[6px_6px_0px_#000] flex flex-col shrink-0"
+            style={{ padding: "16px 20px" }}
           >
-            <div className="flex items-center gap-3 border-b-3 border-black pb-4 mb-5">
-              <Zap size={24} className="text-purple-500" />
-              <span className="font-display font-black text-base md:text-lg text-black tracking-[0.18em] uppercase">
+            <div className="flex items-center gap-2 border-b-2 border-black pb-2 mb-3 shrink-0">
+              <Zap size={18} className="text-purple-500 flex-shrink-0" />
+              <span className="font-display font-black text-sm md:text-base text-black tracking-[0.18em] uppercase">
                 CARGAS RECOMENDADAS
               </span>
             </div>
@@ -178,9 +178,9 @@ export default function TvWodPanel({ data }: TvWodPanelProps) {
                 return (
                   <div
                     key={idx}
-                    className="flex items-center gap-4"
+                    className="flex items-center gap-3"
                     style={{
-                      paddingBottom: "12px",
+                      paddingBottom: "6px",
                       borderBottom:
                         idx < categoryLines.length - 1
                           ? "1.5px dashed var(--nb-surface-low)"
@@ -216,29 +216,29 @@ export default function TvWodPanel({ data }: TvWodPanelProps) {
       </div>
 
       {/* ═══ Coluna Direita: Técnica + Metcon ═══ */}
-      <div className="flex flex-col h-full" style={{ gap: "28px" }}>
+      <div className="flex flex-col h-full min-h-0 overflow-hidden" style={{ gap: "16px" }}>
         
         {/* Card de Técnica / Skill */}
         {techniqueLines.length > 0 && (
           <div
-            className="bg-white border-4 border-black shadow-[8px_8px_0px_#000] flex flex-col"
-            style={{ padding: "32px" }}
+            className="bg-white border-3 border-black shadow-[6px_6px_0px_#000] flex flex-col min-h-0 overflow-hidden"
+            style={{ padding: "16px 20px" }}
           >
-            <div className="flex items-center gap-3 border-b-3 border-black pb-4 mb-5">
-              <Zap size={24} className="text-blue-500" />
-              <span className="font-display font-black text-base md:text-lg text-black tracking-[0.18em] uppercase">
+            <div className="flex items-center gap-2 border-b-2 border-black pb-2 mb-3 shrink-0">
+              <Zap size={18} className="text-blue-500 flex-shrink-0" />
+              <span className="font-display font-black text-sm md:text-base text-black tracking-[0.18em] uppercase">
                 TÉCNICA / SKILL
               </span>
             </div>
 
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col flex-grow overflow-y-auto pr-1 gap-1">
               {techniqueLines.map((line, idx) => (
                 <div
                   key={idx}
-                  className="flex items-start font-display font-bold text-lg md:text-xl text-neutral-900 uppercase tracking-wide gap-3"
-                  style={{ padding: "10px 0" }}
+                  className="flex items-start font-display font-bold text-base md:text-lg text-neutral-900 uppercase tracking-wide gap-2"
+                  style={{ padding: "4px 0" }}
                 >
-                  <span className="text-blue-500 font-black select-none text-xs mt-1.5">
+                  <span className="text-blue-500 font-black select-none text-[10px] mt-1.5 flex-shrink-0">
                     ■
                   </span>
                   <span className="leading-tight">{line}</span>
@@ -250,18 +250,18 @@ export default function TvWodPanel({ data }: TvWodPanelProps) {
 
         {/* Card do Metcon / WOD Principal */}
         <div
-          className="bg-white border-4 border-black shadow-[8px_8px_0px_#000] flex flex-col flex-1"
-          style={{ padding: "32px" }}
+          className="bg-white border-3 border-black shadow-[6px_6px_0px_#000] flex flex-col flex-1 min-h-0 overflow-hidden"
+          style={{ padding: "16px 20px" }}
         >
-          <div className="flex items-center gap-3 border-b-3 border-black pb-4 mb-5">
-            <Dumbbell size={24} className="text-black" />
-            <span className="font-display font-black text-base md:text-lg text-black tracking-[0.18em] uppercase">
+          <div className="flex items-center gap-2 border-b-2 border-black pb-2 mb-3 shrink-0">
+            <Dumbbell size={18} className="text-black flex-shrink-0" />
+            <span className="font-display font-black text-sm md:text-base text-black tracking-[0.18em] uppercase">
               METCON / WOD PRINCIPAL
             </span>
           </div>
 
           {exerciseLines.length > 0 ? (
-            <div className="flex flex-col justify-center flex-grow gap-2">
+            <div className="flex flex-col flex-grow overflow-y-auto pr-1 gap-1">
               {exerciseLines.map((line, idx) => {
                 // Detecção de metas ou estruturação de rounds no WOD
                 const isTarget =
@@ -277,17 +277,17 @@ export default function TvWodPanel({ data }: TvWodPanelProps) {
                   return (
                     <div
                       key={idx}
-                      className="relative overflow-hidden"
+                      className="relative overflow-hidden shrink-0"
                       style={{
-                        margin: "16px 0",
+                        margin: "8px 0",
                         backgroundColor: "#000000",
                         color: "#ffffff",
-                        border: "3px solid #000000",
-                        padding: "16px 24px",
-                        boxShadow: "6px 6px 0px #FACC15",
+                        border: "2px solid #000000",
+                        padding: "8px 16px",
+                        boxShadow: "4px 4px 0px #FACC15",
                       }}
                     >
-                      <div className="absolute right-[-15px] top-[-15px] text-yellow-400/10 text-6xl font-black select-none pointer-events-none transform rotate-12">
+                      <div className="absolute right-[-10px] top-[-10px] text-yellow-400/10 text-4xl font-black select-none pointer-events-none transform rotate-12">
                         ⚡
                       </div>
                       <span
@@ -304,9 +304,9 @@ export default function TvWodPanel({ data }: TvWodPanelProps) {
                 return (
                   <div
                     key={idx}
-                    className="flex items-start font-display font-bold text-lg md:text-xl text-neutral-800 uppercase tracking-wide gap-3"
+                    className="flex items-start font-display font-bold text-base md:text-lg text-neutral-800 uppercase tracking-wide gap-2"
                     style={{
-                      padding: "12px 0",
+                      padding: "6px 0",
                       borderBottom: "1.5px dashed var(--nb-surface-low)",
                     }}
                   >

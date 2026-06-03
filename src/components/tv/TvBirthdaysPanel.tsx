@@ -71,8 +71,8 @@ export default function TvBirthdaysPanel({ birthdays, targetDate }: TvBirthdaysP
       
       {/* ── HEADER HORIZONTAL ENXUTO ── */}
       <div 
-        className="bg-yellow-400 border-b-4 border-black flex items-center justify-between shrink-0 relative overflow-hidden z-20 shadow-[4px_4px_0px_#000]"
-        style={{ padding: '18px 32px' }}
+        className="bg-yellow-400 border-b-3 border-black flex items-center justify-between shrink-0 relative overflow-hidden z-20 shadow-[3px_3px_0px_#000]"
+        style={{ padding: '12px 24px' }}
       >
         <div 
           className="absolute inset-0 opacity-10 pointer-events-none"
@@ -99,11 +99,11 @@ export default function TvBirthdaysPanel({ birthdays, targetDate }: TvBirthdaysP
       {/* ── CONTEÚDO PRINCIPAL EM DUAS COLUNAS (Espaço de Margem p-10 e gap-10 via CSS Inline) ── */}
       <div 
         className="flex-1 grid grid-cols-12 min-h-0 overflow-hidden w-full"
-        style={{ padding: '40px', gap: '40px' }}
+        style={{ padding: '20px 24px', gap: '24px' }}
       >
         
         {/* COLUNA ESQUERDA (5/12): HOJE! + NESTA SEMANA */}
-        <div className="col-span-5 flex flex-col min-h-0" style={{ gap: '32px' }}>
+        <div className="col-span-5 flex flex-col min-h-0" style={{ gap: '16px' }}>
           
           {/* SEÇÃO: HOJE! */}
           {todayBirthdays.length > 0 && (
@@ -126,22 +126,22 @@ export default function TvBirthdaysPanel({ birthdays, targetDate }: TvBirthdaysP
                 {todayBirthdays.map((student) => (
                   <div 
                     key={student.id}
-                    className="bg-white border-3 border-black shadow-[4px_4px_0px_#000] relative w-full"
+                    className="bg-white border-3 border-black shadow-[3px_3px_0px_#000] relative w-full"
                     style={{ 
-                      padding: '24px', 
-                      minHeight: '108px',
+                      padding: '12px 16px', 
+                      minHeight: '80px',
                       display: 'flex',
                       flexDirection: 'row',
                       alignItems: 'center',
-                      gap: '20px'
+                      gap: '16px'
                     }}
                   >
                     <div 
-                      className="absolute bg-red-500 text-white font-display font-black border-2 border-black shadow-[2px_2px_0px_#000] uppercase rotate-2 z-10 text-[10px] whitespace-nowrap"
+                      className="absolute bg-red-500 text-white font-display font-black border-2 border-black shadow-[2px_2px_0px_#000] uppercase rotate-2 z-10 text-[9px] whitespace-nowrap"
                       style={{ 
-                        padding: '6px 16px', 
-                        top: '-14px', 
-                        right: '-8px',
+                        padding: '4px 10px', 
+                        top: '-10px', 
+                        right: '-4px',
                         lineHeight: '1'
                       }}
                     >
@@ -152,17 +152,17 @@ export default function TvBirthdaysPanel({ birthdays, targetDate }: TvBirthdaysP
                       <AthleteAvatar
                         url={student.avatar_url}
                         name={student.full_name}
-                        size={60}
+                        size={48}
                         borderWidth={2}
                         shadowSize={2}
                         rounded={true}
                       />
                     </div>
                     <div className="flex flex-col min-w-0 flex-1 justify-center">
-                      <span className="font-display font-black text-[10px] text-yellow-600 uppercase tracking-widest block leading-none" style={{ marginBottom: '6px' }}>
+                      <span className="font-display font-black text-[9px] text-yellow-600 uppercase tracking-widest block leading-none" style={{ marginBottom: '4px' }}>
                         Feliz Aniversário
                       </span>
-                      <h3 className="font-headline font-black text-lg uppercase text-black truncate leading-tight">
+                      <h3 className="font-headline font-black text-base uppercase text-black truncate leading-tight">
                         {student.full_name}
                       </h3>
                     </div>
@@ -192,10 +192,10 @@ export default function TvBirthdaysPanel({ birthdays, targetDate }: TvBirthdaysP
                   {weekBirthdays.map((student) => (
                     <div 
                       key={student.id} 
-                      className="bg-white border-3 border-black shadow-[4px_4px_0px_#000] shrink-0"
+                      className="bg-white border-3 border-black shadow-[3px_3px_0px_#000] shrink-0"
                       style={{ 
-                        padding: '24px', 
-                        minHeight: '180px',
+                        padding: '12px 16px', 
+                        minHeight: '130px',
                         display: 'flex',
                         flexDirection: 'column',
                         alignItems: 'center',
@@ -203,17 +203,17 @@ export default function TvBirthdaysPanel({ birthdays, targetDate }: TvBirthdaysP
                         textAlign: 'center'
                       }}
                     >
-                      <AthleteAvatar url={student.avatar_url} name={student.full_name} size={56} borderWidth={2} rounded={true} />
+                      <AthleteAvatar url={student.avatar_url} name={student.full_name} size={44} borderWidth={2} rounded={true} />
                       <span 
-                        className="font-headline font-black text-base uppercase leading-tight line-clamp-2"
-                        style={{ marginTop: '16px', marginBottom: '16px' }}
+                        className="font-headline font-black text-sm uppercase leading-tight line-clamp-1 truncate w-full"
+                        style={{ marginTop: '8px', marginBottom: '8px' }}
                       >
                         {student.full_name}
                       </span>
                       <div 
-                        className="bg-yellow-400 text-black border-2 border-black font-display font-black text-[10px] uppercase shrink-0"
+                        className="bg-yellow-400 text-black border-2 border-black font-display font-black text-[9px] uppercase shrink-0"
                         style={{ 
-                          padding: '6px 16px', 
+                          padding: '4px 10px', 
                           display: 'inline-flex', 
                           alignItems: 'center', 
                           justifyContent: 'center',
@@ -256,46 +256,46 @@ export default function TvBirthdaysPanel({ birthdays, targetDate }: TvBirthdaysP
                 {monthBirthdays.map((student) => (
                   <div 
                     key={student.id} 
-                    className="bg-white border-3 border-black shadow-[4px_4px_0px_#000] min-w-0"
+                    className="bg-white border-3 border-black shadow-[3px_3px_0px_#000] min-w-0"
                     style={{ 
-                      padding: '16px 20px', 
-                      minHeight: '88px',
+                      padding: '10px 14px', 
+                      minHeight: '64px',
                       display: 'flex',
                       flexDirection: 'row',
                       alignItems: 'center',
                       justifyContent: 'space-between',
-                      gap: '16px'
+                      gap: '12px'
                     }}
                   >
                     <div 
                       style={{ 
                         display: 'flex', 
                         alignItems: 'center', 
-                        gap: '16px', 
+                        gap: '10px', 
                         minWidth: 0, 
                         flex: 1 
                       }}
                     >
                       <div className="shrink-0">
-                        <AthleteAvatar url={student.avatar_url} name={student.full_name} size={48} borderWidth={2} rounded={true} />
+                        <AthleteAvatar url={student.avatar_url} name={student.full_name} size={36} borderWidth={2} rounded={true} />
                       </div>
                       <span 
-                        className="font-headline font-black text-base uppercase truncate" 
+                        className="font-headline font-black text-sm uppercase truncate" 
                         style={{ lineHeight: '1.2' }}
                       >
                         {student.full_name}
                       </span>
                     </div>
                     <div 
-                      className="bg-neutral-800 text-white border-2 border-black font-display font-black text-[10px] uppercase shrink-0"
+                      className="bg-neutral-800 text-white border-2 border-black font-display font-black text-[9px] uppercase shrink-0"
                       style={{ 
-                        padding: '8px 16px', 
+                        padding: '4px 10px', 
                         display: 'inline-flex', 
                         alignItems: 'center', 
                         justifyContent: 'center',
                         lineHeight: '1',
                         boxShadow: '2px 2px 0px #000',
-                        marginLeft: '16px'
+                        marginLeft: '8px'
                       }}
                     >
                       Dia {new Date(student.birth_date + "T12:00:00Z").getUTCDate()}

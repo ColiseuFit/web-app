@@ -268,10 +268,10 @@ export default function TvClient() {
         backgroundImage:
           "radial-gradient(circle, rgba(0, 0, 0, 0.07) 1.5px, transparent 1.5px)",
         backgroundSize: "24px 24px",
-        padding: "32px 48px",
-        gap: "20px",
+        padding: "20px 48px",
+        gap: "16px",
         width: "133.33vw",
-        height: "133.33vh",
+        height: "126vh",
         transform: "scale(0.75)",
         transformOrigin: "top left",
       }}
@@ -436,7 +436,7 @@ export default function TvClient() {
       </header>
 
       {/* ═══ 2. Conteúdo por Aba ═══ */}
-      <div className="flex-grow z-10 flex flex-col" style={{ width: "100%" }}>
+      <div className="flex-grow z-10 flex flex-col min-h-0 overflow-hidden" style={{ width: "100%" }}>
         {activeTab === "checkin" && (
           <TvCheckInPanel currentSlot={currentSlot} activeDate={data?.date} />
         )}
