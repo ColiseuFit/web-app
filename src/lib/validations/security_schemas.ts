@@ -71,9 +71,10 @@ export const loginSchema = z.object({
  * Ensures strict profile metadata and default level assignment.
  */
 export const createStudentSchema = z.object({
-  email: z.string().email("E-mail inválido"),
+  email: z.string().email("E-mail inválido").trim(),
   password: z.string().min(8, "A senha deve ter pelo menos 8 caracteres para maior segurança"),
   full_name: z.string()
+    .trim()
     .min(3, "O nome completo deve ter pelo menos 3 caracteres")
     .refine((val) => isValidName(val), { message: "Nome inválido ou contém caracteres irreais" }),
   level: z.enum(ALL_LEVELS.map(l => l.key) as [string, ...string[]]).default("branco"),
@@ -216,11 +217,13 @@ export const wodResultSchema = z.object({
 // 14. Schema para Pré-cadastro (Leads)
 export const preRegistrationSchema = z.object({
   full_name: z.string()
+    .trim()
     .max(100, "Nome deve ter no máximo 100 caracteres")
     .refine((val) => isValidName(val), { message: "Nome inválido ou contém caracteres irreais" }),
-  email: z.string().email("E-mail inválido").max(150, "E-mail deve ter no máximo 150 caracteres"),
-  phone: z.string().min(10, "Telefone inválido").max(15, "Telefone muito longo"),
+  email: z.string().email("E-mail inválido").max(150, "E-mail deve ter no máximo 150 caracteres").trim(),
+  phone: z.string().min(10, "Telefone inválido").max(15, "Telefone muito longo").trim(),
   cpf: z.string()
+    .trim()
     .min(11, "CPF obrigatório")
     .refine((val) => isValidCPF(val), {
       message: "CPF Inválido ou inconsistente com a Receita Federal"
@@ -245,22 +248,26 @@ export const forgotPasswordSchema = z.object({
  */
 export const profileSchema = z.object({
   display_name: z.string()
+    .trim()
     .min(3, "O Apelido deve ter pelo menos 3 caracteres")
     .max(50, "O Apelido deve ter no máximo 50 caracteres")
     .regex(/^[a-zA-Z0-9À-ÿ\s]+$/, "O Apelido não deve conter caracteres especiais")
     .optional()
     .nullable(),
   full_name: z.string()
+    .trim()
     .min(3, "O nome completo deve ter pelo menos 3 caracteres")
     .refine((val) => isValidName(val), { message: "Nome inválido ou contém caracteres irreais" })
     .optional()
     .nullable(),
   first_name: z.string()
+    .trim()
     .max(100)
     .refine((val) => !val || isValidName(val), { message: "Primeiro nome inválido ou contém caracteres irreais" })
     .optional()
     .nullable(),
   last_name: z.string()
+    .trim()
     .max(100)
     .refine((val) => !val || isValidName(val), { message: "Sobrenome inválido ou contém caracteres irreais" })
     .optional()
@@ -268,6 +275,7 @@ export const profileSchema = z.object({
   bio: z.string().max(150, "A biografia deve ter no máximo 150 caracteres").optional().nullable(),
   gender: z.string().optional().nullable(),
   cpf: z.string()
+    .trim()
     .refine((val) => {
       if (!val || val.trim() === "") return true; // Campo opcional
       return isValidCPF(val);
@@ -287,7 +295,7 @@ export const profileSchema = z.object({
       return age >= 10 && age <= 100;
     }, { message: "Data de nascimento inválida ou fora do intervalo permitido (10–100 anos)" }),
   avatar_url: z.string().url().optional().nullable().or(z.literal("")),
-  phone: z.string().max(20, "O telefone deve ter no máximo 20 caracteres").optional().nullable(),
+  phone: z.string().trim().max(20, "O telefone deve ter no máximo 20 caracteres").optional().nullable(),
   emergency_contact_name: z.string().max(100).optional().nullable(),
   emergency_contact_phone: z.string().max(20).optional().nullable(),
   address_zip_code: z.string().max(15).optional().nullable(),

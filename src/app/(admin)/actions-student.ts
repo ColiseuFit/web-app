@@ -182,10 +182,13 @@ export async function updateStudent(studentId: string, formData: FormData) {
   // 3. Handle Name Parsing for SSoT
   // The Admin UI mostly sends `full_name`. If it's provided, split it to maintain the SSoT of first/last name.
   if (updates.full_name) {
-    const parts = updates.full_name.trim().split(" ");
+    updates.full_name = updates.full_name.trim();
+    const parts = updates.full_name.split(" ");
     updates.first_name = parts[0] || "";
     updates.last_name = parts.slice(1).join(" ") || "";
   } else if (updates.first_name || updates.last_name) {
+    if (updates.first_name) updates.first_name = updates.first_name.trim();
+    if (updates.last_name) updates.last_name = updates.last_name.trim();
     // Rebuild full name if parts are updated separately
     updates.full_name = `${updates.first_name || ""} ${updates.last_name || ""}`.trim();
   }

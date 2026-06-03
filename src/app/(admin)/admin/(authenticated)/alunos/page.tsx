@@ -20,12 +20,16 @@ import { getTodayDate } from "@/lib/date-utils";
  * 
  * @search_logic
  * - Numérico: Match exato em 'member_number'.
- * - Texto: Match parcial (ilike) em nomes e slugs de exibição.
+ * - Texto: Match parcial (ilike) em nomes, slugs de exibição, telefone, CPF e email.
+ * 
+ * @sorting
+ * - Suporta ordenação dinâmica via query params `sort` e `order`.
+ * - Campos válidos: name, level, access. Default: name/asc.
  */
 export default async function AlunosPage({ 
   searchParams 
 }: { 
-  searchParams: Promise<{ page?: string; search?: string; level?: string }> 
+  searchParams: Promise<{ page?: string; search?: string; level?: string; sort?: string; order?: string; access?: string }> 
 }) {
   const params = await searchParams;
 
@@ -33,6 +37,9 @@ export default async function AlunosPage({
   const page = parseInt(params.page || "1");
   const search = params.search || "";
   const level = params.level || "Todos";
+  const sortField = params.sort || "name";
+  const sortOrder = params.order || "asc";
+  const accessFilter = params.access || "Todos";
   const pageSize = 50;
 
   const from = (page - 1) * pageSize;
@@ -58,13 +65,13 @@ export default async function AlunosPage({
     query = query.not("id", "in", `(${staffIds.join(",")})`);
   }
 
-  // Apply Search
+  // Apply Search — Expanded to include phone, cpf, and email
   if (search) {
     const isNumeric = /^\d+$/.test(search);
     if (isNumeric) {
-      query = query.or(`full_name.ilike.*${search}*,display_name.ilike.*${search}*,member_number.eq.${search}`);
+      query = query.or(`full_name.ilike.*${search}*,display_name.ilike.*${search}*,member_number.eq.${search},phone.ilike.*${search}*,cpf.ilike.*${search}*`);
     } else {
-      query = query.or(`full_name.ilike.*${search}*,display_name.ilike.*${search}*,first_name.ilike.*${search}*`);
+      query = query.or(`full_name.ilike.*${search}*,display_name.ilike.*${search}*,first_name.ilike.*${search}*,phone.ilike.*${search}*,cpf.ilike.*${search}*,email.ilike.*${search}*`);
     }
   }
 
@@ -73,14 +80,28 @@ export default async function AlunosPage({
     query = query.eq("level", level);
   }
 
-  // 3. Execute with pagination and sorting
+  // Apply Access Filter (membership_type)
+  if (accessFilter !== "Todos") {
+    query = query.eq("membership_type", accessFilter);
+  }
+
+  // Resolve sort column — maps UI-facing param to actual Supabase column
+  const SORT_COLUMN_MAP: Record<string, string> = {
+    name: "full_name",
+    level: "level",
+    access: "membership_type",
+  };
+  const resolvedSortColumn = SORT_COLUMN_MAP[sortField] || "full_name";
+  const isAscending = sortOrder !== "desc";
+
+  // 3. Execute with pagination and dynamic sorting
   const [
     { data: profilesRes, error: profilesError, count: totalCount },
     { data: preRegistrationsRes },
     dynamicLevels
   ] = await Promise.all([
     query
-      .order("full_name", { ascending: true })
+      .order(resolvedSortColumn, { ascending: isAscending })
       .range(from, to),
     supabase
       .from("pre_registrations")
@@ -139,6 +160,10 @@ export default async function AlunosPage({
       totalCount={totalCount || 0}
       currentSearch={search}
       currentLevel={level}
+      currentSort={sortField}
+      currentOrder={sortOrder}
+      currentAccess={accessFilter}
     />
   );
 }
+

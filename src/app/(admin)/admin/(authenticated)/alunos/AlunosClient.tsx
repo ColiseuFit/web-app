@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Search, Plus, Phone, X, UserPlus, ChevronDown, Pencil, Trash2, User, Mail, Calendar, CreditCard, Info, Activity, ShieldCheck, Lock as LockIcon, Mail as MailIcon, ChevronLeft, ChevronRight, Copy, Check, Tag, Zap } from "lucide-react";
+import { Search, Plus, Phone, X, UserPlus, ChevronDown, Pencil, Trash2, User, Mail, Calendar, CreditCard, Info, Activity, ShieldCheck, Lock as LockIcon, Mail as MailIcon, ChevronLeft, ChevronRight, Copy, Check, Tag, Zap, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { createStudent, updateStudent, deleteStudent, updateStudentAuth } from "../../../actions-student";
 import { getStudentEvaluations, deletePhysicalEvaluation } from "../../../actions-evaluation";
 import { updatePreRegistration } from "../../../actions-pre-registration";
@@ -60,7 +60,10 @@ export default function AlunosClient({
   totalPages,
   totalCount,
   currentSearch,
-  currentLevel
+  currentLevel,
+  currentSort = "name",
+  currentOrder = "asc",
+  currentAccess = "Todos"
 }: { 
   students: Student[], 
   preRegistrations?: any[],
@@ -69,7 +72,10 @@ export default function AlunosClient({
   totalPages: number,
   totalCount: number,
   currentSearch: string,
-  currentLevel: string
+  currentLevel: string,
+  currentSort?: string,
+  currentOrder?: string,
+  currentAccess?: string
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -85,6 +91,9 @@ export default function AlunosClient({
   // Local state for immediate feedback, synced with URL
   const [search, setSearch] = useState(currentSearch);
   const [levelFilter, setLevelFilter] = useState(currentLevel);
+  const [sortField, setSortField] = useState(currentSort);
+  const [sortOrder, setSortOrder] = useState(currentOrder);
+  const [accessFilter, setAccessFilter] = useState(currentAccess);
   const [viewMode, setViewMode] = useState<"alunos" | "leads">("alunos");
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -170,6 +179,48 @@ export default function AlunosClient({
     
     params.set("page", "1");
     router.push(`${pathname}?${params.toString()}`);
+  };
+
+  /**
+   * handleAccessChange: Atualiza o filtro de tipo de acesso (membership_type) via URL.
+   * @param val - Valor do filtro ('Todos', 'club', 'club_pass')
+   */
+  const handleAccessChange = (val: string) => {
+    setAccessFilter(val);
+    const params = new URLSearchParams(searchParams.toString());
+    if (val !== "Todos") params.set("access", val);
+    else params.delete("access");
+    
+    params.set("page", "1");
+    router.push(`${pathname}?${params.toString()}`);
+  };
+
+  /**
+   * handleSortChange: Alterna a ordenação da tabela por coluna.
+   * - Se a coluna clicada já é a ativa, inverte a direção (asc ↔ desc).
+   * - Se é uma nova coluna, ativa com direção ascendente.
+   * @param field - Campo de ordenação ('name', 'level', 'access')
+   */
+  const handleSortChange = (field: string) => {
+    let newOrder = "asc";
+    if (sortField === field) {
+      newOrder = sortOrder === "asc" ? "desc" : "asc";
+    }
+    setSortField(field);
+    setSortOrder(newOrder);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("sort", field);
+    params.set("order", newOrder);
+    params.set("page", "1");
+    router.push(`${pathname}?${params.toString()}`);
+  };
+
+  /** Renderiza o ícone de direção de ordenação para uma coluna */
+  const SortIcon = ({ field }: { field: string }) => {
+    if (sortField !== field) return <ArrowUpDown size={13} style={{ opacity: 0.3, marginLeft: 4 }} />;
+    return sortOrder === "asc" 
+      ? <ArrowUp size={13} style={{ opacity: 1, marginLeft: 4 }} />
+      : <ArrowDown size={13} style={{ opacity: 1, marginLeft: 4 }} />;
   };
 
   /**
@@ -546,12 +597,21 @@ export default function AlunosClient({
           <div style={{ display: "flex", gap: "16px", marginBottom: "32px", alignItems: "center" }}>
         <div style={{ flex: 1, position: "relative" }}>
           <Search size={18} style={{ position: "absolute", left: "14px", top: "50%", transform: "translateY(-50%)", color: "#000" }} />
-          <input type="search" placeholder="Buscar por nome ou telefone..." value={search} onChange={(e) => setSearch(e.target.value)} style={{ paddingLeft: "44px", border: "2px solid #000", fontWeight: 500 }} />
+          <input type="search" placeholder="Buscar por nome, telefone, CPF ou e-mail..." value={search} onChange={(e) => setSearch(e.target.value)} style={{ paddingLeft: "44px", border: "2px solid #000", fontWeight: 500 }} />
         </div>
         <div style={{ position: "relative", minWidth: "200px" }}>
           <select value={levelFilter} onChange={(e) => handleLevelChange(e.target.value)} style={{ appearance: "none", paddingRight: "40px", border: "2px solid #000", fontWeight: 700, textTransform: "uppercase", fontSize: "12px", letterSpacing: "0.05em" }}>
             {LEVEL_FILTERS.map((l) => (
               <option key={l} value={l}>{l === "Todos" ? "Filtrar por Nível" : `Nível: ${getLevelInfo(l, dynamicLevels).label}`}</option>
+            ))}
+          </select>
+          <ChevronDown size={16} style={{ position: "absolute", right: "14px", top: "50%", transform: "translateY(-50%)", pointerEvents: "none", color: "#000" }} />
+        </div>
+        <div style={{ position: "relative", minWidth: "200px" }}>
+          <select value={accessFilter} onChange={(e) => handleAccessChange(e.target.value)} style={{ appearance: "none", paddingRight: "40px", border: "2px solid #000", fontWeight: 700, textTransform: "uppercase", fontSize: "12px", letterSpacing: "0.05em" }}>
+            <option value="Todos">Filtrar por Acesso</option>
+            {MEMBERSHIP_TYPES.map((t) => (
+              <option key={t.id} value={t.id}>Acesso: {t.label}</option>
             ))}
           </select>
           <ChevronDown size={16} style={{ position: "absolute", right: "14px", top: "50%", transform: "translateY(-50%)", pointerEvents: "none", color: "#000" }} />
@@ -567,9 +627,30 @@ export default function AlunosClient({
             <table className="admin-table">
               <thead>
                 <tr>
-                  <th style={{ paddingLeft: "24px" }}>Nome do Aluno</th>
-                  <th style={{ width: "120px" }}>Nível</th>
-                  <th style={{ width: "130px" }}>Acesso</th>
+                  <th
+                    style={{ paddingLeft: "24px", cursor: "pointer", userSelect: "none", transition: "color 0.15s" }}
+                    onClick={() => handleSortChange("name")}
+                    onMouseEnter={(e) => (e.currentTarget.style.color = "#E31B23")}
+                    onMouseLeave={(e) => (e.currentTarget.style.color = sortField === "name" ? "#000" : "")}
+                  >
+                    <span style={{ display: "inline-flex", alignItems: "center" }}>Nome do Aluno<SortIcon field="name" /></span>
+                  </th>
+                  <th
+                    style={{ width: "120px", cursor: "pointer", userSelect: "none", transition: "color 0.15s" }}
+                    onClick={() => handleSortChange("level")}
+                    onMouseEnter={(e) => (e.currentTarget.style.color = "#E31B23")}
+                    onMouseLeave={(e) => (e.currentTarget.style.color = sortField === "level" ? "#000" : "")}
+                  >
+                    <span style={{ display: "inline-flex", alignItems: "center" }}>Nível<SortIcon field="level" /></span>
+                  </th>
+                  <th
+                    style={{ width: "130px", cursor: "pointer", userSelect: "none", transition: "color 0.15s" }}
+                    onClick={() => handleSortChange("access")}
+                    onMouseEnter={(e) => (e.currentTarget.style.color = "#E31B23")}
+                    onMouseLeave={(e) => (e.currentTarget.style.color = sortField === "access" ? "#000" : "")}
+                  >
+                    <span style={{ display: "inline-flex", alignItems: "center" }}>Acesso<SortIcon field="access" /></span>
+                  </th>
                   <th style={{ width: "110px" }}>Pontuação</th>
                   <th style={{ width: "75px" }}>Data</th>
                   <th style={{ width: "160px" }}>Contato</th>

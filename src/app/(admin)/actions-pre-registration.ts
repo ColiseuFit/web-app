@@ -104,12 +104,12 @@ export async function approvePreRegistration(preRegistrationId: string, customLe
     .from("profiles")
     .insert({
       id: userId,
-      full_name: lead.full_name,
-      email: lead.email,
+      full_name: lead.full_name.trim(),
+      email: lead.email.trim(),
       first_name: firstName || null,
       last_name: lastName || null,
-      phone: lead.phone || null,
-      cpf: lead.cpf || null,
+      phone: lead.phone ? lead.phone.trim() : null,
+      cpf: lead.cpf ? lead.cpf.trim() : null,
       birth_date: lead.birth_date || null,
       level: customLevel && customLevel !== "branco" ? customLevel : "iniciante",
       membership_type: membershipType || "club",
@@ -364,10 +364,10 @@ export async function updatePreRegistration(preRegistrationId: string, formData:
   }
 
   const rawData = {
-    full_name: formData.get("full_name") as string,
-    email: formData.get("email") as string,
-    phone: formData.get("phone") as string,
-    cpf: formData.get("cpf") as string,
+    full_name: (formData.get("full_name") as string || "").trim(),
+    email: (formData.get("email") as string || "").trim(),
+    phone: (formData.get("phone") as string || "").trim(),
+    cpf: (formData.get("cpf") as string || "").trim(),
     birth_date: formData.get("birth_date") as string || null,
   };
 
