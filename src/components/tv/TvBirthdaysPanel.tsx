@@ -65,21 +65,36 @@ export default function TvBirthdaysPanel({ birthdays, targetDate }: TvBirthdaysP
     }
   });
 
-  // Referências para controlar a rolagem automática em TVs
+  // Referências do DOM para gerenciar a rolagem vertical automatizada em Smart TVs (mãos livres)
   const weekScrollRef = useRef<HTMLDivElement>(null);
   const monthScrollRef = useRef<HTMLDivElement>(null);
 
+  /**
+   * Configura e gerencia o ciclo de vida do auto-scroll de uma lista vertical.
+   * Rola o contêiner suavemente se o conteúdo exceder a altura visível, pausando no topo
+   * e no final para leitura. Pausa imediatamente caso o usuário interaja.
+   * 
+   * Raciocínio Técnico de Constantes:
+   * - step (0.8px): Deslocamento ultra suave por tick, reduzindo jitter (tremor) e permitindo leitura fluida à distância.
+   * - delay (40ms): Equivale a ~25 ticks por segundo. Otimiza o consumo de CPU em navegadores limitados de Smart TVs.
+   * - waitCounter (75 ticks): Equivale a ~3 segundos de congelamento (75 * 40ms) nas extremidades para leitura confortável.
+   * 
+   * @param {HTMLDivElement | null} element - O elemento DOM da lista com overflow.
+   * @returns {Function} Função de limpeza (cleanup) para desmontar os listeners e o timer.
+   */
   useEffect(() => {
     const setupAutoScroll = (element: HTMLDivElement | null) => {
       if (!element) return;
 
       let intervalId: NodeJS.Timeout;
-      let scrollDirection = 1; // 1 = descendo, -1 = subindo
+      let scrollDirection = 1; // 1 representa rolagem para baixo (descendo), -1 representa para cima (subindo)
       let waitCounter = 0;
-      let isInteracting = false;
-      const step = 0.8; // pixels por tick (rolagem ultra suave)
-      const delay = 40; // ms por tick (~25fps de atualização)
+      let isInteracting = false; // Flag para suspender autoscroll sob interação
+      
+      const step = 0.8;
+      const delay = 40;
 
+      // Eventos de interação humana para pausar temporariamente a rolagem automática
       const handleMouseEnter = () => { isInteracting = true; };
       const handleMouseLeave = () => { isInteracting = false; };
       const handleFocus = () => { isInteracting = true; };
@@ -92,16 +107,22 @@ export default function TvBirthdaysPanel({ birthdays, targetDate }: TvBirthdaysP
       element.addEventListener("touchstart", handleMouseEnter);
       element.addEventListener("touchend", handleMouseLeave);
 
+      /**
+       * Loop de execução do scroll. Realiza o deslocamento de pixels
+       * e inverte o sentido de rolagem de forma automática nas extremidades.
+       */
       const performScroll = () => {
         if (isInteracting) return;
 
+        // Calcula o limite máximo de rolagem vertical disponível
         const maxScroll = element.scrollHeight - element.clientHeight;
         if (maxScroll <= 0) {
-          // Se tudo couber, mantém no topo e não faz scroll
+          // Se todo o conteúdo couber, força o scroll no topo e aborta a animação
           element.scrollTop = 0;
           return;
         }
 
+        // Se estiver no período de congelamento/pausa de extremidade, decrementa o contador
         if (waitCounter > 0) {
           waitCounter--;
           return;
@@ -109,22 +130,23 @@ export default function TvBirthdaysPanel({ birthdays, targetDate }: TvBirthdaysP
 
         element.scrollTop += scrollDirection * step;
 
-        // Se atingiu o limite de baixo
+        // Tratamento de Borda: Atingiu o limite inferior (com tolerância de 1px contra arredondamentos de zoom)
         if (scrollDirection === 1 && element.scrollTop >= maxScroll - 1) {
           element.scrollTop = maxScroll;
-          scrollDirection = -1; // Inverte para subir
-          waitCounter = 75; // Pausa ~3s no fim (75 * 40ms)
+          scrollDirection = -1; // Altera o sentido para subida
+          waitCounter = 75; // Pausa no final por 3 segundos para leitura
         }
-        // Se atingiu o limite de cima
+        // Tratamento de Borda: Retornou ao topo absoluto da lista
         else if (scrollDirection === -1 && element.scrollTop <= 0) {
           element.scrollTop = 0;
-          scrollDirection = 1; // Inverte para descer
-          waitCounter = 75; // Pausa ~3s no topo (75 * 40ms)
+          scrollDirection = 1; // Altera o sentido para descida
+          waitCounter = 75; // Pausa no início por 3 segundos para leitura
         }
       };
 
       intervalId = setInterval(performScroll, delay);
 
+      // Retorna a função de cleanup do ciclo de vida para remover listeners e limpar timers
       return () => {
         clearInterval(intervalId);
         element.removeEventListener("mouseenter", handleMouseEnter);

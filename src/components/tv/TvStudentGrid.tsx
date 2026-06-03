@@ -28,17 +28,29 @@ export default function TvStudentGrid({ students, timeStart, activeDate, classNa
   const checkinsCount = students.length;
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  /**
+   * Gerencia a rolagem automatizada e reativa da grade de check-in de alunos.
+   * Disparada e reconfigurada sempre que a lista de estudantes (`students`) sofrer alterações.
+   * Evita corte visual de alunos na Smart TV caso o número de check-ins exceda a tela vertical.
+   * 
+   * Raciocínio Técnico de Constantes:
+   * - step (0.8px): Deslocamento ultra suave por tick, prevenindo tremulação (jitter) e otimizando legibilidade.
+   * - delay (40ms): Equivale a ~25 ticks/s. Roda de forma suave mesmo em hardwares de TV de baixo desempenho.
+   * - waitCounter (75 ticks): Pausa de ~3s nas bordas superior e inferior para leitura.
+   */
   useEffect(() => {
     const element = scrollRef.current;
     if (!element) return;
 
     let intervalId: NodeJS.Timeout;
-    let scrollDirection = 1; // 1 = descendo, -1 = subindo
+    let scrollDirection = 1; // 1 = rolar para baixo, -1 = rolar para cima
     let waitCounter = 0;
-    let isInteracting = false;
-    const step = 0.8; // px por tick (rolagem ultra suave)
-    const delay = 40; // ms por tick (~25fps)
+    let isInteracting = false; // Flag para suspender auto-scroll sob interação
+    
+    const step = 0.8;
+    const delay = 40;
 
+    // Listeners de interação humana para pausar a animação de scroll
     const handleMouseEnter = () => { isInteracting = true; };
     const handleMouseLeave = () => { isInteracting = false; };
     const handleFocus = () => { isInteracting = true; };
@@ -51,11 +63,15 @@ export default function TvStudentGrid({ students, timeStart, activeDate, classNa
     element.addEventListener("touchstart", handleMouseEnter);
     element.addEventListener("touchend", handleMouseLeave);
 
+    /**
+     * Executa a rolagem do container de check-ins a cada tick de intervalo.
+     */
     const performScroll = () => {
       if (isInteracting) return;
 
       const maxScroll = element.scrollHeight - element.clientHeight;
       if (maxScroll <= 0) {
+        // Se couber tudo na tela, força no topo e aborta
         element.scrollTop = 0;
         return;
       }
@@ -67,22 +83,23 @@ export default function TvStudentGrid({ students, timeStart, activeDate, classNa
 
       element.scrollTop += scrollDirection * step;
 
-      // Se atingiu o fim (com margem de tolerância)
+      // Tratamento de Borda: Atingeu o limite inferior (com tolerância de 1px para arredondamentos de zoom)
       if (scrollDirection === 1 && element.scrollTop >= maxScroll - 1) {
         element.scrollTop = maxScroll;
         scrollDirection = -1; // Inverte para subir
-        waitCounter = 75; // Pausa ~3s no fim (75 * 40ms)
+        waitCounter = 75; // Pausa no fim por 3 segundos
       }
-      // Se atingiu o topo (com margem de tolerância)
+      // Tratamento de Borda: Retornou ao topo absoluto da lista
       else if (scrollDirection === -1 && element.scrollTop <= 0) {
         element.scrollTop = 0;
         scrollDirection = 1; // Inverte para descer
-        waitCounter = 75; // Pausa ~3s no topo (75 * 40ms)
+        waitCounter = 75; // Pausa no início por 3 segundos
       }
     };
 
     intervalId = setInterval(performScroll, delay);
 
+    // Cleanup do ciclo de vida para remover ouvintes e limpar timers
     return () => {
       clearInterval(intervalId);
       element.removeEventListener("mouseenter", handleMouseEnter);
