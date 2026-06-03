@@ -99,11 +99,11 @@ export default function TvBirthdaysPanel({ birthdays, targetDate }: TvBirthdaysP
       {/* ── CONTEÚDO PRINCIPAL EM DUAS COLUNAS (Espaço de Margem p-10 e gap-10 via CSS Inline) ── */}
       <div 
         className="flex-1 grid grid-cols-12 min-h-0 overflow-hidden w-full"
-        style={{ padding: '20px 24px', gap: '24px' }}
+        style={{ padding: '20px 24px', gap: '24px', gridTemplateRows: '1fr' }}
       >
         
         {/* COLUNA ESQUERDA (5/12): HOJE! + NESTA SEMANA */}
-        <div className="col-span-5 flex flex-col min-h-0" style={{ gap: '16px' }}>
+        <div className="col-span-5 flex flex-col min-h-0 overflow-hidden" style={{ gap: '16px' }}>
           
           {/* SEÇÃO: HOJE! */}
           {todayBirthdays.length > 0 && (
@@ -250,7 +250,7 @@ export default function TvBirthdaysPanel({ birthdays, targetDate }: TvBirthdaysP
         </div>
 
         {/* COLUNA DIREITA (7/12): DEMAIS DO MÊS */}
-        <div className="col-span-7 flex flex-col min-h-0" style={{ gap: '16px' }}>
+        <div className="col-span-7 flex flex-col min-h-0 overflow-hidden" style={{ gap: '16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <div 
               className="bg-neutral-300 text-black border-2 border-black shadow-[2px_2px_0px_#000] shrink-0 flex items-center justify-center"
