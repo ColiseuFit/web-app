@@ -2,6 +2,7 @@
 
 import { TvStudent } from "@/app/tv/actions";
 import TvStudentCard from "./TvStudentCard";
+import { useEffect, useRef } from "react";
 
 interface TvStudentGridProps {
   students: TvStudent[];
@@ -14,6 +15,7 @@ interface TvStudentGridProps {
  * Grade de exibição de alunos checked-in para o Coliseu TV.
  * Determina dinamicamente a quantidade de colunas, espaçamentos e o tamanho de card
  * com base na quantidade de alunos presentes para maximizar o preenchimento da tela.
+ * Implementa auto-scroll suave automático se o grid exceder a altura da tela.
  *
  * @param {TvStudentGridProps} props - Propriedades do componente.
  * @param {TvStudent[]} props.students - Lista de estudantes com check-in confirmado.
@@ -24,9 +26,89 @@ interface TvStudentGridProps {
  */
 export default function TvStudentGrid({ students, timeStart, activeDate, className }: TvStudentGridProps) {
   const checkinsCount = students.length;
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const element = scrollRef.current;
+    if (!element) return;
+
+    let intervalId: NodeJS.Timeout;
+    let scrollDirection = 1; // 1 = descendo, -1 = subindo
+    let waitCounter = 0;
+    let isInteracting = false;
+    const step = 0.8; // px por tick (rolagem ultra suave)
+    const delay = 40; // ms por tick (~25fps)
+
+    const handleMouseEnter = () => { isInteracting = true; };
+    const handleMouseLeave = () => { isInteracting = false; };
+    const handleFocus = () => { isInteracting = true; };
+    const handleBlur = () => { isInteracting = false; };
+
+    element.addEventListener("mouseenter", handleMouseEnter);
+    element.addEventListener("mouseleave", handleMouseLeave);
+    element.addEventListener("focusin", handleFocus);
+    element.addEventListener("focusout", handleBlur);
+    element.addEventListener("touchstart", handleMouseEnter);
+    element.addEventListener("touchend", handleMouseLeave);
+
+    const performScroll = () => {
+      if (isInteracting) return;
+
+      const maxScroll = element.scrollHeight - element.clientHeight;
+      if (maxScroll <= 0) {
+        element.scrollTop = 0;
+        return;
+      }
+
+      if (waitCounter > 0) {
+        waitCounter--;
+        return;
+      }
+
+      element.scrollTop += scrollDirection * step;
+
+      // Se atingiu o fim (com margem de tolerância)
+      if (scrollDirection === 1 && element.scrollTop >= maxScroll - 1) {
+        element.scrollTop = maxScroll;
+        scrollDirection = -1; // Inverte para subir
+        waitCounter = 75; // Pausa ~3s no fim (75 * 40ms)
+      }
+      // Se atingiu o topo (com margem de tolerância)
+      else if (scrollDirection === -1 && element.scrollTop <= 0) {
+        element.scrollTop = 0;
+        scrollDirection = 1; // Inverte para descer
+        waitCounter = 75; // Pausa ~3s no topo (75 * 40ms)
+      }
+    };
+
+    intervalId = setInterval(performScroll, delay);
+
+    return () => {
+      clearInterval(intervalId);
+      element.removeEventListener("mouseenter", handleMouseEnter);
+      element.removeEventListener("mouseleave", handleMouseLeave);
+      element.removeEventListener("focusin", handleFocus);
+      element.removeEventListener("focusout", handleBlur);
+      element.removeEventListener("touchstart", handleMouseEnter);
+      element.removeEventListener("touchend", handleMouseLeave);
+    };
+  }, [students]);
 
   return (
-    <div className={`flex flex-col w-full ${className || ""}`} style={{ gap: "24px" }}>
+    <div 
+      className={`flex flex-col w-full h-full min-h-0 overflow-hidden ${className || ""}`} 
+      style={{ gap: "24px", height: "100%" }}
+    >
+      {/* Estilo local para ocultar barras de rolagem nativas */}
+      <style dangerouslySetInnerHTML={{__html: `
+        .tv-checkin-scroll-container {
+          scrollbar-width: none !important;
+          -ms-overflow-style: none !important;
+        }
+        .tv-checkin-scroll-container::-webkit-scrollbar {
+          display: none !important;
+        }
+      `}} />
 
       {/* Grade de Alunos */}
       {checkinsCount > 0 ? (() => {
@@ -75,18 +157,25 @@ export default function TvStudentGrid({ students, timeStart, activeDate, classNa
 
         return (
           <div 
-            style={{ 
-              display: "grid", 
-              gridTemplateColumns: `repeat(${gridCols}, 1fr)`, 
-              gap: gridGap,
-              width: "100%",
-              maxWidth: maxWidth,
-              margin: "0 auto"
-            }}
+            ref={scrollRef}
+            className="flex-grow overflow-y-auto tv-checkin-scroll-container pr-1"
+            style={{ width: "100%", minHeight: 0 }}
           >
-            {students.map((student) => (
-              <TvStudentCard key={student.id} student={student} cardSize={cardSize} activeDate={activeDate} />
-            ))}
+            <div 
+              style={{ 
+                display: "grid", 
+                gridTemplateColumns: `repeat(${gridCols}, 1fr)`, 
+                gap: gridGap,
+                width: "100%",
+                maxWidth: maxWidth,
+                margin: "0 auto",
+                paddingBottom: "24px" // Dá um respiro para a sombra do último card
+              }}
+            >
+              {students.map((student) => (
+                <TvStudentCard key={student.id} student={student} cardSize={cardSize} activeDate={activeDate} />
+              ))}
+            </div>
           </div>
         );
       })() : (
