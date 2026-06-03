@@ -210,7 +210,7 @@ export default function TvClient() {
         backgroundImage:
           "radial-gradient(circle, rgba(0, 0, 0, 0.07) 1.5px, transparent 1.5px)",
         backgroundSize: "24px 24px",
-        padding: "48px 64px",
+        padding: "32px 48px",
         gap: "20px",
         width: "133.33vw",
         height: "133.33vh",

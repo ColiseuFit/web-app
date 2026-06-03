@@ -33,32 +33,40 @@ export default function TvStudentGrid({ students, timeStart, className }: TvStud
         let cardSize: "large" | "normal" | "compact" = "large";
         let maxWidth = "100%";
 
-        if (checkinsCount <= 6) {
-          gridCols = 3;
+        if (checkinsCount <= 4) {
+          // Até 4 alunos: 1 linha, 4 colunas (Cards Grandes)
+          gridCols = 4;
+          gridGap = "24px";
           cardSize = "large";
-          maxWidth = "1500px";
+          maxWidth = "1600px";
         } else if (checkinsCount <= 8) {
+          // 5-8 alunos: 2 linhas, 4 colunas (Cards Normais para garantir que cabem na altura)
           gridCols = 4;
-          cardSize = "large";
-          maxWidth = "1800px";
-        } else if (checkinsCount <= 12) {
-          gridCols = 4;
-          gridGap = "20px";
+          gridGap = "24px";
           cardSize = "normal";
-          maxWidth = "1500px";
-        } else if (checkinsCount <= 18) {
+          maxWidth = "1600px";
+        } else if (checkinsCount <= 12) {
+          // 9-12 alunos: 2 linhas, 6 colunas (Prioridade horizontal para evitar corte da 3ª linha)
           gridCols = 6;
           gridGap = "16px";
           cardSize = "normal";
           maxWidth = "100%";
-        } else if (checkinsCount <= 24) {
+        } else if (checkinsCount <= 18) {
+          // 13-18 alunos: 3 linhas, 6 colunas (Cards compactos horizontais)
           gridCols = 6;
           gridGap = "12px";
-          cardSize = "normal";
+          cardSize = "compact";
+          maxWidth = "100%";
+        } else if (checkinsCount <= 24) {
+          // 19-24 alunos: 3 linhas, 8 colunas (Cards compactos horizontais)
+          gridCols = 8;
+          gridGap = "10px";
+          cardSize = "compact";
           maxWidth = "100%";
         } else {
-          gridCols = 7;
-          gridGap = "10px";
+          // 25+ alunos: 4+ linhas, 8 colunas
+          gridCols = 8;
+          gridGap = "8px";
           cardSize = "compact";
           maxWidth = "100%";
         }
