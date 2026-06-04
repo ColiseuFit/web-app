@@ -172,10 +172,15 @@ export async function uploadEvaluationPhoto(formData: FormData) {
   }
   const supabaseAdmin = createAdminClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceRoleKey);
 
-  const fileExt = file.name.split(".").pop();
-  const filePath = `${studentId}/${Date.now()}.${fileExt}`;
-
   try {
+    const fileName = file.name || "photo.jpg";
+    const fileExt = fileName.includes(".") ? fileName.split(".").pop() : "jpg";
+    const filePath = `${studentId}/${Date.now()}.${fileExt}`;
+
+    if (typeof file === "string" || !file || typeof file.arrayBuffer !== "function") {
+      return { error: "O arquivo enviado é inválido ou não pôde ser lido." };
+    }
+
     // 1. Storage Upload using supabaseAdmin (bypasses RLS storage permissions checking on Server Side)
     const arrayBuffer = await file.arrayBuffer();
     const { error: uploadError } = await supabaseAdmin.storage
