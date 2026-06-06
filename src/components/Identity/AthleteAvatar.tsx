@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { User } from "lucide-react";
 import { getInitials } from "@/lib/identity-utils";
+import Image from "next/image";
 
 interface AthleteAvatarProps {
   profile?: {
@@ -70,6 +71,26 @@ export default function AthleteAvatar({
         ) : (
           <User size={size * 0.5} style={{ color: "#CCC" }} />
         )}
+      </div>
+    );
+  }
+
+  const isOptimizable = effectiveUrl.startsWith("/") || effectiveUrl.includes("okcjuxtboxbqpkracpgj.supabase.co");
+
+  if (isOptimizable) {
+    return (
+      <div style={containerStyle}>
+        <Image
+          src={effectiveUrl}
+          alt={effectiveName || "Avatar"}
+          onError={() => setError(true)}
+          fill
+          sizes={`${size}px`}
+          style={{
+            objectFit: "cover",
+            filter: "grayscale(100%) contrast(1.1)",
+          }}
+        />
       </div>
     );
   }

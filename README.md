@@ -53,6 +53,7 @@ graph TD
   - `docs/PLAYBOOKS/PONTUACAO.md`: Regras de negócio de pontuação detalhadas.
   - `docs/PLAYBOOKS/ACTIVITY_DASHBOARD.md`: Dashboard de atividades e histórico de treinos.
   - `docs/PLAYBOOKS/RESULTS_LOGGING.md`: Registro de resultados de WODs e PRs.
+  - `docs/PLAYBOOKS/WOD_LEADERBOARD.md`: Motor de Ranking e Liga de Pontuação Semanal (Clube).
   - `docs/PLAYBOOKS/COMPARTILHAMENTO_ATIVIDADE.md`: Motor de compartilhamento de stickers de WOD.
   - `docs/PLAYBOOKS/ACCESS_MANAGEMENT.md`: Motor de Permissões Dinâmico e gestão de planos.
 

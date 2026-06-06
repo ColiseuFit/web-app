@@ -6,6 +6,7 @@ import BottomNav from "@/components/BottomNav";
 import { Trophy, Hammer } from "lucide-react";
 import DashboardStyles from "@/components/DashboardStyles";
 import AccessGate from "@/components/AccessGate";
+import DailyLeaderboard from "./DailyLeaderboard";
 
 /**
  * ClubeClient Component
@@ -64,70 +65,8 @@ export default function ClubeClient({ hasAccess, upgradeLink }: { hasAccess: boo
             upgradeLink={upgradeLink}
           />
         ) : (
-          /* ── CONTEÚDO: EM BREVE (club_premium) ── */
-          <section
-            style={{
-              background: "#FFF",
-              border: "3px solid #000",
-              boxShadow: "10px 10px 0px #000",
-              position: "relative",
-              overflow: "hidden",
-              padding: "40px 20px",
-              textAlign: "center",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              gap: "24px",
-              animation: "entrancePop 0.4s cubic-bezier(0.16, 1, 0.3, 1)"
-            }}
-          >
-            {/* Fita de Construção */}
-            <div style={{
-              position: "absolute",
-              top: "20px",
-              right: "-40px",
-              background: "#FFD700",
-              color: "#000",
-              borderTop: "2px solid #000",
-              borderBottom: "2px solid #000",
-              padding: "4px 40px",
-              transform: "rotate(45deg)",
-              fontSize: "10px",
-              fontWeight: 900,
-              letterSpacing: "0.2em",
-              zIndex: 10
-            }}>
-              WORK IN PROGRESS
-            </div>
-
-            <div style={{
-              width: "80px",
-              height: "80px",
-              background: "#F0F0F0",
-              border: "3px solid #000",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              boxShadow: "4px 4px 0px var(--red)",
-              borderRadius: "50%"
-            }}>
-              <Hammer size={40} color="#000" strokeWidth={2.5} />
-            </div>
-
-            <div>
-              <h2 className="font-display" style={{ fontSize: "28px", fontWeight: 950, color: "#000", lineHeight: 1, marginBottom: "12px" }}>
-                O CLUBE ESTÁ<br/>EM CONSTRUÇÃO
-              </h2>
-              <p className="font-headline" style={{ fontSize: "12px", fontWeight: 800, color: "#000", letterSpacing: "0.05em", opacity: 0.7 }}>
-                ESTAMOS PREPARANDO UM ESPAÇO ÉPICO PARA VOCÊS ACOMPANHAREM SEUS RECORDES, PONTUAÇÕES E LIGAS SEMANAIS CONTRA OUTROS ALUNOS DO COLISEU.
-              </p>
-            </div>
-
-            <div style={{ display: "inline-block", background: "#000", color: "#FFF", padding: "12px 24px", fontSize: "14px", fontWeight: 900, letterSpacing: "0.1em", border: "2px solid #000" }}>
-              EM BREVE
-            </div>
-
-          </section>
+          /* ── CONTEÚDO: LEADERBOARD DO DIA ── */
+          <DailyLeaderboard />
         )}
 
       </main>

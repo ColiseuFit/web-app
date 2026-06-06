@@ -1,20 +1,30 @@
 "use client";
 
-import { useState } from "react";
+import { useState, use } from "react";
 import { ShieldCheck, Mail, Lock, Eye, EyeOff, ArrowRight } from "lucide-react";
 import AdminStyles from "@/components/admin/AdminStyles";
 import { loginCoach } from "./actions";
 
 /**
- * Coach Login Page: High Contrast Premium B&W (Adapted from Admin).
- * Designed for coaches to access the performance tracking portal.
+ * CoachLoginPage - Componente de login exclusivo para o Portal de Coaches.
+ * 
+ * @architecture
+ * - Padrão B&W de Alta Performance: Design minimalista com contraste elevado para uso sob luz solar direta.
+ * - Next.js 15+ Compliance: Devido à mudança nas APIs dinâmicas do Next.js (onde searchParams passou a ser
+ *   uma Promise), este Client Component unwrapa os parâmetros assincronamente usando a API React.use().
+ *   Isso previne o erro síncrono de acesso direto em tempo de renderização.
+ * 
+ * @param {Object} props - Propriedades do componente.
+ * @param {Promise<{error?: string}>} props.searchParams - Promise contendo parâmetros de query de erro.
  */
-export default function CoachLoginPage({ searchParams }: { searchParams: { error?: string } }) {
+export default function CoachLoginPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // Error from fallback SSR Search Params or standard client React State
-  const errorMessage = searchParams?.error || null;
+  // Unwrapping searchParams Promise (Next.js 15/16 dynamic APIs standard)
+  // Requisito técnico para evitar Console Errors em Next.js 15
+  const resolvedSearchParams = use(searchParams);
+  const errorMessage = resolvedSearchParams?.error || null;
 
   const inputBase: React.CSSProperties = {
     display: "block",

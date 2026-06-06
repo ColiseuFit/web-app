@@ -4,6 +4,7 @@ import { USER_ROLES } from "@/lib/constants/roles";
 import Image from "next/image";
 import Link from "next/link";
 import CoachLogoutButton from "@/components/coach/CoachLogoutButton";
+import CoachNavigation from "@/components/coach/CoachNavigation";
 
 /**
  * Nested Coach Layout: Handles RBAC protection and navbar for all AUTHENTICATED coach routes.
@@ -11,6 +12,7 @@ import CoachLogoutButton from "@/components/coach/CoachLogoutButton";
  * @architecture
  * - Server Component: busca sessão e role server-side (zero latência no cliente).
  * - Embute `CoachLogoutButton` (Client Component) para interatividade de logout.
+ * - Embute `CoachNavigation` (Client Component) para navegação por abas (Dashboard, Resultados).
  * - Header sticky com identidade visual e área de logout com mínimo de 44px (iOS).
  */
 export default async function AuthenticatedCoachLayout({ children }: { children: React.ReactNode }) {
@@ -112,6 +114,9 @@ export default async function AuthenticatedCoachLayout({ children }: { children:
           <CoachLogoutButton />
         </div>
       </header>
+
+      {/* Tab Navigation — Coach Portal Sections */}
+      <CoachNavigation />
 
       <main style={{ padding: "16px", paddingBottom: "100px" }}>
         {children}

@@ -1,12 +1,16 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import { getTvData, TvDataResponse, TvClassSlot } from "./actions";
+import type { TvDataResponse, TvClassSlot } from "./actions";
+import type { 
+  TvDailyLeaderboardData, 
+  TvWeeklyLeaderboardData 
+} from "./actions-leaderboard";
 import TvClock from "@/components/tv/TvClock";
 import TvTabBar, { TvTabId } from "@/components/tv/TvTabBar";
 import TvCheckInPanel from "@/components/tv/TvCheckInPanel";
 import TvWodPanel from "@/components/tv/TvWodPanel";
-import TvComingSoonPanel from "@/components/tv/TvComingSoonPanel";
+import TvLeaderboardPanel from "@/components/tv/TvLeaderboardPanel";
 import TvSkeleton from "@/components/tv/TvSkeleton";
 import TvBirthdaysPanel from "@/components/tv/TvBirthdaysPanel";
 import { ChevronLeft, ChevronRight, RefreshCw, User, Trophy, Cake } from "lucide-react";
@@ -27,6 +31,8 @@ export default function TvClient() {
   const [isAutoMode, setIsAutoMode] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<TvTabId>("checkin");
+  const [dailyLeaderboard, setDailyLeaderboard] = useState<TvDailyLeaderboardData | null>(null);
+  const [weeklyLeaderboard, setWeeklyLeaderboard] = useState<TvWeeklyLeaderboardData | null>(null);
   const autoModeTimerRef = useRef<NodeJS.Timeout | null>(null);
   const pollingTimerRef = useRef<NodeJS.Timeout | null>(null);
   
@@ -62,7 +68,7 @@ export default function TvClient() {
       return;
     }
 
-    const ROTATABLE_TABS: TvTabId[] = ["checkin", "wod", "birthdays"];
+    const ROTATABLE_TABS: TvTabId[] = ["checkin", "wod", "ranking", "birthdays"];
 
     tabRotationTimerRef.current = setInterval(() => {
       setActiveTab((current) => {
@@ -99,12 +105,21 @@ export default function TvClient() {
     setIsRefreshing(true);
 
     try {
-      const response = await getTvData();
+      // Faz uma única requisição GET que é cacheada pelo Edge CDN da Vercel
+      const res = await fetch("/api/tv");
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
 
-      if (response.error) {
-        setError(response.error);
-      } else if (response.data) {
-        setData(response.data);
+      const json = await res.json();
+      if (json.error) {
+        setError(json.error);
+      } else {
+        if (json.tvData) {
+          setData(json.tvData);
+        }
+        setDailyLeaderboard(json.dailyLeaderboard);
+        setWeeklyLeaderboard(json.weeklyLeaderboard);
         setError(null);
       }
     } catch (err: any) {
@@ -444,10 +459,9 @@ export default function TvClient() {
         {activeTab === "wod" && data && <TvWodPanel data={data} />}
 
         {activeTab === "ranking" && (
-          <TvComingSoonPanel
-            title="RANKING EM BREVE"
-            description="O painel com os recordes pessoais (PRs) e as melhores pontuações dos alunos está sendo forjado para o Coliseu TV. Em breve, este espaço ganha vida."
-            icon={<Trophy size={48} className="text-black" />}
+          <TvLeaderboardPanel
+            dailyData={dailyLeaderboard}
+            weeklyData={weeklyLeaderboard}
           />
         )}
 
