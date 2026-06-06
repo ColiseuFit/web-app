@@ -41,6 +41,7 @@ export async function proxy(request: NextRequest) {
       path.startsWith("/api/webhooks") || 
       path.startsWith("/api/auth") || 
       path.startsWith("/api/internal") ||
+      path.startsWith("/api/tv") ||
       path === "/api/version";
 
     if (!isWebhookOrApi) {
@@ -85,7 +86,14 @@ export async function proxy(request: NextRequest) {
 
   // EARLY BYPASS: Auth, Verification, Webhooks and Version routes must be handled by their respective handlers
   // without interference from domain-specific redirect logic during the handshake.
-  if (path.startsWith('/auth') || path.startsWith('/api/auth') || path.startsWith('/api/webhooks') || path.startsWith('/api/internal') || path === '/api/version') {
+  if (
+    path.startsWith('/auth') || 
+    path.startsWith('/api/auth') || 
+    path.startsWith('/api/webhooks') || 
+    path.startsWith('/api/internal') || 
+    path.startsWith('/api/tv') || 
+    path === '/api/version'
+  ) {
     return supabaseResponse;
   }
 
@@ -220,6 +228,6 @@ export const config = {
      * - apple-icon, api/version: Essenciais para o funcionamento do PWA e atualizações.
      * - Extensões de imagem comuns para evitar interceptação de ativos públicos.
      */
-    "/((?!_next/static|_next/image|favicon.ico|icon.svg|apple-icon|api/version|manifest.json|manifest.webmanifest|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|icon.svg|apple-icon|api/version|api/tv|manifest.json|manifest.webmanifest|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };
