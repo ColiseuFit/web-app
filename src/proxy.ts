@@ -29,7 +29,7 @@ export async function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname;
   const hostname = request.headers.get("host") || "";
 
-  // EARLY BYPASS: Auth, Verification, Webhooks and Version routes must be handled by their respective handlers
+  // EARLY BYPASS: Auth, Verification, Webhooks, TV Dashboard and Version routes must be handled by their respective handlers
   // without interference from domain-specific redirect logic during the handshake.
   if (
     path.startsWith('/auth') || 
@@ -37,6 +37,7 @@ export async function proxy(request: NextRequest) {
     path.startsWith('/api/webhooks') || 
     path.startsWith('/api/internal') || 
     path.startsWith('/api/tv') || 
+    path.startsWith('/tv') || 
     path === '/api/version'
   ) {
     return supabaseResponse;
