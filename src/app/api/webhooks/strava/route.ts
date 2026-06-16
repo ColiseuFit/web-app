@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { waitUntil } from "@vercel/functions";
 
 const SITE_URL = process.env.NODE_ENV === "development"
   ? "http://localhost:3000"
@@ -82,9 +83,7 @@ export async function POST(request: Request) {
 
   console.log(`[STRAVA] Evento salvo na fila: id=${event.id}`);
 
-  // 2. Tenta processar inline com timeout de 1.5s
-  // Promise.race: se o processador terminar a tempo, ótimo.
-  // Se não, respondemos 200 mesmo assim e o evento fica pendente na fila.
+  // 2. Dispara o processamento em segundo plano (background task) de forma segura no Vercel
   const processorUrl = `${SITE_URL}/api/internal/process-strava`;
   const processPromise = fetch(processorUrl, {
     method: "POST",
@@ -93,17 +92,18 @@ export async function POST(request: Request) {
       "x-internal-secret": INTERNAL_SECRET,
     },
     body: JSON.stringify({ eventId: event.id }),
-  }).then(r => r.json()).catch((err) => {
-    console.error("[STRAVA] Processador retornou erro:", err);
-  });
+  })
+    .then(async (res) => {
+      const data = await res.json();
+      console.log("[STRAVA] Processador executado com sucesso:", JSON.stringify(data));
+    })
+    .catch((err) => {
+      console.error("[STRAVA] Processador retornou erro:", err);
+    });
 
-  const timeoutPromise = new Promise(resolve =>
-    setTimeout(() => resolve({ status: "timeout" }), 1500)
-  );
+  // Mantém a execução da Promise em segundo plano ativa mesmo após responder a requisição
+  waitUntil(processPromise);
 
-  const result = await Promise.race([processPromise, timeoutPromise]);
-  console.log("[STRAVA] Resultado do processador:", JSON.stringify(result));
-
-  // 3. Responde ao Strava em < 2s (garantido pelo timeout acima)
+  // 3. Responde ao Strava imediatamente (< 50ms) para evitar timeouts e retentativas
   return NextResponse.json({ status: "received" });
 }

@@ -29,6 +29,19 @@ export async function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname;
   const hostname = request.headers.get("host") || "";
 
+  // EARLY BYPASS: Auth, Verification, Webhooks and Version routes must be handled by their respective handlers
+  // without interference from domain-specific redirect logic during the handshake.
+  if (
+    path.startsWith('/auth') || 
+    path.startsWith('/api/auth') || 
+    path.startsWith('/api/webhooks') || 
+    path.startsWith('/api/internal') || 
+    path.startsWith('/api/tv') || 
+    path === '/api/version'
+  ) {
+    return supabaseResponse;
+  }
+
   // 1. GEOBLOCKING (Edge-Level Defense-in-Depth for Hobby Plan)
   // Vercel automatically attaches the x-vercel-ip-country header (ISO 3166-1 alpha-2)
   const country = request.headers.get("x-vercel-ip-country") || "";
@@ -84,18 +97,6 @@ export async function proxy(request: NextRequest) {
 
   const url = request.nextUrl.clone();
 
-  // EARLY BYPASS: Auth, Verification, Webhooks and Version routes must be handled by their respective handlers
-  // without interference from domain-specific redirect logic during the handshake.
-  if (
-    path.startsWith('/auth') || 
-    path.startsWith('/api/auth') || 
-    path.startsWith('/api/webhooks') || 
-    path.startsWith('/api/internal') || 
-    path.startsWith('/api/tv') || 
-    path === '/api/version'
-  ) {
-    return supabaseResponse;
-  }
 
   let isRewritten = false;
 
