@@ -41,6 +41,81 @@ const getCachedProfilesWithBirthdays = unstable_cache(
 );
 
 /**
+ * Busca a grade de turmas ativa para o dia da semana especificado.
+ * Cacheado por 30 minutos (1800 segundos) para reduzir drasticamente o load no Supabase.
+ */
+const getCachedClassSlots = unstable_cache(
+  async (dayOfWeek: number) => {
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim().split(' ')[0];
+    if (!serviceRoleKey) {
+      throw new Error("Erro de configuração: Chave mestra não encontrada no servidor.");
+    }
+
+    const supabase = createAdminClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      serviceRoleKey
+    );
+
+    const { data: slots, error: slotsError } = await supabase
+      .from("class_slots")
+      .select(`
+        *,
+        coach_profile:default_coach_id (full_name),
+        class_substitutions (
+          substitute_coach_id,
+          coach_profile:substitute_coach_id (full_name),
+          date
+        )
+      `)
+      .eq("day_of_week", dayOfWeek)
+      .eq("is_active", true)
+      .order("time_start", { ascending: true });
+
+    if (slotsError) {
+      throw new Error("Erro ao buscar grade de turmas: " + slotsError.message);
+    }
+
+    return slots || [];
+  },
+  ["tv-class-slots-list"],
+  {
+    revalidate: 1800, // Cache de 30 minutos
+    tags: ["class_slots"],
+  }
+);
+
+/**
+ * Busca o WOD correspondente à data especificada.
+ * Cacheado por 5 minutos (300 segundos) para atualizações rápidas do treino do dia.
+ */
+const getCachedWod = unstable_cache(
+  async (dateStr: string) => {
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim().split(' ')[0];
+    if (!serviceRoleKey) {
+      throw new Error("Erro de configuração: Chave mestra não encontrada no servidor.");
+    }
+
+    const supabase = createAdminClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      serviceRoleKey
+    );
+
+    const { data: wod } = await supabase
+      .from("wods")
+      .select("id, title, warm_up, technique, wod_content, type_tag, time_cap")
+      .eq("date", dateStr)
+      .maybeSingle();
+
+    return wod || null;
+  },
+  ["tv-wod-date"],
+  {
+    revalidate: 300, // Cache de 5 minutos
+    tags: ["wods"],
+  }
+);
+
+/**
  * Schema de validação para o parâmetro de data da TV.
  * Aceita apenas strings no formato ISO (YYYY-MM-DD) para evitar
  * injeções, RangeErrors ou queries malformatadas no banco de dados.
@@ -126,25 +201,8 @@ export async function getTvData(targetDate?: string): Promise<{ data?: TvDataRes
     const dateObj = new Date(dateStr + "T12:00:00Z");
     const dayOfWeek = dateObj.getUTCDay();
 
-    // 2. Buscar os class_slots estruturais ativos para o dia correspondente
-    const { data: slots, error: slotsError } = await supabase
-      .from("class_slots")
-      .select(`
-        *,
-        coach_profile:default_coach_id (full_name),
-        class_substitutions (
-          substitute_coach_id,
-          coach_profile:substitute_coach_id (full_name),
-          date
-        )
-      `)
-      .eq("day_of_week", dayOfWeek)
-      .eq("is_active", true)
-      .order("time_start", { ascending: true });
-
-    if (slotsError) {
-      return { error: "Erro ao buscar grade de turmas: " + slotsError.message };
-    }
+    // 2. Buscar os class_slots estruturais ativos para o dia correspondente (Cacheado 30min)
+    const slots = await getCachedClassSlots(dayOfWeek);
 
     if (!slots || slots.length === 0) {
       return {
@@ -162,12 +220,8 @@ export async function getTvData(targetDate?: string): Promise<{ data?: TvDataRes
       };
     }
 
-    // 3. Buscar o WOD do dia correspondente com todos os campos estruturados
-    const { data: wod } = await supabase
-      .from("wods")
-      .select("id, title, warm_up, technique, wod_content, type_tag, time_cap")
-      .eq("date", dateStr)
-      .maybeSingle();
+    // 3. Buscar o WOD do dia correspondente com todos os campos estruturados (Cacheado 5min)
+    const wod = await getCachedWod(dateStr);
 
     const wodId = wod?.id || null;
     const wodTitle = wod?.title || "Treino do Dia";
