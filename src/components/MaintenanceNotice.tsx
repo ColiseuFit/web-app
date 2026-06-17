@@ -16,15 +16,26 @@ export default function MaintenanceNotice({ studentName = "Atleta" }: Maintenanc
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
-    // Verifica se o aluno já visualizou e fechou o aviso nesta semana
-    const hasSeenNotice = localStorage.getItem("coliseu-maintenance-seen-v2");
-    if (!hasSeenNotice) {
+    try {
+      // Verifica se o aluno já visualizou e fechou o aviso nesta semana
+      const hasSeenNotice = localStorage.getItem("coliseu-maintenance-seen-v2");
+      if (!hasSeenNotice) {
+        setIsOpen(true);
+      }
+    } catch (e) {
+      // Em caso de erro de leitura do storage (ex: modo anônimo no Safari iOS), exibimos o popup por garantia
       setIsOpen(true);
     }
   }, []);
 
   const handleClose = () => {
-    localStorage.setItem("coliseu-maintenance-seen-v2", "true");
+    try {
+      localStorage.setItem("coliseu-maintenance-seen-v2", "true");
+    } catch (e) {
+      console.warn("[MaintenanceNotice] Não foi possível gravar no localStorage:", e);
+    }
+    // Independente de conseguir salvar ou não no storage local, fechamos o modal
+    // para que o aluno consiga navegar e usar o aplicativo normalmente
     setIsOpen(false);
   };
 
