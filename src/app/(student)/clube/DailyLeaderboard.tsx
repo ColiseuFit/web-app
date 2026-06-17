@@ -1,19 +1,16 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Trophy, Medal, Flame, Calendar } from "lucide-react";
+import { Calendar } from "lucide-react";
 import { 
-  getDailyLeaderboard, 
+  getCombinedLeaderboard, 
   DailyLeaderboardData, 
-  LeaderboardEntry, 
-  getWeeklyLeaderboard, 
-  WeeklyLeaderboardData, 
-  WeeklyLeaderboardEntry 
+  WeeklyLeaderboardData 
 } from "./actions-leaderboard";
 import { getLevelInfo, ALL_LEVELS } from "@/lib/constants/levels";
-import AthleteAvatar from "@/components/Identity/AthleteAvatar";
+import DailyResultsList from "./DailyResultsList";
+import WeeklyResultsList from "./WeeklyResultsList";
 
-// Helper para formatar a data no formato brasileiro (DD/MM/AAAA)
 function formatDateBR(dateStr: string) {
   if (!dateStr) return "";
   const parts = dateStr.split("-");
@@ -21,7 +18,6 @@ function formatDateBR(dateStr: string) {
   return `${parts[2]}/${parts[1]}/${parts[0]}`;
 }
 
-// Helper para formatar o nome exibido (Nome + Sobrenome final) mantendo o layout limpo no mobile
 function formatDisplayName(name: string) {
   if (!name) return "";
   const parts = name.trim().split(/\s+/);
@@ -46,21 +42,14 @@ export default function DailyLeaderboard() {
   useEffect(() => {
     async function loadAll() {
       setLoading(true);
-      const [resDaily, resWeekly] = await Promise.all([
-        getDailyLeaderboard(),
-        getWeeklyLeaderboard()
-      ]);
+      const res = await getCombinedLeaderboard();
       
-      if (resDaily.success && resDaily.data) {
-        setDailyData(resDaily.data);
+      if (res.success) {
+        if (res.daily) setDailyData(res.daily);
+        if (res.weekly) setWeeklyData(res.weekly);
       } else {
-        setError(resDaily.error || "Erro ao carregar o Leaderboard Diário.");
+        setError(res.error || "Erro ao carregar os rankings.");
       }
-      
-      if (resWeekly.success && resWeekly.data) {
-        setWeeklyData(resWeekly.data);
-      }
-      
       setLoading(false);
     }
     loadAll();
@@ -74,22 +63,15 @@ export default function DailyLeaderboard() {
         boxShadow: "8px 8px 0px #000",
         padding: "24px 16px",
       }}>
-        {/* Toggle skeleton */}
         <div style={{ display: "flex", gap: "8px", marginBottom: "20px" }}>
           <div style={{ flex: 1, height: "38px", background: "#E5E7EB", border: "2px solid #000" }} className="skeleton-pulse" />
           <div style={{ flex: 1, height: "38px", background: "#E5E7EB", border: "2px solid #000" }} className="skeleton-pulse" />
         </div>
-
-        {/* Header Skeleton */}
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: "24px", borderBottom: "2px dashed #E5E7EB", paddingBottom: "20px" }}>
           <div style={{ width: "120px", height: "20px", background: "#E5E7EB", border: "2px solid #000" }} className="skeleton-pulse" />
           <div style={{ width: "200px", height: "28px", background: "#E5E7EB", border: "2px solid #000", marginTop: "14px" }} className="skeleton-pulse" />
         </div>
-
-        {/* Dropdown Skeleton */}
         <div style={{ width: "100%", height: "40px", background: "#E5E7EB", border: "2px solid #000", marginBottom: "20px" }} className="skeleton-pulse" />
-
-        {/* Rows Skeleton */}
         <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
           {[1, 2, 3, 4].map((i) => (
             <div 
@@ -111,16 +93,9 @@ export default function DailyLeaderboard() {
             </div>
           ))}
         </div>
-        
         <style dangerouslySetInnerHTML={{ __html: `
-          .skeleton-pulse {
-            animation: pulse 1.5s ease-in-out infinite;
-          }
-          @keyframes pulse {
-            0% { opacity: 0.6; }
-            50% { opacity: 1; }
-            100% { opacity: 0.6; }
-          }
+          .skeleton-pulse { animation: pulse 1.5s ease-in-out infinite; }
+          @keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
         `}} />
       </div>
     );
@@ -136,7 +111,6 @@ export default function DailyLeaderboard() {
     );
   }
 
-  // Filtrar alunos pela categoria selecionada usando a função normalizadora SSoT
   const filteredDailyResults = activeFilter === "geral"
     ? dailyData.results
     : dailyData.results.filter((r) => getLevelInfo(r.performance_level).key === activeFilter);
@@ -275,357 +249,9 @@ export default function DailyLeaderboard() {
 
       {/* ── CONTEÚDO LISTAGEM ── */}
       {viewMode === "diario" ? (
-        /* ──── ABA DIÁRIA ──── */
-        filteredDailyResults.length === 0 ? (
-          <div style={{ 
-            padding: "48px 24px", 
-            textAlign: "center", 
-            background: "#FFF", 
-            border: "3px dashed #000",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: "12px",
-            animation: "entrancePop 0.3s ease"
-          }}>
-            <Medal size={36} color="#000" style={{ opacity: 0.2 }} />
-            <div style={{ fontSize: "12px", fontWeight: 900, color: "#000", textTransform: "uppercase", letterSpacing: "0.1em", lineHeight: 1.4 }}>
-              Nenhum resultado registrado<br />nesta categoria hoje.
-            </div>
-          </div>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-            {filteredDailyResults.map((aluno, index) => {
-              const isTop3 = index < 3;
-              const rankColors = ["#FBBF24", "#9CA3AF", "#B45309"];
-              const rankColor = index < 3 ? rankColors[index] : "#E5E7EB";
-              const levelInfo = getLevelInfo(aluno.performance_level);
-
-              const cardBg = index === 0 
-                ? "linear-gradient(135deg, #FFFDF2 0%, #FFFBEA 100%)"
-                : index === 1
-                ? "linear-gradient(135deg, #FAFAFA 0%, #F4F4F5 100%)"
-                : index === 2
-                ? "linear-gradient(135deg, #FFFBF9 0%, #FFF7F2 100%)"
-                : "#FFF";
-
-              return (
-                <div 
-                  key={aluno.student_id}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "12px",
-                    padding: "12px 14px",
-                    background: cardBg,
-                    border: "2px solid #000",
-                    boxShadow: isTop3 ? `4px 4px 0px ${rankColor}` : "3px 3px 0px #000",
-                    position: "relative",
-                    transition: "transform 0.15s ease, box-shadow 0.15s ease",
-                    animation: "slideInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) both",
-                    animationDelay: `${index * 0.05}s`
-                  }}
-                >
-                  {index === 0 && (
-                    <div style={{ position: "absolute", top: 0, left: 0, width: "4px", height: "100%", background: rankColor }} />
-                  )}
-
-                  {/* Avatar + Rank */}
-                  <div style={{ position: "relative", width: "44px", height: "44px", flexShrink: 0 }}>
-                    <AthleteAvatar
-                      url={aluno.avatar_url}
-                      name={aluno.student_name}
-                      size={44}
-                      borderWidth={2}
-                      shadowSize={0}
-                      rounded={true}
-                    />
-                    <div style={{
-                      position: "absolute",
-                      top: "-4px",
-                      left: "-4px",
-                      width: "18px",
-                      height: "18px",
-                      borderRadius: "50%",
-                      border: "1.5px solid #000",
-                      background: index < 3 ? rankColor : "#FFF",
-                      color: index < 3 ? "#000" : "#666",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontSize: "9px",
-                      fontWeight: 950,
-                      boxShadow: "1px 1px 0px #000",
-                      zIndex: 2
-                    }}>
-                      {index + 1}
-                    </div>
-                  </div>
-
-                  {/* Nome & Badges */}
-                  <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "center" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "4px", width: "100%" }}>
-                      {isTop3 && (
-                        <div style={{ flexShrink: 0, display: "flex", alignItems: "center" }}>
-                          {index === 0 && <Trophy size={13} fill="#FBBF24" color="#000" />}
-                          {index === 1 && <Trophy size={13} fill="#9CA3AF" color="#000" />}
-                          {index === 2 && <Trophy size={13} fill="#B45309" color="#000" />}
-                        </div>
-                      )}
-                      <span style={{ 
-                        fontSize: "14px", 
-                        fontWeight: 950, 
-                        color: "#000", 
-                        lineHeight: "1.1", 
-                        textTransform: "uppercase",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                        flex: 1,
-                        minWidth: 0
-                      }}>
-                        {formatDisplayName(aluno.student_name)}
-                      </span>
-                    </div>
-                    
-                    <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "6px", flexWrap: "wrap" }}>
-                      <span style={{ 
-                        fontSize: "8px", 
-                        fontWeight: 900, 
-                        background: levelInfo.color, 
-                        color: levelInfo.textColor || "#FFF", 
-                        padding: "2px 6px", 
-                        border: "1px solid #000", 
-                        textTransform: "uppercase",
-                        letterSpacing: "0.05em",
-                        display: "inline-flex",
-                        alignItems: "center",
-                        lineHeight: "1",
-                        whiteSpace: "nowrap"
-                      }}>
-                        {levelInfo.label}
-                      </span>
-
-                      <span style={{
-                        fontSize: "8px",
-                        fontWeight: 900,
-                        background: "#000",
-                        color: "#FFF",
-                        padding: "2px 6px",
-                        border: "1px solid #000",
-                        textTransform: "uppercase",
-                        fontFamily: "var(--font-mono, monospace)",
-                        letterSpacing: "0.02em",
-                        display: "inline-flex",
-                        alignItems: "center",
-                        lineHeight: "1",
-                        whiteSpace: "nowrap"
-                      }}>
-                        {aluno.result_display}
-                      </span>
-
-                      {aluno.is_cap && (
-                        <span style={{ 
-                          fontSize: "8px", 
-                          fontWeight: 900, 
-                          background: "#FEF2F2",
-                          color: "#EF4444", 
-                          padding: "2px 6px", 
-                          border: "1px solid #EF4444", 
-                          textTransform: "uppercase", 
-                          display: "inline-flex", 
-                          alignItems: "center", 
-                          gap: "2px",
-                          lineHeight: "1",
-                          whiteSpace: "nowrap"
-                        }}>
-                          <Flame size={8} style={{ flexShrink: 0 }} />
-                          <span>CAP</span>
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )
+        <DailyResultsList results={filteredDailyResults} formatDisplayName={formatDisplayName} />
       ) : (
-        /* ──── ABA SEMANAL ──── */
-        filteredWeeklyResults.length === 0 ? (
-          <div style={{ 
-            padding: "48px 24px", 
-            textAlign: "center", 
-            background: "#FFF", 
-            border: "3px dashed #000",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: "12px",
-            animation: "entrancePop 0.3s ease"
-          }}>
-            <Medal size={36} color="#000" style={{ opacity: 0.2 }} />
-            <div style={{ fontSize: "12px", fontWeight: 900, color: "#000", textTransform: "uppercase", letterSpacing: "0.1em", lineHeight: 1.4 }}>
-              Nenhum resultado registrado<br />nesta categoria na semana.
-            </div>
-          </div>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-            {filteredWeeklyResults.map((aluno, index) => {
-              const isTop3 = index < 3;
-              const rankColors = ["#FBBF24", "#9CA3AF", "#B45309"];
-              const rankColor = index < 3 ? rankColors[index] : "#E5E7EB";
-              const levelInfo = getLevelInfo(aluno.performance_level);
-
-              const cardBg = index === 0 
-                ? "linear-gradient(135deg, #FFFDF2 0%, #FFFBEA 100%)"
-                : index === 1
-                ? "linear-gradient(135deg, #FAFAFA 0%, #F4F4F5 100%)"
-                : index === 2
-                ? "linear-gradient(135deg, #FFFBF9 0%, #FFF7F2 100%)"
-                : "#FFF";
-
-              return (
-                <div 
-                  key={aluno.student_id}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "12px",
-                    padding: "12px 14px",
-                    background: cardBg,
-                    border: "2px solid #000",
-                    boxShadow: isTop3 ? `4px 4px 0px ${rankColor}` : "3px 3px 0px #000",
-                    position: "relative",
-                    transition: "transform 0.15s ease, box-shadow 0.15s ease",
-                    animation: "slideInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) both",
-                    animationDelay: `${index * 0.05}s`
-                  }}
-                >
-                  {index === 0 && (
-                    <div style={{ position: "absolute", top: 0, left: 0, width: "4px", height: "100%", background: rankColor }} />
-                  )}
-
-                  {/* Avatar + Rank */}
-                  <div style={{ position: "relative", width: "44px", height: "44px", flexShrink: 0 }}>
-                    <AthleteAvatar
-                      url={aluno.avatar_url}
-                      name={aluno.student_name}
-                      size={44}
-                      borderWidth={2}
-                      shadowSize={0}
-                      rounded={true}
-                    />
-                    <div style={{
-                      position: "absolute",
-                      top: "-4px",
-                      left: "-4px",
-                      width: "18px",
-                      height: "18px",
-                      borderRadius: "50%",
-                      border: "1.5px solid #000",
-                      background: index < 3 ? rankColor : "#FFF",
-                      color: index < 3 ? "#000" : "#666",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontSize: "9px",
-                      fontWeight: 950,
-                      boxShadow: "1px 1px 0px #000",
-                      zIndex: 2
-                    }}>
-                      {index + 1}
-                    </div>
-                  </div>
-
-                  {/* Nome & Badges */}
-                  <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "center" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "4px", width: "100%" }}>
-                      {isTop3 && (
-                        <div style={{ flexShrink: 0, display: "flex", alignItems: "center" }}>
-                          {index === 0 && <Trophy size={13} fill="#FBBF24" color="#000" />}
-                          {index === 1 && <Trophy size={13} fill="#9CA3AF" color="#000" />}
-                          {index === 2 && <Trophy size={13} fill="#B45309" color="#000" />}
-                        </div>
-                      )}
-                      <span style={{ 
-                        fontSize: "14px", 
-                        fontWeight: 950, 
-                        color: "#000", 
-                        lineHeight: "1.1", 
-                        textTransform: "uppercase",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                        flex: 1,
-                        minWidth: 0
-                      }}>
-                        {formatDisplayName(aluno.student_name)}
-                      </span>
-                    </div>
-                    
-                    <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "6px", flexWrap: "wrap" }}>
-                      {/* Categoria */}
-                      <span style={{ 
-                        fontSize: "8px", 
-                        fontWeight: 900, 
-                        background: levelInfo.color, 
-                        color: levelInfo.textColor || "#FFF", 
-                        padding: "2px 6px", 
-                        border: "1px solid #000", 
-                        textTransform: "uppercase",
-                        letterSpacing: "0.05em",
-                        display: "inline-flex",
-                        alignItems: "center",
-                        lineHeight: "1",
-                        whiteSpace: "nowrap"
-                      }}>
-                        {levelInfo.label}
-                      </span>
-
-                      {/* Frequência (WODs Concluídos) */}
-                      <span style={{ 
-                        fontSize: "8px", 
-                        fontWeight: 900, 
-                        background: "#F3F4F6", 
-                        color: "#000", 
-                        padding: "2px 6px", 
-                        border: "1px solid #000", 
-                        textTransform: "uppercase",
-                        letterSpacing: "0.05em",
-                        display: "inline-flex",
-                        alignItems: "center",
-                        lineHeight: "1",
-                        whiteSpace: "nowrap"
-                      }}>
-                        {aluno.wods_completed} WODS
-                      </span>
-
-                      {/* Pontos Acumulados */}
-                      <span style={{
-                        fontSize: "8px",
-                        fontWeight: 900,
-                        background: "#000",
-                        color: "#FFF",
-                        padding: "2px 6px",
-                        border: "1px solid #000",
-                        textTransform: "uppercase",
-                        fontFamily: "var(--font-mono, monospace)",
-                        letterSpacing: "0.02em",
-                        display: "inline-flex",
-                        alignItems: "center",
-                        lineHeight: "1",
-                        whiteSpace: "nowrap"
-                      }}>
-                        {aluno.total_points} PTS
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )
+        <WeeklyResultsList results={filteredWeeklyResults} formatDisplayName={formatDisplayName} />
       )}
 
       <style dangerouslySetInnerHTML={{ __html: `
