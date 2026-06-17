@@ -1,7 +1,8 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { cache } from "react";
 
-export async function createClient() {
+export const createClient = cache(async () => {
   const cookieStore = await cookies();
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -13,7 +14,7 @@ export async function createClient() {
     return createServerClient("", "", { cookies: { getAll: () => [], setAll: () => {} } });
   }
 
-  return createServerClient(
+  const client = createServerClient(
     supabaseUrl,
     supabaseAnonKey,
     {
@@ -35,4 +36,10 @@ export async function createClient() {
       },
     }
   );
-}
+
+  // Cache getSession/getUser responses on the client instance for this request lifecycle
+  const originalGetUser = client.auth.getUser.bind(client.auth);
+  client.auth.getUser = cache(originalGetUser);
+
+  return client;
+});
