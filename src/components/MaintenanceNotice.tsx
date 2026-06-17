@@ -17,14 +17,14 @@ export default function MaintenanceNotice({ studentName = "Atleta" }: Maintenanc
 
   useEffect(() => {
     // Verifica se o aluno já visualizou e fechou o aviso nesta semana
-    const hasSeenNotice = localStorage.getItem("coliseu-maintenance-seen-v1");
+    const hasSeenNotice = localStorage.getItem("coliseu-maintenance-seen-v2");
     if (!hasSeenNotice) {
       setIsOpen(true);
     }
   }, []);
 
   const handleClose = () => {
-    localStorage.setItem("coliseu-maintenance-seen-v1", "true");
+    localStorage.setItem("coliseu-maintenance-seen-v2", "true");
     setIsOpen(false);
   };
 
