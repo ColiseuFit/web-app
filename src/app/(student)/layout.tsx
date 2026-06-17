@@ -22,6 +22,8 @@ export const metadata: Metadata = {
   },
 };
 
+import MaintenanceNotice from "@/components/MaintenanceNotice";
+
 export default function StudentLayout({
   children,
 }: {
@@ -29,6 +31,7 @@ export default function StudentLayout({
 }) {
   return (
     <div className="student-layout-wrapper">
+      <MaintenanceNotice />
       {children}
     </div>
   );
