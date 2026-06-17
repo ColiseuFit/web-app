@@ -4,7 +4,7 @@ import React from "react";
 import { Trophy, Medal } from "lucide-react";
 import AthleteAvatar from "@/components/Identity/AthleteAvatar";
 import { getLevelInfo } from "@/lib/constants/levels";
-import { WeeklyLeaderboardEntry } from "./actions-leaderboard";
+import type { WeeklyLeaderboardEntry } from "./actions-weekly-leaderboard";
 
 interface WeeklyResultsListProps {
   results: WeeklyLeaderboardEntry[];

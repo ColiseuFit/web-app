@@ -1,18 +1,21 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { getDailyLeaderboard, DailyLeaderboardData } from "./actions-daily-leaderboard";
-import { getWeeklyLeaderboard, WeeklyLeaderboardData } from "./actions-weekly-leaderboard";
+import { getDailyLeaderboard as getDailyLeaderboardImpl } from "./actions-daily-leaderboard";
+import { getWeeklyLeaderboard as getWeeklyLeaderboardImpl } from "./actions-weekly-leaderboard";
 
-export { getDailyLeaderboard } from "./actions-daily-leaderboard";
-export { getWeeklyLeaderboard } from "./actions-weekly-leaderboard";
-export type { LeaderboardEntry, DailyLeaderboardData } from "./actions-daily-leaderboard";
-export type { WeeklyLeaderboardEntry, WeeklyLeaderboardData } from "./actions-weekly-leaderboard";
+export async function getDailyLeaderboard(dateStr?: string) {
+  return getDailyLeaderboardImpl(dateStr);
+}
+
+export async function getWeeklyLeaderboard() {
+  return getWeeklyLeaderboardImpl();
+}
 
 export async function getCombinedLeaderboard(dateStr?: string): Promise<{
   success: boolean;
-  daily?: DailyLeaderboardData | null;
-  weekly?: WeeklyLeaderboardData | null;
+  daily?: any;
+  weekly?: any;
   error?: string;
 }> {
   const supabase = await createClient();
@@ -21,8 +24,8 @@ export async function getCombinedLeaderboard(dateStr?: string): Promise<{
 
   try {
     const [resDaily, resWeekly] = await Promise.all([
-      getDailyLeaderboard(dateStr),
-      getWeeklyLeaderboard()
+      getDailyLeaderboardImpl(dateStr),
+      getWeeklyLeaderboardImpl()
     ]);
 
     return {

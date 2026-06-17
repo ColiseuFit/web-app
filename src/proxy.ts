@@ -29,8 +29,8 @@ export async function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname;
   const hostname = request.headers.get("host") || "";
 
-  // EARLY BYPASS: Auth, Verification, Webhooks, TV Dashboard and Version routes must be handled by their respective handlers
-  // without interference from domain-specific redirect logic during the handshake.
+  // EARLY BYPASS: Auth, Verification, Webhooks, TV Dashboard, Version routes, SEO metadata and App Links must be handled
+  // without interference from domain-specific redirect or geoblocking logic.
   if (
     path.startsWith('/auth') || 
     path.startsWith('/api/auth') || 
@@ -38,7 +38,10 @@ export async function proxy(request: NextRequest) {
     path.startsWith('/api/internal') || 
     path.startsWith('/api/tv') || 
     path.startsWith('/tv') || 
-    path === '/api/version'
+    path === '/api/version' ||
+    path === '/robots.txt' ||
+    path === '/sitemap.xml' ||
+    path.startsWith('/.well-known/')
   ) {
     return supabaseResponse;
   }
@@ -228,8 +231,9 @@ export const config = {
      * - _next/static, _next/image: Ativos internos do framework.
      * - favicon.ico, icon.svg, manifest.*: Identidade visual básica.
      * - apple-icon, api/version: Essenciais para o funcionamento do PWA e atualizações.
+     * - robots.txt, sitemap.xml, .well-known/*: Essenciais para SEO e App Links.
      * - Extensões de imagem comuns para evitar interceptação de ativos públicos.
      */
-    "/((?!_next/static|_next/image|favicon.ico|icon.svg|apple-icon|api/version|api/tv|manifest.json|manifest.webmanifest|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|icon.svg|apple-icon|api/version|api/tv|manifest.json|manifest.webmanifest|robots\\.txt|sitemap\\.xml|\\.well-known/.*|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

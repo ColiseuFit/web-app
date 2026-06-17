@@ -2,11 +2,9 @@
 
 import React, { useState, useEffect } from "react";
 import { Calendar } from "lucide-react";
-import { 
-  getCombinedLeaderboard, 
-  DailyLeaderboardData, 
-  WeeklyLeaderboardData 
-} from "./actions-leaderboard";
+import { getCombinedLeaderboard } from "./actions-leaderboard";
+import type { DailyLeaderboardData } from "./actions-daily-leaderboard";
+import type { WeeklyLeaderboardData } from "./actions-weekly-leaderboard";
 import { getLevelInfo, ALL_LEVELS } from "@/lib/constants/levels";
 import DailyResultsList from "./DailyResultsList";
 import WeeklyResultsList from "./WeeklyResultsList";
