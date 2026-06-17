@@ -99,7 +99,7 @@ export function VersionGuard() {
           </div>
           <div className="flex flex-col">
             <h3 className="text-white font-black text-lg md:text-xl uppercase leading-none tracking-tighter">
-              Arena Atualizada
+              Coliseu Atualizado
             </h3>
             <p className="text-black/80 text-[10px] md:text-[11px] font-bold uppercase tracking-widest mt-1">
               Versão {serverVersion || "disponível"}

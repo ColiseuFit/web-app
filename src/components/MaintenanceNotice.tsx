@@ -105,7 +105,7 @@ export default function MaintenanceNotice() {
           textTransform: "uppercase",
           letterSpacing: "-0.01em"
         }}>
-          Arena em Evolução!
+          Coliseu em Evolução!
         </h3>
         
         <p style={{ 
