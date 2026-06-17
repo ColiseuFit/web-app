@@ -225,15 +225,12 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    /*
-     * Matcher de rotas protegidas.
-     * EXCEÇÕES (Whitelist):
-     * - _next/static, _next/image: Ativos internos do framework.
-     * - favicon.ico, icon.svg, manifest.*: Identidade visual básica.
-     * - apple-icon, api/version: Essenciais para o funcionamento do PWA e atualizações.
-     * - robots.txt, sitemap.xml, .well-known/*: Essenciais para SEO e App Links.
-     * - Extensões de imagem comuns para evitar interceptação de ativos públicos.
-     */
-    "/((?!_next/static|_next/image|favicon.ico|icon.svg|apple-icon|api/version|api/tv|manifest.json|manifest.webmanifest|robots\\.txt|sitemap\\.xml|\\.well-known/.*|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    {
+      source: "/((?!_next/static|_next/image|favicon.ico|icon.svg|apple-icon|api/version|api/tv|manifest.json|manifest.webmanifest|robots\\.txt|sitemap\\.xml|\\.well-known/.*|.*\\.(?:svg|png|jpg|jpeg|gif|webp|woff|woff2|ttf|mp4)$).*)",
+      missing: [
+        { type: "header", key: "next-router-prefetch" },
+        { type: "header", key: "purpose", value: "prefetch" },
+      ],
+    },
   ],
 };
