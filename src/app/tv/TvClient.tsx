@@ -129,12 +129,15 @@ export default function TvClient() {
       setLoading(false);
       setIsRefreshing(false);
 
-      // Agenda a próxima busca apenas após a conclusão da requisição atual
-      // Evita o empilhamento de requisições pendentes se o banco de dados estiver lento
+      // Agenda a próxima busca apenas após a conclusão da requisição atual.
+      // Evita o empilhamento de requisições pendentes se o banco de dados estiver lento.
+      // Intervalo de 45s alinhado ao ciclo de cache CDN (s-maxage=60, stale-while-revalidate=30):
+      // com 15s o cliente acordava 4× por ciclo — 3 delas eram HIT desnecessário no CDN.
+      // Com 45s mantemos dados frescos e reduzimos ~67% dos wakeups por TV ativa.
       if (pollingTimerRef.current) clearTimeout(pollingTimerRef.current);
       pollingTimerRef.current = setTimeout(() => {
         fetchData(true);
-      }, 15000);
+      }, 45000);
     }
   }, []);
 
