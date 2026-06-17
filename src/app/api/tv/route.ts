@@ -39,12 +39,12 @@ export async function GET(request: Request) {
     };
 
     // Cabeçalho de cache CDN de borda da Vercel
-    // Caches por 30 segundos, servindo cache obsoleto por mais 15 segundos enquanto revalida em background
+    // Caches por 60 segundos, servindo cache obsoleto por mais 30 segundos enquanto revalida em background
     return NextResponse.json(payload, {
       headers: {
-        "Cache-Control": "public, s-maxage=30, stale-while-revalidate=15",
-        "CDN-Cache-Control": "public, s-maxage=30",
-        "Vercel-CDN-Cache-Control": "public, s-maxage=30"
+        "Cache-Control": "public, s-maxage=60, stale-while-revalidate=30",
+        "CDN-Cache-Control": "public, s-maxage=60",
+        "Vercel-CDN-Cache-Control": "public, s-maxage=60"
       }
     });
 
