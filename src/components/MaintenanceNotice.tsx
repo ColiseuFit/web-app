@@ -8,7 +8,11 @@ import { Sparkles } from "lucide-react";
  * Exibe uma mensagem otimista e guarda no localStorage para não perturbar o aluno novamente.
  * Segue os padrões estéticos Neo-Brutalistas do Coliseu.
  */
-export default function MaintenanceNotice() {
+interface MaintenanceNoticeProps {
+  studentName?: string;
+}
+
+export default function MaintenanceNotice({ studentName = "Atleta" }: MaintenanceNoticeProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
@@ -116,6 +120,8 @@ export default function MaintenanceNotice() {
           marginBottom: "28px",
           opacity: 0.85
         }}>
+          Olá, <span style={{ color: "#E31B23" }}>{studentName}</span>!
+          <br /><br />
           Estamos trabalhando em melhorias em nossa infraestrutura esta semana para deixar o seu aplicativo ainda mais rápido e estável. 
           <br /><br />
           Durante esse processo, você pode notar oscilações temporárias em algumas funções. Agradecemos a paciência e a parceria de sempre!

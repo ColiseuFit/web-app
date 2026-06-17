@@ -22,16 +22,34 @@ export const metadata: Metadata = {
   },
 };
 
+import { createClient } from "@/lib/supabase/server";
 import MaintenanceNotice from "@/components/MaintenanceNotice";
 
-export default function StudentLayout({
+export default async function StudentLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  let firstName = "Atleta";
+  if (user) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("full_name, display_name")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    const rawName = profile?.display_name || profile?.full_name;
+    if (rawName) {
+      firstName = rawName.trim().split(" ")[0];
+    }
+  }
+
   return (
     <div className="student-layout-wrapper">
-      <MaintenanceNotice />
+      <MaintenanceNotice studentName={firstName} />
       {children}
     </div>
   );
