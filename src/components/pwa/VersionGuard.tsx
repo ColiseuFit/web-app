@@ -32,10 +32,8 @@ export function VersionGuard() {
       isCheckingRef.current = true;
       
       // Usamos XMLHttpRequest para compatibilidade total (iOS 9 / iPad 2)
-      // onde o 'fetch' não é nativo.
       const xhr = new XMLHttpRequest();
-      // Cache busting preventivo via timestamp
-      xhr.open("GET", "/api/version?t=" + new Date().getTime(), true);
+      xhr.open("GET", "/api/version", true);
       
       xhr.onreadystatechange = function() {
         if (xhr.readyState === 4) {
