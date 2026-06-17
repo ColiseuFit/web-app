@@ -5,6 +5,8 @@ export const size = {
   height: 180,
 };
 export const contentType = "image/png";
+export const revalidate = 604800; // Cache por 1 semana (604800 segundos)
+
 
 /**
  * Gerador Dinâmico de Ícone Apple (Apple Touch Icon).

@@ -1,30 +1,40 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, unstable_cache, revalidateTag } from "next/cache";
+
+// Cached fetcher for box settings
+const getCachedBoxSettingsFn = unstable_cache(
+  async () => {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("box_settings")
+      .select("key, value");
+
+    if (error) {
+      console.error("Error fetching box settings:", error);
+      return {};
+    }
+
+    // Convert array of {key, value} to object
+    return data.reduce((acc, curr) => {
+      acc[curr.key] = curr.value;
+      return acc;
+    }, {} as Record<string, string>);
+  },
+  ["box-settings"],
+  { revalidate: 300, tags: ["box-settings"] }
+);
 
 /**
  * getBoxSettings: Recupera todas as configurações do box da tabela `box_settings`.
  * Essencial para o funcionamento do Dashboard e regras de check-in (SSoT).
+ * Utiliza o Next.js Data Cache (unstable_cache) com tag 'box-settings' e expira em 5 min.
  * 
  * @returns {Promise<Record<string, string>>} Mapa de chave/valor para acesso imediato.
  */
 export async function getBoxSettings() {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("box_settings")
-    .select("key, value");
-
-  if (error) {
-    console.error("Error fetching box settings:", error);
-    return {};
-  }
-
-  // Convert array of {key, value} to object
-  return data.reduce((acc, curr) => {
-    acc[curr.key] = curr.value;
-    return acc;
-  }, {} as Record<string, string>);
+  return getCachedBoxSettingsFn();
 }
 
 /**
@@ -66,7 +76,8 @@ export async function updateBoxSettingsAction(settings: Record<string, string>) 
       .eq("key", "check_in");
   }
 
-  // REVALIDATION
+  // REVALIDATION & CACHE INVALIDATION
+  revalidateTag("box-settings", { expire: 0 });
   revalidatePath("/admin/settings");
   revalidatePath("/admin/turmas");
   revalidatePath("/(student)/dashboard", "layout"); // Update name/whatsapp if changed
@@ -74,6 +85,7 @@ export async function updateBoxSettingsAction(settings: Record<string, string>) 
   
   return { success: true };
 }
+
 
 /**
  * Updates a points rule.
