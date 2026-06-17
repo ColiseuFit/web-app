@@ -117,7 +117,7 @@ export async function updateWodResult(
   // 3. Validação do formato do Score baseado no result_type do WOD
   const isValidFormat = validateWodResultValue(
     validation.data.result, 
-    wod.result_type || "reps"
+    wod.result_type || "text"
   );
   if (!isValidFormat) {
     return { error: "Formato do resultado incompatível com o treino." };

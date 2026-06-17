@@ -180,7 +180,7 @@ export default function ResultEntryBlock({
           // Sanitização estrita contra injeção e truncamento em 50 caracteres
           const sanitized = val.trim().slice(0, 50);
           if (sanitized.length === 0) continue;
-          partsRes.push(sanitized);
+          partsRes.push(`text:${sanitized}`);
           partsDisplay.push(sanitized);
         } else {
           const numVal = Number(val);
