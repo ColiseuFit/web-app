@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient as createAdminClient } from "@supabase/supabase-js";
-import { createClient } from "@/lib/supabase/server";
+import { createClient , getAuthUser } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { Resend } from "resend";
 
@@ -17,7 +17,7 @@ import { Resend } from "resend";
  */
 export async function approvePreRegistration(preRegistrationId: string, customLevel?: string, membershipType: string = 'club') {
   const supabase = await createClient();
-  const { data: { user: currentUser } } = await supabase.auth.getUser();
+  const currentUser = await getAuthUser();
   if (!currentUser) return { error: "Sem sessão logada." };
 
   const { data: roleData } = await supabase
@@ -302,7 +302,7 @@ export async function approvePreRegistration(preRegistrationId: string, customLe
  */
 export async function rejectPreRegistration(preRegistrationId: string) {
   const supabase = await createClient();
-  const { data: { user: currentUser } } = await supabase.auth.getUser();
+  const currentUser = await getAuthUser();
   if (!currentUser) return { error: "Sem sessão logada." };
 
   const { data: roleData } = await supabase
@@ -350,7 +350,7 @@ export async function rejectPreRegistration(preRegistrationId: string) {
  */
 export async function updatePreRegistration(preRegistrationId: string, formData: FormData) {
   const supabase = await createClient();
-  const { data: { user: currentUser } } = await supabase.auth.getUser();
+  const currentUser = await getAuthUser();
   if (!currentUser) return { error: "Sem sessão logada." };
 
   const { data: roleData } = await supabase
@@ -414,7 +414,7 @@ export async function updatePreRegistration(preRegistrationId: string, formData:
  */
 export async function resendInviteEmail(studentId: string) {
   const supabase = await createClient();
-  const { data: { user: currentUser } } = await supabase.auth.getUser();
+  const currentUser = await getAuthUser();
   if (!currentUser) return { error: "Sem sessão logada." };
 
   const { data: roleData } = await supabase

@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient , getAuthUser } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 
 export type GamificationActionResponse = {
@@ -24,7 +24,7 @@ export async function adjustStudentPoints(
   reason?: string
 ): Promise<GamificationActionResponse> {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
 
   if (!user) {
     return { error: "Não autenticado." };
@@ -86,7 +86,7 @@ export async function correctStudentPoints(
   totalDelta: number
 ): Promise<GamificationActionResponse> {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
 
   if (!user) {
     return { error: "Não autenticado." };
@@ -117,7 +117,7 @@ export async function correctStudentPoints(
  */
 export async function resetAllGamification(): Promise<GamificationActionResponse> {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
 
   if (!user) {
     return { error: "Não autenticado." };

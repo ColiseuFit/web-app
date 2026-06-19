@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient , getAuthUser } from "@/lib/supabase/server";
 import { USER_ROLES } from "@/lib/constants/roles";
 
 /**
@@ -66,7 +66,7 @@ export async function getCoachResults(filters?: {
 }): Promise<{ success: boolean; groups: CoachResultGroup[]; error?: string }> {
   try {
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getAuthUser();
     if (!user) return { success: false, groups: [], error: "Não autenticado." };
 
     // RBAC Gate: Apenas Coach, Admin ou Reception
@@ -282,7 +282,7 @@ export async function flagResultAction(
 ): Promise<{ success?: boolean; error?: string }> {
   try {
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getAuthUser();
     if (!user) return { error: "Não autenticado." };
 
     // RBAC Gate
@@ -333,7 +333,7 @@ export async function moderatorClearWodResult(
 ): Promise<{ success?: boolean; error?: string }> {
   try {
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getAuthUser();
     if (!user) return { error: "Não autenticado." };
 
     // RBAC Gate

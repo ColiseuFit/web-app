@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient , getAuthUser } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { Metadata } from "next";
 import Link from "next/link";
@@ -53,7 +53,7 @@ interface PageProps {
  */
 export default async function AppDashboard({ searchParams }: PageProps) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
 
   if (!user) redirect("/login");
 

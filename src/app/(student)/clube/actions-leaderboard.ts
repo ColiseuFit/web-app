@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient , getAuthUser } from "@/lib/supabase/server";
 import { getDailyLeaderboard as getDailyLeaderboardImpl } from "./actions-daily-leaderboard";
 import { getWeeklyLeaderboard as getWeeklyLeaderboardImpl } from "./actions-weekly-leaderboard";
 
@@ -19,7 +19,7 @@ export async function getCombinedLeaderboard(dateStr?: string): Promise<{
   error?: string;
 }> {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) return { success: false, error: "Não autenticado." };
 
   try {

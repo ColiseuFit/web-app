@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient , getAuthUser } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { wodSchema } from "@/lib/validations/security_schemas";
 
@@ -16,7 +16,7 @@ import { wodSchema } from "@/lib/validations/security_schemas";
  */
 export async function upsertWod(formData: FormData) {
   const supabase = await createClient();
-  const { data: { user: currentUser } } = await supabase.auth.getUser();
+  const currentUser = await getAuthUser();
   if (!currentUser) return { error: "Sessão expirada." };
 
   const { data: roleData } = await supabase.from("user_roles").select("role").eq("user_id", currentUser.id).single();
@@ -74,7 +74,7 @@ export async function upsertWod(formData: FormData) {
  */
 export async function deleteWod(date: string) {
   const supabase = await createClient();
-  const { data: { user: currentUser } } = await supabase.auth.getUser();
+  const currentUser = await getAuthUser();
   if (!currentUser) return { error: "Sessão expirada." };
 
   const { data: roleData } = await supabase.from("user_roles").select("role").eq("user_id", currentUser.id).single();

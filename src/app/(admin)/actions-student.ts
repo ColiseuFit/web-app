@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient as createAdminClient } from "@supabase/supabase-js";
-import { createClient } from "@/lib/supabase/server";
+import { createClient , getAuthUser } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { createStudentSchema, profileSchema, updateAuthSchema } from "@/lib/validations/security_schemas";
 
@@ -40,7 +40,7 @@ export async function createStudent(formData: FormData) {
 
   // 1. Verifica a sessão atual e se ele é admin/reception
   const supabase = await createClient();
-  const { data: { user: currentUser } } = await supabase.auth.getUser();
+  const currentUser = await getAuthUser();
   if (!currentUser) return { error: "Sem sessão logada." };
 
   const { data: roleData } = await supabase
@@ -143,7 +143,7 @@ export async function createStudent(formData: FormData) {
  */
 export async function updateStudent(studentId: string, formData: FormData) {
   const supabase = await createClient();
-  const { data: { user: currentUser } } = await supabase.auth.getUser();
+  const currentUser = await getAuthUser();
   if (!currentUser) return { error: "Sessão expirada." };
 
   // Permission Check
@@ -248,7 +248,7 @@ export async function getStudentBiometricsInfo(studentId: string) {
  */
 export async function deleteStudent(studentId: string) {
   const supabase = await createClient();
-  const { data: { user: currentUser } } = await supabase.auth.getUser();
+  const currentUser = await getAuthUser();
   if (!currentUser) return { error: "Sessão expirada." };
 
   // Only admin can delete (more strict than create)
@@ -292,7 +292,7 @@ export async function deleteStudent(studentId: string) {
  */
 export async function updateStudentAuth(studentId: string, formData: FormData) {
   const supabase = await createClient();
-  const { data: { user: currentUser } } = await supabase.auth.getUser();
+  const currentUser = await getAuthUser();
   if (!currentUser) return { error: "Sessão expirada." };
 
   // Only admin can manage credentials
@@ -372,4 +372,258 @@ export async function updateStudentAuth(studentId: string, formData: FormData) {
 
   revalidatePath("/admin/alunos");
   return { success: true };
+}
+
+/**
+ * Busca estatísticas consolidadas de presença, faltas (no-shows) e inatividade de alunos.
+ *
+ * @security
+ * - Role: Restrito a Admin e Recepção (validação em banco de dados).
+ * - RLS: Usa as políticas padrões do Supabase Client.
+ * 
+ * @param {string} dateFrom - Data de início (inclusive) no formato ISO YYYY-MM-DD.
+ * @param {string} dateTo - Data de término (inclusive) no formato ISO YYYY-MM-DD.
+ * @returns {Promise<{ success?: boolean; error?: string; stats?: any }>} Objeto contendo o payload de estatísticas consolidadas e listas.
+ * @throws {Error} Retorna erro estruturado amigável em caso de falha no banco de dados.
+ */
+export async function getAttendanceDashboardStats(dateFrom: string, dateTo: string) {
+  const supabase = await createClient();
+  const currentUser = await getAuthUser();
+  if (!currentUser) return { error: "Sem sessão logada.", stats: null };
+
+  const { data: roleData } = await supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", currentUser.id)
+    .single();
+
+  if (!roleData || (roleData.role !== "admin" && roleData.role !== "reception")) {
+    return { error: "Acesso negado. Apenas Recepção ou Admin.", stats: null };
+  }
+
+  // 1. Check-ins no período
+  const { data: checkins, error: checkinsError } = await supabase
+    .from("check_ins")
+    .select(`
+      id,
+      status,
+      score_points,
+      validated_at,
+      created_at,
+      student_id,
+      class_slot_id,
+      wod_id,
+      wods!inner(date, title),
+      class_slots(id, name, time_start, capacity),
+      profiles:student_id(id, full_name, display_name, level, avatar_url, phone, email)
+    `)
+    .gte("wods.date", dateFrom)
+    .lte("wods.date", dateTo);
+
+  if (checkinsError) {
+    console.error("Erro ao buscar check-ins para dashboard:", checkinsError);
+    return { error: "Erro ao carregar dados de check-ins.", stats: null };
+  }
+
+  // 2. Aulas finalizadas (sessions) no período
+  const { data: sessions, error: sessionsError } = await supabase
+    .from("class_sessions")
+    .select(`
+      id,
+      class_slot_id,
+      date,
+      class_slots(capacity)
+    `)
+    .gte("date", dateFrom)
+    .lte("date", dateTo);
+
+  if (sessionsError) {
+    console.error("Erro ao buscar aulas fechadas:", sessionsError);
+  }
+
+  // 3. Excluir admins/coaches da contagem de alunos ativos e inativos
+  const { data: staffRoles } = await supabase
+    .from("user_roles")
+    .select("user_id")
+    .in("role", ["admin", "coach"]);
+  const staffIds = (staffRoles || []).map((r: any) => r.user_id);
+
+  let profilesQuery = supabase
+    .from("profiles")
+    .select("id, full_name, display_name, level, avatar_url, phone, email, created_at");
+  if (staffIds.length > 0) {
+    profilesQuery = profilesQuery.not("id", "in", `(${staffIds.join(",")})`);
+  }
+  const { data: allProfiles, error: profilesError } = await profilesQuery;
+
+  if (profilesError) {
+    console.error("Erro ao buscar perfis de alunos:", profilesError);
+  }
+
+  const list = (checkins || []).map((c: any) => ({
+    ...c,
+    profiles: Array.isArray(c.profiles) ? c.profiles[0] : c.profiles,
+    wods: Array.isArray(c.wods) ? c.wods[0] : c.wods,
+    class_slots: Array.isArray(c.class_slots) ? c.class_slots[0] : c.class_slots,
+  })).filter((c: any) => c.profiles); // exclude orphan checkins (e.g. deleted user)
+
+  let totalAttendances = 0;
+  let totalNoShows = 0;
+  const uniqueActiveStudents = new Set<string>();
+  const studentNoShowsCount: Record<string, { student: any, count: number }> = {};
+
+  list.forEach((c: any) => {
+    // skip staff check-ins if any
+    if (staffIds.includes(c.student_id)) return;
+
+    if (c.status === "confirmed") {
+      totalAttendances++;
+      uniqueActiveStudents.add(c.student_id);
+    } else if (c.status === "missed") {
+      totalNoShows++;
+      if (!studentNoShowsCount[c.student_id]) {
+        studentNoShowsCount[c.student_id] = { student: c.profiles, count: 0 };
+      }
+      studentNoShowsCount[c.student_id].count++;
+    } else if (c.status === "checked") {
+      uniqueActiveStudents.add(c.student_id);
+    }
+  });
+
+  const topNoShows = Object.values(studentNoShowsCount)
+    .sort((a, b) => b.count - a.count);
+
+  const totalCompletedClasses = sessions?.length || 0;
+
+  // Occupancy rate calculation
+  let totalCapacity = 0;
+  let totalPresentInSessions = 0;
+
+  (sessions || []).forEach((session: any) => {
+    const slotCapacity = session.class_slots?.capacity || 20;
+    totalCapacity += slotCapacity;
+    
+    const countPresent = list.filter((c: any) => 
+      c.class_slot_id === session.class_slot_id && 
+      c.wods?.date === session.date && 
+      c.status === "confirmed"
+    ).length;
+    totalPresentInSessions += countPresent;
+  });
+
+  const avgOccupancyPercent = totalCapacity > 0 
+    ? Math.round((totalPresentInSessions / totalCapacity) * 100) 
+    : 0;
+
+  // Inactive / Missing Students (Sumidos > 10 dias)
+  // UTC Enforcement: Data de 10 dias atrás gerada no padrão UTC via ISOString para evitar shifts de fuso horário
+  const tenDaysAgo = new Date();
+  tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
+  const tenDaysAgoStr = tenDaysAgo.toISOString().split("T")[0];
+
+  const { data: recentActiveCheckins } = await supabase
+    .from("check_ins")
+    .select("student_id")
+    .in("status", ["confirmed", "checked"])
+    .gte("created_at", tenDaysAgoStr);
+
+  const recentlyActiveStudentIds = new Set((recentActiveCheckins || []).map((c: any) => c.student_id));
+  
+  const missingStudentsList = (allProfiles || [])
+    .filter((p: any) => {
+      const isRecentlyActive = recentlyActiveStudentIds.has(p.id);
+      const isOlderThan10Days = new Date(p.created_at) < tenDaysAgo;
+      return !isRecentlyActive && isOlderThan10Days;
+    });
+
+  const missingStudentIds = missingStudentsList.map((s: any) => s.id);
+  const lastCheckinsMap: Record<string, string> = {};
+  if (missingStudentIds.length > 0) {
+    const { data: lastCheckins } = await supabase
+      .from("check_ins")
+      .select("student_id, created_at")
+      .eq("status", "confirmed")
+      .in("student_id", missingStudentIds)
+      .order("created_at", { ascending: false });
+
+    (lastCheckins || []).forEach((c: any) => {
+      if (!lastCheckinsMap[c.student_id]) {
+        lastCheckinsMap[c.student_id] = new Date(c.created_at).toLocaleDateString("pt-BR", { timeZone: "UTC" });
+      }
+    });
+  }
+
+  const missingStudents = missingStudentsList.map((s: any) => ({
+    id: s.id,
+    full_name: s.full_name,
+    display_name: s.display_name,
+    level: s.level || "iniciante",
+    phone: s.phone,
+    avatar_url: s.avatar_url,
+    email: s.email,
+    last_presence: lastCheckinsMap[s.id] || "Nunca treinou"
+  }));
+
+  const todayDateStr = new Date().toISOString().split("T")[0];
+  const slotsWithActivity = new Map<string, { class_slot_id: string, date: string, name: string, time_start: string }>();
+  list.forEach((c: any) => {
+    const slotId = c.class_slot_id;
+    const date = c.wods?.date;
+    if (slotId && date) {
+      const key = `${slotId}-${date}`;
+      if (!slotsWithActivity.has(key)) {
+        slotsWithActivity.set(key, {
+          class_slot_id: slotId,
+          date,
+          name: c.class_slots?.name || "CrossTraining",
+          time_start: c.class_slots?.time_start || ""
+        });
+      }
+    }
+  });
+
+  const finalizedKeys = new Set((sessions || []).map((s: any) => `${s.class_slot_id}-${s.date}`));
+  const pendingClassesList: any[] = [];
+  slotsWithActivity.forEach((value, key) => {
+    if (value.date <= todayDateStr && !finalizedKeys.has(key)) {
+      pendingClassesList.push({
+        class_slot_id: value.class_slot_id,
+        date: value.date,
+        name: value.name,
+        time_start: value.time_start
+      });
+    }
+  });
+
+  pendingClassesList.sort((a, b) => {
+    if (a.date !== b.date) return a.date.localeCompare(b.date);
+    return a.time_start.localeCompare(b.time_start);
+  });
+
+  return {
+    success: true,
+    stats: {
+      totalAttendances,
+      totalNoShows,
+      uniqueActiveCount: uniqueActiveStudents.size,
+      totalCompletedClasses,
+      totalPendingClasses: pendingClassesList.length,
+      pendingClasses: pendingClassesList,
+      avgOccupancyPercent,
+      topNoShows,
+      missingStudents,
+      inactiveCount: missingStudentsList.length,
+      checkinsList: list
+        .filter((c: any) => !staffIds.includes(c.student_id))
+        .map((c: any) => ({
+          id: c.id,
+          status: c.status,
+          created_at: c.created_at,
+          time_slot: c.time_slot,
+          class_name: c.class_slots?.name || "CrossTraining",
+          wod_date: c.wods?.date || "",
+          student: c.profiles
+        }))
+    }
+  };
 }

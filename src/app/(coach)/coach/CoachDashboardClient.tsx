@@ -17,7 +17,7 @@
 import { useState, useRef } from "react";
 import { getSlotCheckins, closeClassAction, markAsAbsentAction, unmarkAsAbsentAction, manualCheckinAction, reopenClassAction, searchStudentsCoachAction } from "@/app/(admin)/admin/(authenticated)/turmas/actions";
 import { useRouter } from "next/navigation";
-import { Search, Plus, UserPlus, CheckCircle, Users, Activity, Loader2, Maximize, AlertTriangle, UserX, RotateCcw } from "lucide-react";
+import { Search, Plus, UserPlus, CheckCircle, Users, Activity, Loader2, Maximize, AlertTriangle, UserX, RotateCcw, LayoutDashboard } from "lucide-react";
 import { getLevelInfo, LevelInfo } from "@/lib/constants/levels";
 import { getTodayDate } from "@/lib/date-utils";
 import ConfirmModalCoach from "@/components/coach/ConfirmModalCoach";
@@ -420,12 +420,47 @@ export default function CoachDashboardClient({
 
 
   return (
-    <div style={{ paddingBottom: "100px" }}>
-      <div style={{ marginBottom: "24px" }}>
-        <h2 className="font-display" style={{ fontSize: "32px", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.05em", color: "#000", lineHeight: 1 }}>
-          {todayDateStr === getTodayDate() ? "AULAS DE HOJE" : "AULAS DO DIA"}
-        </h2>
-        <p className="font-body" style={{ fontSize: "14px", color: "rgba(0,0,0,0.9)", marginTop: "8px" }}>
+    <div style={{ paddingBottom: "100px", maxWidth: "800px", margin: "0 auto" }}>
+      <div style={{ marginBottom: "28px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "6px" }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: "42px",
+              height: "42px",
+              background: "#000",
+              color: "#FFF",
+              borderRadius: "6px",
+            }}
+          >
+            <LayoutDashboard size={22} strokeWidth={2.5} />
+          </div>
+          <h1
+            style={{
+              fontSize: "26px",
+              fontWeight: 900,
+              color: "#000",
+              margin: 0,
+              letterSpacing: "-0.03em",
+              textTransform: "uppercase",
+              fontFamily: "'Outfit', sans-serif",
+            }}
+          >
+            {todayDateStr === getTodayDate() ? "Aulas de Hoje" : "Aulas do Dia"}
+          </h1>
+        </div>
+        <p
+          style={{
+            fontSize: "13px",
+            color: "#666",
+            margin: 0,
+            borderLeft: "3.5px solid #000",
+            paddingLeft: "12px",
+            fontWeight: 600,
+          }}
+        >
           Selecione os alunos presentes no box e finalize a turma para liberar os resultados.
         </p>
       </div>

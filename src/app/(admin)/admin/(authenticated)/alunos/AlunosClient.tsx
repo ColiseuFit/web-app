@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Search, Plus, Phone, X, UserPlus, ChevronDown, Pencil, Trash2, User, Mail, Calendar, CreditCard, Info, Activity, ShieldCheck, Lock as LockIcon, Mail as MailIcon, ChevronLeft, ChevronRight, Copy, Check, Tag, Zap, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { Search, Plus, Phone, X, UserPlus, ChevronDown, Pencil, Trash2, User, Mail, Calendar, CreditCard, Info, Activity, ShieldCheck, Lock as LockIcon, Mail as MailIcon, ChevronLeft, ChevronRight, Copy, Check, Tag, Zap, ArrowUpDown, ArrowUp, ArrowDown, ShoppingCart } from "lucide-react";
 import { createStudent, updateStudent, deleteStudent, updateStudentAuth } from "../../../actions-student";
 import { getStudentEvaluations, deletePhysicalEvaluation } from "../../../actions-evaluation";
 import { updatePreRegistration } from "../../../actions-pre-registration";
@@ -16,10 +16,12 @@ import AthleteAvatar from "@/components/Identity/AthleteAvatar";
 import { RUNNING_LEVELS } from "@/lib/constants/running";
 import { maskCPF, maskPhone, maskCEP } from "@/lib/utils/masks";
 import DrawerProfile from "./drawer-views/DrawerProfile";
+import DrawerSellContract from "./drawer-views/DrawerSellContract";
 import DrawerSecurity from "./drawer-views/DrawerSecurity";
 import DrawerEvaluations from "./drawer-views/DrawerEvaluations";
 import DrawerRunning from "./drawer-views/DrawerRunning";
 import type { Student } from "./drawer-views/types";
+import AttendanceDashboard from "./AttendanceDashboard";
 
 
 /**
@@ -63,7 +65,10 @@ export default function AlunosClient({
   currentLevel,
   currentSort = "name",
   currentOrder = "asc",
-  currentAccess = "Todos"
+  currentAccess = "Todos",
+  initialViewMode = "alunos",
+  hideTabs = false,
+  hideHeader = false,
 }: { 
   students: Student[], 
   preRegistrations?: any[],
@@ -75,7 +80,10 @@ export default function AlunosClient({
   currentLevel: string,
   currentSort?: string,
   currentOrder?: string,
-  currentAccess?: string
+  currentAccess?: string,
+  initialViewMode?: "alunos" | "leads" | "frequencia",
+  hideTabs?: boolean,
+  hideHeader?: boolean,
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -94,7 +102,7 @@ export default function AlunosClient({
   const [sortField, setSortField] = useState(currentSort);
   const [sortOrder, setSortOrder] = useState(currentOrder);
   const [accessFilter, setAccessFilter] = useState(currentAccess);
-  const [viewMode, setViewMode] = useState<"alunos" | "leads">("alunos");
+  const [viewMode, setViewMode] = useState<"alunos" | "leads" | "frequencia">(initialViewMode);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [showForm, setShowForm] = useState(false);
@@ -103,7 +111,7 @@ export default function AlunosClient({
   const [message, setMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);
   
   // Evaluation States
-  const [drawerView, setDrawerView] = useState<"profile" | "evaluations" | "eval-form" | "security" | "running">("profile");
+  const [drawerView, setDrawerView] = useState<"profile" | "evaluations" | "eval-form" | "security" | "running" | "sell-contract">("profile");
   const [evaluations, setEvaluations] = useState<any[]>([]);
   const [loadingEvals, setLoadingEvals] = useState(false);
   const [selectedEval, setSelectedEval] = useState<any | null>(null);
@@ -463,38 +471,43 @@ export default function AlunosClient({
   return (
     <div className="admin-container-fluid">
       {/* ── PAGE HEADER ── */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-        <div>
-          <h1 style={{ fontSize: 22, fontWeight: 600, letterSpacing: "-0.02em", margin: 0 }}>
-            Alunos
-          </h1>
-          <p style={{ fontSize: 13, color: "var(--admin-text-secondary)", marginTop: 2 }}>
-            Central de alunos e admissões
-          </p>
+      {!hideHeader && (
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 40 }}>
+          <div>
+            <h1 style={{ fontSize: 32, fontWeight: 900, letterSpacing: "-0.04em", margin: "0 0 4px", textTransform: "uppercase" }}>
+              Alunos
+            </h1>
+            <p style={{ fontSize: 14, color: "#666", fontWeight: 600, margin: 0 }}>
+              Central de alunos e admissões.
+            </p>
+          </div>
+          {viewMode === "alunos" && (
+            <button
+              onClick={() => setShowForm(!showForm)}
+              className="admin-btn admin-btn-primary"
+            >
+              {showForm ? <X size={16} /> : <Plus size={16} />}
+              {showForm ? "Cancelar" : "Novo Aluno"}
+            </button>
+          )}
         </div>
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className="admin-btn admin-btn-primary"
-        >
-          {showForm ? <X size={16} /> : <Plus size={16} />}
-          {showForm ? "Cancelar" : "Novo Aluno"}
-        </button>
-      </div>
+      )}
 
       {/* ── TABS ── */}
-      <div style={{ display: "flex", gap: "24px", paddingBottom: "12px", marginBottom: "24px", borderBottom: "3px solid #000" }}>
-        <button
-          onClick={() => setViewMode("alunos")}
-          style={{
-            background: "none", border: "none",
-            fontSize: "13px", fontWeight: 900,
-            color: viewMode === "alunos" ? "#000" : "#666",
-            borderBottom: viewMode === "alunos" ? "4px solid #DF2127" : "none",
-            paddingBottom: "8px", marginBottom: "-15px",
-            cursor: "pointer",
-            textTransform: "uppercase", letterSpacing: "0.05em"
-          }}
-        >
+      {!hideTabs && (
+        <div style={{ display: "flex", gap: "24px", paddingBottom: "12px", marginBottom: "24px", borderBottom: "3px solid #000" }}>
+          <button
+            onClick={() => setViewMode("alunos")}
+            style={{
+              background: "none", border: "none",
+              fontSize: "13px", fontWeight: 900,
+              color: viewMode === "alunos" ? "#000" : "#666",
+              borderBottom: viewMode === "alunos" ? "4px solid #DF2127" : "none",
+              paddingBottom: "8px", marginBottom: "-15px",
+              cursor: "pointer",
+              textTransform: "uppercase", letterSpacing: "0.05em"
+            }}
+          >
           Membros Ativos ({totalCount})
         </button>
         <button
@@ -517,7 +530,22 @@ export default function AlunosClient({
             </span>
           )}
         </button>
+        <button
+          onClick={() => setViewMode("frequencia")}
+          style={{
+            background: "none", border: "none",
+            fontSize: "13px", fontWeight: 900,
+            color: viewMode === "frequencia" ? "#000" : "#666",
+            borderBottom: viewMode === "frequencia" ? "4px solid #DF2127" : "none",
+            paddingBottom: "8px", marginBottom: "-15px",
+            cursor: "pointer",
+            textTransform: "uppercase", letterSpacing: "0.05em"
+          }}
+        >
+          Presença & Frequência
+        </button>
       </div>
+      )}
 
       {/* ── NEW STUDENT FORM ── */}
       {showForm && viewMode === "alunos" && (
@@ -676,6 +704,7 @@ export default function AlunosClient({
                       <div style={{ display: "flex", gap: "4px" }}>
                         <button onClick={() => handleOpenDrawer(student)} className="admin-btn admin-btn-ghost" style={{ height: "36px", width: "36px", padding: 0 }}><User size={16} /></button>
                         <button onClick={() => { setSelectedStudent(student); setIsEditing(true); setDrawerView("profile"); }} className="admin-btn admin-btn-ghost" style={{ height: "36px", width: "36px", padding: 0 }}><Pencil size={16} /></button>
+                        <button onClick={() => { setSelectedStudent(student); setDrawerView("sell-contract"); }} className="admin-btn admin-btn-ghost" style={{ height: "36px", width: "36px", padding: 0 }} title="Matricular no Balcão"><ShoppingCart size={16} /></button>
                         <button onClick={() => handleDelete(student.id)} className="admin-btn admin-btn-ghost" style={{ height: "36px", width: "36px", padding: 0, color: "#DC2626" }} title="Excluir"><Trash2 size={16} /></button>
                         {student.phone && (
                           <a href={`https://wa.me/55${student.phone.replace(/\D/g, "")}`} target="_blank" rel="noopener noreferrer" className="admin-btn admin-btn-ghost" style={{ height: "36px", width: "36px", padding: 0 }}><Phone size={16} /></a>
@@ -882,6 +911,10 @@ export default function AlunosClient({
         </div>
       )}
 
+      {viewMode === "frequencia" && (
+        <AttendanceDashboard dynamicLevels={dynamicLevels} />
+      )}
+
       {/* ── STUDENT PROFILE MODAL (IRON MONOLITH STYLE) ── */}
       {selectedStudent && (
         <div style={{
@@ -1086,6 +1119,14 @@ export default function AlunosClient({
                   selectedStudent={selectedStudent}
                   setMessage={setMessage}
                   updateStudentAction={updateStudent}
+                />
+              )}
+
+              {drawerView === "sell-contract" && selectedStudent && (
+                <DrawerSellContract
+                  selectedStudent={selectedStudent}
+                  onCancel={() => setDrawerView("profile")}
+                  onSuccess={() => { setDrawerView("profile"); }}
                 />
               )}
 

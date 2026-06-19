@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient , getAuthUser } from "@/lib/supabase/server";
 
 /**
  * trackVideoView: Registra que o aluno assistiu um vídeo popup.
@@ -15,7 +15,7 @@ import { createClient } from "@/lib/supabase/server";
  */
 export async function trackVideoView(videoId: string): Promise<{ success: boolean; error?: string }> {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
 
   if (!user) return { success: false, error: "Não autenticado." };
 

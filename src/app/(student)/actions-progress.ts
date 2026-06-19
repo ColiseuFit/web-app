@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient , getAuthUser } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import {
   personalRecordSchema,
@@ -26,7 +26,7 @@ export async function upsertPersonalRecord(formData: Record<string, unknown>): P
   }
 
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) return { error: "Não autenticado" };
 
   // Resolve mapping entre movement_key (campo do formulário) e movement_id (banco)
@@ -62,7 +62,7 @@ export async function updateWeeklyTarget(weekly_target: number): Promise<{ succe
   if (!validation.success) return { error: "Meta inválida" };
 
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) return { error: "Não autenticado" };
 
   const { error } = await supabase
@@ -93,7 +93,7 @@ export async function createGoal(title: string): Promise<{ success?: boolean; da
   if (!validation.success) return { error: "Título inválido" };
 
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) return { error: "Não autenticado" };
 
   const { data, error } = await supabase
@@ -120,7 +120,7 @@ export async function createGoal(title: string): Promise<{ success?: boolean; da
  */
 export async function toggleGoalStatus(goalId: string, currentStatus: boolean): Promise<{ success?: boolean; error?: string }> {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) return { error: "Não autenticado" };
 
   const { error } = await supabase
@@ -149,7 +149,7 @@ export async function toggleGoalStatus(goalId: string, currentStatus: boolean): 
  */
 export async function deleteGoal(goalId: string): Promise<{ success?: boolean; error?: string }> {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) return { error: "Não autenticado" };
 
   const { error } = await supabase

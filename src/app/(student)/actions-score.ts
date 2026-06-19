@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient , getAuthUser } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { wodResultSchema } from "@/lib/validations/security_schemas";
 
@@ -71,7 +71,7 @@ export async function updateWodResult(
   if (!validation.success) return { error: "Dados de resultado inválidos." };
 
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) return { error: "Não autenticado." };
 
   // 1. Carregar o WOD e o check-in atual para validar a janela temporal
@@ -162,7 +162,7 @@ export async function getPaginatedHistory(
   limit: number = 10
 ): Promise<{ success: boolean; history: any[]; hasMore: boolean }> {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) return { success: false, history: [], hasMore: false };
 
   // 1. Obter valor padrão de pontos de check-in configurado

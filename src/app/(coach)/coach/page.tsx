@@ -100,7 +100,7 @@ export default async function CoachPage({ searchParams }: { searchParams: Promis
   }
 
   return (
-    <>
+    <div style={{ maxWidth: "800px", margin: "0 auto" }}>
       <DateNavigator activeDateStr={activeDateStr} />
       <CoachDashboardClient 
         todaySlots={slots || []} 
@@ -108,6 +108,6 @@ export default async function CoachPage({ searchParams }: { searchParams: Promis
         dynamicLevels={dynamicLevels}
         initialFinishedSlots={initialFinishedSlots}
       />
-    </>
+    </div>
   );
 }

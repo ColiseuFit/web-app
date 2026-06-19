@@ -1,3 +1,4 @@
+import { getAuthUser } from "@/lib/supabase/server";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { USER_ROLES } from "./constants/roles";
 
@@ -30,7 +31,7 @@ export function getDefaultRouteForRole(role: string | null | undefined): string 
  * @returns {Promise<string>} The path the user should be redirected to.
  */
 export async function getRedirectPath(supabase: SupabaseClient): Promise<string> {
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   
   if (!user) return "/login";
 

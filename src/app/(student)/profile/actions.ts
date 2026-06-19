@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient , getAuthUser } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { updatePasswordSchema, isValidCPF, isValidName, profileSchema } from "@/lib/validations/security_schemas";
 
@@ -24,7 +24,7 @@ import { updatePasswordSchema, isValidCPF, isValidName, profileSchema } from "@/
 export async function updateProfile(formData: FormData) {
   const supabase = await createClient();
   
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) return { error: "Sem sessão ativa" };
 
   // Extração e sanitização dos dados
@@ -46,6 +46,11 @@ export async function updateProfile(formData: FormData) {
   const addressNeighborhood = (formData.get("address_neighborhood") as string || "").trim();
   const addressCity = (formData.get("address_city") as string || "").trim();
   const addressState = (formData.get("address_state") as string || "").trim();
+  
+  // Novos campos condicionados a menores e parceiros
+  const guardianName = (formData.get("guardian_name") as string || "").trim();
+  const guardianCpf = (formData.get("guardian_cpf") as string || "").trim();
+  const wellhubId = (formData.get("wellhub_id") as string || "").trim();
 
   const rawData = {
     display_name: displayName,
@@ -66,6 +71,9 @@ export async function updateProfile(formData: FormData) {
     address_neighborhood: addressNeighborhood || undefined,
     address_city: addressCity || undefined,
     address_state: addressState || undefined,
+    guardian_name: guardianName || undefined,
+    guardian_cpf: guardianCpf || undefined,
+    wellhub_id: wellhubId || undefined,
   };
 
   const validation = profileSchema.safeParse(rawData);
@@ -97,6 +105,9 @@ export async function updateProfile(formData: FormData) {
     address_neighborhood: validatedData.address_neighborhood || null,
     address_city: validatedData.address_city || null,
     address_state: validatedData.address_state || null,
+    guardian_name: validatedData.guardian_name || null,
+    guardian_cpf: validatedData.guardian_cpf || null,
+    wellhub_id: validatedData.wellhub_id || null,
     updated_at: new Date().toISOString(),
   };
 
@@ -130,7 +141,7 @@ export async function updateProfile(formData: FormData) {
  */
 export async function updatePassword(formData: FormData) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) return { error: "Sessão expirada." };
 
   const password = formData.get("password") as string;

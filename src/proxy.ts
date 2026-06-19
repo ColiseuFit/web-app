@@ -1,3 +1,4 @@
+import { getAuthUser } from "@/lib/supabase/server";
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
@@ -97,7 +98,7 @@ export async function proxy(request: NextRequest) {
   );
 
   // This is required for Server Components to have the correct user session
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
 
   const url = request.nextUrl.clone();
 

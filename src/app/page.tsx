@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createClient , getAuthUser } from "@/lib/supabase/server";
 import { getRedirectPath } from "@/lib/auth-redirection";
 
 /**
@@ -11,7 +11,7 @@ import { getRedirectPath } from "@/lib/auth-redirection";
  */
 export default async function LandingPage() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
 
   if (user) {
     const redirectPath = await getRedirectPath(supabase);

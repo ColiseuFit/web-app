@@ -4,15 +4,33 @@ import { USER_ROLES } from "@/lib/constants/roles";
 import { getCachedLevels } from "@/lib/constants/levels_actions";
 
 /**
- * Admin Dashboard (Server Component): The operational overview.
+ * @component AdminDashboardPage (Server Component)
+ * @description
+ * Atua como o "Router Dispatcher" (Orquestrador de Roteamento) do Admin.
+ * Em vez de exibir um único dashboard, ele lê o parâmetro de URL `?hub=...`
+ * injetado pelo `AdminSidebar.tsx` e decide qual Client Component renderizar
+ * (Operacional, Tático ou Estratégico).
  *
- * @data Fetches aggregated metrics via parallel Supabase queries:
- * - Total active students.
- * - Today's check-ins count.
- * - Students "at risk" (no check-in in 7+ days).
- * - New signups this month.
+ * @data
+ * Caso o Hub seja "Tático" (default), ele executa requisições pesadas no Supabase
+ * (agregando métricas de todos os alunos) e desce os dados via Props para 
+ * o `AdminDashboardClient` puro, blindando o cliente de lógica de RLS.
  */
-export default async function AdminDashboardPage() {
+export default async function AdminDashboardPage({ searchParams }: { searchParams: Promise<{ hub?: string }> }) {
+  const resolvedSearchParams = await searchParams;
+  const hub = resolvedSearchParams?.hub || "operacional";
+
+  if (hub === "estrategico") {
+    const { default: DashboardEstrategicoClient } = await import("./DashboardEstrategicoClient");
+    return <DashboardEstrategicoClient />;
+  }
+
+  if (hub === "operacional") {
+    const { default: DashboardOperacionalClient } = await import("./DashboardOperacionalClient");
+    return <DashboardOperacionalClient />;
+  }
+
+  // Tático / default
   const supabase = await createClient();
 
   const now = new Date();
@@ -39,7 +57,7 @@ export default async function AdminDashboardPage() {
   const todayCheckins = checkinsRes.count ?? 0;
 
   // Recent signups this month (filtered for students only)
-  const newThisMonth = studentsOnly.filter(p => p.created_at >= monthStart).length;
+  const newThisMonth = studentsOnly.filter((p: any) => p.created_at >= monthStart).length;
 
   // Calculate "at risk" — students who haven't checked in for 7 days
   const allProfiles = studentsOnly;

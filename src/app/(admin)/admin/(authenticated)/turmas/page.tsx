@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import TurmasClient from "./TurmasClient";
-import { getCoaches } from "../professores/actions";
+import { getCoaches } from "../gestao/professores/actions";
 import { getHolidays } from "./actions";
 import { getBoxSettings } from "@/lib/constants/settings_actions";
 
@@ -131,7 +131,7 @@ export default async function TurmasPage(props: {
     
   // 6. Coaches & Settings
   const { data: coachesData } = await getCoaches();
-  const coaches = coachesData?.map(d => ({
+  const coaches = coachesData?.map((d: any) => ({
     id: d.profile.id,
     full_name: d.profile.full_name
   })) || [];
@@ -176,7 +176,7 @@ export default async function TurmasPage(props: {
   if (slotsError) {
     return (
       <div className="admin-container-fluid">
-        <h1 style={{ fontSize: "32px", fontWeight: 800, margin: "0 0 8px" }}>Gestão de Turmas</h1>
+        <h1 style={{ fontSize: "32px", fontWeight: 800, margin: "0 0 8px" }}>Grade de Horários</h1>
         <p style={{ color: "#999" }}>Erro ao carregar a grade: {slotsError.message}</p>
       </div>
     );
@@ -243,7 +243,8 @@ export default async function TurmasPage(props: {
       currentLevel={level}
       currentUnenroll={unenroll}
       currentWeekOffset={weekOffset}
+      initialViewMode="grid"
+      hideTabs={true}
     />
   );
 }
-

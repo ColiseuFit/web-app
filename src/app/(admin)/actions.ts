@@ -4,7 +4,8 @@ export {
   updateStudent,
   getStudentBiometricsInfo,
   deleteStudent,
-  updateStudentAuth
+  updateStudentAuth,
+  getAttendanceDashboardStats
 } from "./actions-student";
 
 export {

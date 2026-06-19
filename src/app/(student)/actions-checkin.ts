@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient , getAuthUser } from "@/lib/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { revalidatePath } from "next/cache";
 import { 
@@ -205,7 +205,7 @@ export async function performCheckIn(
   }
 
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
 
   if (!user) {
     return { error: "Usuário não autenticado." };
@@ -222,6 +222,8 @@ export async function performCheckIn(
   if (!wodDateStr) {
     return { error: "WOD não encontrado ou inativo." };
   }
+
+
 
   // 0.2 Buscar feriados/bloqueios do dia (SSoT)
   const { data: holidays } = await supabase
@@ -323,7 +325,7 @@ export async function cancelCheckIn(wodId: string): Promise<{ success?: boolean;
   }
 
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
 
   if (!user) {
     return { error: "Usuário não autenticado." };

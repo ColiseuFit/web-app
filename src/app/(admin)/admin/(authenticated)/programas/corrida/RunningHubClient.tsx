@@ -6,9 +6,9 @@ import Link from "next/link";
 import { Search, Zap, Footprints, Clock, ArrowRight, User, AlertCircle, TrendingUp, X, Timer, LayoutTemplate } from "lucide-react";
 import AthleteIdentity from "@/components/Identity/AthleteIdentity";
 import { RUNNING_LEVELS, RUNNING_STATUSES, RunningLevelKey, RunningStatusKey } from "@/lib/constants/running";
-import RunningCoachManager from "../alunos/RunningCoachManager";
-import RunningIdentityEditor from "../alunos/RunningIdentityEditor";
-import { updateStudent } from "../../../actions-student";
+import RunningCoachManager from "../../alunos/RunningCoachManager";
+import RunningIdentityEditor from "../../alunos/RunningIdentityEditor";
+import { updateStudent } from "../../../../actions-student";
 
 interface RunningHubClientProps {
   runners: any[];

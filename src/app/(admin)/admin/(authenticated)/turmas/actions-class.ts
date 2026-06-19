@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient as createAdminClient } from "@supabase/supabase-js";
-import { createClient } from "@/lib/supabase/server";
+import { createClient , getAuthUser } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { classSlotSchema } from "@/lib/validations/security_schemas";
 import { getAdminContext } from "./actions-shared";
@@ -20,7 +20,7 @@ import { getAdminContext } from "./actions-shared";
  */
 export async function upsertClassSlot(formData: FormData, slotId?: string | null) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) return { error: "Sessão expirada." };
 
   // Permission check
@@ -99,7 +99,7 @@ export async function upsertClassSlot(formData: FormData, slotId?: string | null
  */
 export async function toggleClassSlot(slotId: string, isActive: boolean) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) return { error: "Sessão expirada." };
 
   let roleData = null;
@@ -150,7 +150,7 @@ export async function toggleClassSlot(slotId: string, isActive: boolean) {
  */
 export async function deleteClassSlot(slotId: string) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) return { error: "Sessão expirada." };
 
   let roleData = null;
@@ -204,7 +204,7 @@ export async function bulkUpdateClassSlots(
   days?: number[]
 ) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) return { error: "Sessão expirada." };
 
   let roleData = null;
@@ -274,7 +274,7 @@ export async function bulkCreateClassSlots(
   }
 ) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) return { error: "Sessão expirada." };
 
   // Permission check

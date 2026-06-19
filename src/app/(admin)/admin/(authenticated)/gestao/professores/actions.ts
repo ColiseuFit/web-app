@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient as createAdminClient } from "@supabase/supabase-js";
-import { createClient } from "@/lib/supabase/server";
+import { createClient , getAuthUser } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { USER_ROLES } from "@/lib/constants/roles";
 
@@ -19,7 +19,7 @@ import { USER_ROLES } from "@/lib/constants/roles";
  */
 async function getAdminContext() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) return { error: "Sessão expirada." };
 
   let roleData = null;
@@ -146,7 +146,7 @@ export async function updateCoachProfile(
 
   if (error) return { error: "Erro ao atualizar perfil no banco de dados: " + error.message };
 
-  revalidatePath("/admin/professores");
+  revalidatePath("/admin/gestao/professores");
   return { success: true };
 }
 
@@ -208,7 +208,7 @@ export async function toggleCoachRole(userId: string, isCoach: boolean) {
     if (error) return { error: "Erro ao remover cargo: " + error.message };
   }
 
-  revalidatePath("/admin/professores");
+  revalidatePath("/admin/gestao/professores");
   return { success: true };
 }
 
@@ -242,7 +242,12 @@ export async function createNewCoach(name: string, email: string, phone: string)
     user_metadata: { full_name: name }
   });
 
-  if (authError) return { error: "Erro no Auth: " + authError.message };
+  if (authError) {
+    if (authError.message.includes("already been registered")) {
+      return { error: "Este e-mail já existe no sistema. Se for um ex-coach ou aluno, use a aba 'Buscar Aluno' para promovê-lo novamente, ou exclua o perfil antigo antes de criar um novo." };
+    }
+    return { error: "Erro no Auth: " + authError.message };
+  }
   const userId = authUser.user.id;
 
   // 2. Create Profile
@@ -269,6 +274,96 @@ export async function createNewCoach(name: string, email: string, phone: string)
 
   if (roleError) return { error: "Erro no Role: " + roleError.message };
 
-  revalidatePath("/admin/professores");
+  revalidatePath("/admin/gestao/professores");
   return { success: true, tempPassword: password };
+}
+
+/**
+ * updateCoachAuth: Redefine a Senha de um Coach via Admin API (IAM Override).
+ * 
+ * @operation
+ * Permite que o Admin force uma nova senha para qualquer Coach diretamente pelo
+ * painel de gestão, sem necessidade de e-mail de recuperação. Essencial para
+ * resolver bloqueios de acesso ao Coach Portal.
+ * 
+ * @security Restricted: Admin-Only (via getAdminContext).
+ * @param {string} userId - UUID do coach a ser atualizado.
+ * @param {string} newPassword - Nova senha a ser definida (mínimo 6 caracteres).
+ * @returns {Promise<{ success?: boolean; error?: string }>}
+ */
+export async function updateCoachAuth(userId: string, newPassword: string) {
+  const ctx = await getAdminContext();
+  if ("error" in ctx) return { error: ctx.error };
+
+  if (!newPassword || newPassword.trim().length < 6) {
+    return { error: "A senha deve ter no mínimo 6 caracteres." };
+  }
+
+  try {
+    const { error: authError } = await ctx.adminClient.auth.admin.updateUserById(userId, {
+      password: newPassword.trim(),
+    });
+
+    if (authError) {
+      console.error("[updateCoachAuth] Auth Error:", authError);
+      return { error: "Erro ao redefinir senha: " + authError.message };
+    }
+
+    return { success: true };
+  } catch (err: unknown) {
+    console.error("[updateCoachAuth] Unexpected Error:", err);
+    return { error: "Erro inesperado ao redefinir senha do professor." };
+  }
+}
+
+/**
+ * deleteCoachUser: Exclusão Permanente de um Membro da Equipe Técnica.
+ * 
+ * @CAUTION Esta ação é IRREVERSÍVEL. Remove o usuário completamente do
+ * Supabase Auth, liberando o e-mail para reutilização futura.
+ * 
+ * @lifecycle
+ * 1. Remoção da role em `user_roles`.
+ * 2. Remoção do perfil em `profiles`.
+ * 3. Remoção da credencial em `auth.users` (Admin API).
+ * 
+ * @security Restricted: Admin-Only (via getAdminContext).
+ * @param {string} userId - UUID do coach a ser excluído permanentemente.
+ * @returns {Promise<{ success?: boolean; error?: string }>}
+ */
+export async function deleteCoachUser(userId: string) {
+  const ctx = await getAdminContext();
+  if ("error" in ctx) return { error: ctx.error };
+
+  // Segurança: Impedir exclusão de si mesmo ou do admin master
+  if (userId === ctx.user.id) {
+    return { error: "Não é possível excluir seu próprio perfil." };
+  }
+
+  try {
+    // 1. Remove role
+    await ctx.adminClient
+      .from("user_roles")
+      .delete()
+      .eq("user_id", userId);
+
+    // 2. Remove profile
+    await ctx.adminClient
+      .from("profiles")
+      .delete()
+      .eq("id", userId);
+
+    // 3. Remove Auth User (libera o e-mail)
+    const { error: authError } = await ctx.adminClient.auth.admin.deleteUser(userId);
+    if (authError) {
+      console.error("[deleteCoachUser] Auth Deletion Error:", authError);
+      return { error: "O perfil foi removido do banco, mas houve erro ao remover a credencial de login: " + authError.message };
+    }
+
+    revalidatePath("/admin/gestao/professores");
+    return { success: true };
+  } catch (err: unknown) {
+    console.error("[deleteCoachUser] Unexpected Error:", err);
+    return { error: "Erro inesperado ao excluir o professor." };
+  }
 }

@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient , getAuthUser } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import ProfileEditClient from "./ProfileEditClient";
 
@@ -11,7 +11,7 @@ import ProfileEditClient from "./ProfileEditClient";
  */
 export default async function ProfileEditPage() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
 
   if (!user) {
     redirect("/login");

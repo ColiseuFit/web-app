@@ -165,6 +165,8 @@ interface Props {
   currentLevel: string;
   currentUnenroll: boolean;
   currentWeekOffset: number;
+  initialViewMode?: "grid" | "checkins" | "settings" | "enrollments";
+  hideTabs?: boolean;
 }
 
 // ── Block Type: granular schedule override (SSoT: box_holidays) ──
@@ -258,7 +260,9 @@ export default function TurmasClient({
   currentSearch,
   currentLevel,
   currentUnenroll,
-  currentWeekOffset
+  currentWeekOffset,
+  initialViewMode = "grid",
+  hideTabs = false
 }: Props) {
   const router = useRouter();
   const pathname = usePathname();
@@ -267,7 +271,11 @@ export default function TurmasClient({
   // ── NAVIGATION STATE ──
   // activeTab is the router for our 4-pillar architecture.
   // We use this instead of a simple 'mode' toggle to ensure clear task isolation.
-  const [activeTab, setActiveTab] = useState<"grid" | "checkins" | "settings" | "enrollments">("grid");
+  const [activeTab, setActiveTab] = useState<"grid" | "checkins" | "settings" | "enrollments">(initialViewMode);
+
+  useEffect(() => {
+    setActiveTab(initialViewMode);
+  }, [initialViewMode]);
 
   const handleNavigateWeek = (targetOffset: number, isRelative: boolean = true) => {
     const minOffset = getMinWeekOffset(SYSTEM_START_DATE);
@@ -825,9 +833,13 @@ export default function TurmasClient({
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 24, borderBottom: "4px solid #000", paddingBottom: 12 }}>
         <div>
           <h1 style={{ fontSize: 28, fontWeight: 900, letterSpacing: "-0.04em", margin: "0 0 12px", textTransform: "uppercase", color: "#000" }}>
-            Gestão de Box
+            {activeTab === "grid" ? "Grade de Horários" : 
+             activeTab === "checkins" ? "Check-ins" : 
+             activeTab === "enrollments" ? "Matrículas" : 
+             "Bloqueios e Feriados"}
           </h1>
-          <div style={{ display: "flex", gap: 12 }}>
+          {!hideTabs && (
+            <div style={{ display: "flex", gap: 12 }}>
             <button
               onClick={() => setActiveTab("grid")}
               style={{
@@ -901,16 +913,39 @@ export default function TurmasClient({
               BLOQUEIOS
             </button>
           </div>
+          )}
         </div>
         
         {activeTab === "grid" && (
+          <div style={{ display: "flex", gap: 12 }}>
+            <button
+              className="admin-btn"
+              onClick={() => setActiveTab("settings")}
+              style={{ height: 52, background: "transparent", color: "#000", border: "2px solid #000", fontWeight: 800, textTransform: "uppercase" }}
+            >
+              <ShieldCheck size={18} style={{ marginRight: 8 }} />
+              Gerenciar Bloqueios
+            </button>
+            <button
+              className="admin-btn admin-btn-primary"
+              onClick={() => openDrawer()}
+              style={{ height: 52 }}
+            >
+              <Plus size={20} />
+              Novo Horário
+            </button>
+          </div>
+        )}
+        {activeTab === "settings" && hideTabs && (
           <button
-            className="admin-btn admin-btn-primary"
-            onClick={() => openDrawer()}
-            style={{ height: 52 }}
+            className="admin-btn"
+            onClick={() => setActiveTab("grid")}
+            style={{ height: 52, background: "transparent", color: "#444", border: "2px solid #CCC", fontWeight: 800, textTransform: "uppercase", transition: "all 0.2s" }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = "#000"; e.currentTarget.style.color = "#000"; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = "#CCC"; e.currentTarget.style.color = "#444"; }}
           >
-            <Plus size={20} />
-            Novo Horário
+            <ChevronLeft size={20} style={{ marginRight: 8 }} />
+            Voltar para Grade
           </button>
         )}
       </div>

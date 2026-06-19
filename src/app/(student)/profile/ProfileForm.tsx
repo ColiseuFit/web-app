@@ -82,6 +82,11 @@ export default function ProfileForm({ user, profile, onDirtyChange }: ProfileFor
   
   const [passLoading, setPassLoading] = useState(false);
   const [passMessage, setPassMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);
+
+  // Estados dos novos campos condicionais (Menores de idade e Parceiros Gympass)
+  const [guardianName, setGuardianName] = useState(profile?.guardian_name || "");
+  const [guardianCpf, setGuardianCpf] = useState(profile?.guardian_cpf || "");
+  const [wellhubId, setWellhubId] = useState(profile?.wellhub_id || "");
   
   type TabType = "PESSOAL" | "ENDEREÇO" | "SOCIAL";
   const [activeTab, setActiveTab] = useState<TabType>("PESSOAL");
@@ -100,6 +105,22 @@ export default function ProfileForm({ user, profile, onDirtyChange }: ProfileFor
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [isDirty]);
+
+  // Lógica para verificar se o aluno é menor de idade (menor que 18 anos)
+  const calculateIsMinor = (dateString: string) => {
+    if (!dateString) return false;
+    const today = new Date();
+    const birthDateObj = new Date(dateString);
+    let age = today.getFullYear() - birthDateObj.getFullYear();
+    const m = today.getMonth() - birthDateObj.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDateObj.getDate())) {
+      age--;
+    }
+    return age < 18;
+  };
+
+  const isMinor = calculateIsMinor(birthDate);
+  const isGympass = profile?.membership_type === "club_pass";
 
   // Cálculo de completude do perfil — usa estados locais para reatividade em tempo real
   const calculateCompleteness = () => {
@@ -121,6 +142,16 @@ export default function ProfileForm({ user, profile, onDirtyChange }: ProfileFor
       city,
       stateUF
     ];
+
+    if (isMinor) {
+      fields.push(guardianName);
+      fields.push(guardianCpf);
+    }
+    
+    if (isGympass) {
+      fields.push(wellhubId);
+    }
+
     const filled = fields.filter(f => f && f.length > 0).length;
     return Math.round((filled / fields.length) * 100);
   };
@@ -564,6 +595,67 @@ export default function ProfileForm({ user, profile, onDirtyChange }: ProfileFor
               />
             </div>
           </div>
+
+          {/* DADOS DO RESPONSÁVEL LEGAL (Condicional: Se aluno for menor de 18 anos) */}
+          {isMinor && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "24px", padding: "24px", background: "#FFFBEB", border: "2px solid #D97706", marginTop: "8px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "8px" }}>
+                <div style={{ width: "8px", height: "16px", background: "#D97706" }} />
+                <h3 style={{ fontSize: "11px", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.1em", color: "#000" }}>Responsável Legal (Menor de 18 Anos)</h3>
+              </div>
+              
+              <div style={{ position: "relative" }}>
+                <label style={labelStyle}>Nome do Responsável *</label>
+                <input 
+                  type="text" 
+                  name="guardian_name" 
+                  value={guardianName}
+                  onChange={(e) => { setGuardianName(e.target.value); setIsDirty(true); }}
+                  placeholder="Nome completo do pai, mãe ou tutor legal" 
+                  maxLength={100}
+                  style={blockInputStyle}
+                  required
+                />
+              </div>
+
+              <div style={{ position: "relative" }}>
+                <label style={labelStyle}>CPF do Responsável *</label>
+                <input 
+                  type="text" 
+                  name="guardian_cpf" 
+                  value={guardianCpf}
+                  onChange={(e) => { setGuardianCpf(maskCPF(e.target.value)); setIsDirty(true); }}
+                  placeholder="000.000.000-00" 
+                  maxLength={14}
+                  style={blockInputStyle}
+                  required
+                />
+              </div>
+            </div>
+          )}
+
+          {/* CÓDIGO WELLHUB / GYMPASS (Condicional: Se aluno for parceiro) */}
+          {isGympass && (
+            <div style={{ position: "relative" }}>
+              <label style={labelStyle}>Código Wellhub / Gympass *</label>
+              <input 
+                type="text" 
+                name="wellhub_id" 
+                value={wellhubId} 
+                placeholder="Ex: 1234567890123" 
+                maxLength={20}
+                onChange={(e) => {
+                  setWellhubId(e.target.value.replace(/\D/g, ""));
+                  setIsDirty(true);
+                }}
+                style={blockInputStyle}
+                required
+              />
+              <p style={{ fontSize: "9px", color: "#666", marginTop: "6px", fontWeight: 700 }}>
+                Obrigatório para validação automática de check-ins na catraca física do Box.
+              </p>
+            </div>
+          )}
         </div>
 
         </div> {/* Fim Aba PESSOAL */}

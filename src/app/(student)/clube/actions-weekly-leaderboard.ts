@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient , getAuthUser } from "@/lib/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { getLevelInfo } from "@/lib/constants/levels";
 
@@ -50,7 +50,7 @@ function getWeekRange() {
  */
 export async function getWeeklyLeaderboard(): Promise<{ success: boolean; data?: WeeklyLeaderboardData; error?: string }> {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) return { success: false, error: "Não autenticado." };
 
   const { mondayStr, sundayStr, mondayObj, sundayObj } = getWeekRange();

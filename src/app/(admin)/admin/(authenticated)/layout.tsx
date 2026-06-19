@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient , getAuthUser } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import { USER_ROLES } from "@/lib/constants/roles";
@@ -12,7 +12,7 @@ import { USER_ROLES } from "@/lib/constants/roles";
  */
 export default async function AuthenticatedAdminLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
 
   if (!user) {
     redirect("/admin/login");
@@ -64,13 +64,13 @@ export default async function AuthenticatedAdminLayout({ children }: { children:
       <AdminSidebar />
       <main
         style={{
-          marginLeft: 240,
+          marginLeft: 260,
           flex: 1,
           display: "flex",
           flexDirection: "column",
           minHeight: "100%", // Agora herda do wrapper com minHeight maior
           background: "var(--admin-surface)",
-          width: "calc(100% - 240px)",
+          width: "calc(100% - 260px)",
         }}
       >
         {children}

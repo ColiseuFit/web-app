@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient , getAuthUser } from "@/lib/supabase/server";
 import { notFound, redirect } from "next/navigation";
 import EvaluationDetailsClient from "./EvaluationDetailsClient";
 import { enrichEvaluation } from "@/lib/physique-utils";
@@ -11,7 +11,7 @@ import { enrichEvaluation } from "@/lib/physique-utils";
 export default async function EvaluationDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
 
   if (!user) {
     redirect("/login");

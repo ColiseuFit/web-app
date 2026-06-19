@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient as createAdminClient } from "@supabase/supabase-js";
-import { createClient } from "@/lib/supabase/server";
+import { createClient , getAuthUser } from "@/lib/supabase/server";
 
 /**
  * CONTEXTO ADMINISTRATIVO (Internal): Centraliza a validação de privilégios e provê cliente Service Role.
@@ -14,7 +14,7 @@ import { createClient } from "@/lib/supabase/server";
  */
 export async function getAdminContext() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) return { error: "Sessão expirada." };
 
   let roleData = null;

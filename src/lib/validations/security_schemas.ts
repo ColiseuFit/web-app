@@ -309,8 +309,19 @@ export const profileSchema = z.object({
   running_level: z.string().optional().nullable(),
   running_pace: z.string().optional().nullable(),
   running_target_pace: z.string().optional().nullable(),
-  running_status: z.string().optional().nullable(),
   membership_type: z.string().optional().nullable(),
+  guardian_name: z.string().max(100, "O nome do responsável deve ter no máximo 100 caracteres").optional().nullable(),
+  guardian_cpf: z.string()
+    .trim()
+    .refine((val) => {
+      if (!val || val.trim() === "") return true;
+      return isValidCPF(val);
+    }, {
+      message: "CPF do Responsável Inválido"
+    })
+    .optional()
+    .nullable(),
+  wellhub_id: z.string().max(20, "O ID do Wellhub/Gympass deve ter no máximo 20 caracteres").optional().nullable(),
 });
 
 export type LoginInput = z.infer<typeof loginSchema>;

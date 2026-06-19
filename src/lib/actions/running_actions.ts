@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient , getAuthUser } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { 
   updateRunningPlanSchema, 
@@ -29,7 +29,7 @@ import {
  */
 export async function logRunningWorkout(formData: FormData) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
 
   if (!user) throw new Error("Não autorizado");
 
@@ -145,7 +145,7 @@ export async function logRunningWorkout(formData: FormData) {
  */
 export async function logRunningSession(formData: FormData) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
 
   if (!user) throw new Error("Não autorizado");
 
@@ -234,7 +234,7 @@ export async function logRunningSession(formData: FormData) {
  */
 export async function assignRunningPlan(studentId: string, title: string, levelTag: string) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
 
   if (!user) throw new Error("Não autorizado");
 
@@ -294,7 +294,7 @@ export async function assignRunningPlan(studentId: string, title: string, levelT
  */
 export async function getStudentRunningData(studentId: string) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
 
   if (!user) throw new Error("Não autorizado");
 
@@ -367,7 +367,7 @@ export async function getRunningTemplates() {
  */
 export async function createRunningTemplate(formData: FormData) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) throw new Error("Não autorizado");
 
   const validatedFields = createRunningTemplateSchema.safeParse({
@@ -401,7 +401,7 @@ export async function createRunningTemplate(formData: FormData) {
  */
 export async function updateRunningTemplate(formData: FormData) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) throw new Error("Não autorizado");
 
   const validatedFields = updateRunningTemplateSchema.safeParse({
@@ -440,7 +440,7 @@ export async function updateRunningTemplate(formData: FormData) {
  */
 export async function deleteRunningTemplate(templateId: string) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) throw new Error("Não autorizado");
 
   const { error } = await supabase
@@ -460,7 +460,7 @@ export async function deleteRunningTemplate(templateId: string) {
  */
 export async function createTemplateWorkout(formData: FormData) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) throw new Error("Não autorizado");
 
   const validatedFields = createTemplateWorkoutSchema.safeParse({
@@ -530,7 +530,7 @@ export async function createTemplateWorkoutsBatch(
   }[]
 ) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) throw new Error("Não autorizado");
 
   if (!blocks || blocks.length === 0) throw new Error("Nenhum bloco para adicionar");
@@ -587,7 +587,7 @@ export async function updateTemplateWorkoutsBatch(
   }[]
 ) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) throw new Error("Não autorizado");
 
   if (!blocks || blocks.length === 0) throw new Error("Nenhum bloco para atualizar");
@@ -640,7 +640,7 @@ export async function updateTemplateWorkoutsBatch(
  */
 export async function deleteTemplateWorkout(workoutId: string) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) throw new Error("Não autorizado");
 
   const { error } = await supabase
@@ -660,7 +660,7 @@ export async function deleteTemplateWorkout(workoutId: string) {
  */
 export async function updateTemplateWorkout(formData: FormData) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) throw new Error("Não autorizado");
 
   const validatedFields = updateTemplateWorkoutSchema.safeParse({
@@ -715,7 +715,7 @@ export async function duplicateTemplateSession(
   targetWeekNumber?: number
 ) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) throw new Error("Não autorizado");
 
   const destinationWeek = targetWeekNumber || weekNumber;
@@ -770,7 +770,7 @@ export async function duplicateTemplateSession(
  */
 export async function deleteTemplateSession(templateId: string, weekNumber: number, sessionOrder: number) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) throw new Error("Não autorizado");
 
   const { error } = await supabase
@@ -792,7 +792,7 @@ export async function deleteTemplateSession(templateId: string, weekNumber: numb
  */
 export async function duplicateRunningTemplate(templateId: string) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) throw new Error("Não autorizado");
 
   // 1. Busca o template original
@@ -860,7 +860,7 @@ export async function duplicateRunningTemplate(templateId: string) {
  */
 export async function assignTemplateToStudent(templateId: string, studentId: string) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) throw new Error("Não autorizado");
 
   // 1. Busca o template
@@ -937,7 +937,7 @@ export async function assignTemplateToStudent(templateId: string, studentId: str
  */
 export async function createRunningWorkout(formData: FormData) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
 
   if (!user) throw new Error("Não autorizado");
 
@@ -1009,7 +1009,7 @@ export async function createRunningWorkout(formData: FormData) {
  */
 export async function updateRunningWorkout(formData: FormData) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
 
   if (!user) throw new Error("Não autorizado");
 
@@ -1114,7 +1114,7 @@ export async function bulkCreateRunningWorkouts(
   weekOffset: number = 0
 ) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) throw new Error("Não autorizado");
 
   // 0. Validação Zod
@@ -1349,7 +1349,7 @@ export async function getRunnersOverview() {
  */
 export async function deleteRunningWorkout(workoutId: string) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
 
   if (!user) throw new Error("Não autorizado");
 
@@ -1401,7 +1401,7 @@ export async function deleteRunningWorkout(workoutId: string) {
  */
 export async function archiveRunningPlan(planId: string) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
 
   if (!user) throw new Error("Não autorizado");
 
@@ -1441,7 +1441,7 @@ export async function archiveRunningPlan(planId: string) {
  */
 export async function deleteRunningPlan(planId: string, studentId: string) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
 
   if (!user) throw new Error("Não autorizado");
 
@@ -1480,7 +1480,7 @@ export async function deleteRunningPlan(planId: string, studentId: string) {
  */
 export async function getStudentRunningHistory(studentId: string) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
 
   if (!user) throw new Error("Não autorizado");
 
@@ -1550,7 +1550,7 @@ export async function getStudentRunningHistory(studentId: string) {
  */
 export async function updateRunningPace(formData: FormData) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
 
   if (!user) return { error: "Não autorizado" };
 

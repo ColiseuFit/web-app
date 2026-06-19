@@ -43,3 +43,9 @@ export const createClient = cache(async () => {
 
   return client;
 });
+
+export const getAuthUser = cache(async () => {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  return user;
+});

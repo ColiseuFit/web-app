@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient as createAdminClient } from "@supabase/supabase-js";
-import { createClient } from "@/lib/supabase/server";
+import { createClient , getAuthUser } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { physicalEvaluationSchema } from "@/lib/validations/security_schemas";
 import { enrichEvaluation } from "@/lib/physique-utils";
@@ -24,7 +24,7 @@ import { enrichEvaluation } from "@/lib/physique-utils";
  */
 export async function upsertPhysicalEvaluation(data: any) {
   const supabase = await createClient();
-  const { data: { user: currentUser } } = await supabase.auth.getUser();
+  const currentUser = await getAuthUser();
   if (!currentUser) return { error: "Sessão expirada ou não autorizada." };
 
   const validation = physicalEvaluationSchema.safeParse(data);
@@ -113,7 +113,7 @@ export async function deletePhysicalEvaluation(id: string) {
   const supabase = await createClient();
 
   // @security: Defesa em profundidade — verifica role mesmo com RLS ativo
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) return { error: "Sem sessão válida." };
 
   const { data: roleData } = await supabase
@@ -157,7 +157,7 @@ export async function deletePhysicalEvaluation(id: string) {
  */
 export async function uploadEvaluationPhoto(formData: FormData) {
   const supabase = await createClient();
-  const { data: { user: currentUser } } = await supabase.auth.getUser();
+  const currentUser = await getAuthUser();
   if (!currentUser) return { error: "Operação não permitida. Sessão inválida." };
 
   const file = formData.get("file") as File;

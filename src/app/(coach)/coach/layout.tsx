@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient , getAuthUser } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { USER_ROLES } from "@/lib/constants/roles";
 import Image from "next/image";
@@ -17,7 +17,7 @@ import CoachNavigation from "@/components/coach/CoachNavigation";
  */
 export default async function AuthenticatedCoachLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
 
   if (!user) {
     redirect("/coach-portal");

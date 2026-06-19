@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Settings as SettingsIcon, Zap, ShieldCheck, Trophy, Star, Dumbbell, CheckSquare, Video, KeyRound } from "lucide-react";
+import { Settings as SettingsIcon, Zap, ShieldCheck, Trophy, Star, Dumbbell, CheckSquare, Video, KeyRound, CircleDollarSign } from "lucide-react";
 import GeneralSettingsManager from "./GeneralSettingsManager";
 import WodSettingsManager from "./WodSettingsManager";
 import CheckinSettingsManager from "./CheckinSettingsManager";
 import VideoSettingsManager from "./VideoSettingsManager";
+import FinancialSettingsManager from "./FinancialSettingsManager";
 import AccessManager from "./AccessManager";
 import { AccessType } from "@/lib/constants/access_actions";
 
@@ -53,6 +54,7 @@ export default function SettingsTabs({ initialSettings, initialRules, initialLev
     { id: "checkin", label: "Check-in", icon: CheckSquare },
     { id: "wod", label: "WOD", icon: Dumbbell },
     { id: "video", label: "Vídeo", icon: Video },
+    { id: "financeiro", label: "Financeiro", icon: CircleDollarSign },
     { id: "seguranca", label: "Segurança", icon: ShieldCheck },
     { id: "acessos", label: "Acessos", icon: KeyRound }
   ];
@@ -158,6 +160,10 @@ export default function SettingsTabs({ initialSettings, initialRules, initialLev
               </div>
             </div>
           </div>
+        )}
+
+        {activeTab === "financeiro" && (
+          <FinancialSettingsManager initialSettings={initialSettings} />
         )}
 
         {activeTab === "acessos" && (
