@@ -59,4 +59,8 @@ brainstorm_plataforma.md
 test_login.js
 fix-webhook.js
 Running/
+.playwright-mcp/
+implementation_plan.md
+diagnostico_supabase.md
+.supabase/
 

@@ -63,7 +63,12 @@ graph TD
   - `docs/PLAYBOOKS/STRAVA_INTEGRATION.md`: Webhooks, homologação e conformidade com o Strava API Program.
 
   **🏋️ Admin & Gestão**
-  - `docs/PLAYBOOKS/ADMIN_HUB.md`: Visão geral do painel administrativo.
+  - `docs/PLAYBOOKS/COFRE_E_REAJUSTE.md`: Procedimentos do cofre, contratos blindados e reajustes granulares.
+  - `docs/PLAYBOOKS/STONE_INTEGRATION.md`: Topologia e fluxo do Gateway Pagarme V5.
+  - `docs/PLAYBOOKS/ADMIN_DASHBOARDS_OTE.md`: Painéis administrativos adaptativos e Roteamento Contextual (O.T.E.).
+  - `docs/PLAYBOOKS/CONTRACTS_PLANS_MANAGEMENT.md`: Gestão de planos comerciais, regras de check-in e modelos de contrato (Rules Engine).
+  - `docs/PLAYBOOKS/FISCAL_INTEGRATION.md`: Integração Fiscal e Emissão de NFS-e (Gateways e Webhooks).
+  - `docs/PLAYBOOKS/COMPLIANCE_DOCUMENTS_MANAGEMENT.md`: Gestão de termos legais (Regimento Interno, LGPD) e questionário médico obrigatório (PAR-Q).
   - `docs/PLAYBOOKS/ADMIN_WOD_ENGINE.md`: Motor de criação e gestão de WODs.
   - `docs/PLAYBOOKS/ADMIN_STUDENT_MANAGEMENT.md`: Gestão de alunos pelo admin.
   - `docs/PLAYBOOKS/ADMIN_COACH_MANAGEMENT.md`: Gestão de coaches e substituições.
@@ -71,6 +76,7 @@ graph TD
   - `docs/PLAYBOOKS/FECHAMENTO_AULA.md`: Procedimento de fechamento e validação de aulas.
   - `docs/PLAYBOOKS/gestao_turmas.md`: Fluxo detalhado de gestão de turmas.
   - `docs/PLAYBOOKS/registro_resultados.md`: Fluxo de registro de resultados via admin.
+  - `docs/PLAYBOOKS/PRESENCA_FREQUENCIA_DASHBOARD.md`: Dashboard de Presença & Frequência (CRM).
 
   **🧑‍🏫 Coach**
   - `docs/PLAYBOOKS/COACH_PORTAL.md`: Portal do Coach — presença, chamada e fechamento.
@@ -100,7 +106,6 @@ graph TD
 
 ---
 ---
-**Versão: 4.4.0 (Junho/2026) - Redesign Coliseu TV (Abas & Grade Adaptativa)**
+**Versão: 5.0.0 (Junho/2026) - Desacoplamento de Rotas, Novo Menu e Módulo Loja**
 **Status da Auditoria:** 🏛️ LEGACY PROOF (Protocolo 1.0.4) - CONCLUÍDA
 **Equipe:** Antigravity AI & Coliseu Engineering Team
-
