@@ -5,6 +5,8 @@ const nextConfig: NextConfig = {
     root: __dirname,
   },
   images: {
+    loader: 'custom',
+    loaderFile: './src/supabase-image-loader.ts',
     qualities: [75, 90],
     remotePatterns: [
       {
